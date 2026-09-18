@@ -29,6 +29,15 @@ Describe the implementation scope.
 
 External dependencies.
 
+For slice dependencies:
+
+- `Depends On` declares implementation prerequisites.
+- Dependencies reference Slice IDs only.
+- Dependency satisfaction requires the referenced slice to have implementation
+  status IMPLEMENTED.
+- Dependency satisfaction does not require review status GO.
+- Dependencies must represent real implementation prerequisites.
+
 ---
 
 # 4. Progress Summary
@@ -85,6 +94,9 @@ Objective:
 Dependencies:
 
 Completion Criteria:
+
+Describe observable implementation outputs that downstream slices may rely
+upon. These outputs are evidence used to verify dependency satisfaction.
 
 Notes:
 

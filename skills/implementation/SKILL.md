@@ -36,11 +36,20 @@ metadata:
 
 Before implementing a slice:
 
-- Inspect its `Depends On` entries in the IMPLEMENTATION-PLAN.
-- Verify that every dependency is implemented in the current codebase.
+- Read all `Depends On` entries in the IMPLEMENTATION-PLAN.
+- Verify that every referenced Slice ID exists in the same IMPLEMENTATION-PLAN.
+- Verify that every referenced slice has implementation status IMPLEMENTED.
+- Verify that the implementation output required by every dependency exists in
+  the target repository.
+- Treat the dependency as satisfied only when all of these conditions hold.
+- Do not infer dependency satisfaction solely from similar code being present.
 - A slice with no dependencies passes the preflight.
 
-If any dependency is not implemented:
+Dependency satisfaction is based on IMPLEMENTED, not review status GO.
+IMPLEMENTED with NOT-REVIEWED satisfies a dependency, as does IMPLEMENTED
+with GO. Review remains an independent quality gate.
+
+If any dependency is not satisfied:
 
 - Stop immediately.
 - Do not modify source code.

@@ -232,6 +232,31 @@ Example:
 
 `Depends On: P1-S01, P1-S03`
 
+## Dependency Satisfaction
+
+A dependency declares an implementation prerequisite between slices.
+
+A dependency is satisfied when:
+
+- The referenced Slice ID exists in the same IMPLEMENTATION-PLAN.
+- The referenced slice implementation status is IMPLEMENTED.
+- The implementation output required by that dependency exists in the target
+  repository.
+
+The implementation status recorded in IMPLEMENTATION-PLAN is the authoritative
+lifecycle state. The codebase is evidence used to verify that state. A
+dependency must never be considered satisfied solely because similar code
+happens to exist.
+
+Dependency satisfaction is based on IMPLEMENTED and does not require review
+status GO. IMPLEMENTED with NOT-REVIEWED satisfies a dependency, as does
+IMPLEMENTED with GO. GO determines review acceptance and remains an
+independent quality gate; GO does not participate in dependency satisfaction.
+
+Dependencies represent implementation prerequisites only. They must identify
+the actual implementation output required before dependent work can begin,
+not a review, approval, or conceptual relationship.
+
 ## Dependency-Driven Parallelism
 
 - Analyze dependencies across all slices.

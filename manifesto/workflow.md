@@ -236,8 +236,10 @@ READY-FOR-PLANNING
 IMPLEMENTED
 
 * Granted by: Implementer
-* Condition: slice work is complete against the slice objective and every declared dependency is implemented in the codebase
-* Unlocks: Review of the slice
+* Condition: slice work is complete against the slice objective, every declared dependency slice has implementation status IMPLEMENTED, and the required implementation outputs exist in the target repository
+* Dependency satisfaction requires the referenced Slice ID to exist, its implementation status to be IMPLEMENTED, and its required implementation output to exist. The implementation status in IMPLEMENTATION-PLAN is authoritative; the codebase is evidence used to verify it. Similar code alone is not sufficient evidence.
+* Dependency review status is not required. IMPLEMENTED with NOT-REVIEWED and IMPLEMENTED with GO both satisfy a dependency. GO does not participate in dependency satisfaction.
+* Unlocks: Review of the slice and implementation of dependent slices
 
 GO
 
@@ -274,7 +276,7 @@ Gate rules:
 
 * An individual slice GO does not unlock Testing; only a COMPLETED plan does.
 * Only the Reviewer may move a slice review status from NO-GO back to GO, through re-review.
-* Gate conditions must be verifiable by any agent from the artifacts alone, without consulting other agents.
+* Gate conditions must be verifiable by any agent from the authoritative artifacts and required implementation evidence, without consulting other agents.
 
 ### Multi-Agent Safety Rules
 
