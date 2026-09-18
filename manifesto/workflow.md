@@ -19,8 +19,6 @@ Feasibility Assessment
     ↓
 Gap Closure
     ↓
-Decisions
-    ↓
 Architecture Update
     ↓
 Planning
@@ -102,35 +100,12 @@ Outputs:
 Rules:
 
 * All open questions must be resolved or explicitly accepted.
-* All required decisions must be recorded.
+* Gap Closure produces and records all approved decisions in FEASIBILITY-ASSESSMENT.
 * FEASIBILITY-ASSESSMENT must be marked READY-FOR-ARCHITECTURE before proceeding.
 
 ---
 
-## 4. Decisions
-
-Objective:
-
-Finalize the decisions required to close the feasibility gaps.
-
-Inputs:
-
-* FEASIBILITY-ASSESSMENT
-* Gap Closure results
-
-Outputs:
-
-* Approved Decisions
-
-Rules:
-
-* Decisions bridge FEASIBILITY-ASSESSMENT and ARCHITECTURE.
-* Decisions must be recorded in FEASIBILITY-ASSESSMENT.
-* Decisions must not define the target state; the target state belongs to ARCHITECTURE.
-
----
-
-## 5. Architecture Update
+## 4. Architecture Update
 
 Objective:
 
@@ -154,7 +129,7 @@ Rules:
 
 ---
 
-## 6. Planning
+## 5. Planning
 
 Objective:
 
@@ -186,7 +161,7 @@ Rules:
 
 ---
 
-## 7. Implementation
+## 6. Implementation
 
 Objective:
 
@@ -209,7 +184,7 @@ Rules:
 
 ---
 
-## 8. Review
+## 7. Review
 
 Objective:
 
@@ -235,7 +210,7 @@ Implementation and Review operate in a continuous loop until the slice is accept
 
 ---
 
-## 9. Testing
+## 8. Testing
 
 Objective:
 
@@ -257,7 +232,7 @@ Rules:
 
 ---
 
-## 10. Deployment
+## 9. Deployment
 
 Objective:
 
@@ -290,8 +265,6 @@ DOMAIN
 FEATURE -----> FEASIBILITY-ASSESSMENT
                       ↓
                 Gap Closure
-                      ↓
-                  Decisions
                       ↓
                 ARCHITECTURE
                      ↓
