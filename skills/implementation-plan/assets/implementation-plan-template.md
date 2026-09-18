@@ -43,6 +43,9 @@ Plan status values are:
 COMPLETED is a plan-level status only. Set it only when every slice has
 implementation status IMPLEMENTED and review status GO.
 
+Testing and test-package creation must not begin until the plan is COMPLETED.
+An individual slice with review status GO is not a testing entry condition.
+
 Slice implementation status values are:
 
 - NOT-STARTED

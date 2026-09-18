@@ -27,7 +27,15 @@ Implementation
     ↔
 Review
     ↓
+IMPLEMENTATION-PLAN = COMPLETED
+    ↓
+Test Package Creation
+    ↓
 Testing
+    ↓
+Test Execution
+    ↓
+Issue Creation (when defects are found)
     ↓
 Deployment
 ```
@@ -205,38 +213,96 @@ Rules:
 
 * Review produces exactly one decision: GO or NO-GO.
 * A NO-GO slice returns to Implementation for remediation and re-review.
-* A GO slice may proceed to Testing.
+* A GO slice remains part of the implementation plan until every slice is IMPLEMENTED and every slice review status is GO.
+* Testing must not start after an individual slice receives GO.
+* The IMPLEMENTATION-PLAN becomes COMPLETED only when every slice has implementation status IMPLEMENTED and review status GO.
+* Testing may start only after the IMPLEMENTATION-PLAN is COMPLETED.
 
 Implementation and Review operate in a continuous loop:
 
-* Implementation → Review → GO
+* Implementation → Review → GO → IMPLEMENTATION-PLAN completion check
 * Implementation → Review → NO-GO → Remediation → Re-Review
 
 ---
 
-## 8. Testing
+## 8. Test Package Creation
 
 Objective:
 
-Validate the completed solution.
+Define human-executable tests for the completed implementation as a whole.
 
 Inputs:
 
-* Implementation with a GO review decision
+* IMPLEMENTATION-PLAN (COMPLETED)
+* FEATURE
+* ARCHITECTURE
 
 Outputs:
 
 * TEST-PACKAGE
-* Test Results
 
 Rules:
 
+* Test package creation must not begin before the IMPLEMENTATION-PLAN is COMPLETED.
+* Test scenarios must cover the completed feature/system behavior, not an individual GO slice.
+* Testing artifacts are tester-agnostic.
+* A TEST-PACKAGE describes what must be tested, not who performs the test.
+
+---
+
+## 9. Testing
+
+Objective:
+
+Validate the completed feature/system behavior after all planned implementation work has passed review.
+
+Inputs:
+
+* IMPLEMENTATION-PLAN (COMPLETED)
+* FEATURE
+* ARCHITECTURE
+* TEST-PACKAGE
+
+Outputs:
+
+* TEST-EXECUTION
+
+Rules:
+
+* Testing must not use an individual slice GO as its trigger.
+* Review validates individual slices.
+* Testing validates the completed implementation as a whole.
 * Testing validates functionality, integration, and regression impact.
 * Testing must verify acceptance criteria defined by FEATURE.
 
 ---
 
-## 9. Deployment
+## 10. Test Execution and Issue Creation
+
+Objective:
+
+Execute TEST-PACKAGE and record the results of testing.
+
+Inputs:
+
+* TEST-PACKAGE
+* IMPLEMENTATION-PLAN (COMPLETED)
+* FEATURE
+* ARCHITECTURE
+
+Outputs:
+
+* TEST-EXECUTION
+* ISSUE artifacts when defects are found
+
+Rules:
+
+* Test execution may begin only after the IMPLEMENTATION-PLAN is COMPLETED.
+* Defects found during test execution must be recorded as ISSUE artifacts.
+
+---
+
+## 11. Deployment
 
 Objective:
 
@@ -273,14 +339,22 @@ FEATURE -----> FEASIBILITY-ASSESSMENT
                 ARCHITECTURE
                      ↓
              IMPLEMENTATION-PLAN
-                     ↓
-             IMPLEMENTATION
-                     ↔
-                 REVIEW
-                     ↓
-                 TESTING
-                     ↓
-               DEPLOYMENT
+                      ↓
+              IMPLEMENTATION
+                      ↔
+                  REVIEW
+                      ↓
+       IMPLEMENTATION-PLAN = COMPLETED
+                      ↓
+          TEST PACKAGE CREATION
+                      ↓
+                  TESTING
+                      ↓
+               TEST EXECUTION
+                      ↓
+       ISSUE CREATION (when defects are found)
+                      ↓
+                DEPLOYMENT
 ```
 
 ---
@@ -292,7 +366,7 @@ A development effort is considered complete when:
 * DOMAIN accurately reflects business knowledge.
 * FEATURE accurately reflects the delivered outcome.
 * ARCHITECTURE accurately reflects the implemented solution.
-* All planned slices are completed.
+* IMPLEMENTATION-PLAN is COMPLETED: every slice is IMPLEMENTED and every slice review status is GO.
 * Testing has passed.
 * Deployment has been completed successfully.
 * All required delivery artifacts have been produced.

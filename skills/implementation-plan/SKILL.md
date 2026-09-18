@@ -122,6 +122,8 @@ COMPLETED is a plan-level status only. A plan is COMPLETED only when every slice
 
 COMPLETED must not be used as a slice implementation status.
 
+Testing and test-package creation must not begin until the IMPLEMENTATION-PLAN is COMPLETED. An individual slice with review status GO is not a testing entry condition.
+
 ## Versioning
 
 Use:

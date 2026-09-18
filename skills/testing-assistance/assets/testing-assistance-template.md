@@ -2,10 +2,24 @@
 Title:
 Code:
 Feature:
+ImplementationPlanStatus: COMPLETED
 Tester:
 ExecutionDate:
 Artifact: TEST-EXECUTION
 ---
+
+# Entry Criteria
+
+Testing requires:
+
+- IMPLEMENTATION-PLAN with status COMPLETED
+- FEATURE
+- ARCHITECTURE
+- TEST-PACKAGE
+
+IMPLEMENTATION-PLAN is COMPLETED only when every slice has implementation
+status IMPLEMENTED and review status GO. An individual slice with review status
+GO is not sufficient to start testing.
 
 # 1. Execution Summary
 

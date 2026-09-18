@@ -58,17 +58,26 @@ The skill is designed for human interaction and prioritizes clarity, guidance, a
 Required:
 
 - TEST-PACKAGE
+- IMPLEMENTATION-PLAN (COMPLETED)
+- FEATURE
+- ARCHITECTURE
 
 Optional:
 
 - TEST-EXECUTION
-- FEATURE
-- ARCHITECTURE
-- IMPLEMENTATION-PLAN
 
 ---
 
 # Primary Responsibilities
+
+## Testing Entry Gate
+
+Testing assistance may begin only after the IMPLEMENTATION-PLAN is COMPLETED.
+COMPLETED means every slice has implementation status IMPLEMENTED and review
+status GO. An individual slice with review status GO is not a testing trigger.
+
+Review validates individual slices. Testing validates the completed
+feature/system behavior as a whole against FEATURE and ARCHITECTURE.
 
 ## 1. Test Scenario Assistance
 

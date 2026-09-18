@@ -89,6 +89,8 @@ BLOCKER or MAJOR requires NO-GO.
 
 - Update IMPLEMENTATION-PLAN review status to GO.
 - Do not create REVIEW artifacts.
+- A GO decision completes only the reviewed slice. It does not authorize testing.
+- Testing is authorized only when the IMPLEMENTATION-PLAN is COMPLETED: every slice is IMPLEMENTED and every slice review status is GO.
 
 ### NO-GO
 

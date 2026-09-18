@@ -20,7 +20,7 @@ Human readability takes precedence over agent readability.
 
 - Analyze FEATURE
 - Analyze ARCHITECTURE
-- Analyze IMPLEMENTATION-PLAN
+- Analyze IMPLEMENTATION-PLAN (COMPLETED)
 - Identify test scenarios
 - Create test cases
 - Define expected outcomes
@@ -39,12 +39,9 @@ Human readability takes precedence over agent readability.
 
 Required:
 
+- IMPLEMENTATION-PLAN (COMPLETED)
 - FEATURE
 - ARCHITECTURE
-
-Optional:
-
-- IMPLEMENTATION-PLAN
 
 # Testing Principles
 
@@ -55,6 +52,18 @@ The test package must:
 - Use business language whenever possible
 - Minimize technical jargon
 - Focus on observable behavior
+
+Test-package creation must not begin before the IMPLEMENTATION-PLAN is COMPLETED.
+COMPLETED means every slice has implementation status IMPLEMENTED and review status GO.
+An individual slice with review status GO is not sufficient.
+
+The package validates the completed feature/system behavior as a whole. Review
+validates individual slices; testing does not use an individual slice GO as its
+trigger.
+
+TEST-PACKAGE is tester-agnostic. It describes what must be tested, not who
+performs the test. The test may be performed by a Programmer, Trainer, Reviewer,
+Customer, or another qualified person.
 
 # Test Coverage
 

@@ -134,3 +134,7 @@ Whenever possible, Generated Knowledge should be regenerated from DOMAIN, FEATUR
 ## Completion
 
 A capability is considered fully delivered when DOMAIN, FEATURE, and ARCHITECTURE accurately describe the implemented solution.
+
+For delivery purposes, IMPLEMENTATION-PLAN is COMPLETED only when every slice
+has implementation status IMPLEMENTED and review status GO. Testing cannot
+begin before the plan reaches COMPLETED.

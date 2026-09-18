@@ -7,6 +7,12 @@ ReviewIteration:
 Decision: NO-GO
 ---
 
+# Testing Gate
+
+A GO decision applies only to this slice. It does not authorize testing.
+Testing may begin only when the IMPLEMENTATION-PLAN is COMPLETED: every slice
+has implementation status IMPLEMENTED and review status GO.
+
 # Findings
 
 ## RV-001
