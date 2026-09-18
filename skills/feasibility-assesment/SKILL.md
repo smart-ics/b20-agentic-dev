@@ -84,18 +84,24 @@ The target state belongs to ARCHITECTURE.
 When updating an existing FEASIBILITY-ASSESSMENT:
 
 * Preserve existing GAP, OQ, ASM, and RISK IDs.
-* Do not renumber existing entries.
-* Do not remove historical findings unless explicitly obsolete.
-* Do not create duplicate GAPs or OQs for the same issue.
-* Update existing entries in place.
+* Never renumber IDs.
+* Update matching GAP/OQ entries in place.
+* Never create duplicates for an existing issue.
 * Record decisions within the corresponding GAP or OQ.
 * Preserve document structure and section ordering.
 * Preserve previously approved decisions.
-* Update Planning Readiness whenever gap status changes.
+* Update the artifact Planning Readiness whenever GAP/OQ status changes.
+
+For historical entries:
+
+* Never delete a closed GAP or OQ.
+* Preserve its original ID and decision.
+* Mark it `CLOSED`.
+* Only mark an entry obsolete when explicitly required.
 
 ### Gap Closure Rules
 
-For every GAP and OQ, use a consistent structure:
+The following structure is mandatory for both new and updated GAP/OQ entries:
 
 ```text
 Status: OPEN | CLOSED
