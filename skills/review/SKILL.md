@@ -58,12 +58,13 @@ For the target slice, verify at minimum:
 
 - Slice objective is satisfied
 - All planned scope is implemented
+- Complete slice scope and acceptance are verified, not only changed lines
 - Implementation follows ARCHITECTURE
 - Required dependencies were respected
 - No unapproved architectural or business decisions were introduced
 - Changed code is consistent with the surrounding codebase
 - Relevant error handling and edge cases are addressed
-- Relevant tests exist or are updated when required by the slice
+- Behavior is verified; tests are inspected or updated when required by the slice, architecture, acceptance criteria, or risk
 - No unrelated or unnecessary changes were introduced
 - Implementation does not violate repository boundaries
 - Acceptance criteria are satisfied where applicable
@@ -74,7 +75,11 @@ Before reviewing the target slice:
 
 - Read its `Depends On` entries from the IMPLEMENTATION-PLAN.
 - Verify that each dependency is implemented in the current codebase.
-- A missing dependency is a review blocker.
+- Verify that declared dependencies are valid Slice IDs in the same plan and form no circular dependency.
+- Do not review a slice as independently acceptable when a declared prerequisite is absent.
+- A missing or invalid dependency is a review blocker.
+- Verify that the implementation did not introduce a prerequisite missing from the plan.
+- Report an undeclared prerequisite as a finding; do not modify the plan to resolve it.
 - Do not compensate for or implement a missing dependency during review.
 
 ## Review Decision
@@ -83,7 +88,7 @@ The reviewer must produce exactly one decision:
 
 ### APPROVE
 
-Use when the implementation satisfies the slice scope, architecture, and applicable acceptance criteria, with no blocking findings.
+Use when the implementation satisfies the slice scope, architecture, and applicable acceptance criteria, with no BLOCKER or MAJOR findings. MINOR and NOTE findings may coexist with APPROVE when they do not prevent acceptance and are recorded.
 
 ### REJECT
 
@@ -147,6 +152,17 @@ The REVIEW artifact must record:
 - Evidence
 - Required corrections
 - Review timestamp or iteration identifier when supported
+
+The workflow for an iteration is:
+
+`Implementation` → `Review` → `Remediation` → `Re-Review`
+
+For each review iteration, preserve prior decisions and findings, and record:
+
+- Iteration identifier
+- Current decision
+- Finding resolution status
+- Evidence of remediation when applicable
 
 The REVIEW artifact is working knowledge and does not become a source of permanent business or architectural truth.
 
