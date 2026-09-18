@@ -92,7 +92,7 @@ Define ownership.
 
 Avoid shared ownership.
 
-# Database Design
+# 8. Database Design
 
 ## New Tables
 
