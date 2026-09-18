@@ -4,7 +4,7 @@ Code:
 Artifact: IMPLEMENTATION-PLAN
 Version:
 LastUpdated:
-Status: NOT-STARTED | IN-PROGRESS | BLOCKED | COMPLETED
+Status: NOT-STARTED | IN-PROGRESS | READY-FOR-REVIEW | BLOCKED
 ---
 
 # 1. Objective
@@ -33,9 +33,18 @@ External dependencies.
 
 # 4. Progress Summary
 
+Execution status values are:
+
+- NOT-STARTED
+- IN-PROGRESS
+- READY-FOR-REVIEW
+- BLOCKED
+
+Review records a separate decision of GO or NO-GO in the REVIEW artifact.
+
 | Phase | Status | Progress |
 |---------|---------|---------|
-| P1 | COMPLETED | 5/5 |
+| P1 | READY-FOR-REVIEW | 5/5 |
 | P2 | IN-PROGRESS | 2/5 |
 
 ---
@@ -44,13 +53,13 @@ External dependencies.
 
 ## P1 - Foundation
 
-Status: COMPLETED
+Status: READY-FOR-REVIEW
 
 ### P1-S1
 
 Title:
 
-Status: COMPLETED
+Status: READY-FOR-REVIEW
 
 Objective:
 
