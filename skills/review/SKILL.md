@@ -84,6 +84,16 @@ Before reviewing the target slice:
 
 ## Review Decision
 
+Review status is separate from slice implementation status.
+
+Allowed review statuses are:
+
+- NOT-REVIEWED
+- GO
+- NO-GO
+
+Reviewers assign the review status only. Reviewers must not modify the slice implementation status.
+
 The reviewer must produce exactly one decision:
 
 ### GO
@@ -176,12 +186,13 @@ Review owns the review decision only.
 
 The Implementation skill owns execution progress and status transitions:
 
-`NOT-STARTED` → `IN-PROGRESS` → `READY-FOR-REVIEW`
+`NOT-STARTED` → `IN-PROGRESS` → `IMPLEMENTED`
 
 Rules:
 
-- GO records that the slice passes review; the next workflow transition is performed by its owning workflow actor.
-- NO-GO records that remediation is required and returns the slice to Implementation.
+- GO records that the slice passes review without changing its implementation status; the next workflow transition is performed by its owning workflow actor.
+- NO-GO records that remediation is required without changing the slice implementation status and returns the slice to Implementation.
+- Review status is independent of implementation status.
 - Do not rewrite slice scope, dependencies, ordering, or repository ownership.
 - Do not create or split slices.
 

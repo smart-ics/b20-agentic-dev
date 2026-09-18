@@ -60,7 +60,7 @@ NOT-STARTED
     ↓
 IN-PROGRESS
     ↓
-READY-FOR-REVIEW
+IMPLEMENTED
 
 or
 
@@ -68,8 +68,14 @@ IN-PROGRESS
     ↓
 BLOCKED
 
+IMPLEMENTED means implementation work is finished and the slice is ready for review.
+
 Implementation does not assign GO or NO-GO. It only moves a slice to
-READY-FOR-REVIEW or BLOCKED.
+IMPLEMENTED or BLOCKED.
+
+The review status is separate from implementation status. A slice starts with
+review status NOT-REVIEWED. Reviewers independently assign GO or NO-GO and do
+not modify the slice implementation status.
 
 ## Update Rules
 
@@ -77,6 +83,8 @@ READY-FOR-REVIEW or BLOCKED.
 - Preserve Slice IDs
 - Preserve slice ordering
 - Update assigned slices only
+- Mark assigned slices IMPLEMENTED when implementation work is finished
+- Do not assign GO or NO-GO
 - Do not renumber slices
 - Do not modify plan structure
 - Do not create new slices

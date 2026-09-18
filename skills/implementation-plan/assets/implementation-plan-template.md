@@ -4,7 +4,7 @@ Code:
 Artifact: IMPLEMENTATION-PLAN
 Version:
 LastUpdated:
-Status: NOT-STARTED | IN-PROGRESS | READY-FOR-REVIEW | BLOCKED
+Status: NOT-STARTED | IN-PROGRESS | BLOCKED | COMPLETED
 ---
 
 # 1. Objective
@@ -33,19 +33,33 @@ External dependencies.
 
 # 4. Progress Summary
 
-Execution status values are:
+Plan status values are:
 
 - NOT-STARTED
 - IN-PROGRESS
-- READY-FOR-REVIEW
+- BLOCKED
+- COMPLETED
+
+COMPLETED is a plan-level status only. Set it only when every slice has
+implementation status IMPLEMENTED and review status GO.
+
+Slice implementation status values are:
+
+- NOT-STARTED
+- IN-PROGRESS
+- IMPLEMENTED
 - BLOCKED
 
-Review records a separate decision of GO or NO-GO in the REVIEW artifact.
+Slice review status values are:
 
-| Phase | Status | Progress |
-|---------|---------|---------|
-| P1 | READY-FOR-REVIEW | 5/5 |
-| P2 | IN-PROGRESS | 2/5 |
+- NOT-REVIEWED
+- GO
+- NO-GO
+
+| Phase | Implementation Status | Review Status | Progress |
+|---------|---------|---------|---------|
+| P1 | IMPLEMENTED | GO | 5/5 |
+| P2 | IN-PROGRESS | NOT-REVIEWED | 2/5 |
 
 ---
 
@@ -53,13 +67,15 @@ Review records a separate decision of GO or NO-GO in the REVIEW artifact.
 
 ## P1 - Foundation
 
-Status: READY-FOR-REVIEW
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P1-S1
 
 Title:
 
-Status: READY-FOR-REVIEW
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective:
 
@@ -79,7 +95,8 @@ Notes:
 
 ## P2 - Application Layer
 
-Status: IN-PROGRESS
+Implementation Status: IN-PROGRESS
+Review Status: NOT-REVIEWED
 
 ### P2-S1
 

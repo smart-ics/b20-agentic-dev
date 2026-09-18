@@ -57,7 +57,7 @@ The IMPLEMENTATION-PLAN artifact is created and maintained by the Planning skill
 
 Execution progress, implementation status, review status, and delivery state transitions are owned by the Implementer and Reviewer skills.
 
-The Planning skill defines the structure of the plan, not the execution state of the plan.
+The Planning skill defines the structure of the plan, not the execution state or review outcome of the plan.
 
 ## Planning Principles
 
@@ -72,6 +72,55 @@ Each slice must:
 Slice IDs must be globally unique within an IMPLEMENTATION-PLAN.
 
 Slice numbering is continuous across all phases.
+
+## Status Model
+
+Implementation status and review status are separate fields.
+
+### Slice Implementation Status
+
+Allowed slice implementation statuses are:
+
+- NOT-STARTED
+- IN-PROGRESS
+- IMPLEMENTED
+- BLOCKED
+
+IMPLEMENTED means implementation work is finished and the slice is ready for review. IMPLEMENTED is an implementation status only and does not indicate that the slice has passed review.
+
+The implementation lifecycle is:
+
+```text
+NOT-STARTED
+    ↓
+IN-PROGRESS
+    ↓
+IMPLEMENTED
+```
+
+or:
+
+```text
+IN-PROGRESS
+    ↓
+BLOCKED
+```
+
+### Slice Review Status
+
+Allowed slice review statuses are:
+
+- NOT-REVIEWED
+- GO
+- NO-GO
+
+Review owns the review status. Implementers must not assign GO or NO-GO. Reviewers assign GO or NO-GO independently and must not modify the slice implementation status.
+
+### Plan Status
+
+COMPLETED is a plan-level status only. A plan is COMPLETED only when every slice has implementation status IMPLEMENTED and review status GO.
+
+COMPLETED must not be used as a slice implementation status.
 
 ## Versioning
 
