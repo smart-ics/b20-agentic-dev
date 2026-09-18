@@ -19,6 +19,8 @@ Feasibility Assessment
     ↓
 Gap Closure
     ↓
+Decisions
+    ↓
 Architecture Update
     ↓
 Planning
@@ -70,18 +72,19 @@ Outputs:
 
 * FEASIBILITY-ASSESSMENT
 
-The assessment must identify:
+FEASIBILITY-ASSESSMENT owns:
 
 * Current State
 * Gap Analysis
 * Open Questions
 * Risks
 * Assumptions
+* Decisions
 
 Rules:
 
 * No implementation planning occurs during this stage.
-* No architecture decisions are finalized during this stage.
+* Target State is not defined during this stage.
 
 ---
 
@@ -93,18 +96,41 @@ Resolve all gaps and open questions identified during feasibility assessment.
 
 Outputs:
 
-* Recorded Decisions
 * Updated FEASIBILITY-ASSESSMENT
+* Approved Decisions
 
 Rules:
 
 * All open questions must be resolved or explicitly accepted.
 * All required decisions must be recorded.
-* FEASIBILITY-ASSESSMENT must be marked READY-FOR-PLANNING before proceeding.
+* FEASIBILITY-ASSESSMENT must be marked READY-FOR-ARCHITECTURE before proceeding.
 
 ---
 
-## 4. Architecture Update
+## 4. Decisions
+
+Objective:
+
+Finalize the decisions required to close the feasibility gaps.
+
+Inputs:
+
+* FEASIBILITY-ASSESSMENT
+* Gap Closure results
+
+Outputs:
+
+* Approved Decisions
+
+Rules:
+
+* Decisions bridge FEASIBILITY-ASSESSMENT and ARCHITECTURE.
+* Decisions must be recorded in FEASIBILITY-ASSESSMENT.
+* Decisions must not define the target state; the target state belongs to ARCHITECTURE.
+
+---
+
+## 5. Architecture Update
 
 Objective:
 
@@ -114,6 +140,7 @@ Inputs:
 
 * FEATURE
 * FEASIBILITY-ASSESSMENT
+* Approved Decisions
 
 Outputs:
 
@@ -121,13 +148,13 @@ Outputs:
 
 Rules:
 
-* ARCHITECTURE represents the approved target state.
+* ARCHITECTURE owns and represents the approved target state.
 * All approved decisions must be reflected in ARCHITECTURE.
 * Planning must not begin until ARCHITECTURE has been updated.
 
 ---
 
-## 5. Planning
+## 6. Planning
 
 Objective:
 
@@ -137,7 +164,6 @@ Inputs:
 
 * FEATURE
 * ARCHITECTURE
-* FEASIBILITY-ASSESSMENT
 * Current Codebase
 
 Outputs:
@@ -147,7 +173,7 @@ Outputs:
 Planner responsibilities:
 
 * Analyze the current codebase.
-* Compare the current implementation with the target architecture.
+* Compare the Current Codebase with the Approved Target Architecture.
 * Determine the implementation delta.
 * Create phased and/or sliced implementation plans.
 * Produce slices that can be executed by implementation agents.
@@ -156,10 +182,11 @@ Rules:
 
 * Planning must use ARCHITECTURE as the source of target-state truth.
 * Planning must use the current codebase as the source of current-state truth.
+* Planning must consume the updated ARCHITECTURE, not unresolved feasibility findings.
 
 ---
 
-## 6. Implementation
+## 7. Implementation
 
 Objective:
 
@@ -182,7 +209,7 @@ Rules:
 
 ---
 
-## 7. Review
+## 8. Review
 
 Objective:
 
@@ -208,7 +235,7 @@ Implementation and Review operate in a continuous loop until the slice is accept
 
 ---
 
-## 8. Testing
+## 9. Testing
 
 Objective:
 
@@ -230,7 +257,7 @@ Rules:
 
 ---
 
-## 9. Deployment
+## 10. Deployment
 
 Objective:
 
@@ -261,10 +288,12 @@ DOMAIN
         \
          \
 FEATURE -----> FEASIBILITY-ASSESSMENT
-                     ↓
-               Gap Closure
-                     ↓
-               ARCHITECTURE
+                      ↓
+                Gap Closure
+                      ↓
+                  Decisions
+                      ↓
+                ARCHITECTURE
                      ↓
              IMPLEMENTATION-PLAN
                      ↓
