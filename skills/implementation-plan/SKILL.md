@@ -1,5 +1,5 @@
 ---
-name: implementation-planning
+name: implementation-plan
 description: Create and maintain an executable implementation plan that transforms the current system into the approved target architecture
 license: Proprietary
 compatibility: opencode
@@ -22,7 +22,7 @@ metadata:
 
 ## What I do not do
 
-IMPLEMENTATION-PLANNING does not:
+IMPLEMENTATION-PLAN does not:
 
 - Define business knowledge
 - Define business outcomes
@@ -72,6 +72,34 @@ Each slice must:
 Slice IDs must be globally unique within an IMPLEMENTATION-PLAN.
 
 Slice numbering is continuous across all phases.
+
+## Versioning
+
+Use:
+
+`Major.Minor`
+
+Update:
+
+- Version
+- LastUpdated
+
+Increment Minor for:
+
+- Adding slices
+- Splitting slices
+- Dependency updates
+- Small planning adjustments
+
+Increment Major for:
+
+- Significant replanning
+- Major scope changes
+- Phase restructuring
+
+Git maintains history.
+
+Do not maintain version history inside the artifact.
 
 Example:
 

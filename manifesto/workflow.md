@@ -95,13 +95,14 @@ Resolve all gaps and open questions identified during feasibility assessment.
 Outputs:
 
 * Updated FEASIBILITY-ASSESSMENT
-* Approved Decisions
+* Closed gaps and open questions
+* Recorded decisions
 
 Rules:
 
-* All open questions must be resolved or explicitly accepted.
-* Gap Closure produces and records all approved decisions in FEASIBILITY-ASSESSMENT.
-* FEASIBILITY-ASSESSMENT must be marked READY-FOR-ARCHITECTURE before proceeding.
+* All blocking gaps must be resolved.
+* All required decisions must be recorded.
+* FEASIBILITY-ASSESSMENT must be marked READY-FOR-PLANNING before proceeding.
 
 ---
 

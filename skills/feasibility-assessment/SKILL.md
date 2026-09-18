@@ -163,7 +163,7 @@ Produce:
 
 The artifact must follow:
 
-- assets/feasibility-assessment-template.md
+- assets/feasibility-assesment-template.md
     
 
 ## Versioning
