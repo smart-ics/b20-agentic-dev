@@ -10,7 +10,11 @@ LastUpdated:
 
 # 2. Ubiquitous Language
 
-# 3. Business Capabilities
+# 3. Domain Capabilities
+
+Domain capabilities are the responsibilities and services provided by this domain (for example: Admission Management, Bed Management, Inventory Management).
+
+Do not model FEATUREs in this section. User-facing business capabilities that deliver an outcome, such as Process Admission, Transfer Bed, or Discharge Patient, belong to FEATURE, not DOMAIN.
 
 # 4. Actors & Roles
 

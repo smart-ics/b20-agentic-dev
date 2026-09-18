@@ -13,7 +13,7 @@ metadata:
 - Create a new DOMAIN artifact
 - Update an existing DOMAIN artifact
 - Define Ubiquitous Language
-- Define Business Capabilities
+- Define Domain Capabilities (domain responsibilities and services)
 - Define Actors & Roles
 - Define Domain Objects and Aggregates
 - Define Business Rules
@@ -46,7 +46,7 @@ SOPs belong to Generated Knowledge.
 DOMAIN owns:
 
 - Ubiquitous Language
-- Business Capabilities
+- Domain Capabilities (domain responsibilities and services)
 - Actors & Roles
 - Domain Objects
 - Aggregates
@@ -55,6 +55,8 @@ DOMAIN owns:
 - Domain Events
 
 A FEATURE may involve one or more DOMAINs, and a DOMAIN may participate in multiple FEATUREs. FEATURE owns the orchestration between domains. DOMAIN must not define workflows, operational flows, business outcomes, or orchestration.
+
+Domain Capabilities describe the responsibilities and services provided by the domain (for example: Admission Management, Bed Management, Inventory Management). They are not user-facing business capabilities. End-to-end capabilities such as Process Admission, Transfer Bed, or Discharge Patient belong to FEATURE and must not be modeled in DOMAIN.
 
 ## Output
 
@@ -83,7 +85,7 @@ Do not maintain history inside the document.
 
 Use this skill when:
 
-- A new business capability is introduced
+- A new domain capability or responsibility is introduced
 - A bounded context must be defined
 - Existing business rules change
 - Existing domain knowledge must be formalized
