@@ -79,6 +79,50 @@ FEASIBILITY-ASSESSMENT does not define the target state.
 
 The target state belongs to ARCHITECTURE.
 
+## Update Rules
+
+When updating an existing FEASIBILITY-ASSESSMENT:
+
+* Preserve existing GAP, OQ, ASM, and RISK IDs.
+* Do not renumber existing entries.
+* Do not remove historical findings unless explicitly obsolete.
+* Do not create duplicate GAPs or OQs for the same issue.
+* Update existing entries in place.
+* Record decisions within the corresponding GAP or OQ.
+* Preserve document structure and section ordering.
+* Preserve previously approved decisions.
+* Update Planning Readiness whenever gap status changes.
+
+### Gap Closure Rules
+
+For every GAP and OQ, use a consistent structure:
+
+```text
+Status: OPEN | CLOSED
+
+Decision:
+...
+
+Rationale:
+...
+
+Impact:
+...
+
+Architecture Impact:
+...
+
+Resolved By:
+...
+
+Resolved Date:
+...
+```
+
+### Multi-Agent Consistency
+
+These rules ensure that different models and agents update the same FEASIBILITY-ASSESSMENT artifact in a consistent and predictable format.
+
 ## Workflow Position
 
 ```text
