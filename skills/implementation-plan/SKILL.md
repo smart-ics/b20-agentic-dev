@@ -130,6 +130,44 @@ P2-S19   (when it is actually a split of P2-S18)
 
 A slice should be executable by a low-reasoning implementation agent.
 
+## Dependency Declaration
+
+Every slice must have a `Depends On` field.
+
+Use `Depends On: None` when the slice has no dependency.
+
+When dependencies exist, list the required Slice IDs explicitly.
+
+Example:
+
+`Depends On: P1-S01, P1-S03`
+
+## Dependency-Driven Parallelism
+
+- Analyze dependencies across all slices.
+- Arrange slices with no dependency on each other so they can be implemented in parallel.
+- A slice must depend only on slices whose output is genuinely required before its implementation can begin.
+- Do not introduce dependencies merely because slices are in the same phase or because one slice has a lower ID.
+
+## Execution Order
+
+- Derive execution order from the dependency graph.
+- Independent slices may execute concurrently.
+- Position a dependent slice after all of its dependencies.
+- Avoid unnecessary serialization.
+
+## Dependency Integrity
+
+- Every referenced dependency must be a valid Slice ID in the same IMPLEMENTATION-PLAN.
+- Do not create circular dependencies.
+- Do not use phase IDs as dependencies.
+- Dependencies must represent implementation prerequisites, not conceptual relationships.
+
+## Planning Objective
+
+- Minimize unnecessary sequential work while preserving correctness.
+- Prefer the smallest dependency set sufficient for safe implementation.
+
 ## Repository Boundary Principle
 
 A slice must target exactly one repository.
