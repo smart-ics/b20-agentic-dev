@@ -17,7 +17,6 @@ metadata:
 - Create implementation slices
 - Define execution order
 - Define dependencies
-- Define repository boundaries
 - Define repository ownership
 - Define plan structure
 
@@ -49,7 +48,7 @@ IMPLEMENTATION-PLAN owns:
 - Execution Order
 - Dependencies
 - Repository Boundaries
-- Slice Design
+- Repository Ownership
 - Plan Structure
 
 ## Ownership Boundary
@@ -141,13 +140,13 @@ When a FEATURE spans multiple repositories, create separate slices for each repo
 
 Example:
 
-P2-S1  BTrade API
-P2-S2  Android App
-P2-S3  Web Admin
+P2-S01  BTrade API
+P2-S02  Android App
+P2-S03  Web Admin
 
 instead of:
 
-P2-S1  API + Android + Web
+P2-S01  API + Android + Web
 
 ## Update Rules
 
