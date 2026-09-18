@@ -21,7 +21,6 @@ The skill helps testers:
 - Record testing progress
 - Record testing evidence
 - Record defects with sufficient information
-- Create ISSUE artifacts when defects require remediation
 
 The skill is designed for human interaction and prioritizes clarity, guidance, and completeness.
 
@@ -38,7 +37,6 @@ The skill is designed for human interaction and prioritizes clarity, guidance, a
 - Record testing evidence
 - Record defects
 - Validate defect completeness
-- Create ISSUE artifacts from confirmed defects
 
 ---
 
@@ -51,6 +49,7 @@ The skill is designed for human interaction and prioritizes clarity, guidance, a
 - Modify source code
 - Perform implementation
 - Produce GO or NO-GO decisions
+- Create ISSUE artifacts
 
 ---
 
@@ -200,20 +199,6 @@ The absence of evidence must not prevent defect recording when the minimum defec
 
 ---
 
-# Issue Creation
-
-The skill may create ISSUE artifacts from defects recorded in TEST-EXECUTION.
-
-Issue creation should occur when:
-
-- The defect requires remediation.
-- The defect is not already represented by an existing issue.
-- Sufficient information exists to describe the problem.
-
-Multiple failed test cases caused by the same root cause should be consolidated into a single issue whenever practical.
-
----
-
 # Human Readability Principle
 
 This skill is human-centric.
@@ -242,12 +227,6 @@ This skill may consume:
 - ARCHITECTURE
 - IMPLEMENTATION-PLAN
 
-This skill may create:
-
-- ISSUE
-
-but ISSUE ownership belongs to the issue-management process.
-
 ---
 
 # Output
@@ -255,7 +234,3 @@ but ISSUE ownership belongs to the issue-management process.
 Primary Output:
 
 - Updated TEST-EXECUTION
-
-Optional Output:
-
-- ISSUE artifacts derived from confirmed defects
