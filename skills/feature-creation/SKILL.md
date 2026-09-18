@@ -1,6 +1,6 @@
 ---
 name: feature-creation
-description: Create or update a FEATURE artifact that defines a business capability, business outcome, and domain orchestration
+description: Create or update a FEATURE artifact that defines a business outcome, operational flow, and domain orchestration
 license: Proprietary
 compatibility: opencode
 metadata:
