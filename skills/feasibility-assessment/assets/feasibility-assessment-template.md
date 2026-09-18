@@ -166,7 +166,7 @@ Description.
 - [ ] All critical gaps resolved
 - [ ] All required decisions recorded
 - [ ] All blocking open questions resolved
-- [ ] Architecture can be updated
+- [ ] Architecture can be finalized or updated
 
 ## Status
 
@@ -179,6 +179,8 @@ READY-FOR-PLANNING
 ## Notes
 
 Additional comments regarding readiness.
+
+READY-FOR-PLANNING means that feasibility is sufficiently resolved for the Architecture skill to finalize or update the target architecture. It does not mean that architecture is complete or that the architecture step may be skipped. Planning begins only after the required architecture work is complete.
 
 ---
 

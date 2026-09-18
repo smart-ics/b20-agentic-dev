@@ -163,7 +163,7 @@ Produce:
 
 The artifact must follow:
 
-- assets/feasibility-assesment-template.md
+- assets/feasibility-assessment-template.md
     
 
 ## Versioning
@@ -197,7 +197,9 @@ Use READY-FOR-PLANNING only when:
 - All critical gaps have been resolved
 - All required decisions have been recorded
 - All blocking open questions have been resolved
-- Architecture can be updated based on the approved decisions
+- Architecture can be finalized or updated based on the approved decisions
+
+READY-FOR-PLANNING means that feasibility is sufficiently resolved for the Architecture skill to finalize or update the target architecture. It does not mean that architecture is complete or that the architecture step may be skipped. Planning begins only after the required architecture work is complete.
 
 ## When to use me
 
