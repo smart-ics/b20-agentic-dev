@@ -17,7 +17,9 @@ metadata:
 - Create implementation slices
 - Define execution order
 - Define dependencies
-- Maintain implementation progress
+- Define repository boundaries
+- Define slice design
+- Define plan structure
 
 ## What I do not do
 
@@ -41,11 +43,22 @@ IMPLEMENTATION-PLANNING does not:
 
 IMPLEMENTATION-PLAN owns:
 
-- Scope
-- Phases
-- Slices
+- Implementation Scope
+- Phase Breakdown
+- Slice Breakdown
+- Execution Order
 - Dependencies
-- Progress
+- Repository Boundaries
+- Slice Design
+- Plan Structure
+
+## Ownership Boundary
+
+The IMPLEMENTATION-PLAN artifact is created and maintained by the Planning skill.
+
+Execution progress, implementation status, review status, and delivery state transitions are owned by the Implementer and Reviewer skills.
+
+The Planning skill defines the structure of the plan, not the execution state of the plan.
 
 ## Planning Principles
 
@@ -54,7 +67,6 @@ Each slice must:
 - Have a clear objective
 - Be independently executable
 - Be reviewable
-- Produce observable progress
 - Target exactly one repository
 
 A slice should be executable by a low-reasoning implementation agent.
@@ -85,25 +97,11 @@ When updating an existing IMPLEMENTATION-PLAN:
 - Preserve Slice IDs
 - Never renumber existing phases
 - Never renumber existing slices
-- Update progress in place
-- Do not recreate completed slices
-- Do not split completed slices
-- Preserve document structure
-- Preserve section ordering
 - Preserve repository ownership of existing slices
 - Do not merge slices from different repositories
 - Do not create cross-repository slices
-
-## Progress Rules
-
-Progress must be tracked within the same document.
-
-Allowed statuses:
-
-- NOT-STARTED
-- IN-PROGRESS
-- BLOCKED
-- COMPLETED
+- Preserve document structure
+- Preserve section ordering
 
 ## Output
 
