@@ -32,6 +32,26 @@ metadata:
 - ARCHITECTURE
 - Current Codebase
 
+## Dependency Preflight
+
+Before implementing a slice:
+
+- Inspect its `Depends On` entries in the IMPLEMENTATION-PLAN.
+- Verify that every dependency is implemented in the current codebase.
+- A slice with no dependencies passes the preflight.
+
+If any dependency is not implemented:
+
+- Stop immediately.
+- Do not modify source code.
+- Do not partially implement the slice.
+- Do not bypass the dependency.
+- Do not implement the missing dependency as part of the target slice.
+- Keep the target slice `NOT-STARTED`.
+- Report the blocked slice and all missing dependencies.
+
+Proceed only when all dependencies are implemented.
+
 ## Progress Rules
 
 Allowed transitions:
