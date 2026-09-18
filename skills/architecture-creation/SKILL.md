@@ -35,6 +35,49 @@ Business knowledge belongs to DOMAIN.
 
 Business outcomes belong to FEATURE.
 
+## Inputs
+
+### Domain–Feature
+
+- DOMAIN
+- FEATURE
+
+DOMAIN provides business knowledge.
+
+FEATURE provides business outcome, operational flow, and domain orchestration.
+
+### Feasibility Assessment
+
+- Current State
+- Gap Analysis
+- Closed Open Questions
+- Approved Decisions
+- Relevant Risks and Assumptions
+
+FEASIBILITY-ASSESSMENT provides the findings and decisions that must be realized by the target architecture.
+
+## Architecture Update Responsibility
+
+ARCHITECTURE is created or updated by:
+
+```text
+Read DOMAIN and FEATURE
+        ↓
+Read FEASIBILITY-ASSESSMENT
+        ↓
+Translate approved decisions into target technical state
+        ↓
+Create / Update ARCHITECTURE
+```
+
+## Decision Ownership
+
+FEASIBILITY-ASSESSMENT owns approved decisions.
+
+ARCHITECTURE owns the technical realization of those decisions.
+
+ARCHITECTURE must not reinterpret or rediscover feasibility findings.
+
 ## Artifact Ownership
 
 ARCHITECTURE owns:
@@ -48,6 +91,20 @@ ARCHITECTURE owns:
 - Cross-Cutting Concerns
 
 An ARCHITECTURE realizes exactly one FEATURE.
+
+## Workflow Position
+
+```text
+Discovery
+    ↓
+Feasibility Assessment
+    ↓
+Gap Closure
+    ↓
+Architecture Update
+    ↓
+Planning
+```
 
 ## Output
 
