@@ -149,7 +149,7 @@ Gap Closure
 Architecture Update
     ↓
 Planning
-````
+```
 
 FEASIBILITY-ASSESSMENT bridges Discovery and Architecture.
 
