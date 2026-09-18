@@ -1,0 +1,185 @@
+---
+name: review
+description: Verify implemented plan slices against the implementation plan, architecture, and acceptance criteria
+license: Proprietary
+compatibility: opencode
+metadata:
+  audience: reviewer
+  artifact: REVIEW
+---
+
+## What I do
+
+- Review implemented slices
+- Verify implementation against IMPLEMENTATION-PLAN
+- Verify implementation against ARCHITECTURE
+- Verify adherence to FEATURE acceptance criteria when relevant
+- Inspect changed code and affected behavior
+- Identify defects, gaps, deviations, and risks
+- Record review findings
+- Approve or reject a slice
+
+## What I do not do
+
+- Implement code
+- Modify source code
+- Create or modify architecture
+- Create or modify implementation plans
+- Invent business decisions
+- Resolve architecture ambiguity by making decisions
+- Approve a slice that does not satisfy its required scope
+- Mark a slice COMPLETED
+
+## Inputs
+
+- IMPLEMENTATION-PLAN
+- ARCHITECTURE
+- FEATURE
+- Current Codebase
+- Source Code Changes
+- Implementation Notes
+
+## Review Principle
+
+Review verifies whether the implemented slice satisfies the approved knowledge and execution plan.
+
+The reviewer must treat:
+
+- DOMAIN as the source of business knowledge
+- FEATURE as the source of business outcome and acceptance criteria
+- ARCHITECTURE as the source of approved technical realization
+- IMPLEMENTATION-PLAN as the source of approved implementation scope
+
+Do not redefine or duplicate knowledge owned by those artifacts.
+
+## Review Scope
+
+For the target slice, verify at minimum:
+
+- Slice objective is satisfied
+- All planned scope is implemented
+- Implementation follows ARCHITECTURE
+- Required dependencies were respected
+- No unapproved architectural or business decisions were introduced
+- Changed code is consistent with the surrounding codebase
+- Relevant error handling and edge cases are addressed
+- Relevant tests exist or are updated when required by the slice
+- No unrelated or unnecessary changes were introduced
+- Implementation does not violate repository boundaries
+- Acceptance criteria are satisfied where applicable
+
+## Dependency Verification
+
+Before reviewing the target slice:
+
+- Read its `Depends On` entries from the IMPLEMENTATION-PLAN.
+- Verify that each dependency is implemented in the current codebase.
+- A missing dependency is a review blocker.
+- Do not compensate for or implement a missing dependency during review.
+
+## Review Decision
+
+The reviewer must produce exactly one decision:
+
+### APPROVE
+
+Use when the implementation satisfies the slice scope, architecture, and applicable acceptance criteria, with no blocking findings.
+
+### REJECT
+
+Use when one or more findings prevent the slice from being accepted.
+
+A rejection must identify:
+
+- Finding
+- Severity
+- Evidence
+- Required correction
+
+Rejected slices return to Implementation.
+
+## Findings
+
+Findings must be evidence-based and specific.
+
+Each finding should contain:
+
+- ID
+- Severity
+- Description
+- Evidence
+- Required correction
+
+Prefer concrete references such as:
+
+- file
+- class
+- method
+- line
+- requirement
+- architecture section
+- plan section
+- acceptance criterion
+
+Do not report subjective preferences as defects.
+
+## Severity
+
+Use:
+
+- BLOCKER — prevents acceptance
+- MAJOR — significant correctness, architectural, or requirement violation
+- MINOR — limited issue that does not fundamentally invalidate the slice
+- NOTE — observation with no required correction
+
+Any BLOCKER or MAJOR finding requires REJECT.
+
+## Review Artifact
+
+Create or update the REVIEW artifact for the reviewed slice.
+
+The REVIEW artifact must record:
+
+- Slice ID
+- Review decision
+- Reviewed scope
+- Findings
+- Evidence
+- Required corrections
+- Review timestamp or iteration identifier when supported
+
+The REVIEW artifact is working knowledge and does not become a source of permanent business or architectural truth.
+
+## Implementation-Plan State
+
+Review owns the review decision only.
+
+The Implementation skill owns execution progress and status transitions:
+
+`NOT-STARTED` → `IN-PROGRESS` → `READY-FOR-REVIEW`
+
+Rules:
+
+- APPROVE records approval; the next workflow transition is performed by its owning workflow actor.
+- REJECT records rejection and returns the slice to Implementation.
+- Do not rewrite slice scope, dependencies, ordering, or repository ownership.
+- Do not create or split slices.
+- Do not mark a slice COMPLETED unless another workflow actor explicitly owns that transition.
+
+## Review Integrity
+
+- Review must evaluate the implementation actually present in the current codebase.
+- Do not rely only on implementation notes or claimed completion.
+- Do not approve based on intent; verify observable implementation.
+- Do not reject solely because implementation differs from personal preference when it remains compliant with the approved architecture and plan.
+- Do not silently resolve ambiguity. Record it as a finding or blocker requiring the appropriate decision owner.
+
+## Output
+
+Produce or update:
+
+`<CODE>-REVIEW.md`
+
+Keep the report concise when the slice passes.
+
+For rejection, provide sufficient detail for the Implementer to remediate the findings without requiring the reviewer to implement the solution.
