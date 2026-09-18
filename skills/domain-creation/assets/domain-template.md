@@ -1,11 +1,10 @@
-
-| Field | Value |
-| :--- | :--- |
-| **Title** | |
-| **Code** | |
-| **Artifact** | DOMAIN |
-| **Version** | |
-| **LastUpdated** | |
+---
+Title:
+Code:
+Artifact: DOMAIN
+Version:
+LastUpdated:
+---
 
 # 1. Business Overview
 
@@ -25,4 +24,8 @@
 
 # 9. Domain Events
 
-# 10. Business Workflows
+# 10. Related Features
+
+Reference only the FEATUREs that consume or participate in this domain.
+
+Do not describe workflows or operational flows. Orchestration and operational flow belong to FEATURE.

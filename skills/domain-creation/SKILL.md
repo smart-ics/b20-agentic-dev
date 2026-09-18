@@ -1,6 +1,6 @@
 ---
 name: domain-creation
-description: Create or update a DOMAIN artifact that defines business truth for a bounded context
+description: Create or update a DOMAIN artifact that defines business knowledge for a bounded context
 license: Proprietary
 compatibility: opencode
 metadata:
@@ -14,18 +14,32 @@ metadata:
 - Update an existing DOMAIN artifact
 - Define Ubiquitous Language
 - Define Business Capabilities
+- Define Actors & Roles
 - Define Domain Objects and Aggregates
 - Define Business Rules
-- Define State Machines and Domain Events
-- Define Business Workflows
+- Define State Machines and Lifecycles
+- Define Domain Events
 
 ## What I do not do
 
+DOMAIN owns business knowledge only. DOMAIN does not own:
+
+- Business Outcomes
+- Operational Flows
+- Domain Orchestration
+- Technical Realization
+- SOPs
 - Design software architecture
 - Define APIs
 - Define database schema
 - Define UI or screens
 - Define operational procedures
+
+Business Outcomes, Operational Flows, and Domain Orchestration belong to FEATURE.
+
+Technical Realization belongs to ARCHITECTURE.
+
+SOPs belong to Generated Knowledge.
 
 ## Artifact Ownership
 
@@ -39,7 +53,8 @@ DOMAIN owns:
 - Business Rules
 - State Machines & Lifecycles
 - Domain Events
-- Business Workflows
+
+A FEATURE may involve one or more DOMAINs, and a DOMAIN may participate in multiple FEATUREs. FEATURE owns the orchestration between domains. DOMAIN must not define workflows, operational flows, business outcomes, or orchestration.
 
 ## Output
 
