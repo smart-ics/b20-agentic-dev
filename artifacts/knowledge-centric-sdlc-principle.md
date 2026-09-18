@@ -26,13 +26,17 @@ DOMAIN defines business knowledge.
 
 DOMAIN owns:
 
-* Business concepts
-* Responsibilities
+* Ubiquitous language
+* Domain capabilities
+* Actors and roles
+* Domain objects and aggregates
 * Business rules
-* Lifecycles
+* State machines and lifecycles
 * Domain events
 
 DOMAIN is implementation independent.
+
+DOMAIN does not own business outcomes, operational flows, domain orchestration, or technical realization.
 
 ---
 
@@ -44,15 +48,10 @@ FEATURE owns:
 
 * Business outcome
 * Operational flow
+* Domain orchestration
 * Participating domains
 * Business constraints
 * Business exceptions
-
-A FEATURE may involve one or more DOMAINs.
-
-A DOMAIN may participate in multiple FEATUREs.
-
-FEATURE owns the orchestration required to achieve the business outcome.
 
 ---
 
@@ -73,25 +72,33 @@ An ARCHITECTURE realizes exactly one FEATURE.
 
 ## Domain–Feature–Architecture Relationship
 
-DOMAIN provides business knowledge.
+The core relationship is:
 
-FEATURE consumes and orchestrates one or more DOMAINs to deliver a business outcome.
-
-ARCHITECTURE realizes a FEATURE through software.
-
-The relationship is:
-
+```text
 DOMAIN
-→ FEATURE
-→ ARCHITECTURE
+    = Business Knowledge
+
+FEATURE
+    = Business Outcome
+      Operational Flow
+      Domain Orchestration
+
+ARCHITECTURE
+    = Technical Realization
+```
+
+Rules:
+
+* A FEATURE may involve one or more DOMAINs.
+* A DOMAIN may participate in multiple FEATUREs.
+* FEATURE owns orchestration between participating DOMAINs.
+* ARCHITECTURE realizes a FEATURE.
+* Each piece of knowledge has a single authoritative owner.
+* Knowledge must not be duplicated across artifacts.
 
 ---
 
 ## Knowledge Ownership
-
-Each piece of knowledge must have a single owner.
-
-Knowledge must not be duplicated across artifacts.
 
 When knowledge changes, the owning artifact must be updated.
 
