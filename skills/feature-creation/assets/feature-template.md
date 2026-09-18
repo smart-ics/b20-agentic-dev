@@ -47,9 +47,11 @@ Do not describe technical implementation.
 
 Describe how participating domains collaborate to achieve the business outcome.
 
-Focus on responsibilities.
+Describe responsibilities and collaboration only.
 
 Do not describe APIs, services, databases, or technical design.
+
+Do not define domain business rules.
 
 # 8. Constraints
 

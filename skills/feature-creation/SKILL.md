@@ -84,7 +84,7 @@ Do not maintain history inside the document.
 
 Use this skill when:
 
-- A new business capability is introduced
+- A new business outcome must be delivered
 - Existing business behavior changes
 - Multiple domains must collaborate
 - Operational flow must be formalized
