@@ -101,11 +101,19 @@ For historical entries:
 
 ### Gap Closure Rules
 
-The following structure is mandatory for both new and updated GAP/OQ entries:
+For all GAP/OQ entries:
 
 ```text
 Status: OPEN | CLOSED
+```
 
+When Status is OPEN:
+
+* Resolution fields may be empty.
+
+When Status is CLOSED, the following fields are mandatory:
+
+```text
 Decision:
 ...
 
@@ -175,24 +183,21 @@ Do not maintain history inside the document.
 
 ## Planning Readiness
 
-A FEASIBILITY-ASSESSMENT is considered ready when:
+### Artifact Status Rules
+
+Status must be:
+
+- NOT-READY
+- READY-FOR-PLANNING
+
+Use NOT-READY when blocking GAPs or OQs remain unresolved.
+
+Use READY-FOR-PLANNING only when:
 
 - All critical gaps have been resolved
-    
 - All required decisions have been recorded
-    
 - All blocking open questions have been resolved
-    
 - Architecture can be updated based on the approved decisions
-    
-
-Status should be:
-
-`NOT-READY`
-
-or
-
-`READY-FOR-PLANNING`
 
 ## When to use me
 
