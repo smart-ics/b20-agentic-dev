@@ -24,7 +24,7 @@ metadata:
 - Create architecture
 - Modify architecture
 - Perform reviews
-- Approve completion
+- Assign GO or NO-GO decisions
 
 ## Inputs
 
@@ -68,7 +68,8 @@ IN-PROGRESS
     ↓
 BLOCKED
 
-Implementation cannot mark a slice COMPLETED.
+Implementation does not assign GO or NO-GO. It only moves a slice to
+READY-FOR-REVIEW or BLOCKED.
 
 ## Update Rules
 

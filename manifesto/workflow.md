@@ -202,11 +202,14 @@ Outputs:
 
 Rules:
 
-* Review may approve or reject a slice.
-* Rejected slices return to Implementation.
-* Approved slices may proceed to Testing.
+* Review produces exactly one decision: GO or NO-GO.
+* A NO-GO slice returns to Implementation for remediation and re-review.
+* A GO slice may proceed to Testing.
 
-Implementation and Review operate in a continuous loop until the slice is accepted.
+Implementation and Review operate in a continuous loop:
+
+* Implementation → Review → GO
+* Implementation → Review → NO-GO → Remediation → Re-Review
 
 ---
 
@@ -218,7 +221,7 @@ Validate the completed solution.
 
 Inputs:
 
-* Approved Implementation
+* Implementation with a GO review decision
 
 Outputs:
 

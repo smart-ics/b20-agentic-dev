@@ -17,7 +17,7 @@ metadata:
 - Inspect changed code and affected behavior
 - Identify defects, gaps, deviations, and risks
 - Record review findings
-- Approve or reject a slice
+- Assign a GO or NO-GO decision
 
 ## What I do not do
 
@@ -27,8 +27,8 @@ metadata:
 - Create or modify implementation plans
 - Invent business decisions
 - Resolve architecture ambiguity by making decisions
-- Approve a slice that does not satisfy its required scope
-- Mark a slice COMPLETED
+- Assign GO when a slice does not satisfy its required scope
+- Assign implementation status transitions
 
 ## Inputs
 
@@ -86,22 +86,22 @@ Before reviewing the target slice:
 
 The reviewer must produce exactly one decision:
 
-### APPROVE
+### GO
 
-Use when the implementation satisfies the slice scope, architecture, and applicable acceptance criteria, with no BLOCKER or MAJOR findings. MINOR and NOTE findings may coexist with APPROVE when they do not prevent acceptance and are recorded.
+Use when the implementation satisfies the slice scope, architecture, and applicable acceptance criteria, with no BLOCKER or MAJOR findings. MINOR and NOTE findings may coexist with GO when they do not prevent the slice from proceeding and are recorded.
 
-### REJECT
+### NO-GO
 
-Use when one or more findings prevent the slice from being accepted.
+Use when one or more findings require remediation before the slice may proceed.
 
-A rejection must identify:
+A NO-GO decision must identify:
 
 - Finding
 - Severity
 - Evidence
 - Required correction
 
-Rejected slices return to Implementation.
+A NO-GO slice returns to Implementation.
 
 ## Findings
 
@@ -137,7 +137,7 @@ Use:
 - MINOR — limited issue that does not fundamentally invalidate the slice
 - NOTE — observation with no required correction
 
-Any BLOCKER or MAJOR finding requires REJECT.
+Any BLOCKER or MAJOR finding requires NO-GO.
 
 ## Review Artifact
 
@@ -155,7 +155,11 @@ The REVIEW artifact must record:
 
 The workflow for an iteration is:
 
-`Implementation` → `Review` → `Remediation` → `Re-Review`
+`Implementation` → `Review` → `GO`
+
+or
+
+`Implementation` → `Review` → `NO-GO` → `Remediation` → `Re-Review`
 
 For each review iteration, preserve prior decisions and findings, and record:
 
@@ -176,18 +180,17 @@ The Implementation skill owns execution progress and status transitions:
 
 Rules:
 
-- APPROVE records approval; the next workflow transition is performed by its owning workflow actor.
-- REJECT records rejection and returns the slice to Implementation.
+- GO records that the slice passes review; the next workflow transition is performed by its owning workflow actor.
+- NO-GO records that remediation is required and returns the slice to Implementation.
 - Do not rewrite slice scope, dependencies, ordering, or repository ownership.
 - Do not create or split slices.
-- Do not mark a slice COMPLETED unless another workflow actor explicitly owns that transition.
 
 ## Review Integrity
 
 - Review must evaluate the implementation actually present in the current codebase.
 - Do not rely only on implementation notes or claimed completion.
-- Do not approve based on intent; verify observable implementation.
-- Do not reject solely because implementation differs from personal preference when it remains compliant with the approved architecture and plan.
+- Do not assign GO based on intent; verify observable implementation.
+- Do not assign NO-GO solely because implementation differs from personal preference when it remains compliant with the approved architecture and plan.
 - Do not silently resolve ambiguity. Record it as a finding or blocker requiring the appropriate decision owner.
 
 ## Output
@@ -198,4 +201,4 @@ Produce or update:
 
 Keep the report concise when the slice passes.
 
-For rejection, provide sufficient detail for the Implementer to remediate the findings without requiring the reviewer to implement the solution.
+For NO-GO, provide sufficient detail for the Implementer to remediate the findings without requiring the reviewer to implement the solution.
