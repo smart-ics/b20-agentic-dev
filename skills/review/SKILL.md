@@ -74,6 +74,24 @@ A NO-GO finding must contain:
 - Evidence
 - Required Correction
 
+The Required Correction applies to the implementation.
+
+It must not instruct the implementer to:
+
+- split slices
+- add slices
+- remove slices
+- reorder slices
+- merge slices
+- restructure the plan
+
+If the approved plan is structurally insufficient:
+
+- Record the issue as a finding.
+- Escalate it to the Architect.
+
+Review does not modify plan structure.
+
 ## Severity
 
 - BLOCKER
@@ -112,6 +130,11 @@ The REVIEW artifact records:
 - Preserve previous findings.
 - Update resolution status.
 - Record remediation evidence.
+- Review against the same approved slice definition.
+- Do not change slice structure during re-review.
+
+If remediation requires changing the approved slice structure or scope,
+stop remediation and escalate for a new Planning cycle.
 
 ## Review Integrity
 

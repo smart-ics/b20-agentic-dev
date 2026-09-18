@@ -53,7 +53,16 @@ IMPLEMENTATION-PLAN owns:
 
 ## Ownership Boundary
 
-The IMPLEMENTATION-PLAN artifact is created and maintained by the Planning skill.
+The IMPLEMENTATION-PLAN artifact is created by the Planning skill.
+
+During Planning, the Architect may revise its structure.
+
+After the plan is approved for execution, its structure is immutable to
+Implementer and Reviewer.
+
+If structural correction is required after execution approval, the
+Architect must re-create the IMPLEMENTATION-PLAN through a new Planning
+cycle.
 
 Execution progress, implementation status, review status, and delivery state transitions are owned by the Implementer and Reviewer skills.
 
@@ -137,10 +146,8 @@ Update:
 
 Increment Minor for:
 
-- Adding slices
-- Splitting slices
-- Dependency updates
-- Small planning adjustments
+- Non-structural planning updates, such as dependency updates or small
+  planning adjustments made before execution approval
 
 Increment Major for:
 
@@ -165,47 +172,22 @@ P3-S06
 
 Do not reset slice numbering per phase.
 
-A slice may be split during implementation or review.
+Once an IMPLEMENTATION-PLAN has been approved for execution, its phase
+and slice structure is fixed.
 
-The original Slice ID remains reserved.
+Planning, Implementation, and Review must never split an existing slice
+during execution or review.
 
-Child slices are created by appending a lowercase suffix.
+If a slice is discovered to be too large, incorrectly scoped, missing
+necessary work, or otherwise unsuitable for execution, the existing plan
+must not be decomposed or patched into child slices.
 
-Examples:
+The Architect must re-create the IMPLEMENTATION-PLAN through a new
+Planning cycle.
 
-```text
-P2-S18
-    ↓
-P2-S18a
-P2-S18b
+The re-created plan becomes the new authoritative execution plan.
 
-P3-S24
-    ↓
-P3-S24a
-P3-S24b
-P3-S24c
-```
-
-Use suffixes only for slice decomposition. Do not create a new sequential Slice ID when the work is a refinement of an existing slice.
-
-Allowed examples:
-
-```text
-P1-S01
-P1-S02
-P2-S18
-P2-S18a
-P2-S18b
-P3-S24
-```
-
-Invalid examples:
-
-```text
-P2-S18.1
-P2-S18-1
-P2-S19   (when it is actually a split of P2-S18)
-```
+No child Slice IDs or slice-decomposition suffixes are used.
 
 A slice should be executable by a low-reasoning implementation agent.
 
@@ -267,22 +249,22 @@ P2-S01  API + Android + Web
 
 ## Update Rules
 
-When updating an existing IMPLEMENTATION-PLAN:
+During Planning:
 
-- Preserve Phase IDs
-- Preserve existing Slice IDs
-- Never renumber existing phases
-- Never renumber existing Slice IDs
-- New slices must continue the next available Slice Number
-- When splitting a slice, preserve the original Slice ID
-- Child slices must use suffixes: a, b, c, ...
-- Do not create duplicate Slice IDs
-- Do not modify completed phases or slices unless explicitly requested
-- Preserve repository ownership of existing slices
-- Do not merge slices from different repositories
-- Do not create cross-repository slices
-- Preserve document structure
-- Preserve section ordering
+- The Architect may revise plan structure.
+
+After execution approval:
+
+- Preserve Phase IDs.
+- Preserve Slice IDs.
+- Do not add slices.
+- Do not split slices.
+- Do not create child Slice IDs.
+- Do not merge slices.
+- Do not reorder slices.
+- Do not reinterpret slice scope.
+
+Structural correction requires a new IMPLEMENTATION-PLAN.
 
 ## Output
 

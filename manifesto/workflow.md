@@ -42,6 +42,33 @@ Deployment
 
 ---
 
+## Implementation Plan Immutability
+
+Once an IMPLEMENTATION-PLAN is approved for execution, its structure is
+immutable for the remainder of that execution cycle.
+
+Implementation and Review operate against the approved plan as written.
+
+No agent may:
+
+- split a slice,
+- create child slices,
+- add execution-time slices,
+- merge slices,
+- reorder slices,
+- reinterpret slice scope.
+
+If the plan is found to be structurally insufficient, the issue is
+escalated to the Architect.
+
+The Architect must create a new IMPLEMENTATION-PLAN through a new
+Planning cycle.
+
+The existing plan is never structurally patched during Implementation
+or Review.
+
+---
+
 ## Authority Model
 
 The Authority Model defines which role owns which knowledge, which role may modify which artifacts and fields, and which role may advance workflow gates.
@@ -152,7 +179,7 @@ DEPLOYMENT results            → Deployer
 
 IMPLEMENTATION-PLAN is the only artifact with multiple writers. Its writers own disjoint fields:
 
-* Architect owns structure: phases, slice IDs, objectives, dependencies, execution order, and repository assignment. New slices are created with implementation status NOT-STARTED and review status NOT-REVIEWED.
+* Architect owns structure during Planning: phases, slice IDs, objectives, dependencies, execution order, and repository assignment. After execution approval, the structure is immutable; only the Architect may create a replacement plan through a new Planning cycle.
 * Implementer owns slice implementation status (NOT-STARTED, IN-PROGRESS, IMPLEMENTED, BLOCKED) and implementation notes.
 * Reviewer owns slice review status (NOT-REVIEWED, GO, NO-GO) and the plan-level COMPLETED status.
 * The Architect must not advance implementation or review status.

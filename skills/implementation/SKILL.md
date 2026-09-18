@@ -91,6 +91,20 @@ not modify the slice implementation status.
 - Do not split slices
 - Record blockers explicitly
 
+If the approved plan cannot be executed as written:
+
+- Do not alter the plan.
+- Do not split the slice.
+- Do not reinterpret the slice into a different scope.
+- Mark the slice BLOCKED when execution is blocked by the plan.
+- Record the reason for the blockage.
+- Escalate the plan problem to the Architect.
+
+The Architect must address a structurally insufficient plan through a
+new Planning cycle.
+
+The existing plan is never patched during implementation.
+
 ## Output
 
 No new artifact is created.
