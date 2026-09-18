@@ -42,7 +42,9 @@ DOMAIN does not own business outcomes, operational flows, domain orchestration, 
 
 ## FEATURE
 
-FEATURE defines a business capability delivered to users.
+FEATURE defines a business outcome delivered to users.
+
+FEATURE describes how one or more DOMAINs collaborate to achieve that outcome.
 
 FEATURE owns:
 
@@ -52,6 +54,7 @@ FEATURE owns:
 * Participating domains
 * Business constraints
 * Business exceptions
+* Acceptance criteria
 
 ---
 
@@ -91,7 +94,7 @@ Rules:
 
 * A FEATURE may involve one or more DOMAINs.
 * A DOMAIN may participate in multiple FEATUREs.
-* FEATURE owns orchestration between participating DOMAINs.
+* FEATURE owns orchestration between participating DOMAINs but does not own domain knowledge or technical realization.
 * ARCHITECTURE realizes a FEATURE.
 * Each piece of knowledge has a single authoritative owner.
 * Knowledge must not be duplicated across artifacts.
