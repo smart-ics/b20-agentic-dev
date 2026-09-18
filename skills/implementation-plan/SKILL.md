@@ -55,8 +55,27 @@ Each slice must:
 - Be independently executable
 - Be reviewable
 - Produce observable progress
+- Target exactly one repository
 
 A slice should be executable by a low-reasoning implementation agent.
+
+## Repository Boundary Principle
+
+A slice must target exactly one repository.
+
+A slice must not require changes across multiple repositories.
+
+When a FEATURE spans multiple repositories, create separate slices for each repository.
+
+Example:
+
+P2-S1  BTrade API
+P2-S2  Android App
+P2-S3  Web Admin
+
+instead of:
+
+P2-S1  API + Android + Web
 
 ## Update Rules
 
@@ -71,6 +90,9 @@ When updating an existing IMPLEMENTATION-PLAN:
 - Do not split completed slices
 - Preserve document structure
 - Preserve section ordering
+- Preserve repository ownership of existing slices
+- Do not merge slices from different repositories
+- Do not create cross-repository slices
 
 ## Progress Rules
 
