@@ -56,6 +56,28 @@ The test package must:
 - Minimize technical jargon
 - Focus on observable behavior
 
+---
+
+## Human Executability
+
+A test case is human-executable when a tester can perform it without guessing or requiring technical knowledge.
+
+Each test case must provide, when applicable:
+
+- Objective
+- Preconditions
+- Test Data
+- Steps
+- Expected Result
+
+Rules:
+
+- Steps must describe concrete actions a tester can perform.
+- Expected Results must be observable and unambiguous.
+- Required accounts, permissions, environment, and test data must be stated.
+- Do not require the tester to infer missing information.
+- Avoid technical implementation details unless required by the test.
+
 # Test Coverage
 
 The package should cover:
