@@ -61,8 +61,8 @@ After the plan is approved for execution, its structure is immutable to
 Implementer and Reviewer.
 
 If structural correction is required after execution approval, the
-Architect must re-create the IMPLEMENTATION-PLAN through a new Planning
-cycle.
+Architect must create a replacement IMPLEMENTATION-PLAN through a new
+Planning cycle. The approved plan is not modified.
 
 Execution progress, implementation status, review status, and delivery state transitions are owned by the Implementer and Reviewer skills.
 
@@ -155,6 +155,15 @@ Increment Major for:
 - Major scope changes
 - Phase restructuring
 
+Version increments apply only to planning work performed before
+execution approval.
+
+Once execution approval is granted:
+
+- Structural changes are not performed through version increments.
+- Structural correction requires a new Planning cycle.
+- The result is a replacement IMPLEMENTATION-PLAN.
+
 Git maintains history.
 
 Do not maintain version history inside the artifact.
@@ -182,12 +191,32 @@ If a slice is discovered to be too large, incorrectly scoped, missing
 necessary work, or otherwise unsuitable for execution, the existing plan
 must not be decomposed or patched into child slices.
 
-The Architect must re-create the IMPLEMENTATION-PLAN through a new
-Planning cycle.
+The Architect must create a replacement IMPLEMENTATION-PLAN through a
+new Planning cycle.
 
-The re-created plan becomes the new authoritative execution plan.
+The replacement plan becomes the new authoritative execution plan.
 
 No child Slice IDs or slice-decomposition suffixes are used.
+
+## Replacement Plan Rule
+
+If an approved IMPLEMENTATION-PLAN is found to be structurally
+insufficient:
+
+- Do not structurally modify the approved plan.
+- Do not patch the approved plan.
+- Do not insert, remove, split, merge, or reorder slices.
+- Do not alter dependencies to accommodate execution findings.
+
+Instead:
+
+- Start a new Planning cycle.
+- Produce a new authoritative IMPLEMENTATION-PLAN.
+- Treat the previous plan as historical record.
+
+The new plan replaces the previous plan for future execution.
+
+The previous plan remains preserved through repository history.
 
 A slice should be executable by a low-reasoning implementation agent.
 
@@ -264,7 +293,8 @@ After execution approval:
 - Do not reorder slices.
 - Do not reinterpret slice scope.
 
-Structural correction requires a new IMPLEMENTATION-PLAN.
+Structural correction requires a replacement IMPLEMENTATION-PLAN created
+through a new Planning cycle. The approved plan remains unchanged.
 
 ## Output
 

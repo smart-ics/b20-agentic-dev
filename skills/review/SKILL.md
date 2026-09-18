@@ -92,6 +92,15 @@ If the approved plan is structurally insufficient:
 
 Review does not modify plan structure.
 
+Review identifies planning defects but does not correct them.
+
+When a planning defect is discovered:
+
+- Record the finding.
+- Escalate to the Architect.
+
+Review does not restructure the approved plan.
+
 ## Severity
 
 - BLOCKER

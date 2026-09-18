@@ -105,6 +105,17 @@ new Planning cycle.
 
 The existing plan is never patched during implementation.
 
+If the approved plan is structurally insufficient:
+
+- Stop execution of the affected work.
+- Report the issue.
+- Escalate to the Architect.
+
+Do not attempt to repair planning defects through implementation.
+
+Implementation corrects code.
+Planning corrects plans.
+
 ## Output
 
 No new artifact is created.

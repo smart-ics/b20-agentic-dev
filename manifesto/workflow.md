@@ -61,8 +61,9 @@ No agent may:
 If the plan is found to be structurally insufficient, the issue is
 escalated to the Architect.
 
-The Architect must create a new IMPLEMENTATION-PLAN through a new
-Planning cycle.
+The Architect must create a replacement IMPLEMENTATION-PLAN through a
+new Planning cycle. The approved plan is not modified and remains a
+historical record.
 
 The existing plan is never structurally patched during Implementation
 or Review.
@@ -177,14 +178,44 @@ ISSUE artifacts               → Tester
 DEPLOYMENT results            → Deployer
 ```
 
+IMPLEMENTATION-PLAN contains multiple field owners.
+
+Architect owns:
+
+* Phase structure
+* Slice structure
+* Dependencies
+* Planning decisions
+
+Implementer owns:
+
+* Implementation status fields
+
+Reviewer owns:
+
+* Review status fields
+
+After execution approval, only execution-state fields may change.
+Plan structure is immutable.
+
+Permitted execution-state changes are implementation status, implementation
+notes, review status, and plan status COMPLETED. These changes do not alter
+phase structure, slice structure, dependencies, or planning decisions.
+
 IMPLEMENTATION-PLAN is the only artifact with multiple writers. Its writers own disjoint fields:
 
-* Architect owns structure during Planning: phases, slice IDs, objectives, dependencies, execution order, and repository assignment. After execution approval, the structure is immutable; only the Architect may create a replacement plan through a new Planning cycle.
+* Architect owns structure during Planning: phases, slice IDs, objectives, dependencies, execution order, and repository assignment. After execution approval, the structure is immutable. A structural correction creates a replacement plan through a new Planning cycle; it does not modify the approved plan.
 * Implementer owns slice implementation status (NOT-STARTED, IN-PROGRESS, IMPLEMENTED, BLOCKED) and implementation notes.
 * Reviewer owns slice review status (NOT-REVIEWED, GO, NO-GO) and the plan-level COMPLETED status.
 * The Architect must not advance implementation or review status.
 * The Implementer must not set review status.
 * The Reviewer must not set implementation status and must not modify plan structure.
+
+Implementation corrects implementation defects.
+
+Review identifies implementation defects.
+
+Planning corrects planning defects.
 
 Core rules:
 
