@@ -92,7 +92,27 @@ Define ownership.
 
 Avoid shared ownership.
 
-# 8. Cross-Cutting Concerns
+# Database Design
+
+## New Tables
+
+| Table | Purpose |
+|---------|---------|
+
+## Modified Tables
+
+| Table | Change |
+|---------|---------|
+
+## Relationships
+
+Architecturally significant relationships introduced or modified.
+
+## Migration Considerations
+
+Data migration, backfill, compatibility, and rollout considerations.
+
+# 9. Cross-Cutting Concerns
 
 Only if applicable.
 
@@ -105,7 +125,7 @@ Examples:
 - Performance
 - Concurrency
 
-# 9. Implementation Constraints
+# 10. Implementation Constraints
 
 Rules implementers must follow.
 
@@ -117,6 +137,6 @@ Examples:
 - REST only
 - Existing API compatibility
 
-# 10. Acceptance Conditions
+# 11. Acceptance Conditions
 
 Conditions that must be true for implementation to be considered architecturally complete.

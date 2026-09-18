@@ -86,9 +86,22 @@ ARCHITECTURE owns:
 - Component Responsibilities
 - Integration Design
 - Data Ownership
+- Database Design
 - Technical Decisions
 - Implementation Constraints
 - Cross-Cutting Concerns
+
+Database Design is part of the technical realization of a FEATURE.
+
+ARCHITECTURE owns architecturally significant persistence decisions, including:
+
+- New Tables
+- Modified Tables
+- Relationships
+- Data Ownership
+- Migration Considerations
+
+ARCHITECTURE does not own detailed physical schema definitions such as every column, datatype, index, or constraint.
 
 An ARCHITECTURE realizes exactly one FEATURE.
 
