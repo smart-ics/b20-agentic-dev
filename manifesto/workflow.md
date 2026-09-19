@@ -140,6 +140,23 @@ Rules:
 
 ### Decision Ownership
 
+The analysis artifacts own their respective decisions:
+
+```text
+FEASIBILITY-ASSESSMENT
+    → gap-closure decisions
+
+BUG-INVESTIGATION
+    → investigation decisions
+
+ARCHITECTURE
+    → technical realization of those decisions
+```
+
+BUG-INVESTIGATION must resolve investigation decisions before ARCHITECTURE
+work begins. ARCHITECTURE consumes those approved decisions and must not repeat
+the completed investigation unless explicitly requested.
+
 ### Review State and Evidence
 
 Review status is authoritative in IMPLEMENTATION-PLAN. The Reviewer updates only
@@ -162,6 +179,8 @@ ARCHITECTURE, IMPLEMENTATION-PLAN, and available execution records.
 
 FEASIBILITY decides WHAT constraints,
 choices, and resolutions are approved.
+
+BUG-INVESTIGATION decides WHAT defect correction direction is selected.
 
 ### Architecture Decisions
 
@@ -366,8 +385,10 @@ BUG-INVESTIGATION owns for a BUG:
 * Impact Assessment
 * Assumptions
 * Open Questions
-* Recommended Direction
-* Decision Summary
+* Alternative Evaluation
+* Recommended Decision
+* Decision
+* Decision Rationale
 
 Rules:
 
@@ -410,7 +431,7 @@ Inputs:
 * FEATURE for a CHANGE-REQUEST
 * ISSUE with Type = BUG for a BUG
 * FEASIBILITY-ASSESSMENT or BUG-INVESTIGATION
-* Analysis findings and decision inputs
+* Approved analysis decisions
 
 Outputs:
 

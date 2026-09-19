@@ -38,16 +38,26 @@ The analysis artifact provides:
 - Impact
 - Assumptions
 - Open Questions
-- Decision Inputs
+- Approved Decisions
 
-The architecture is derived from:
+For a CHANGE-REQUEST, the architecture is derived from:
 
 ```text
 DOMAIN + FEATURE
         +
-FEASIBILITY-ASSESSMENT or BUG-INVESTIGATION
+        FEASIBILITY-ASSESSMENT
         ↓
-   ARCHITECTURE
+    ARCHITECTURE
+```
+
+For a BUG, the architecture is derived from:
+
+```text
+ISSUE (BUG)
+        +
+        BUG-INVESTIGATION
+        ↓
+    ARCHITECTURE
 ```
 
 # 3. Scope
@@ -60,11 +70,15 @@ Excluded.
 
 Important decisions required for implementation.
 
-Feasibility Decisions are approved during Gap Closure.
+Feasibility decisions are approved during Gap Closure. Investigation decisions
+are approved during BUG-INVESTIGATION.
 
-Technical Decisions describe how those approved decisions are realized within the target architecture.
+Technical Decisions describe how those approved decisions are realized within
+the target architecture.
 
-ARCHITECTURE must not reinterpret or rediscover feasibility findings.
+ARCHITECTURE must not repeat investigation, gap analysis, alternative
+evaluation, or decision resolution already completed by the upstream analysis
+artifact.
 
 Examples:
 

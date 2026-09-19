@@ -15,10 +15,17 @@ metadata:
 - Document current behavior
 - Trace relevant execution flow and evidence
 - Identify affected components
-- Assess business, operational, and technical impact
-- Record assumptions and open questions
-- Recommend an implementation-neutral correction direction
+- Perform impact analysis covering business, operational, and technical impact
+- Evaluate alternative correction approaches
+- Manage assumptions and open questions
+- Make and document investigation decisions
+- Recommend the selected implementation-neutral correction approach
 - Produce a BUG-INVESTIGATION artifact
+
+BUG-INVESTIGATION is an analysis artifact. Its purpose is to understand the
+defect, evaluate alternatives, resolve investigation questions, and produce a
+recommended correction approach. The resulting decisions become authoritative
+inputs to ARCHITECTURE.
 
 ## What I do not do
 
@@ -29,7 +36,7 @@ BUG-INVESTIGATION does not:
 - Create implementation plans
 - Modify implementation
 - Create test strategies
-- Approve solutions
+- Define technical realization
 - Perform coding activities
 
 Technical realization belongs to ARCHITECTURE.
@@ -68,11 +75,14 @@ BUG-INVESTIGATION owns:
 - Impact Assessment
 - Assumptions
 - Open Questions
-- Recommended Direction
-- Decision Summary
+- Alternative Evaluation
+- Recommended Decision
+- Decision
+- Decision Rationale
 
-BUG-INVESTIGATION does not own the target architecture or implementation
-decisions. It provides analysis and decision inputs directly to ARCHITECTURE.
+BUG-INVESTIGATION owns investigation decisions. It does not own the target
+architecture or technical realization. It provides authoritative decisions
+directly to ARCHITECTURE.
 
 ## Analysis Boundary
 
@@ -84,10 +94,11 @@ The investigation focuses on understanding the defect:
 - What evidence supports the findings
 - What assumptions currently exist
 - What information remains unknown
-- What correction direction appears reasonable
+- What alternatives were evaluated
+- What investigation decision was selected and why
 
 Do not require definitive root-cause identification when the available evidence
-does not support it. Keep recommended directions high-level and
+does not support it. Investigation decisions must remain high-level and
 implementation-neutral.
 
 ## Workflow Position
@@ -96,6 +107,8 @@ implementation-neutral.
 ISSUE (BUG)
     ↓
 BUG-INVESTIGATION
+    ↓
+Decision
     ↓
 ARCHITECTURE
 ```
@@ -113,6 +126,9 @@ The artifact must follow:
 
 - assets/bug-investigation-template.md
 
+A BUG-INVESTIGATION artifact must contain sufficient decisions for
+ARCHITECTURE to proceed without re-investigating the defect.
+
 Knowledge classification:
 
 - Working Knowledge
@@ -125,8 +141,9 @@ When updating an existing BUG-INVESTIGATION:
 - Preserve supported findings, assumptions, and open-question identifiers.
 - Update findings in place when new evidence changes their understanding.
 - Do not convert unknown causes into definitive root causes without evidence.
-- Keep the Recommended Direction implementation-neutral.
-- Update the Decision Summary when investigation readiness changes.
+- Keep the Recommended Decision implementation-neutral.
+- Update the Decision and Decision Rationale when investigation conclusions
+  change.
 
 ## When to use me
 

@@ -1,6 +1,6 @@
 ---
 name: architecture-creation
-description: Create or update an ARCHITECTURE artifact that defines the technical realization of a FEATURE
+description: Create or update an ARCHITECTURE artifact that defines the technical realization of a FEATURE or BUG correction
 license: Proprietary
 compatibility: opencode
 metadata:
@@ -18,6 +18,8 @@ metadata:
 - Define technical decisions
 - Define implementation boundaries
 
+Realize approved analysis decisions as technical architecture.
+
 ## What I do not do
 
 ARCHITECTURE does not own:
@@ -27,6 +29,11 @@ ARCHITECTURE does not own:
 - Business outcomes
 - Operational flows
 - Domain orchestration
+- Problem investigation
+- Root cause analysis
+- Gap analysis
+- Alternative evaluation already completed by upstream analysis
+- Decision resolution already completed by upstream analysis
 - Project planning
 - Task breakdown
 - SOPs
@@ -52,10 +59,9 @@ when applicable.
 - FEASIBILITY-ASSESSMENT, for a CHANGE-REQUEST
 - BUG-INVESTIGATION, for a BUG
 
-FEASIBILITY-ASSESSMENT provides feasibility findings and approved decisions.
-BUG-INVESTIGATION provides defect findings, impact, assumptions, open
-questions, and recommended direction. Both provide the analysis and decision
-inputs that must be realized by the target architecture.
+FEASIBILITY-ASSESSMENT provides approved gap-closure decisions.
+BUG-INVESTIGATION provides approved investigation decisions. ARCHITECTURE
+consumes the approved decisions contained within either analysis artifact.
 
 ## Architecture Update Responsibility
 
@@ -66,21 +72,23 @@ Read DOMAIN and FEATURE when applicable
         ↓
 Read FEASIBILITY-ASSESSMENT or BUG-INVESTIGATION
         ↓
-Translate approved decisions into target technical state
+Realize approved analysis decisions as target technical state
         ↓
 Create / Update ARCHITECTURE
 ```
 
 ## Decision Ownership
 
-FEASIBILITY-ASSESSMENT owns approved feasibility decisions.
+FEASIBILITY-ASSESSMENT owns gap-closure decisions.
 
-BUG-INVESTIGATION owns investigation findings, assumptions, open questions,
-and recommended direction.
+BUG-INVESTIGATION owns investigation decisions.
 
-ARCHITECTURE owns the technical realization of the analysis inputs.
+ARCHITECTURE owns the technical realization of those decisions.
 
-ARCHITECTURE must not reinterpret or rediscover analysis findings.
+ARCHITECTURE must not repeat problem investigation, root cause analysis, gap
+analysis, alternative evaluation, or decision resolution already completed by
+upstream analysis. It does not re-evaluate business decisions, gap-closure
+decisions, or investigation decisions unless explicitly requested.
 
 ## Artifact Ownership
 
@@ -107,20 +115,24 @@ ARCHITECTURE owns architecturally significant persistence decisions, including:
 
 ARCHITECTURE does not own detailed physical schema definitions such as every column, datatype, index, or constraint.
 
-An ARCHITECTURE realizes exactly one FEATURE.
+An ARCHITECTURE realizes exactly one FEATURE or BUG correction.
 
 ## Workflow Position
 
 ```text
-Discovery
+CHANGE-REQUEST
     ↓
-Feasibility Assessment
+FEASIBILITY-ASSESSMENT
     ↓
-Gap Closure
+ARCHITECTURE
+
+BUG
     ↓
-Architecture Update
+BUG-INVESTIGATION
     ↓
-Planning
+Decision
+    ↓
+ARCHITECTURE
 ```
 
 ## Output

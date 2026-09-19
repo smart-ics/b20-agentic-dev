@@ -64,7 +64,7 @@ FEATURE owns:
 
 ## ARCHITECTURE
 
-ARCHITECTURE defines the technical realization of a FEATURE.
+ARCHITECTURE defines the technical realization of a FEATURE or BUG correction.
 
 ARCHITECTURE owns:
 
@@ -73,7 +73,7 @@ ARCHITECTURE owns:
 * Integration design
 * Technical decisions
 
-An ARCHITECTURE realizes exactly one FEATURE.
+An ARCHITECTURE realizes exactly one FEATURE or BUG correction.
 
 ---
 
@@ -99,7 +99,7 @@ Rules:
 * A FEATURE may involve one or more DOMAINs.
 * A DOMAIN may participate in multiple FEATUREs.
 * FEATURE owns orchestration between participating DOMAINs but does not own domain knowledge or technical realization.
-* ARCHITECTURE realizes a FEATURE.
+* ARCHITECTURE realizes a FEATURE or BUG correction.
 * Each piece of knowledge has a single authoritative owner.
 * Knowledge must not be duplicated across artifacts.
 

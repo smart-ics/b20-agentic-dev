@@ -40,9 +40,10 @@ Record assumptions made during the investigation.
 
 Record unresolved information that may influence architecture decisions.
 
-## Recommended Direction
+## Recommended Decision
 
-Provide high-level correction guidance while remaining implementation-neutral.
+State the preferred correction approach identified during investigation. Keep it
+high-level and implementation-neutral.
 
 Examples:
 
@@ -53,7 +54,15 @@ Examples:
 Do not specify files, line numbers, database indexes, refactors, or other
 implementation steps.
 
-## Decision Summary
+## Decision
 
-Summarize the investigation outcome, remaining uncertainty, and readiness for
-ARCHITECTURE work.
+State the approved investigation decision that will be handed to
+ARCHITECTURE. Clearly state the selected direction.
+
+## Decision Rationale
+
+Document why the decision was chosen. Include supporting findings, assumptions,
+rejected alternatives, constraints, and trade-offs when applicable.
+
+Keep these sections at the investigation level. Do not define architecture or
+implementation activities here.
