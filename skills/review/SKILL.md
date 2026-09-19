@@ -215,9 +215,10 @@ The REVIEW artifact records:
 - Remediation History
 - Review Iterations
 
-The `ReviewIteration` field is the persistent remediation counter. The first
-re-review is ReviewIteration 1, the second is ReviewIteration 2. The Developer
-reads this value from `<CODE>-REVIEW.md` to enforce the remediation stop rule.
+The `ReviewIteration` field is the persistent remediation counter. The
+initial review is ReviewIteration 0, the first re-review is ReviewIteration 1,
+and the second re-review is ReviewIteration 2. The Developer reads this value
+from `<CODE>-REVIEW.md` to enforce the remediation stop rule.
 
 ## Re-Review
 

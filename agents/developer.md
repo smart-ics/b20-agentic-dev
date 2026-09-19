@@ -69,11 +69,12 @@ Run until the plan is COMPLETED or a stop condition is hit:
    - NO-GO: read the remediation count from the slice's `<CODE>-REVIEW.md`
      artifact — the `ReviewIteration` field, or the number of `## Iteration N`
      entries in its Re-Review History. Do not keep the count in memory.
-     - If the count is already 2, STOP the slice: park it, preserve all
+     - If the count is less than 2, dispatch a fresh implementer for
+       remediation with the findings attached, then a fresh reviewer for
+       re-review.
+     - If the count is 2 or greater, STOP the slice: park it, preserve all
        findings and remediation history, escalate to the Architect, and stop
        the run with a final report. No third remediation.
-     - If the count is 1, dispatch a fresh implementer for remediation with
-       the findings attached, then a fresh reviewer for re-review.
 4. Stop conditions:
    - A slice returns NO-GO after its 2nd remediation -> stop that slice and
      escalate (as above).

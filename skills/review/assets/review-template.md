@@ -3,7 +3,7 @@
 Code:
 Artifact: REVIEW
 Slice:
-ReviewIteration:
+ReviewIteration: 0
 Decision: NO-GO
 ---
 
@@ -47,7 +47,7 @@ NO-GO
 
 # Re-Review History
 
-## Iteration 1
+## Iteration 1 (first re-review)
 
 Decision: NO-GO
 
@@ -55,7 +55,7 @@ Summary:
 
 ---
 
-## Iteration 2
+## Iteration 2 (second re-review)
 
 Decision: GO
 
