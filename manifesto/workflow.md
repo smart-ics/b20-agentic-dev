@@ -37,6 +37,8 @@ TEST EXECUTION ───────────────→ PASS → Deploym
      ↓
     FAIL
      ↓
+Issue Creation
+     ↓
 ISSUE (BUG)
      ↓
 BUG-INVESTIGATION
