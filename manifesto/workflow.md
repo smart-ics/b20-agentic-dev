@@ -91,6 +91,10 @@ Tester       → TEST-PACKAGE, TEST-EXECUTION
 Deployer     → DEPLOYMENT artifacts
 ```
 
+FEASIBILITY-ASSESSMENT and BUG-INVESTIGATION are analysis activities, not
+staffing roles. The same agent may execute either or both activities without
+changing artifact ownership.
+
 Rules:
 
 * Roles are executed by agents through their corresponding skills.
