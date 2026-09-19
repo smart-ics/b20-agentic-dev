@@ -199,6 +199,13 @@ Use READY-FOR-PLANNING only when:
 - All blocking open questions have been resolved
 - Architecture can be finalized or updated based on the approved decisions
 
+Status ownership:
+
+- The analysis activity (Analyst) maintains the readiness checklist and keeps
+  Status NOT-READY while blocking gaps remain.
+- The Architect is the only role that sets Status to READY-FOR-PLANNING,
+  granting the gate. The analysis activity must not set READY-FOR-PLANNING.
+
 READY-FOR-PLANNING means that feasibility is sufficiently resolved for the Architecture skill to finalize or update the target architecture. It does not mean that architecture is complete or that the architecture step may be skipped. Planning begins only after the required architecture work is complete.
 
 ## When to use me

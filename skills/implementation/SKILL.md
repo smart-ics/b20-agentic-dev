@@ -79,6 +79,14 @@ IN-PROGRESS
     ↓
 BLOCKED
 
+Remediation after NO-GO:
+
+IMPLEMENTED
+    ↓
+IN-PROGRESS
+    ↓
+IMPLEMENTED
+
 IMPLEMENTED means implementation work is finished and the slice is ready for review.
 
 Implementation does not assign GO or NO-GO. It only moves a slice to

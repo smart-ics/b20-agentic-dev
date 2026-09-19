@@ -102,6 +102,8 @@ Rules:
 * NO-GO does not create ISSUE artifacts.
 * NO-GO does not invoke BUG-INVESTIGATION.
 * NO-GO is not testing.
+* A slice is remediated at most twice: if review returns NO-GO after the second
+  remediation, execution halts and the slice is escalated to the Architect.
 
 ### Human Testing Workflow (TEST FAIL)
 
@@ -160,8 +162,8 @@ exclusive source of ISSUE artifacts.
 
 ## Implementation Plan Immutability
 
-Once an IMPLEMENTATION-PLAN is approved for execution, its structure is
-immutable for the remainder of that execution cycle.
+Once an IMPLEMENTATION-PLAN has Execution Approval set to APPROVED, its
+structure is immutable for the remainder of that execution cycle.
 
 Implementation and Review operate against the approved plan as written.
 
@@ -331,9 +333,11 @@ IMPLEMENTATION-PLAN
 DOMAIN                        → Analyst
 FEATURE                       → Analyst
 FEASIBILITY-ASSESSMENT        → analysis activity
+FEASIBILITY-ASSESSMENT status → Architect
 BUG-INVESTIGATION             → analysis activity
 ARCHITECTURE                  → Architect
 IMPLEMENTATION-PLAN structure → Architect
+Execution Approval            → Architect
 Slice implementation status   → Implementer
 Slice review status           → Reviewer
 Plan status COMPLETED         → Reviewer
@@ -369,7 +373,7 @@ Permitted execution-state changes are implementation status, implementation
 notes, review status, and plan status COMPLETED. These changes do not alter
 phase structure, slice structure, dependencies, or planning decisions.
 
-IMPLEMENTATION-PLAN is the only artifact with multiple writers. Its writers own disjoint fields:
+IMPLEMENTATION-PLAN and FEASIBILITY-ASSESSMENT are the only artifacts with multiple writers. Their writers own disjoint fields:
 
 * Architect owns structure during Planning: phases, slice IDs, objectives, dependencies, execution order, and repository assignment. After execution approval, the structure is immutable. A structural correction creates a replacement plan through a new Planning cycle; it does not modify the approved plan.
 * Implementer owns slice implementation status (NOT-STARTED, IN-PROGRESS, IMPLEMENTED, BLOCKED) and implementation notes.
@@ -377,6 +381,12 @@ IMPLEMENTATION-PLAN is the only artifact with multiple writers. Its writers own 
 * The Architect must not advance implementation or review status.
 * The Implementer must not set review status.
 * The Reviewer must not set implementation status and must not modify plan structure.
+
+For FEASIBILITY-ASSESSMENT:
+
+* The analysis activity (Analyst, or Architect acting as Analyst) owns the assessment content: Current State, Gap Analysis, Open Questions, Assumptions, Risks, Recommendations, and Gap Closure Decisions.
+* The Architect owns the Planning Readiness status field (NOT-READY | READY-FOR-PLANNING) and is the only role that sets it to READY-FOR-PLANNING.
+* The Analyst may set or keep the status NOT-READY but never READY-FOR-PLANNING.
 
 Implementation corrects implementation defects.
 
@@ -399,6 +409,12 @@ READY-FOR-PLANNING
 * Granted by: Architect
 * Condition: every blocking GAP and OQ is CLOSED with Decision, Rationale, Impact, Architecture Impact, Resolved By, and Resolved Date recorded
 * Unlocks: Architecture Update, then Planning
+
+EXECUTION-APPROVED
+
+* Granted by: Architect
+* Condition: the IMPLEMENTATION-PLAN structure is finalized (all phases and slices defined with objectives, dependencies, execution order, and completion criteria) and the plan is released for execution
+* Unlocks: Implementation execution by the Developer
 
 IMPLEMENTED
 

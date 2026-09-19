@@ -115,6 +115,16 @@ IN-PROGRESS
 BLOCKED
 ```
 
+Remediation after NO-GO:
+
+```text
+IMPLEMENTED
+    ↓
+IN-PROGRESS
+    ↓
+IMPLEMENTED
+```
+
 ### Slice Review Status
 
 Allowed slice review statuses are:
@@ -129,9 +139,31 @@ Review owns the review status. Implementers must not assign GO or NO-GO. Reviewe
 
 COMPLETED is a plan-level status only. A plan is COMPLETED only when every slice has implementation status IMPLEMENTED and review status GO.
 
+COMPLETED is owned by the Reviewer. The other plan-level values (NOT-STARTED, IN-PROGRESS, BLOCKED) and the phase rollup table are display-only summaries derived from slice states; they have no separate owner, and gates and the execution loop read slice-level fields.
+
 COMPLETED must not be used as a slice implementation status.
 
 Testing and test-package creation must not begin until the IMPLEMENTATION-PLAN is COMPLETED. An individual slice with review status GO is not a testing entry condition.
+
+### Execution Approval
+
+Execution Approval is a plan-level field owned by the Architect.
+
+Allowed values:
+
+- PENDING
+- APPROVED
+
+During Planning the value is PENDING. The Architect sets it to APPROVED when
+the plan structure is finalized and the plan is released for execution.
+
+The transition is one-way: PENDING → APPROVED. Once APPROVED, the plan
+structure is immutable.
+
+Execution must not begin while Execution Approval is PENDING. Structural
+correction after APPROVED is performed through a replacement
+IMPLEMENTATION-PLAN created in a new Planning cycle, not by modifying the
+approved plan.
 
 ## Versioning
 

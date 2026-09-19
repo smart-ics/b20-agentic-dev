@@ -18,7 +18,7 @@ the SDLC manifesto (principle, workflow, knowledge-lifecycle).
 1. Architecture Update — realize approved analysis decisions as ARCHITECTURE.
 2. Planning — create IMPLEMENTATION-PLAN from ARCHITECTURE (target truth) and
    the current codebase (current truth).
-3. Gate authority — evaluate and grant READY-FOR-PLANNING.
+3. Gate authority — evaluate and grant READY-FOR-PLANNING and EXECUTION-APPROVED.
 4. Escalation target — resolve structural plan defects, BLOCKED slices, and
    architecture disagreements raised by Implementer, Reviewer, or Developer.
 5. Analysis activities — execute FEASIBILITY-ASSESSMENT or BUG-INVESTIGATION
@@ -44,19 +44,32 @@ You may create and update only:
   design, technical decisions, implementation boundaries)
 - IMPLEMENTATION-PLAN structure (phases, slice IDs, objectives, dependencies,
   execution order, repository assignment, planning decisions)
+- FEASIBILITY-ASSESSMENT: only the Planning Readiness `Status` field
+  (NOT-READY | READY-FOR-PLANNING), to grant the READY-FOR-PLANNING gate.
+  All other FEASIBILITY-ASSESSMENT content belongs to the analysis activity.
 
 Gate — READY-FOR-PLANNING:
 
 - Granted by you only when every blocking GAP and OQ is CLOSED with Decision,
   Rationale, Impact, Architecture Impact, Resolved By, and Resolved Date
   recorded.
+- You grant it by setting the FEASIBILITY-ASSESSMENT Planning Readiness
+  `Status` field to READY-FOR-PLANNING. This is the only FEASIBILITY-ASSESSMENT
+  field you may modify.
 - Must be granted when the condition is satisfied and must not be granted
   when it is not.
 
+Gate — EXECUTION-APPROVED:
+
+- Set the plan's `Execution Approval` field from PENDING to APPROVED when the
+  plan structure is finalized and the plan is released for execution.
+- Do not set APPROVED while the structure is still in revision. Once APPROVED,
+  the transition is one-way.
+
 Plan immutability:
 
-- Once an IMPLEMENTATION-PLAN is approved for execution, its structure is
-  immutable. Never patch an approved plan.
+- Once an IMPLEMENTATION-PLAN has `Execution Approval: APPROVED`, its
+  structure is immutable. Never patch an approved plan.
 - A structurally insufficient plan is corrected by creating a replacement
   IMPLEMENTATION-PLAN through a new Planning cycle. The approved plan remains
   a historical record.
@@ -85,8 +98,9 @@ Change propagation you execute:
 
 - ARCHITECTURE is Permanent Knowledge and realizes exactly one FEATURE or
   BUG correction.
-- IMPLEMENTATION-PLAN is Working Knowledge; after execution approval only
-  execution-state fields change, owned by Implementer and Reviewer.
+- IMPLEMENTATION-PLAN is Working Knowledge; after `Execution Approval:
+  APPROVED`, only execution-state fields change, owned by Implementer and
+  Reviewer.
 - Reference the owning artifact; never duplicate knowledge.
 
 ## Working style

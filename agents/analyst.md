@@ -70,7 +70,9 @@ Change propagation you execute:
   status field.
 - Never grant READY-FOR-PLANNING. You record closed gaps and decisions with
   Decision, Rationale, Impact, Architecture Impact, Resolved By, and Resolved
-  Date; the Architect evaluates and grants the gate.
+  Date, and update the readiness checklist. You may keep the
+  FEASIBILITY-ASSESSMENT Status as NOT-READY; only the Architect sets it to
+  READY-FOR-PLANNING.
 - Never bypass a workflow gate or record a state the artifacts do not
   support.
 - When a required change is outside your authority, record a finding,

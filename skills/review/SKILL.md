@@ -215,9 +215,15 @@ The REVIEW artifact records:
 - Remediation History
 - Review Iterations
 
+The `ReviewIteration` field is the persistent remediation counter. The first
+re-review is ReviewIteration 1, the second is ReviewIteration 2. The Developer
+reads this value from `<CODE>-REVIEW.md` to enforce the remediation stop rule.
+
 ## Re-Review
 
 - Reuse the existing REVIEW artifact.
+- Increment the `ReviewIteration` field on every re-review and append an entry
+  to the Re-Review History.
 - Preserve previous findings.
 - Update resolution status.
 - Record remediation evidence.
@@ -237,7 +243,8 @@ stop remediation and escalate for a new Planning cycle.
 ## Output
 
 GO:
-- Updated IMPLEMENTATION-PLAN
+- Updated IMPLEMENTATION-PLAN (slice review status = GO)
 
 NO-GO:
+- Updated IMPLEMENTATION-PLAN (slice review status = NO-GO)
 - Updated REVIEW artifact

@@ -5,6 +5,7 @@ Artifact: IMPLEMENTATION-PLAN
 Version:
 LastUpdated:
 Status: NOT-STARTED | IN-PROGRESS | BLOCKED | COMPLETED
+Execution Approval: PENDING | APPROVED
 ---
 
 # 1. Objective
@@ -49,6 +50,15 @@ Plan status values are:
 - BLOCKED
 - COMPLETED
 
+Execution Approval values are:
+
+- PENDING
+- APPROVED
+
+Execution Approval is owned by the Architect. It is PENDING during Planning
+and set to APPROVED when the plan is released for execution. Execution must
+not begin while Execution Approval is PENDING.
+
 COMPLETED is a plan-level status only. Set it only when every slice has
 implementation status IMPLEMENTED and review status GO.
 
@@ -82,7 +92,7 @@ Slice review status values are:
 Implementation Status: IMPLEMENTED
 Review Status: GO
 
-### P1-S1
+### P1-S01
 
 Title:
 
@@ -91,7 +101,9 @@ Review Status: GO
 
 Objective:
 
-Dependencies:
+Depends On: None
+
+Repository:
 
 Completion Criteria:
 
@@ -102,7 +114,7 @@ Notes:
 
 ---
 
-### P1-S2
+### P1-S02
 
 ...
 
@@ -113,7 +125,7 @@ Notes:
 Implementation Status: IN-PROGRESS
 Review Status: NOT-REVIEWED
 
-### P2-S1
+### P2-S03
 
 ...
 
