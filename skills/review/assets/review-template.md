@@ -7,6 +7,13 @@ ReviewIteration:
 Decision: NO-GO
 ---
 
+# Template Purpose
+
+This template is used for NO-GO decisions and remediation reviews when review
+findings, required corrections, remediation history, and re-review evidence
+must be preserved. A NO-GO decision requires a REVIEW artifact. GO decisions
+normally update IMPLEMENTATION-PLAN and do not use this template.
+
 # Testing Gate
 
 A GO decision applies only to this slice. It does not authorize testing.

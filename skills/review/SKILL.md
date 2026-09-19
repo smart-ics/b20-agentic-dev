@@ -123,15 +123,15 @@ ARCHITECTURE, IMPLEMENTATION-PLAN, and available execution records.
 ### GO
 
 - Update IMPLEMENTATION-PLAN review status to GO.
+- No REVIEW artifact is required for a GO decision.
 - Do not create a REVIEW artifact solely to record the GO decision.
-- A GO decision does not require a REVIEW artifact; its absence is intentional,
-  not an omission.
 - A GO decision completes only the reviewed slice. It does not authorize testing.
 - Testing is authorized only when the IMPLEMENTATION-PLAN is COMPLETED: every slice is IMPLEMENTED and every slice review status is GO.
 
 ### NO-GO
 
-Create or update:
+A NO-GO decision always requires preservation of review evidence. Create or
+update the mandatory artifact:
 
 `<CODE>-REVIEW.md`
 
@@ -143,9 +143,6 @@ The REVIEW artifact records:
 - Resolution Status
 - Remediation History
 - Review Iterations
-
-Create a REVIEW artifact only when review findings, required corrections,
-remediation history, or re-review evidence must be preserved.
 
 ## Re-Review
 
