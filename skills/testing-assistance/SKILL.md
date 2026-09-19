@@ -40,7 +40,19 @@ The skill is designed for human interaction and prioritizes clarity, guidance, a
 
 ---
 
-# What I do not do
+# Responsibilities / Scope
+
+Testing Assistance owns TEST-EXECUTION only.
+
+When a test case fails:
+
+1. Record the failure in TEST-EXECUTION.
+2. Capture all available defect evidence.
+3. Provide defect information for Issue Creation.
+
+Testing Assistance must not create ISSUE artifacts directly.
+
+# Out of Scope
 
 - Create test packages
 - Modify FEATURE
@@ -49,7 +61,10 @@ The skill is designed for human interaction and prioritizes clarity, guidance, a
 - Modify source code
 - Perform implementation
 - Produce GO or NO-GO decisions
-- Create ISSUE artifacts
+- Creating ISSUE artifacts
+- Performing BUG-INVESTIGATION
+- Deciding corrective solutions
+- Modifying implementation artifacts
 
 ---
 

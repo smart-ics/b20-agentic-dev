@@ -62,11 +62,23 @@ Source information may include:
 - Operational report
 - Review finding
 - Test finding
+- TEST-EXECUTION failure information
 - Problem report
 - Enhancement request
 
 The source information may be unstructured. Reorganize, clarify, and normalize
 wording and terminology without adding decisions or solutions.
+
+## Test Failure Intake
+
+Issue Creation may be invoked from TEST-EXECUTION.
+
+When TEST-EXECUTION contains a confirmed FAIL requiring corrective action:
+
+* Defect information from TEST-EXECUTION becomes input.
+* Issue Creation produces an ISSUE with Type = BUG.
+* The ISSUE references the originating TEST-EXECUTION.
+* Issue Creation does not modify TEST-EXECUTION.
 
 ## Downstream Relationships
 

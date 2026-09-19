@@ -33,9 +33,17 @@ Test Package Creation
     ↓
 Testing
     ↓
-Test Execution
-    ↓
-Deployment
+TEST EXECUTION ───────────────→ PASS → Deployment
+     ↓
+    FAIL
+     ↓
+ISSUE (BUG)
+     ↓
+BUG-INVESTIGATION
+     ↓
+ARCHITECTURE UPDATE
+     ↓
+normal correction workflow
 ```
 
 ISSUE is a first-class intake artifact. It may be a CHANGE-REQUEST or BUG and
@@ -119,9 +127,16 @@ Review Evidence and Findings → REVIEW, when preservation is required
 Current Review Decisions    → IMPLEMENTATION-PLAN slice review status
 Test Definitions            → TEST-PACKAGE
 Test Results                → TEST-EXECUTION
-Defects                     → ISSUE
+Defect FAIL records         → TEST-EXECUTION
+Formal defect issues        → ISSUE
 Deployment Results          → DEPLOYMENT artifacts
 ```
+
+Testing records defects as FAIL results in TEST-EXECUTION.
+
+Issue Creation records defects as ISSUE artifacts.
+
+TEST-EXECUTION and ISSUE are separate artifacts with separate ownership.
 
 Rules:
 
@@ -329,7 +344,7 @@ Gate rules:
 
 * Implementers must not modify DOMAIN, FEATURE, FEASIBILITY-ASSESSMENT, ARCHITECTURE, plan structure, review status, TEST-PACKAGE, or TEST-EXECUTION. Implementers must never modify ARCHITECTURE to match the implementation. When the implementation cannot satisfy ARCHITECTURE, the Implementer marks the slice BLOCKED and raises a request to the Architect.
 * Reviewers must not modify DOMAIN, FEATURE, ARCHITECTURE, plan structure, implementation status, or source code. Reviewers must never modify artifacts to justify the implementation. Architecture or plan disagreements are recorded as findings and escalated to the Architect.
-* Testers must not modify implementation artifacts: source code, IMPLEMENTATION-PLAN, ARCHITECTURE, FEATURE, or DOMAIN. Defects are recorded as FAIL results and ISSUE artifacts, never fixed directly.
+* Testers must not modify implementation artifacts: source code, IMPLEMENTATION-PLAN, ARCHITECTURE, FEATURE, or DOMAIN. Testing records defects as FAIL results in TEST-EXECUTION; Issue Creation records formal defects as ISSUE artifacts. Testers never fix defects directly.
 * Architects must not implement code, review slices, advance implementation or review status, or record test results.
 * Analysts must not define technical realization or planning structure.
 * No agent may bypass a workflow gate, grant a gate whose condition is not satisfied, or record a gate state that the artifacts do not support.
@@ -625,8 +640,43 @@ Outputs:
 Rules:
 
 * Test execution may begin only after the IMPLEMENTATION-PLAN is COMPLETED.
-* Defects found during test execution must be recorded as ISSUE artifacts with
-  Type = BUG.
+
+---
+
+## Test Failure Handling
+
+Objective:
+
+Convert failed test results into formal BUG issues.
+
+Inputs:
+
+* TEST-EXECUTION containing one or more FAIL results
+
+Outputs:
+
+* ISSUE (Type = BUG)
+
+Rules:
+
+* TEST-EXECUTION remains the authoritative owner of test results.
+* Testing activities record failures in TEST-EXECUTION.
+* Testing activities do not create ISSUE artifacts directly.
+* Every confirmed FAIL requiring corrective action must result in an ISSUE with Type = BUG.
+* ISSUE creation is performed through the Issue Creation skill.
+* Defect information recorded in TEST-EXECUTION becomes input to ISSUE creation.
+* ISSUE ownership remains with Issue Intake.
+* After ISSUE creation, normal BUG workflow applies:
+
+```text
+ISSUE (BUG)
+    ↓
+BUG-INVESTIGATION
+    ↓
+ARCHITECTURE
+    ↓
+IMPLEMENTATION
+```
 
 ---
 
