@@ -80,10 +80,11 @@ It exists to keep multi-agent operation deterministic: every agent knows what it
 
 ```text
 Analyst      → DOMAIN, FEATURE
-Architect    → FEASIBILITY-ASSESSMENT, ARCHITECTURE, IMPLEMENTATION-PLAN
+Architect    → FEASIBILITY-ASSESSMENT, BUG-INVESTIGATION, ARCHITECTURE, IMPLEMENTATION-PLAN
+Issue Intake → ISSUE
 Implementer  → Source Code, slice implementation status
 Reviewer     → REVIEW, slice review status, plan COMPLETED
-Tester       → TEST-PACKAGE, TEST-EXECUTION, ISSUE
+Tester       → TEST-PACKAGE, TEST-EXECUTION
 Deployer     → DEPLOYMENT artifacts
 ```
 
@@ -102,7 +103,8 @@ Each class of knowledge has exactly one authoritative artifact:
 ```text
 Business Knowledge          → DOMAIN
 Business Outcome            → FEATURE
-Current State and Decisions → FEASIBILITY-ASSESSMENT
+Issue Request or Problem    → ISSUE
+Current State and Analysis  → FEASIBILITY-ASSESSMENT or BUG-INVESTIGATION
 Technical Realization       → ARCHITECTURE
 Planning Structure          → IMPLEMENTATION-PLAN
 Implementation Progress     → IMPLEMENTATION-PLAN slice implementation status
@@ -183,6 +185,7 @@ IMPLEMENTATION-PLAN
 DOMAIN                        → Analyst
 FEATURE                       → Analyst
 FEASIBILITY-ASSESSMENT        → Architect
+BUG-INVESTIGATION             → Architect
 ARCHITECTURE                  → Architect
 IMPLEMENTATION-PLAN structure → Architect
 Slice implementation status   → Implementer
@@ -192,7 +195,7 @@ REVIEW findings               → Reviewer
 Source Code                   → Implementer
 TEST-PACKAGE                  → Tester
 TEST-EXECUTION results        → Tester
-ISSUE artifacts               → Tester
+ISSUE artifacts               → Issue Intake
 DEPLOYMENT results            → Deployer
 ```
 
@@ -328,24 +331,25 @@ Rules:
 
 ---
 
-## 2. Feasibility Assessment
+## 2. Analysis
 
 Objective:
 
-Assess the impact of the requested change against the current system.
+Assess a CHANGE-REQUEST or investigate a BUG against the current system.
 
 Inputs:
 
-* DOMAIN
-* FEATURE
+* DOMAIN and FEATURE for a CHANGE-REQUEST
+* ISSUE with Type = BUG for a BUG
 * Current Artifacts
 * Current Codebase
 
 Outputs:
 
-* FEASIBILITY-ASSESSMENT
+* FEASIBILITY-ASSESSMENT for a CHANGE-REQUEST
+* BUG-INVESTIGATION for a BUG
 
-FEASIBILITY-ASSESSMENT owns:
+FEASIBILITY-ASSESSMENT owns for a CHANGE-REQUEST:
 
 * Current State
 * Gap Analysis
@@ -354,10 +358,22 @@ FEASIBILITY-ASSESSMENT owns:
 * Assumptions
 * Decisions
 
+BUG-INVESTIGATION owns for a BUG:
+
+* Current State
+* Problem Analysis
+* Affected Components
+* Impact Assessment
+* Assumptions
+* Open Questions
+* Recommended Direction
+* Decision Summary
+
 Rules:
 
 * No implementation planning occurs during this stage.
 * Target State is not defined during this stage.
+* BUG-INVESTIGATION does not produce a FEASIBILITY-ASSESSMENT.
 
 ---
 
@@ -366,10 +382,11 @@ Rules:
 Objective:
 
 Resolve all gaps and open questions identified during feasibility assessment.
+BUG investigations proceed directly to Architecture after investigation.
 
 Outputs:
 
-* Updated FEASIBILITY-ASSESSMENT
+* Updated FEASIBILITY-ASSESSMENT when applicable
 * Closed gaps and open questions
 * Recorded decisions
 
@@ -377,7 +394,8 @@ Rules:
 
 * All blocking gaps must be resolved.
 * All required decisions must be recorded.
-* FEASIBILITY-ASSESSMENT must be marked READY-FOR-PLANNING before proceeding.
+* FEASIBILITY-ASSESSMENT must be marked READY-FOR-PLANNING before proceeding
+  when a CHANGE-REQUEST is being assessed.
 
 ---
 
@@ -389,9 +407,10 @@ Update the target architecture based on approved decisions.
 
 Inputs:
 
-* FEATURE
-* FEASIBILITY-ASSESSMENT
-* Approved Decisions
+* FEATURE for a CHANGE-REQUEST
+* ISSUE with Type = BUG for a BUG
+* FEASIBILITY-ASSESSMENT or BUG-INVESTIGATION
+* Analysis findings and decision inputs
 
 Outputs:
 
@@ -613,6 +632,11 @@ DOMAIN
 FEATURE -----> FEASIBILITY-ASSESSMENT
                       ↓
                 Gap Closure
+                      ↓
+                ARCHITECTURE
+         \
+          \
+ISSUE (BUG) --> BUG-INVESTIGATION
                       ↓
                 ARCHITECTURE
                      ↓

@@ -27,7 +27,9 @@ Working Knowledge exists to support a development activity or workflow.
 
 Working Knowledge may include:
 
+* ISSUE
 * FEASIBILITY-ASSESSMENT
+* BUG-INVESTIGATION
 * IMPLEMENTATION-PLAN
 * REVIEW
 * TEST-EXECUTION

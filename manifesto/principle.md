@@ -105,6 +105,65 @@ Rules:
 
 ---
 
+## ISSUE
+
+ISSUE is a Working Knowledge artifact that represents a request for change.
+
+ISSUE may be one of:
+
+* CHANGE-REQUEST
+* BUG
+
+ISSUE is the intake artifact used to formally capture a requested system
+change or an observed system problem.
+
+ISSUE captures:
+
+* The problem or request
+* The desired outcome
+* The currently observed behavior or situation
+* Supporting evidence, when available
+
+ISSUE is intentionally lightweight and solution-neutral. It describes what
+is being requested or what problem exists, but does not prescribe how the
+solution must be implemented.
+
+ISSUE is not Permanent Knowledge. It may be archived according to Working
+Knowledge lifecycle rules.
+
+ISSUE does not own:
+
+* Business requirements
+* Domain knowledge
+* Architecture decisions
+* Implementation decisions
+* Implementation planning
+* Testing strategy
+
+Those concerns are owned by downstream artifacts. Detailed analysis belongs
+in FEASIBILITY-ASSESSMENT and BUG-INVESTIGATION. ISSUE serves as the entry
+point for those analyses rather than replacing them.
+
+CHANGE-REQUEST issues are analyzed through FEASIBILITY-ASSESSMENT. BUG
+issues are analyzed through BUG-INVESTIGATION. The outputs of both analyses
+are consumed by ARCHITECTURE:
+
+```text
+ISSUE (CHANGE-REQUEST)
+    → FEASIBILITY-ASSESSMENT
+    → ARCHITECTURE
+
+ISSUE (BUG)
+    → BUG-INVESTIGATION
+    → ARCHITECTURE
+```
+
+ISSUE ownership belongs to the role responsible for issue intake and issue
+documentation. It is not owned by the Architect, Implementer, Reviewer, or
+Tester.
+
+---
+
 ## Knowledge Ownership
 
 When knowledge changes, the owning artifact must be updated.

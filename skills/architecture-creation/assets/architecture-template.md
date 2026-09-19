@@ -8,37 +8,44 @@ LastUpdated:
 
 # 1. Overview
 
-Feature realized by this architecture.
+Feature or bug correction realized by this architecture.
 
-Referenced FEATURE.
+Referenced FEATURE or originating BUG ISSUE.
 
 # 2. Architectural Basis
 
-## Domain–Feature
+## Business Context
 
-Referenced DOMAIN and FEATURE that define:
+Reference DOMAIN and FEATURE for a CHANGE-REQUEST, or the originating BUG
+ISSUE for a BUG. When present, DOMAIN and FEATURE define:
 
 - Business Knowledge
 - Business Outcome
 - Operational Flow
 - Domain Orchestration
 
-## Feasibility Assessment
+## Analysis Input
 
-Referenced FEASIBILITY-ASSESSMENT that provides:
+Reference one of the following analysis artifacts:
+
+- FEASIBILITY-ASSESSMENT for a CHANGE-REQUEST
+- BUG-INVESTIGATION for a BUG
+
+The analysis artifact provides:
 
 - Current State
-- Gap Analysis
-- Closed Open Questions
-- Approved Decisions
-- Relevant Risks and Assumptions
+- Analysis findings
+- Impact
+- Assumptions
+- Open Questions
+- Decision Inputs
 
 The architecture is derived from:
 
 ```text
 DOMAIN + FEATURE
         +
-FEASIBILITY-ASSESSMENT
+FEASIBILITY-ASSESSMENT or BUG-INVESTIGATION
         ↓
    ARCHITECTURE
 ```
