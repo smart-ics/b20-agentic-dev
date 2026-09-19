@@ -21,7 +21,8 @@ metadata:
 
 - Implement code
 - Modify source code
-- Modify DOMAIN, FEATURE, ARCHITECTURE, or IMPLEMENTATION-PLAN
+- Modify DOMAIN, FEATURE, ARCHITECTURE, or IMPLEMENTATION-PLAN structure,
+  implementation status, or planning fields
 - Create or split slices
 - Assign implementation progress status
 - Make business or architecture decisions
@@ -112,10 +113,19 @@ BLOCKER or MAJOR requires NO-GO.
 
 ## Review Artifact Policy
 
+Review status is authoritative in IMPLEMENTATION-PLAN. The Reviewer updates the
+slice review status there; REVIEW is Working Knowledge used to preserve review
+evidence rather than the current review state.
+
+Review evidence must remain verifiable from implementation outputs,
+ARCHITECTURE, IMPLEMENTATION-PLAN, and available execution records.
+
 ### GO
 
 - Update IMPLEMENTATION-PLAN review status to GO.
-- Do not create REVIEW artifacts.
+- Do not create a REVIEW artifact solely to record the GO decision.
+- A GO decision does not require a REVIEW artifact; its absence is intentional,
+  not an omission.
 - A GO decision completes only the reviewed slice. It does not authorize testing.
 - Testing is authorized only when the IMPLEMENTATION-PLAN is COMPLETED: every slice is IMPLEMENTED and every slice review status is GO.
 
@@ -131,7 +141,11 @@ The REVIEW artifact records:
 - Evidence
 - Required Corrections
 - Resolution Status
+- Remediation History
 - Review Iterations
+
+Create a REVIEW artifact only when review findings, required corrections,
+remediation history, or re-review evidence must be preserved.
 
 ## Re-Review
 

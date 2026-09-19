@@ -106,8 +106,8 @@ Current State and Decisions → FEASIBILITY-ASSESSMENT
 Technical Realization       → ARCHITECTURE
 Planning Structure          → IMPLEMENTATION-PLAN
 Implementation Progress     → IMPLEMENTATION-PLAN slice implementation status
-Review Findings             → REVIEW
-Review Decisions            → IMPLEMENTATION-PLAN slice review status
+Review Evidence and Findings → REVIEW, when preservation is required
+Current Review Decisions    → IMPLEMENTATION-PLAN slice review status
 Test Definitions            → TEST-PACKAGE
 Test Results                → TEST-EXECUTION
 Defects                     → ISSUE
@@ -137,6 +137,24 @@ Rules:
 * Generated Knowledge is regenerated from DOMAIN, FEATURE, and ARCHITECTURE rather than patched.
 
 ### Decision Ownership
+
+### Review State and Evidence
+
+Review status is authoritative in IMPLEMENTATION-PLAN. The Reviewer updates only
+the slice review status and, when applicable, the plan-level COMPLETED status;
+these fields are the current review state used by the workflow gates.
+
+REVIEW is Working Knowledge. It records review evidence, findings, required
+corrections, remediation history, and review iterations when that evidence must
+be preserved. REVIEW does not replace or supersede the review status in
+IMPLEMENTATION-PLAN.
+
+A GO decision does not require a REVIEW artifact. REVIEW artifacts are created
+only when review findings or remediation history must be preserved. The absence
+of a REVIEW artifact for a GO decision is intentional, not an omission.
+
+Review evidence must remain verifiable from implementation outputs,
+ARCHITECTURE, IMPLEMENTATION-PLAN, and available execution records.
 
 ### Feasibility Decisions
 
@@ -456,16 +474,27 @@ Inputs:
 
 Outputs:
 
-* REVIEW Report
+* Updated IMPLEMENTATION-PLAN review status
+* REVIEW artifact only when review findings, required corrections, remediation
+  history, or re-review evidence must be preserved
 
 Rules:
 
 * Review produces exactly one decision: GO or NO-GO.
+* Review status is authoritative in IMPLEMENTATION-PLAN.
+* A GO decision updates only the IMPLEMENTATION-PLAN review status. The
+  separate plan-level COMPLETED status is set only by its existing completion
+  check when its condition is satisfied.
+* A GO decision does not require a REVIEW artifact.
+* REVIEW artifacts are created only when review findings or remediation history
+  must be preserved; their absence for a GO decision is intentional.
 * A NO-GO slice returns to Implementation for remediation and re-review.
 * A GO slice remains part of the implementation plan until every slice is IMPLEMENTED and every slice review status is GO.
 * An individual slice GO is not a trigger for Testing.
 * The IMPLEMENTATION-PLAN becomes COMPLETED only when every slice has implementation status IMPLEMENTED and review status GO.
 * Testing may start only after the IMPLEMENTATION-PLAN is COMPLETED.
+* Review evidence must remain verifiable from implementation outputs,
+  ARCHITECTURE, IMPLEMENTATION-PLAN, and available execution records.
 
 Implementation and Review operate in a continuous loop:
 
