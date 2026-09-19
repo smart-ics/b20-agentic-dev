@@ -109,6 +109,77 @@ Review does not restructure the approved plan.
 - MINOR
 - NOTE
 
+Severity is determined by acceptance impact. Every severity assignment must be
+justified by evidence from the implementation, approved slice definition,
+architecture, dependencies, acceptance criteria, or execution records.
+Severity is determined by acceptance impact, not by perceived importance,
+effort, risk, preference, or reviewer intuition. It must not be based on
+implementation effort, personal preference, or subjective opinion.
+
+### BLOCKER
+
+- The slice objective cannot be considered implemented.
+- Fundamental correctness, execution, dependency, architecture, or acceptance
+  failure exists.
+- The approved slice cannot be accepted.
+
+Examples:
+
+- Required functionality is missing.
+- A required dependency is not satisfied.
+- The implementation cannot execute as required.
+- Acceptance criteria are fundamentally unmet.
+
+### MAJOR
+
+- The slice exists but violates a mandatory requirement.
+- Required scope, architecture, dependency, contract, or acceptance behavior is
+  not satisfied.
+- Correction is required before acceptance.
+
+Examples:
+
+- Mandatory acceptance behavior is incorrect.
+- A required architectural rule is violated.
+- Required dependency usage is violated.
+- Required behavior is only partially implemented.
+
+### MINOR
+
+- Acceptance remains possible.
+- A localized issue exists and correction is desirable.
+- The issue does not invalidate the approved slice outcome.
+
+Examples:
+
+- Maintainability issue.
+- Small documentation issue.
+- Localized non-critical defect.
+- Non-blocking implementation inconsistency.
+
+### NOTE
+
+- Observation only.
+- No correction is required for acceptance.
+
+Examples:
+
+- Future improvement suggestion.
+- Alternative implementation approach.
+- Informational observation.
+
+### Severity Decision Flow
+
+1. Does the finding prevent acceptance of the approved slice?
+   - Yes: BLOCKER or MAJOR.
+   - No: MINOR or NOTE.
+2. If acceptance is prevented:
+   - Fundamental failure: BLOCKER.
+   - Mandatory requirement violation: MAJOR.
+3. If acceptance is not prevented:
+   - Correction desirable: MINOR.
+   - Observation only: NOTE.
+
 BLOCKER or MAJOR requires NO-GO.
 
 ## Review Artifact Policy
