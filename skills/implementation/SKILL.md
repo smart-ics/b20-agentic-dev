@@ -39,15 +39,17 @@ Before implementing a slice:
 - Read all `Depends On` entries in the IMPLEMENTATION-PLAN.
 - Verify that every referenced Slice ID exists in the same IMPLEMENTATION-PLAN.
 - Verify that every referenced slice has implementation status IMPLEMENTED.
-- Verify that the implementation output required by every dependency exists in
-  the target repository.
+- Verify that the implementation output required by every dependency exists and
+  is verifiable in the target repository.
 - Treat the dependency as satisfied only when all of these conditions hold.
 - Do not infer dependency satisfaction solely from similar code being present.
 - A slice with no dependencies passes the preflight.
 
-Dependency satisfaction is based on IMPLEMENTED, not review status GO.
-IMPLEMENTED with NOT-REVIEWED satisfies a dependency, as does IMPLEMENTED
-with GO. Review remains an independent quality gate.
+Dependency satisfaction is determined solely by implementation status and
+required implementation output. Review status (NOT-REVIEWED, GO, or NO-GO) does
+not participate: IMPLEMENTED with NOT-REVIEWED, IMPLEMENTED with GO, and
+IMPLEMENTED with NO-GO each satisfy a dependency. NO-GO affects review acceptance and plan
+completion only; it does not invalidate dependency satisfaction.
 
 If any dependency is not satisfied:
 

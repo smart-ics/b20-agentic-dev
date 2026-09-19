@@ -240,18 +240,19 @@ A dependency is satisfied when:
 
 - The referenced Slice ID exists in the same IMPLEMENTATION-PLAN.
 - The referenced slice implementation status is IMPLEMENTED.
-- The implementation output required by that dependency exists in the target
-  repository.
+- The implementation output required by that dependency exists and is verifiable
+  in the target repository.
 
 The implementation status recorded in IMPLEMENTATION-PLAN is the authoritative
 lifecycle state. The codebase is evidence used to verify that state. A
 dependency must never be considered satisfied solely because similar code
 happens to exist.
 
-Dependency satisfaction is based on IMPLEMENTED and does not require review
-status GO. IMPLEMENTED with NOT-REVIEWED satisfies a dependency, as does
-IMPLEMENTED with GO. GO determines review acceptance and remains an
-independent quality gate; GO does not participate in dependency satisfaction.
+Dependency satisfaction is determined solely by implementation status and
+required implementation output. Review status (NOT-REVIEWED, GO, or NO-GO) does
+not participate: IMPLEMENTED with NOT-REVIEWED, IMPLEMENTED with GO, and
+IMPLEMENTED with NO-GO each satisfy a dependency. NO-GO affects review acceptance and plan
+completion only; it does not invalidate dependency satisfaction.
 
 Dependencies represent implementation prerequisites only. They must identify
 the actual implementation output required before dependent work can begin,

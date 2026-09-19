@@ -236,9 +236,9 @@ READY-FOR-PLANNING
 IMPLEMENTED
 
 * Granted by: Implementer
-* Condition: slice work is complete against the slice objective, every declared dependency slice has implementation status IMPLEMENTED, and the required implementation outputs exist in the target repository
-* Dependency satisfaction requires the referenced Slice ID to exist, its implementation status to be IMPLEMENTED, and its required implementation output to exist. The implementation status in IMPLEMENTATION-PLAN is authoritative; the codebase is evidence used to verify it. Similar code alone is not sufficient evidence.
-* Dependency review status is not required. IMPLEMENTED with NOT-REVIEWED and IMPLEMENTED with GO both satisfy a dependency. GO does not participate in dependency satisfaction.
+* Condition: slice work is complete against the slice objective, every declared dependency slice has implementation status IMPLEMENTED, and the required implementation output exists and is verifiable in the target repository
+* Dependency satisfaction requires the referenced Slice ID to exist, its implementation status to be IMPLEMENTED, and its required implementation output to exist and be verifiable in the target repository. The implementation status in IMPLEMENTATION-PLAN is authoritative; the codebase is evidence used to verify it. Similar code alone is not sufficient evidence.
+* Dependency satisfaction is determined solely by implementation status and required implementation output. Review status (NOT-REVIEWED, GO, or NO-GO) does not participate: IMPLEMENTED + NOT-REVIEWED, IMPLEMENTED + GO, and IMPLEMENTED + NO-GO each satisfy a dependency. NO-GO affects review acceptance and plan completion only; it does not invalidate dependency satisfaction.
 * Unlocks: Review of the slice and implementation of dependent slices
 
 GO
