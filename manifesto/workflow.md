@@ -11,15 +11,15 @@ The objective is to ensure that business knowledge, technical decisions, and imp
 ## Workflow
 
 ```text
-Request
-    ↓
-Discovery
-    ↓
-Feasibility Assessment
-    ↓
-Gap Closure
-    ↓
-Architecture Update
+ISSUE (CHANGE-REQUEST)          ISSUE (BUG)
+        ↓                           ↓
+    Discovery                 BUG-INVESTIGATION
+        ↓                           ↓
+FEASIBILITY-ASSESSMENT       ARCHITECTURE UPDATE
+        ↓                           │
+    Gap Closure                  ────┘
+        ↓
+ARCHITECTURE UPDATE
     ↓
 Planning
     ↓
@@ -35,10 +35,13 @@ Testing
     ↓
 Test Execution
     ↓
-Issue Creation (when defects are found)
-    ↓
 Deployment
 ```
+
+ISSUE is a first-class intake artifact. It may be a CHANGE-REQUEST or BUG and
+may originate from customer, business, operational, support, review, testing,
+or other valid findings. Testing is one possible source of BUG issues, not the
+exclusive source of ISSUE artifacts.
 
 ---
 
@@ -80,7 +83,7 @@ It exists to keep multi-agent operation deterministic: every agent knows what it
 
 ```text
 Analyst      → DOMAIN, FEATURE
-Architect    → FEASIBILITY-ASSESSMENT, BUG-INVESTIGATION, ARCHITECTURE, IMPLEMENTATION-PLAN
+Architect    → ARCHITECTURE, IMPLEMENTATION-PLAN
 Issue Intake → ISSUE
 Implementer  → Source Code, slice implementation status
 Reviewer     → REVIEW, slice review status, plan COMPLETED
@@ -203,8 +206,8 @@ IMPLEMENTATION-PLAN
 ```text
 DOMAIN                        → Analyst
 FEATURE                       → Analyst
-FEASIBILITY-ASSESSMENT        → Architect
-BUG-INVESTIGATION             → Architect
+FEASIBILITY-ASSESSMENT        → analysis activity
+BUG-INVESTIGATION             → analysis activity
 ARCHITECTURE                  → Architect
 IMPLEMENTATION-PLAN structure → Architect
 Slice implementation status   → Implementer
@@ -359,6 +362,7 @@ Assess a CHANGE-REQUEST or investigate a BUG against the current system.
 Inputs:
 
 * DOMAIN and FEATURE for a CHANGE-REQUEST
+* ISSUE with Type = CHANGE-REQUEST for a CHANGE-REQUEST
 * ISSUE with Type = BUG for a BUG
 * Current Artifacts
 * Current Codebase
@@ -395,6 +399,8 @@ Rules:
 * No implementation planning occurs during this stage.
 * Target State is not defined during this stage.
 * BUG-INVESTIGATION does not produce a FEASIBILITY-ASSESSMENT.
+* FEASIBILITY-ASSESSMENT and BUG-INVESTIGATION are analysis activities and
+  are not restricted to the Architect role.
 
 ---
 
@@ -595,7 +601,7 @@ Rules:
 
 ---
 
-## 10. Test Execution and Issue Creation
+## 10. Test Execution
 
 Objective:
 
@@ -611,12 +617,12 @@ Inputs:
 Outputs:
 
 * TEST-EXECUTION
-* ISSUE artifacts when defects are found
 
 Rules:
 
 * Test execution may begin only after the IMPLEMENTATION-PLAN is COMPLETED.
-* Defects found during test execution must be recorded as ISSUE artifacts.
+* Defects found during test execution must be recorded as ISSUE artifacts with
+  Type = BUG.
 
 ---
 
@@ -649,14 +655,15 @@ Rules:
 ```text
 DOMAIN
         \
-         \
-FEATURE -----> FEASIBILITY-ASSESSMENT
-                      ↓
-                Gap Closure
-                      ↓
-                ARCHITECTURE
-         \
           \
+FEATURE -----> FEASIBILITY-ASSESSMENT
+ISSUE (CHANGE-REQUEST) ----/
+                       ↓
+                 Gap Closure
+                       ↓
+                 ARCHITECTURE
+          \
+           \
 ISSUE (BUG) --> BUG-INVESTIGATION
                       ↓
                 ARCHITECTURE
@@ -671,13 +678,11 @@ ISSUE (BUG) --> BUG-INVESTIGATION
                       ↓
           TEST PACKAGE CREATION
                       ↓
-                  TESTING
-                      ↓
-               TEST EXECUTION
-                      ↓
-       ISSUE CREATION (when defects are found)
-                      ↓
-                DEPLOYMENT
+                   TESTING
+                       ↓
+                TEST EXECUTION
+                       ↓
+                 DEPLOYMENT
 ```
 
 ---
