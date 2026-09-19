@@ -57,10 +57,10 @@ The IMPLEMENTATION-PLAN artifact is created by the Planning skill.
 
 During Planning, the Architect may revise its structure.
 
-After the plan is approved for execution, its structure is immutable to
-Implementer and Reviewer.
+After the plan has `Execution Approval: APPROVED`, its structure is immutable
+to Implementer and Reviewer.
 
-If structural correction is required after execution approval, the
+If structural correction is required after `Execution Approval: APPROVED`, the
 Architect must create a replacement IMPLEMENTATION-PLAN through a new
 Planning cycle. The approved plan is not modified.
 
@@ -179,7 +179,7 @@ Update:
 Increment Minor for:
 
 - Non-structural planning updates, such as dependency updates or small
-  planning adjustments made before execution approval
+  planning adjustments made before `Execution Approval: APPROVED`
 
 Increment Major for:
 
@@ -188,9 +188,9 @@ Increment Major for:
 - Phase restructuring
 
 Version increments apply only to planning work performed before
-execution approval.
+`Execution Approval: APPROVED`.
 
-Once execution approval is granted:
+Once `Execution Approval: APPROVED` is set:
 
 - Structural changes are not performed through version increments.
 - Structural correction requires a new Planning cycle.
@@ -213,7 +213,7 @@ P3-S06
 
 Do not reset slice numbering per phase.
 
-Once an IMPLEMENTATION-PLAN has been approved for execution, its phase
+Once an IMPLEMENTATION-PLAN has `Execution Approval: APPROVED`, its phase
 and slice structure is fixed.
 
 Planning, Implementation, and Review must never split an existing slice
@@ -340,7 +340,7 @@ During Planning:
 
 - The Architect may revise plan structure.
 
-After execution approval:
+After `Execution Approval: APPROVED`:
 
 - Preserve Phase IDs.
 - Preserve Slice IDs.

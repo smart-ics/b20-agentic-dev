@@ -366,7 +366,7 @@ Reviewer owns:
 
 * Review status fields
 
-After execution approval, only execution-state fields may change.
+After `Execution Approval: APPROVED`, only execution-state fields may change.
 Plan structure is immutable.
 
 Permitted execution-state changes are implementation status, implementation
@@ -375,7 +375,7 @@ phase structure, slice structure, dependencies, or planning decisions.
 
 IMPLEMENTATION-PLAN and FEASIBILITY-ASSESSMENT are the only artifacts with multiple writers. Their writers own disjoint fields:
 
-* Architect owns structure during Planning: phases, slice IDs, objectives, dependencies, execution order, and repository assignment. After execution approval, the structure is immutable. A structural correction creates a replacement plan through a new Planning cycle; it does not modify the approved plan.
+* Architect owns structure during Planning: phases, slice IDs, objectives, dependencies, execution order, and repository assignment. After `Execution Approval: APPROVED`, the structure is immutable. A structural correction creates a replacement plan through a new Planning cycle; it does not modify the approved plan.
 * Implementer owns slice implementation status (NOT-STARTED, IN-PROGRESS, IMPLEMENTED, BLOCKED) and implementation notes.
 * Reviewer owns slice review status (NOT-REVIEWED, GO, NO-GO) and the plan-level COMPLETED status.
 * The Architect must not advance implementation or review status.

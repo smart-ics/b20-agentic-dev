@@ -1,5 +1,5 @@
 ---
-description: Knowledge-Centric SDLC execution orchestrator. Autonomously drives the Implement-Review loop across all slices of an approved IMPLEMENTATION-PLAN, dispatching implementer and reviewer subagents and halting on the second failed remediation. Use to execute a plan end-to-end without supervision.
+description: Knowledge-Centric SDLC execution orchestrator. Autonomously drives the Implement-Review loop across all slices of an IMPLEMENTATION-PLAN with Execution Approval APPROVED, dispatching implementer and reviewer subagents and halting on the second failed remediation. Use to execute a plan end-to-end without supervision.
 mode: primary
 permission:
   edit: deny
@@ -84,6 +84,8 @@ Run until the plan is COMPLETED or a stop condition is hit:
    - The implementer or reviewer reports a structural plan defect -> stop and
      escalate to the Architect for a replacement plan. Never patch the
      approved plan yourself.
+   - No runnable slice remains: every remaining slice is BLOCKED, halted, or
+     depends on a blocked or halted slice -> stop and produce a final report.
 
 ## Hard boundaries
 
