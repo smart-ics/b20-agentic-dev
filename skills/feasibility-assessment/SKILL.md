@@ -4,7 +4,7 @@ description: Assess the feasibility of implementing a FEATURE within the current
 license: Proprietary
 compatibility: opencode
 metadata:
-  audience: architect
+  audience: analyst, architect
   artifact: FEASIBILITY-ASSESSMENT
 ---
 

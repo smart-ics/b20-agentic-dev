@@ -4,7 +4,7 @@ description: Analyze a BUG ISSUE and document the technical understanding requir
 license: Proprietary
 compatibility: opencode
 metadata:
-  audience: architect
+  audience: analyst, architect
   artifact: BUG-INVESTIGATION
 ---
 

@@ -10,43 +10,146 @@ The objective is to ensure that business knowledge, technical decisions, and imp
 
 ## Workflow
 
+### Workflow Mechanisms
+
+The SDLC contains three distinct mechanisms. They must never be conflated.
+
 ```text
-ISSUE (CHANGE-REQUEST)          ISSUE (BUG)
-        ↓                           ↓
-    Discovery                 BUG-INVESTIGATION
-        ↓                           ↓
-FEASIBILITY-ASSESSMENT       ARCHITECTURE UPDATE
-        ↓                           │
-    Gap Closure                  ────┘
+NO-GO        Review rejection during implementation execution.
+             Stays inside the Implementation ↔ Review loop.
+             Does not create an ISSUE. Does not invoke BUG-INVESTIGATION.
+             Is not testing.
+
+TEST FAIL    Human testing discovers a system defect.
+             Produces evidence and a defect report.
+             Becomes an ISSUE (BUG) through Issue Creation.
+
+BUG ISSUE    Formal intake of a defect into a new SDLC cycle.
+             Re-enters via BUG-INVESTIGATION → ARCHITECTURE UPDATE → PLANNING.
+```
+
+### Master Workflow
+
+```text
+ISSUE (CHANGE-REQUEST)
+        ↓
+DISCOVERY
+        ↓
+FEASIBILITY-ASSESSMENT
+        ↓
+GAP CLOSURE
         ↓
 ARCHITECTURE UPDATE
-    ↓
-Planning
-    ↓
-Implementation
-    ↔
-Review
-    ↓
+        ↓
+PLANNING
+        ↓
+IMPLEMENTATION
+        ↓
+REVIEW
+        ↓
+GO
+        ↓
 IMPLEMENTATION-PLAN = COMPLETED
-    ↓
-Test Package Creation
-    ↓
-Testing
-    ↓
-TEST EXECUTION ───────────────→ PASS → Deployment
-     ↓
-    FAIL
-     ↓
-Issue Creation
-     ↓
+        ↓
+TEST PACKAGE CREATION
+        ↓
+TESTING
+        ↓
+TEST EXECUTION
+
+PASS ──────────────────────────────→ DEPLOYMENT
+
+FAIL
+        ↓
+ISSUE CREATION
+        ↓
 ISSUE (BUG)
-     ↓
+        ↓
 BUG-INVESTIGATION
-     ↓
+        ↓
 ARCHITECTURE UPDATE
-     ↓
-normal correction workflow
+        ↓
+PLANNING
+        ↓
+IMPLEMENTATION
+        ↓
+REVIEW
 ```
+
+REVIEW also has a NO-GO exit, shown in the Implementation Execution Loop
+below. The FAIL exit of TEST EXECUTION is shown in the Human Testing Workflow
+below. The ISSUE (BUG) path is shown in the BUG Issue Workflow below.
+
+### Implementation Execution Loop (NO-GO)
+
+```text
+IMPLEMENTATION
+        ↓
+REVIEW
+
+GO
+        ↓
+IMPLEMENTATION-PLAN completion check
+
+NO-GO
+        ↓
+IMPLEMENTATION
+```
+
+Rules:
+
+* NO-GO stays inside implementation execution.
+* NO-GO does not create ISSUE artifacts.
+* NO-GO does not invoke BUG-INVESTIGATION.
+* NO-GO is not testing.
+
+### Human Testing Workflow (TEST FAIL)
+
+```text
+IMPLEMENTATION-PLAN = COMPLETED
+        ↓
+TEST-PACKAGE
+        ↓
+TEST EXECUTION
+
+PASS
+        ↓
+DEPLOYMENT
+
+FAIL
+        ↓
+ISSUE CREATION
+        ↓
+ISSUE (BUG)
+```
+
+Rules:
+
+* Testing is a human validation activity.
+* Testing does not return work directly to Implementation.
+* Testing does not participate in remediation loops.
+* Testing produces evidence and defect reports.
+
+### BUG Issue Workflow (ISSUE (BUG))
+
+```text
+ISSUE (BUG)
+        ↓
+BUG-INVESTIGATION
+        ↓
+ARCHITECTURE UPDATE
+        ↓
+PLANNING
+        ↓
+IMPLEMENTATION
+        ↓
+REVIEW
+```
+
+The BUG issue re-enters the SDLC at PLANNING. From REVIEW onward the BUG
+correction follows the same sequence as any other plan: GO →
+IMPLEMENTATION-PLAN = COMPLETED → TEST PACKAGE CREATION → TESTING → TEST
+EXECUTION → PASS → DEPLOYMENT.
 
 ISSUE is a first-class intake artifact. It may be a CHANGE-REQUEST or BUG and
 may originate from customer, business, operational, support, review, testing,
@@ -315,7 +418,7 @@ NO-GO
 
 * Granted by: Reviewer
 * Condition: at least one BLOCKER or MAJOR finding exists
-* Effect: the slice returns to Implementation for remediation and re-review
+* Effect: the slice returns to Implementation for remediation and re-review. NO-GO stays inside the Implementation ↔ Review execution loop: it does not create an ISSUE, does not invoke BUG-INVESTIGATION, and is not testing.
 
 COMPLETED
 
@@ -568,6 +671,9 @@ Implementation and Review operate in a continuous loop:
 * Implementation → Review → GO → IMPLEMENTATION-PLAN completion check
 * Implementation → Review → NO-GO → Remediation → Re-Review
 
+NO-GO remediation stays inside this loop. It does not create an ISSUE, does not
+invoke BUG-INVESTIGATION, and is not testing.
+
 ---
 
 ## 8. Test Package Creation
@@ -668,16 +774,24 @@ Rules:
 * ISSUE creation is performed through the Issue Creation skill.
 * Defect information recorded in TEST-EXECUTION becomes input to ISSUE creation.
 * ISSUE ownership remains with Issue Intake.
-* After ISSUE creation, normal BUG workflow applies:
+* Testing does not return work directly to Implementation. A FAIL defect
+  re-enters the SDLC only through ISSUE CREATION → ISSUE (BUG) →
+  BUG-INVESTIGATION → ARCHITECTURE UPDATE → PLANNING.
+* After ISSUE creation, the BUG issue enters the BUG Issue Workflow and
+  re-enters the SDLC at PLANNING:
 
 ```text
 ISSUE (BUG)
     ↓
 BUG-INVESTIGATION
     ↓
-ARCHITECTURE
+ARCHITECTURE UPDATE
+    ↓
+PLANNING
     ↓
 IMPLEMENTATION
+    ↓
+REVIEW
 ```
 
 ---
