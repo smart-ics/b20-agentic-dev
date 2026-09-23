@@ -3,7 +3,7 @@
 Title: Product Domain
 Code: PRODUCT
 Artifact: DOMAIN
-Version: 1.0
+Version: 2.0
 LastUpdated: 2026-09-23
 ---
 
@@ -11,37 +11,39 @@ LastUpdated: 2026-09-23
 
 The Product Domain defines the products provided, maintained, and developed by ICS.
 
-The domain provides authoritative product knowledge used by other operational domains.
+The Product Domain is the authoritative source of product identity, ownership, and lifecycle state.
 
 The domain answers:
 
-* What products does ICS provide?
-* What is the current status of a product?
-* Who owns the product?
-* How are products classified?
+* What products exist?
+* Who owns a product?
+* What is the current state of a product?
 
-The Product Domain does not manage Projects, Requests, Customers, roadmaps, development workflows, or operational performance.
+The Product Domain does not manage:
+
+* Customers
+* Projects
+* Requests
+* Development workflow
+* Roadmaps
+* Operational performance
 
 ---
 
 # 2. Ubiquitous Language
 
-| Term             | Meaning                                              |
-| ---------------- | ---------------------------------------------------- |
-| Product          | A product provided, maintained, or developed by ICS. |
-| Product Family   | A grouping of related Products.                      |
-| Product Owner    | The Person currently responsible for a Product.      |
-| Product Status   | The current lifecycle state of a Product.            |
-| Product Category | A classification of Product.                         |
+| Term           | Meaning                                                       |
+| -------------- | ------------------------------------------------------------- |
+| Product        | A business product provided, maintained, or developed by ICS. |
+| Product Owner  | The Person currently responsible for the Product.             |
+| Product Status | The current lifecycle state of a Product.                     |
 
 ---
 
 # 3. Domain Capabilities
 
 * Product Management
-* Product Family Management
 * Product Ownership Management
-* Product Classification Management
 * Product Lifecycle Management
 
 ---
@@ -50,11 +52,11 @@ The Product Domain does not manage Projects, Requests, Customers, roadmaps, deve
 
 ## Management
 
-Approves Product creation, retirement, ownership, and classification.
+Approves creation, retirement, and ownership of Products.
 
 ## Product Owner
 
-Responsible for a Product.
+Responsible for the Product.
 
 ## Administrator
 
@@ -62,7 +64,7 @@ Maintains Product master data.
 
 ---
 
-# 5. Domain Objects
+# 5. Domain Object
 
 ## Product
 
@@ -76,8 +78,6 @@ Name
 Code
 Description
 Status
-Category
-ProductFamilyId
 OwnerPersonId
 ```
 
@@ -90,38 +90,15 @@ BTrade3
 Jetset
 ```
 
+A Product is not a Customer.
+
 A Product is not a Project.
 
 A Product is not a Request.
 
-A Product is not a Customer.
-
 ---
 
-## Product Family
-
-Represents a grouping of related Products.
-
-Attributes:
-
-```text
-ProductFamilyId
-Name
-Description
-Status
-```
-
-Examples:
-
-```text
-Hospital Solutions
-Business Solutions
-Internal Solutions
-```
-
----
-
-# 6. Aggregates
+# 6. Aggregate
 
 ## Product Aggregate
 
@@ -129,15 +106,7 @@ Internal Solutions
 Product
 ```
 
-The Product Aggregate is the authoritative source of Product identity, ownership, classification, and lifecycle state.
-
----
-
-## Product Family Aggregate
-
-```text
-ProductFamily
-```
+The Product Aggregate is the authoritative source of Product identity and current Product state.
 
 ---
 
@@ -181,19 +150,13 @@ Requests are owned by the Request Domain.
 
 3. Product Owner must reference a Person from the Organization Domain.
 
-4. A Product may belong to zero or one Product Family.
+4. Product ownership does not imply Project ownership.
 
-5. A Product Family may contain multiple Products.
+5. Product ownership does not imply Request ownership.
 
-6. A Product may exist without a Product Family.
+6. Product identity must remain stable throughout its lifecycle.
 
 7. A Product may become inactive while preserving historical references.
-
-8. Product ownership does not imply Project ownership.
-
-9. Product ownership does not imply Request ownership.
-
-10. Product identity must remain stable throughout its lifecycle.
 
 ---
 
@@ -221,21 +184,11 @@ Currently provided, maintained, or developed.
 
 ### DEPRECATED
 
-Still exists but no longer strategically expanded.
+Still supported but no longer strategically expanded.
 
 ### RETIRED
 
 No longer an active business product.
-
----
-
-## Product Family Lifecycle
-
-```text
-ACTIVE
-   ↓
-INACTIVE
-```
 
 ---
 
@@ -250,13 +203,6 @@ ProductDeprecated
 ProductRetired
 
 ProductOwnerChanged
-
-ProductFamilyCreated
-ProductFamilyActivated
-ProductFamilyInactivated
-
-ProductAssignedToFamily
-ProductRemovedFromFamily
 ```
 
 Events represent changes in Product state.
@@ -265,8 +211,6 @@ Events represent changes in Product state.
 
 # 11. Related Features
 
-* Manage Products
-* Manage Product Families
-* Manage Product Ownership
+* Manage Product
 
 The Product Domain supplies Product information to Projects and Requests.
