@@ -22,7 +22,7 @@ It exists to ensure that:
 
 The lifecycle applies to operational objects such as:
 
-* Projects
+* Work Packages
 * Requests
 * Risks
 * Actions
@@ -86,7 +86,7 @@ The operational object has been recorded but has not yet been sufficiently valid
 Examples:
 
 * a customer request has been received;
-* a project concern has been reported;
+* a work package concern has been reported;
 * a potential risk has been identified;
 * an action has been proposed;
 * a capacity change has been reported.
@@ -144,7 +144,7 @@ The operational object currently represents an active operational matter.
 Examples:
 
 ```text
-Project       → ACTIVE
+Work Package  → ACTIVE
 Request       → ACTIVE
 Risk          → ACTIVE
 Action        → ACTIVE
@@ -173,7 +173,7 @@ Request → accepted and completed
 Request → rejected
 Risk    → resolved
 Action  → completed
-Project → completed
+Work Package → completed
 ```
 
 Closure means:
@@ -247,7 +247,7 @@ An operational object may be updated while it is active.
 For example:
 
 ```text
-Project-001
+Work-Package-001
 
 Current State:
 ACTIVE
@@ -320,7 +320,7 @@ A change to an authoritative state must be explicit.
 For example:
 
 ```text
-Project Health:
+Work Package Health:
 WATCH → AT-RISK
 ```
 
@@ -367,7 +367,7 @@ An assessment of what the facts mean.
 Example:
 
 ```text
-The project may be experiencing insufficient engineering capacity.
+The work package may be experiencing insufficient engineering capacity.
 ```
 
 ### Decision
@@ -393,11 +393,11 @@ The owner is responsible for maintaining the correctness of the operational stat
 Examples:
 
 ```text
-Project   → Project Manager
-Request   → Assigned Owner
-Risk      → Risk Owner
-Action    → Action Owner
-Capacity  → Capacity Owner
+Work Package → Work Package Owner
+Request      → Assigned Owner
+Risk         → Risk Owner
+Action       → Action Owner
+Capacity     → Capacity Owner
 ```
 
 Ownership may be delegated.
@@ -590,7 +590,7 @@ Not every operational object needs exactly the same domain workflow.
 For example:
 
 ```text
-PROJECT
+WORK PACKAGE
 ACTIVE → CLOSED
 ```
 
@@ -737,7 +737,7 @@ Therefore stale knowledge should be treated as an operational signal.
 For example:
 
 ```text
-Project:
+Work Package:
 Current State = ACTIVE
 Last Update = 35 days ago
 

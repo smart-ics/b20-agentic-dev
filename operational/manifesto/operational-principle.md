@@ -35,7 +35,7 @@ All reports, dashboards, analytics, and summaries are derived from operational s
 
 Every operational object has exactly one authoritative current state.
 
-Operational objects include projects, requests, risks, actions, and capacity plans.
+Operational objects include work packages, requests, risks, actions, and capacity plans.
 
 Decisions, dashboards, reports, KPIs, and analytics must derive from this current state.
 
@@ -63,7 +63,7 @@ Leadership attention is limited.
 
 The system should highlight exceptions, risks, blockers, and abnormal conditions.
 
-Leadership should not be required to inspect every project, request, team, or activity.
+Leadership should not be required to inspect every work package, request, team, or activity.
 
 ---
 
@@ -135,7 +135,7 @@ The system should preserve historical operational snapshots for comparison and a
 
 ## 12. Every Problem Has an Owner
 
-Every project, request, risk, blocker, action, and commitment must have a clearly identified owner.
+Every work package, request, risk, blocker, action, and commitment must have a clearly identified owner.
 
 Ownership may be delegated.
 
