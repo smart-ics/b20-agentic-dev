@@ -1,7 +1,7 @@
 ---
 
 name: ICS Operational Knowledge Lifecycle
-version: 1
+version: 2
 last-update: 2026-09-23
 updated by: Drury Yudis Lumenta
 ---
@@ -451,7 +451,7 @@ The Operational Knowledge Lifecycle must not be confused with a domain's operati
 Defines:
 
 ```text
-How the operational object is maintained
+The lifecycle of operational knowledge
 ```
 
 Generic model:
@@ -469,22 +469,70 @@ CAPTURED
 Defines:
 
 ```text
-How the business problem is processed
+How operational work is performed
 ```
 
-For example:
+There is no single universal domain workflow.
+
+A Domain Workflow is **not** required to pass through every lifecycle state sequentially.
+
+It may skip intermediate lifecycle states, branch, or terminate early whenever the operational meaning is clear.
+
+Multiple workflow patterns are supported, for example:
+
+* **Direct resolution** — the assigned owner reviews and resolves the matter directly;
+* **Assessment and commitment** — assess → estimate → decide → commit → deliver;
+* **Escalation** — the owner cannot decide within authority and escalates to a higher authority;
+* **Rejection** — the matter is reviewed and closed without operational work.
+
+The previously documented request-oriented workflow:
+
+```text
+CAPTURE → ASSESS → ESTIMATE → DECIDE → COMMIT → DELIVER → COMPLETE
+```
+
+is only one possible workflow example.
+
+It is not the default, the standard, or a required sequence for operational requests.
+
+### Pragmatic Operational Example
+
+The following example reflects ICS operational reality: lightweight ownership, with escalation only when required.
 
 ```text
 REQUEST
-
-CAPTURE
-→ ASSESS
-→ ESTIMATE
-→ DECIDE
-→ COMMIT
-→ DELIVER
-→ COMPLETE
+   ↓
+ASSIGN OWNER
+   ↓
+OWNER REVIEW
+   ↓
+┌─────────────┬──────────────┬─────────────┐
+│             │              │             │
+DIRECT FIX   ESCALATE       REJECT
+│             │
+▼             ▼
+EXECUTE    HIGHER AUTHORITY
+│             │
+└──────┬──────┘
+       ▼
+   DOCUMENT
+       ▼
+     CLOSE
 ```
+
+In this pattern:
+
+* most operational requests may be resolved directly by the assigned owner;
+* assessment, estimation, commitment, and escalation are invoked only when required;
+* operational work may begin before documentation is completed;
+* documentation may occur after execution for urgent operational situations;
+* the lifecycle governs operational knowledge, not operational bureaucracy.
+
+Not every request needs assessment, estimation, a formal decision, or a commitment ceremony.
+
+Those steps are exceptions invoked by conditions, not mandatory stages.
+
+### Relationship Between the Two Models
 
 The domain workflow may move or update the lifecycle state.
 
@@ -493,24 +541,45 @@ For example:
 ```text
 REQUEST
 
-CAPTURE
+ASSIGN OWNER
    ↓
 CAPTURED
 
-ASSESS
+OWNER REVIEW: UNDERSTOOD
    ↓
 VALIDATED
 
-DECIDE: ACCEPT
+DIRECT FIX: ACCEPTED
    ↓
 ACTIVE
 
-DELIVER
+DOCUMENT + CLOSE
    ↓
 CLOSED
 ```
 
+A rejected request may move:
+
+```text
+OWNER REVIEW: REJECT
+   ↓
+CLOSED
+```
+
+without ever passing through `ACTIVE`.
+
 The two models are related but should remain conceptually separate.
+
+Workflow activity is how the work is performed.
+
+The lifecycle state is the authoritative operational truth.
+
+### Alignment With Manifesto Principles
+
+* **Simplicity Over Process** — a workflow includes only the steps that add value; steps that create more overhead than value are omitted.
+* **Exception-Based Management** — escalation, assessment, estimation, and commitment are exceptions, not routine stages; leadership attention is required only when an exception occurs.
+* **Every Problem Has an Owner** — every request is assigned an owner; the owner resolves the matter directly or escalates it, and accountability is never left unassigned.
+* **Operational State Is The Source Of Truth** — regardless of which workflow path is taken, decisions, dashboards, and reports derive from the object's authoritative current state, never from workflow activity, meetings, or documentation alone.
 
 ---
 
@@ -719,6 +788,8 @@ Operational lifecycle design should follow these rules:
 8. **Facts, interpretations, and decisions are distinguishable.**
 9. **Domain workflows remain separate from the generic knowledge lifecycle.**
 10. **Use the simplest lifecycle that provides sufficient control.**
+11. **Workflow steps are invoked only when required, not by default.**
+12. **Documentation may follow execution when operational urgency requires it.**
 
 ---
 
