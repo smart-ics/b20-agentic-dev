@@ -16,6 +16,33 @@ The workflow must remain simple enough to support daily operations without creat
 
 ---
 
+# Domains and Workflow
+
+The Operational System has exactly five operational domains:
+
+```text
+Organization
+Customer
+Product
+Work Package
+Request
+```
+
+Operational workflow operates on Requests and Work Packages.
+
+Risk, Action, Capacity Plan, and Commitment are not operational domains:
+
+```text
+Risk           = derived operational knowledge
+Action         = operational activity or workflow behavior
+Capacity Plan  = projection / planning view derived from operational state
+Commitment     = projection derived from Requests, ownership, decisions, and operational state
+```
+
+They may appear as workflow activities or derived signals, but they never own facts and never have an independent lifecycle.
+
+---
+
 # Workflow and Lifecycle
 
 The Operational Knowledge Lifecycle defines the lifecycle of operational knowledge.
@@ -121,8 +148,10 @@ OPERATIONAL STATE
         ↓
     DECISION
         ↓
-     ACTION
+  ACTIVITY
 ```
+
+Here `ACTIVITY` denotes operational activity or workflow behavior. It is not an Action domain.
 
 Management attention should focus on exceptions and decisions, not routine operational activities.
 
@@ -141,8 +170,10 @@ CURRENT STATE
       ↓
   DECISIONS
       ↓
-   ACTIONS
+  ACTIVITIES
 ```
+
+`ACTIVITIES` denotes operational activity or workflow behavior. They are not Action domain objects.
 
 The purpose of Operational Review is not to discover status.
 

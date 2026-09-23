@@ -1,7 +1,7 @@
 ---
 
 name: ICS Operational Knowledge Lifecycle
-version: 2
+version: 3
 last-update: 2026-09-23
 updated by: Drury Yudis Lumenta
 ---
@@ -20,23 +20,30 @@ It exists to ensure that:
 * operational knowledge remains useful for decisions;
 * the system does not depend on reports, meetings, memory, or verbal communication.
 
-The lifecycle applies to operational objects such as:
+The lifecycle applies to the operational domains:
 
-* Work Packages
-* Requests
-* Risks
-* Actions
-* Capacity Plans
-* Commitments
-* Other operational objects defined by the Operational System
+* Organization
+* Customer
+* Product
+* Work Package
+* Request
+
+Derived concepts are not domains and do not have an independent lifecycle:
+
+* Risk — derived operational knowledge
+* Action — operational activity or workflow behavior
+* Capacity Plan — projection / planning view derived from operational state
+* Commitment — projection derived from Requests, ownership, decisions, and operational state
 
 ---
 
 ## 2. Core Rule
 
-> **Every operational object has one authoritative current state.**
+> **Every operational domain object has one authoritative current state.**
 
-At any point in time, an operational object must have exactly one current state that is authoritative.
+At any point in time, an operational domain object must have exactly one current state that is authoritative.
+
+Derived concepts are projections over this state. They do not have an independent authoritative state.
 
 The current state is the source of truth for:
 
@@ -86,10 +93,10 @@ The operational object has been recorded but has not yet been sufficiently valid
 Examples:
 
 * a customer request has been received;
-* a work package concern has been reported;
-* a potential risk has been identified;
-* an action has been proposed;
-* a capacity change has been reported.
+* a work package has been proposed;
+* a customer has been identified;
+* a product has been proposed;
+* an organizational change has been reported.
 
 At this stage:
 
@@ -144,11 +151,11 @@ The operational object currently represents an active operational matter.
 Examples:
 
 ```text
-Work Package  → ACTIVE
-Request       → ACTIVE
-Risk          → ACTIVE
-Action        → ACTIVE
-Capacity Plan → ACTIVE
+Organization → ACTIVE
+Customer     → ACTIVE
+Product      → ACTIVE
+Work Package → ACTIVE
+Request      → ACTIVE
 ```
 
 An active object:
@@ -169,11 +176,11 @@ The operational matter has reached its meaningful terminal condition.
 Examples:
 
 ```text
-Request → accepted and completed
-Request → rejected
-Risk    → resolved
-Action  → completed
+Request      → accepted and completed
+Request      → rejected
 Work Package → completed
+Work Package → cancelled
+Product      → retired
 ```
 
 Closure means:
@@ -393,11 +400,11 @@ The owner is responsible for maintaining the correctness of the operational stat
 Examples:
 
 ```text
+Organization → Organization Owner
+Customer     → Customer Owner
+Product      → Product Owner
 Work Package → Work Package Owner
-Request      → Assigned Owner
-Risk         → Risk Owner
-Action       → Action Owner
-Capacity     → Capacity Owner
+Request      → Request Owner
 ```
 
 Ownership may be delegated.
@@ -408,7 +415,11 @@ An active object without an owner is operationally incomplete.
 
 ---
 
-## 11. Commitment Is Not Implied by Lifecycle
+## 11. Commitment Is a Projection, Not a Lifecycle
+
+A Commitment is not an operational domain and does not have its own lifecycle.
+
+A Commitment is a projection derived from Requests, ownership, decisions, and operational state.
 
 The lifecycle does not define whether work is approved or committed.
 
@@ -438,7 +449,7 @@ ACTIVE
 
 while its business decision is still pending.
 
-A commitment exists only when the appropriate decision and capacity allocation have been explicitly made.
+A commitment exists only when the appropriate decision and capacity allocation have been explicitly made, and it must remain derivable from the authoritative operational state.
 
 ---
 
@@ -484,6 +495,8 @@ Multiple workflow patterns are supported, for example:
 * **Assessment and commitment** — assess → estimate → decide → commit → deliver;
 * **Escalation** — the owner cannot decide within authority and escalates to a higher authority;
 * **Rejection** — the matter is reviewed and closed without operational work.
+
+Activities such as assessment, estimation, decision, and commitment are operational activity or workflow behavior. They are not operational domains, and they do not create lifecycle states.
 
 The previously documented request-oriented workflow:
 
@@ -605,11 +618,11 @@ CAPTURED
 → CLOSED
 ```
 
-A risk may become:
+A product may become:
 
 ```text
 ACTIVE
-→ CLOSED
+→ RETIRED
 ```
 
 A domain may introduce additional operational states when those states materially affect decisions.
@@ -756,12 +769,12 @@ A closed object may need to be reopened when new operational facts make the prev
 Example:
 
 ```text
-Risk
+Work Package
 ACTIVE
   ↓
 CLOSED
   ↓
-New evidence appears
+New operational facts appear
   ↓
 REOPENED
 ```
@@ -783,7 +796,7 @@ Operational lifecycle design should follow these rules:
 3. **Updates are operations, not automatically new states.**
 4. **History is preserved.**
 5. **Reports and dashboards derive from operational state.**
-6. **Commitment is explicit and must not be inferred.**
+6. **Commitment is a projection derived from explicit decisions and operational state; it is never a lifecycle state and must not be inferred.**
 7. **Ownership is explicit.**
 8. **Facts, interpretations, and decisions are distinguishable.**
 9. **Domain workflows remain separate from the generic knowledge lifecycle.**
