@@ -1,7 +1,7 @@
 ---
 
-Title: Request Domain
-Code: REQUEST
+Title: Work Package Domain
+Code: WORK-PACKAGE
 Artifact: DOMAIN
 Version: 1.0
 LastUpdated: 2026-09-23
@@ -9,336 +9,254 @@ LastUpdated: 2026-09-23
 
 # 1. Business Overview
 
-The Request Domain defines a request for ICS to perform, change, investigate, provide, or resolve something.
+The Work Package domain defines a temporary package of related operational Requests that share a common objective.
 
-A Request represents an operational demand placed on ICS.
-
-A Request may originate from a Customer, an internal Person, a Project, a Work Package, or another operational context.
+A Work Package provides a business context for grouping Requests that belong to the same piece of work.
 
 The domain answers:
 
-* What is being requested?
-* Who requested it?
-* Who owns it?
-* What is the current state?
-* What Customer, Product, or Work Package is relevant?
+* What work are we grouping together?
+* What is the objective of the Work Package?
+* Who owns the Work Package?
+* Which Customer and Product are involved?
+* What is the current state of the Work Package?
 
-A Request is not a Commitment.
+A Work Package is not a Request.
 
-A Request is not a Work Package.
+A Request may exist without a Work Package.
 
-A Request is not a Project.
-
-A Request does not imply that ICS has agreed to perform the requested work.
+The Work Package domain does not define Request execution, estimation, commitment, scheduling, or operational workflow.
 
 ---
 
 # 2. Ubiquitous Language
 
-| Term            | Meaning                                                                                   |
-| --------------- | ----------------------------------------------------------------------------------------- |
-| Request         | A recorded demand for ICS to perform, change, investigate, provide, or resolve something. |
-| Requester       | The Person or external party that originated the Request.                                 |
-| Request Owner   | The Person responsible for maintaining and resolving the Request.                         |
-| Request Type    | A classification describing the nature of the Request.                                    |
-| Request Status  | The authoritative current state of the Request.                                           |
-| Request Context | The Customer, Product, Work Package, or other context associated with the Request.        |
-| Resolution      | The outcome that satisfies or terminates the Request.                                     |
+| Term                | Meaning                                                                   |
+| ------------------- | ------------------------------------------------------------------------- |
+| Work Package        | A temporary container for related Requests that share a common objective. |
+| Objective           | The intended result that gives the Work Package its purpose.              |
+| Work Package Owner  | The Person responsible for maintaining the Work Package.                  |
+| Scope               | The set of Requests currently included in the Work Package.               |
+| Work Package Status | The current lifecycle state of the Work Package.                          |
 
 ---
 
 # 3. Domain Capabilities
 
-The Request Domain provides:
+The Work Package domain provides:
 
-* Request Management
-* Request Ownership Management
-* Request Classification Management
-* Request Context Management
-* Request Lifecycle Management
-* Request Resolution Management
+* Work Package Management
+* Work Package Ownership Management
+* Work Package Scope Management
+* Work Package Lifecycle Management
 
-These capabilities maintain authoritative Request knowledge.
+These capabilities maintain the identity and state of a Work Package.
 
-They do not define the operational workflow used to process Requests.
+They do not define how Requests are processed or delivered.
 
 ---
 
 # 4. Actors & Roles
 
-## Requester
+## Management
 
-The Person or external party that originates a Request.
+May create, change, or close Work Packages when management involvement is required.
 
-A Requester may be:
+## Work Package Owner
 
-* an ICS Person;
-* a Customer Contact;
-* another recognized operational actor.
+Responsible for maintaining the Work Package and its current operational state.
+
+The Work Package Owner is a Person defined by the Organization domain.
 
 ## Request Owner
 
-The Person responsible for maintaining the current state of a Request and resolving or escalating it when necessary.
+Owns an individual Request.
 
-The Request Owner is a Person defined by the Organization Domain.
-
-## Manager
-
-May review, decide, or intervene when the Request exceeds the Request Owner's authority or requires management attention.
+Request ownership belongs to the Request domain and is independent from Work Package ownership.
 
 ---
 
 # 5. Domain Objects
 
-## Request
+## Work Package
 
-Represents a demand placed on ICS.
+Represents a temporary package of related Requests with a common objective.
 
 Attributes:
 
-```text
-RequestId
-Title
-Description
-Type
+```text id="rq6h2m"
+WorkPackageId
+Name
+Objective
 Status
-Requester
 OwnerPersonId
 CustomerId
 ProductId
-WorkPackageId
-Resolution
 ```
 
-`CustomerId`, `ProductId`, and `WorkPackageId` are optional.
-
-A Request may exist without any of them.
+`CustomerId` and `ProductId` are optional because a Work Package may not always be customer-specific or product-specific.
 
 Examples:
 
-```text
-Add BPJS validation to billing.
-Fix incorrect pharmacy report.
-Investigate slow login.
-Provide training for new users.
-Change hospital workflow configuration.
+```text id="1p2vfg"
+RSUD A Go-Live Preparation
+MyHospital Billing Improvement
+PenaEl MVP Preparation
+SATUSEHAT Integration Preparation
 ```
 
 ---
 
-## Requester
+## Work Package Request
 
-Identifies the origin of the Request.
-
-A Requester may reference:
-
-```text
-Person
-Customer Contact
-```
-
-The Request domain does not own either Person or Customer Contact.
-
----
-
-## Resolution
-
-Represents the recorded outcome when a Request is closed.
+Represents the relationship between a Work Package and a Request.
 
 Attributes:
 
-```text
-Outcome
-Description
-ResolvedBy
-ResolvedAt
+```text id="w3a9vs"
+WorkPackageId
+RequestId
 ```
 
-Resolution is part of the Request's final state and history.
+A Request may belong to zero or one Work Package.
 
-It is not a separate operational domain.
+A Work Package may contain zero or more Requests.
+
+The relationship does not transfer ownership of the Request.
 
 ---
 
 # 6. Aggregates
 
-## Request Aggregate
+## Work Package Aggregate
 
-```text
-Request
-└── Resolution
+```text id="tq7m5r"
+WorkPackage
+└── Requests
 ```
 
-The Request Aggregate is the authoritative source of:
+The Work Package Aggregate is the authoritative source of:
 
-* Request identity
-* Current Request state
-* Request ownership
-* Request context
-* Request resolution
+* Work Package identity
+* Objective
+* Owner
+* Current lifecycle state
+* Work Package membership
 
-Requester, Customer, Product, Work Package, and Person remain owned by their respective domains.
+The Request itself remains owned by the Request domain.
 
 ---
 
 # 7. Relationships
 
-## Request → Organization
+## Work Package → Organization
 
-Request Owner references a Person from the Organization Domain.
+Work Package Owner references a Person from the Organization Domain.
 
-The Request domain does not own organizational identity.
-
----
-
-## Request → Customer
-
-A Request may reference a Customer.
-
-The Customer Domain remains authoritative for Customer identity.
+The Work Package domain does not define organizational structure.
 
 ---
 
-## Request → Product
+## Work Package → Customer
 
-A Request may reference a Product.
+A Work Package may reference a Customer from the Customer Domain.
 
-The Product Domain remains authoritative for Product identity.
-
----
-
-## Request → Work Package
-
-A Request may reference a Work Package.
-
-The Work Package Domain defines the grouping relationship.
-
-A Request does not require a Work Package.
+Customer ownership remains defined by the Customer Domain.
 
 ---
 
-## Request → Requester
+## Work Package → Product
 
-The Request records who originated the demand.
+A Work Package may reference a Product from the Product Domain.
 
-The referenced Person or Customer Contact remains owned by its source domain.
+Product ownership remains defined by the Product Domain.
+
+---
+
+## Work Package → Request
+
+A Work Package groups related Requests.
+
+```text id="f2l3z6"
+Work Package
+    ├── Request A
+    ├── Request B
+    └── Request C
+```
+
+The Work Package does not own the Request's lifecycle.
+
+Request lifecycle remains authoritative in the Request domain.
 
 ---
 
 # 8. Business Rules
 
-1. Every Request must have a unique identity.
+1. Every Work Package must have a unique identity.
 
-2. Every active Request must have exactly one Request Owner.
+2. Every active Work Package must have exactly one Work Package Owner.
 
-3. Request Owner must reference a Person from the Organization Domain.
+3. Work Package Owner must reference a Person from the Organization Domain.
 
-4. A Request must contain sufficient information to understand what is being requested.
+4. Every Work Package must have an objective.
 
-5. A Request may exist without a Customer.
+5. A Work Package must represent a temporary and meaningful grouping of work.
 
-6. A Request may exist without a Product.
+6. A Work Package may reference zero or one Customer.
 
-7. A Request may exist without a Work Package.
+7. A Work Package may reference zero or one Product.
 
-8. A Request may belong to at most one Work Package.
+8. A Work Package may contain zero or more Requests.
 
-9. Assigning a Request to a Work Package does not change its Request Owner.
+9. A Request may belong to zero or one Work Package.
 
-10. A Request is not a Commitment.
+10. A Request may exist without a Work Package.
 
-11. A Request being accepted or actively worked does not by itself imply that a delivery commitment exists.
+11. Adding a Request to a Work Package does not change the Request Owner.
 
-12. A Request may be rejected without being executed.
+12. Removing a Request from a Work Package does not change the Request itself.
 
-13. A Request may be resolved directly without creating a Project or Work Package.
+13. Closing a Work Package does not imply that every Request within it is closed.
 
-14. Request history must preserve significant ownership, state, and resolution changes.
+14. Closing or completing all Requests does not automatically change the Work Package state unless the Work Package's business condition has actually been satisfied.
 
-15. Closing a Request must record its meaningful outcome when an outcome exists.
-
-16. A closed Request remains historically retrievable.
+15. Historical Work Package membership must remain traceable.
 
 ---
 
 # 9. State Machines & Lifecycles
 
-## Request Lifecycle
+## Work Package Lifecycle
 
-The Request lifecycle follows the generic operational lifecycle while allowing direct closure when appropriate.
-
-```text
-CAPTURED
-    ↓
-VALIDATED
-    ↓
+```text id="kzj9p2"
+DRAFT
+   ↓
 ACTIVE
-    ↓
+   ↓
 CLOSED
 ```
 
-### CAPTURED
+### DRAFT
 
-The Request has been recorded but has not yet been sufficiently validated.
-
-### VALIDATED
-
-The Request is understood sufficiently to be treated as reliable operational knowledge.
-
-Validation does not mean acceptance or commitment.
+The Work Package has been created but is not yet an active operational matter.
 
 ### ACTIVE
 
-The Request represents an active operational matter.
-
-It may be:
-
-* being resolved;
-* awaiting information;
-* escalated;
-* awaiting a decision;
-* otherwise requiring operational attention.
-
-These are operational conditions, not additional lifecycle states.
+The Work Package represents current operational work.
 
 ### CLOSED
 
-The Request no longer requires active operational work.
+The Work Package objective has been completed, cancelled, or is otherwise no longer an active operational matter.
 
-Examples:
-
-```text
-Resolved
-Rejected
-Cancelled
-No Longer Required
-```
-
-A Request may move directly:
-
-```text
-CAPTURED → CLOSED
-```
-
-when no active operational work is required.
+A Work Package may move directly from `DRAFT` to `CLOSED` when no active work is required.
 
 ---
 
-## Request State vs Workflow Activity
+## Work Package Request Relationship
 
-The following are workflow activities and must not automatically become Request lifecycle states:
+The relationship itself does not have an independent lifecycle.
 
-```text
-Assessing
-Estimating
-Discussing
-Escalating
-Waiting
-Implementing
-Reviewing
-```
-
-The authoritative Request state remains based on its operational condition.
+It exists while the Request belongs to the Work Package and is removed when the relationship ends.
 
 ---
 
@@ -346,46 +264,31 @@ The authoritative Request state remains based on its operational condition.
 
 Examples:
 
-```text
-RequestCreated
-RequestValidated
-RequestActivated
-RequestClosed
+```text id="f9j1nx"
+WorkPackageCreated
+WorkPackageActivated
+WorkPackageClosed
 
-RequestOwnerChanged
+WorkPackageOwnerChanged
 
-RequestCustomerChanged
-RequestProductChanged
-RequestWorkPackageChanged
-
-RequestResolved
-RequestRejected
-RequestCancelled
+RequestAddedToWorkPackage
+RequestRemovedFromWorkPackage
 ```
 
-Events represent changes in Request knowledge.
+Events represent changes in Work Package knowledge.
 
-They do not define the workflow used to process the Request.
+They do not define the operational workflow for Requests.
 
 ---
 
 # 11. Related Features
 
-The Request Domain may participate in:
+The Work Package domain may participate in:
 
-* Manage Requests
-* Assign Request Owner
-* Resolve Request
-* Organize Requests into Work Packages
+* Manage Work Packages
+* Manage Work Package Scope
+* Manage Work Package Ownership
 
-Operational workflow such as:
+Projects, Requests, Customers, and Products may consume or reference Work Package information.
 
-* direct resolution;
-* escalation;
-* assessment;
-* estimation;
-* decision;
-* commitment;
-* execution
-
-is not defined by the Request Domain.
+The Work Package domain does not define those domains' workflows.
