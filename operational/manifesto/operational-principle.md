@@ -1,7 +1,7 @@
 ---
 name: ICS Operational Principle
-version: 1
-last-update: 2026-09-03
+version: 2
+last-update: 2026-09-23
 updated by: Drury Yudis Lumenta
 ---
 
@@ -31,7 +31,21 @@ All reports, dashboards, analytics, and summaries are derived from operational s
 
 ---
 
-## 3. Decisions Over Reporting
+## 3. Every Object Has One Authoritative Current State
+
+Every operational object has exactly one authoritative current state.
+
+Operational objects include projects, requests, risks, actions, and capacity plans.
+
+Decisions, dashboards, reports, KPIs, and analytics must derive from this current state.
+
+Reports are views of operational state, not the source of operational truth.
+
+Historical changes must be preserved, but only one current state is considered authoritative at any given time.
+
+---
+
+## 4. Decisions Over Reporting
 
 The goal of the system is not to produce reports.
 
@@ -43,7 +57,7 @@ If an artifact supports no decision, it should not exist.
 
 ---
 
-## 4. Exception-Based Management
+## 5. Exception-Based Management
 
 Leadership attention is limited.
 
@@ -53,7 +67,7 @@ Leadership should not be required to inspect every project, request, team, or ac
 
 ---
 
-## 5. Facts Before Opinions
+## 6. Facts Before Opinions
 
 Operational decisions should be based on observable facts whenever possible.
 
@@ -61,7 +75,7 @@ Opinions, assumptions, and interpretations must be explicitly distinguished from
 
 ---
 
-## 6. Capacity is Finite
+## 7. Capacity is Finite
 
 Every commitment consumes capacity.
 
@@ -77,7 +91,7 @@ Demand exceeding capacity must result in one or more of:
 
 ---
 
-## 7. Effort and Duration are Different
+## 8. Effort and Duration are Different
 
 Effort represents the amount of work required.
 
@@ -87,7 +101,7 @@ Operational planning must not assume they are equivalent.
 
 ---
 
-## 8. Commitments Must Be Explicit
+## 9. Commitments Must Be Explicit
 
 A request is not a commitment.
 
@@ -99,7 +113,7 @@ Work becomes a commitment only after explicit approval and allocation of capacit
 
 ---
 
-## 9. Visibility Must Be Continuous
+## 10. Visibility Must Be Continuous
 
 Operational visibility should not depend on meetings, reports, or manual status collection.
 
@@ -109,7 +123,7 @@ Meetings exist to discuss decisions, not to discover status.
 
 ---
 
-## 10. Trends Matter More Than Snapshots
+## 11. Trends Matter More Than Snapshots
 
 A single measurement has limited value.
 
@@ -119,7 +133,7 @@ The system should preserve historical operational snapshots for comparison and a
 
 ---
 
-## 11. Every Problem Has an Owner
+## 12. Every Problem Has an Owner
 
 Every project, request, risk, blocker, action, and commitment must have a clearly identified owner.
 
@@ -129,7 +143,7 @@ Accountability may not.
 
 ---
 
-## 12. Attention is a Managed Resource
+## 13. Attention is a Managed Resource
 
 Leadership attention is one of the company's most limited resources.
 
@@ -146,7 +160,7 @@ and present them in a prioritized manner.
 
 ---
 
-## 13. Operational Knowledge Must Be Explicit
+## 14. Operational Knowledge Must Be Explicit
 
 Operational knowledge should be stored in structured artifacts whenever practical.
 
@@ -154,7 +168,7 @@ Critical operational knowledge should not depend on memory, verbal communication
 
 ---
 
-## 14. Simplicity Over Process
+## 15. Simplicity Over Process
 
 Processes exist to improve operational effectiveness.
 
