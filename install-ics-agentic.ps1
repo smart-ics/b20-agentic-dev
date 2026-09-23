@@ -3,9 +3,9 @@
   Installs the b20-agentic-dev SDLC framework (agents, skills, manifesto) into OpenCode on Windows.
 
 .DESCRIPTION
-  Copies   agents\*.md   ->  <target>\agents\
-           skills\*\     ->  <target>\skills\
-           manifesto\    ->  <target>\b20-manifesto\   (reference copy only)
+  Copies   development\agents\*.md  ->  <target>\agents\
+           development\skills\*\    ->  <target>\skills\
+           development\manifesto\   ->  <target>\b20-manifesto\   (reference copy only)
 
   Global target : %USERPROFILE%\.config\opencode   (or %XDG_CONFIG_HOME%\opencode if set)
   Project target: <ProjectPath>\.opencode
@@ -15,7 +15,8 @@
   - Anything that would be overwritten or removed is backed up first to
     <target>\.b20-backup\<timestamp>\
   - Idempotent: re-run after every `git pull` to update. Unchanged files are left alone.
-  - Place this script in the repo root (next to the agents\ and skills\ folders).
+  - Place this script in the repo root; content is read from development\
+    (development\agents\, development\skills\, development\manifesto\).
 
 .PARAMETER Scope        Global (default) or Project.
 .PARAMETER ProjectPath  Project root, used with -Scope Project. Default: current directory.
@@ -23,13 +24,13 @@
 .PARAMETER Uninstall    Remove the installed agents/skills/manifesto (backed up first).
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
+  powershell -ExecutionPolicy Bypass -File .\install-ics-agentic.ps1 -DryRun
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\install.ps1
+  powershell -ExecutionPolicy Bypass -File .\install-ics-agentic.ps1
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\install.ps1 -Scope Project -ProjectPath D:\Work\MyProject
+  powershell -ExecutionPolicy Bypass -File .\install-ics-agentic.ps1 -Scope Project -ProjectPath D:\Work\MyProject
 #>
 [CmdletBinding()]
 param(
@@ -43,10 +44,10 @@ $ErrorActionPreference = 'Stop'
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 # ---------------------------------------------------------------- source
-$src = $PSScriptRoot
+$src = Join-Path $PSScriptRoot 'development'
 foreach ($d in 'agents', 'skills') {
     if (-not (Test-Path -LiteralPath (Join-Path $src $d))) {
-        throw "Run this script from the b20-agentic-dev repo root: folder '$d' not found in $src"
+        throw "Run this script from the b20-agentic-dev repo root: folder 'development\$d' not found in $PSScriptRoot"
     }
 }
 $agentFiles = @(Get-ChildItem -LiteralPath (Join-Path $src 'agents') -Filter *.md -File)
