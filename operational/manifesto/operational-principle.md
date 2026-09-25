@@ -205,7 +205,7 @@ Post
 
 Post is the authoritative domain for operational communication, discussion, organizational awareness, and knowledge sharing.
 
-A Post has its own authoritative current state, lifecycle, ownership, comments, reactions, references, visibility rules, and history.
+A Post has its own authoritative current state, lifecycle, accountability, comments, reactions, references, visibility rules, and history.
 
 Posts may reference objects from other domains, including Requests, Work Packages, Products, Customers, and Organization entities, but Posts remain independent operational objects and do not derive their lifecycle from the referenced object.
 

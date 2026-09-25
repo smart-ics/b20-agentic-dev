@@ -83,6 +83,20 @@ A domain may define additional states or a different terminal condition when nec
 
 The system should prefer the simplest lifecycle that provides sufficient operational control.
 
+Each operational domain may define a lifecycle appropriate to its nature; for example, Requests follow the operational work lifecycle, while Posts follow a communication and visibility lifecycle.
+
+Example (illustrative only):
+
+```text
+VISIBLE
+    ↓
+HIDDEN
+    ↓
+ARCHIVED
+```
+
+The example above is illustrative only. The authoritative lifecycle for Post belongs to the Post domain definition.
+
 ---
 
 ## 4. Lifecycle States
@@ -124,7 +138,7 @@ Validation should establish, as applicable:
 
 * what the object represents;
 * its subject or scope;
-* its owner;
+* its accountable authority;
 * relevant relationships;
 * sufficient factual information;
 * whether the object is genuine and relevant to operations.
@@ -415,14 +429,6 @@ Accountability may be delegated.
 Accountability remains explicit.
 
 An active object without an accountable authority is operationally incomplete.
-
-Each operational domain may define a lifecycle appropriate to its nature; for example, Requests follow the operational work lifecycle, while Posts follow a communication‑visibility lifecycle.
-
-```text
-VISIBLE    ↓
-HIDDEN     ↓
-ARCHIVED
-```
 
 ---
 
@@ -727,7 +733,7 @@ For an active object, the minimum practical information is:
 ```text
 Identity
 Current State
-Owner
+Accountable Authority
 Relevant Scope
 Last Update
 ```
