@@ -35,7 +35,7 @@ All reports, dashboards, analytics, and summaries are derived from operational s
 
 Every operational object in a domain has exactly one authoritative current state.
 
-The operational domains are Organization, Customer, Product, Work Package, and Request.
+The operational domains are Organization, Customer, Product, Work Package, Request, and Post.
 
 Derived concepts such as risks, actions, capacity plans, and commitments are not domains. They are derived from domain facts and do not own an independent authoritative state.
 
@@ -192,7 +192,7 @@ The operational system should be as simple as possible while still providing suf
 
 ## 16. Domains Own Facts, Projections Derive From Facts
 
-The Operational System has exactly five operational domains:
+The Operational System has exactly six operational domains:
 
 ```text
 Organization
@@ -200,7 +200,14 @@ Customer
 Product
 Work Package
 Request
+Post
 ```
+
+Post is the authoritative domain for operational communication, discussion, organizational awareness, and knowledge sharing.
+
+A Post has its own authoritative current state, lifecycle, ownership, comments, reactions, references, visibility rules, and history.
+
+Posts may reference objects from other domains, including Requests, Work Packages, Products, Customers, and Organization entities, but Posts remain independent operational objects and do not derive their lifecycle from the referenced object.
 
 Domains own operational facts. Only domains have an authoritative current state and a lifecycle.
 
