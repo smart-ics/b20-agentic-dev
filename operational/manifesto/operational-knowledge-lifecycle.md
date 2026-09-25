@@ -393,11 +393,11 @@ The lifecycle preserves all three, but they serve different purposes.
 
 ---
 
-## 10. Ownership
+## 10. Accountability
 
-Every active operational object must have a clearly identified owner.
+Every active operational object must have an explicitly identified accountable authority appropriate to its nature.
 
-The owner is responsible for maintaining the correctness of the operational state.
+The accountable authority is responsible for maintaining the correctness of the operational state.
 
 Examples:
 
@@ -410,11 +410,19 @@ Request      → Request Owner
 Post         → Author and/or moderation authority
 ```
 
-Ownership may be delegated.
+Accountability may be delegated.
 
 Accountability remains explicit.
 
-An active object without an owner is operationally incomplete.
+An active object without an accountable authority is operationally incomplete.
+
+Each operational domain may define a lifecycle appropriate to its nature; for example, Requests follow the operational work lifecycle, while Posts follow a communication‑visibility lifecycle.
+
+```text
+VISIBLE    ↓
+HIDDEN     ↓
+ARCHIVED
+```
 
 ---
 
