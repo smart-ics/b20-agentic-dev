@@ -3,8 +3,8 @@
 Title: Request Domain
 Code: REQUEST
 Artifact: DOMAIN
-Version: 1.0
-LastUpdated: 2026-09-23
+Version: 1.1
+LastUpdated: 2026-09-26
 ---
 
 # 1. Business Overview
@@ -366,26 +366,3 @@ RequestCancelled
 Events represent changes in Request knowledge.
 
 They do not define the workflow used to process the Request.
-
----
-
-# 11. Related Features
-
-The Request Domain may participate in:
-
-* Manage Requests
-* Assign Request Owner
-* Resolve Request
-* Organize Requests into Work Packages
-
-Operational workflow such as:
-
-* direct resolution;
-* escalation;
-* assessment;
-* estimation;
-* decision;
-* commitment;
-* execution
-
-is not defined by the Request Domain.

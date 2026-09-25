@@ -2,7 +2,7 @@
 Title: ICS Organization Domain
 Code: ORG
 Artifact: DOMAIN
-Version: 2.0
+Version: 2.1
 LastUpdated: 2026-09-26
 ---
 
@@ -539,32 +539,3 @@ ResponsibilityAssignmentEnded
 These events describe organizational state changes.
 
 They do not define operational workflow.
-
----
-
-# 10. Related Features
-
-The Organization domain participates in:
-
-```text
-FT-02 Organization
- ├─ FT-02-01 People
- ├─ FT-02-02 Teams
- ├─ FT-02-03 Roles
- └─ FT-02-04 Responsibilities
-```
-
-The Organization domain also supplies authoritative references to:
-
-```text
-FT-03 Customer
-FT-04 Product
-FT-05 Request
-FT-06 Work Package
-FT-07 Post
-FT-08 Feed
-FT-09 Operational Control
-FT-10 Platform
-```
-
-These features consume Organization knowledge but do not redefine it.

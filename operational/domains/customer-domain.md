@@ -3,8 +3,8 @@
 Title: Customer Domain
 Code: CUSTOMER
 Artifact: DOMAIN
-Version: 1.0
-LastUpdated: 2026-09-23
+Version: 1.1
+LastUpdated: 2026-09-26
 ---
 
 # 1. Business Overview
@@ -308,17 +308,3 @@ RelationshipStatusChanged
 Events represent changes in customer state.
 
 Events do not define operational workflows.
-
----
-
-# 12. Related Features
-
-The Customer Domain may participate in:
-
-* Manage Customer
-* Manage Customer Contact
-* Manage Customer Ownership
-
-The domain supplies customer information to Projects and Requests.
-
-The domain does not execute operational work.

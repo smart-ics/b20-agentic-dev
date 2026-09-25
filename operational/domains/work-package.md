@@ -3,8 +3,8 @@
 Title: Work Package Domain
 Code: WORK-PACKAGE
 Artifact: DOMAIN
-Version: 1.0
-LastUpdated: 2026-09-23
+Version: 1.1
+LastUpdated: 2026-09-26
 ---
 
 # 1. Business Overview
@@ -278,17 +278,3 @@ RequestRemovedFromWorkPackage
 Events represent changes in Work Package knowledge.
 
 They do not define the operational workflow for Requests.
-
----
-
-# 11. Related Features
-
-The Work Package domain may participate in:
-
-* Manage Work Packages
-* Manage Work Package Scope
-* Manage Work Package Ownership
-
-Projects, Requests, Customers, and Products may consume or reference Work Package information.
-
-The Work Package domain does not define those domains' workflows.

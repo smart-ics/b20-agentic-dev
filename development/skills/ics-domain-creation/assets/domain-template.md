@@ -27,9 +27,3 @@ Do not model FEATUREs in this section. User-facing business capabilities that de
 # 8. State Machines & Lifecycles
 
 # 9. Domain Events
-
-# 10. Related Features
-
-Reference only the FEATUREs that consume or participate in this domain.
-
-Do not describe workflows or operational flows. Orchestration and operational flow belong to FEATURE.

@@ -3,8 +3,8 @@
 Title: Product Domain
 Code: PRODUCT
 Artifact: DOMAIN
-Version: 2.0
-LastUpdated: 2026-09-23
+Version: 2.1
+LastUpdated: 2026-09-26
 ---
 
 # 1. Business Overview
@@ -207,10 +207,3 @@ ProductOwnerChanged
 
 Events represent changes in Product state.
 
----
-
-# 11. Related Features
-
-* Manage Product
-
-The Product Domain supplies Product information to Projects and Requests.

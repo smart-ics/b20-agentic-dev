@@ -12,12 +12,14 @@ metadata:
 
 - Create a new DOMAIN artifact
 - Update an existing DOMAIN artifact
+- Define Business Overview
 - Define Ubiquitous Language
 - Define Domain Capabilities
 - Define Actors & Roles
-- Define Domain Objects and Aggregates
+- Define Domain Objects
+- Define Aggregates
 - Define Business Rules
-- Define State Machines and Lifecycles
+- Define State Machines & Lifecycles
 - Define Domain Events
 
 ## Classification Rules
@@ -46,6 +48,7 @@ DOMAIN owns business knowledge only. DOMAIN must not own:
 - Domain Orchestration
 - Acceptance Criteria
 - Technical Realization
+- Reference Features (Features consume Domains, not the other way around; traceability belongs in Feature artifacts)
 - SOPs
 - Design software architecture
 - Define APIs
@@ -53,7 +56,7 @@ DOMAIN owns business knowledge only. DOMAIN must not own:
 - Define UI or screens
 - Define operational procedures
 
-User Outcomes, Outcome Flows, Outcome Boundaries, and Domain Orchestration belong to FEATURE.
+User Outcomes, Outcome Flows, Outcome Boundaries, Domain Orchestration, and Feature traceability belong to FEATURE.
 
 Technical Realization belongs to ARCHITECTURE.
 
@@ -61,8 +64,9 @@ SOPs belong to Generated Knowledge.
 
 ## Artifact Ownership
 
-DOMAIN owns:
+DOMAIN definitions remain focused exclusively on:
 
+- Business Overview
 - Ubiquitous Language
 - Domain Capabilities
 - Actors & Roles
@@ -72,7 +76,14 @@ DOMAIN owns:
 - State Machines & Lifecycles
 - Domain Events
 
-A FEATURE may involve one or more DOMAINs, and a DOMAIN may participate in multiple FEATUREs. FEATURE owns the orchestration between domains. DOMAIN must not define workflows, outcome flows, user outcomes, or orchestration.
+### Relationship to FEATUREs
+
+- Domain is a foundational business knowledge artifact.
+- Features consume Domains, not the other way around.
+- A Domain must remain valid even when Features are added, removed, merged, or renamed.
+- Referencing Features from Domains creates an undesirable dependency from Domain → Feature.
+- Feature traceability belongs exclusively in Feature artifacts, not Domain artifacts.
+- DOMAIN must not reference Features, define workflows, outcome flows, user outcomes, or domain orchestration.
 
 Domain Capabilities describe the responsibilities and services provided by the domain (for example: Admission Management, Bed Management, Inventory Management). They are not user outcomes. End-to-end user outcomes such as Process Admission, Transfer Bed, or Discharge Patient belong to FEATURE and must not be modeled in DOMAIN.
 
@@ -84,7 +95,9 @@ FEATURE does not require an existing DOMAIN artifact.
 
 DOMAIN does not require an existing FEATURE artifact.
 
-When both exist, they must remain aligned.
+A DOMAIN is foundational and never references FEATUREs. It remains valid regardless of whether FEATUREs are defined, added, modified, or removed.
+
+When both exist, they must remain aligned through FEATURE references to DOMAIN capabilities.
 
 A DOMAIN may be created, updated, refined, or formalized
 without any existing FEATURE artifact.
