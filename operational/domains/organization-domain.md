@@ -1,58 +1,96 @@
 ---
-
 Title: ICS Organization Domain
 Code: ORG
 Artifact: DOMAIN
-Version: 1.0
-LastUpdated: 2026-09-23
+Version: 2.0
+LastUpdated: 2026-09-26
 ---
 
 # 1. Business Overview
 
-The Organization domain defines the organizational structure of ICS required to identify people, teams, roles, and responsibilities.
+The Organization domain defines the authoritative organizational knowledge required by the ICS Operational System.
 
-The domain provides authoritative organizational knowledge used by other operational domains.
+The domain identifies:
+
+- who participates in the organization;
+- how people are grouped into teams;
+- which organizational roles exist;
+- which responsibilities are recognized by the organization;
+- who currently holds those responsibilities.
+
+The Organization domain exists to provide a stable organizational reference for all operational activities.
 
 The domain answers:
 
-* Who belongs to ICS?
-* What organizational unit does a person belong to?
-* What role does a person hold?
-* What responsibilities are assigned to a person or organizational unit?
+- Who is part of ICS?
+- Which teams exist?
+- Which organizational roles exist?
+- Which responsibilities exist?
+- Who is responsible for what?
+- What is the current organizational structure?
+- What was the historical organizational structure?
 
-The Organization domain does not define how work is performed, how requests are assigned, or how management monitors operations.
+The Organization domain does **not** manage:
+
+- Human Resources
+- Recruitment
+- Payroll
+- Attendance
+- Leave Management
+- Compensation
+- Employee Evaluation
+- Performance Appraisal
+- Request Assignment
+- Work Execution
+- Operational Workflow
+
+Organization provides authoritative organizational knowledge only.
 
 ---
 
 # 2. Ubiquitous Language
 
-| Term                | Meaning                                                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Organization        | The company structure represented by the Operational System.                                                       |
-| Person              | An individual who participates in the organization.                                                                |
-| Team                | A group of people organized around a shared responsibility or area of work.                                        |
-| Role                | A defined responsibility or position that a person may hold within the organization.                               |
-| Responsibility      | An area of accountability assigned to a person, team, or role.                                                     |
-| Organizational Unit | A structural grouping within the organization. A Team is the primary practical organizational unit in this domain. |
-| Membership          | The relationship between a Person and an organizational unit.                                                      |
-| Assignment          | The relationship between a Person and a Role or Responsibility.                                                    |
+| Term | Meaning |
+|--------|---------|
+| Organization | The company represented by the Operational System. |
+| Person | An individual participating in organizational operations. |
+| Team | A stable organizational group with a defined purpose. |
+| Role | A recognized organizational position. |
+| Responsibility | A defined area of accountability recognized by the organization. |
+| Membership | The relationship between a Person and a Team. |
+| Role Assignment | The relationship between a Person and a Role. |
+| Responsibility Assignment | The relationship between a Person or Team and a Responsibility. |
+| Active | Currently valid and recognized. |
+| Inactive | No longer active but preserved for history. |
+| Ended | A relationship that previously existed but is no longer active. |
+
+Responsibility is an organizational accountability concept.
+
+Responsibility is not:
+
+- a task;
+- a workflow;
+- a work package;
+- an operational assignment.
 
 ---
 
 # 3. Domain Capabilities
 
-The Organization domain provides these responsibilities:
+The Organization domain provides the following capabilities:
 
-* Organization Structure Management
-* Person Management
-* Team Management
-* Role Management
-* Responsibility Management
-* Organizational Membership Management
+- Organization Management
+- Person Management
+- Team Management
+- Role Management
+- Responsibility Management
+- Membership Management
+- Role Assignment Management
+- Responsibility Assignment Management
 
-These capabilities define the knowledge maintained by the domain.
+These capabilities maintain authoritative organizational knowledge.
 
-They do not define operational workflows such as assigning a Request, managing a Project, or evaluating Performance.
+They do not define operational workflows.
 
 ---
 
@@ -62,34 +100,37 @@ They do not define operational workflows such as assigning a Request, managing a
 
 ### Management
 
-Maintains or approves organizational structure and responsibilities.
+Responsible for defining organizational structure and accountability.
 
 ### Administrator
 
-Maintains organizational master data.
+Responsible for maintaining organizational master data.
 
 ### Person
 
-Represents an individual participating in the organization.
+Represents an individual participant in the organization.
 
-## Roles
+---
 
-Roles are organizational responsibilities represented in the domain.
+## Organizational Roles
 
 Examples:
 
 ```text
 Board Director
 Chief Operating Officer
+Product Owner
 Project Manager
 Programmer
 Trainer
 Implementor
 ```
 
-A Person may hold one or more Roles.
+Roles represent organizational positions.
 
-A Role does not imply a workflow or a specific operational task.
+Roles do not automatically grant ownership of Requests, Work Packages, Products, or Customers.
+
+Such ownership belongs to their respective domains.
 
 ---
 
@@ -97,7 +138,7 @@ A Role does not imply a workflow or a specific operational task.
 
 ## Organization
 
-Represents the company represented by the system.
+Represents the organizational entity managed by the system.
 
 Attributes:
 
@@ -107,13 +148,13 @@ Name
 Status
 ```
 
-ICS normally has one primary Organization in the Operational System.
+Typically there is one Organization within the system.
 
 ---
 
 ## Person
 
-Represents an individual participating in ICS.
+Represents an individual participating in organizational activities.
 
 Attributes:
 
@@ -123,13 +164,19 @@ Name
 Status
 ```
 
-A Person may belong to one or more Teams and may hold one or more Roles.
+A Person may:
+
+- belong to multiple Teams;
+- hold multiple Roles;
+- carry multiple Responsibilities.
+
+The Organization domain does not maintain HR information.
 
 ---
 
 ## Team
 
-Represents an organizational group with a defined area of responsibility.
+Represents a stable organizational group.
 
 Attributes:
 
@@ -147,13 +194,15 @@ Implementation
 Management
 ```
 
-Team structure must represent actual organizational responsibility rather than arbitrary grouping.
+A Team must represent a real organizational structure.
+
+Temporary collaboration belongs to Work Package.
 
 ---
 
 ## Role
 
-Represents a recognized organizational role.
+Represents a recognized organizational position.
 
 Attributes:
 
@@ -167,17 +216,20 @@ Examples:
 
 ```text
 Programmer
-Project Manager
 Trainer
+Product Owner
+Project Manager
 COO
 Board Director
 ```
+
+Roles describe positions, not operational assignments.
 
 ---
 
 ## Responsibility
 
-Represents an area of organizational accountability.
+Represents a recognized area of accountability.
 
 Attributes:
 
@@ -192,25 +244,26 @@ Examples:
 
 ```text
 Product Ownership
-Project Management
+Customer Relationship
 Software Development
 Customer Implementation
 Operational Management
 ```
 
-Responsibility describes accountability.
+Responsibilities define accountability.
 
-It does not describe a procedure.
+They do not define workflow.
 
 ---
 
 ## Membership
 
-Represents a Person's membership in a Team.
+Represents participation of a Person within a Team.
 
 Attributes:
 
 ```text
+MembershipId
 PersonId
 TeamId
 Status
@@ -218,15 +271,18 @@ StartDate
 EndDate
 ```
 
+Membership preserves organizational history.
+
 ---
 
 ## Role Assignment
 
-Represents a Person's assignment to a Role.
+Represents assignment of a Role to a Person.
 
 Attributes:
 
 ```text
+RoleAssignmentId
 PersonId
 RoleId
 Status
@@ -234,25 +290,45 @@ StartDate
 EndDate
 ```
 
+A Person may hold multiple Roles simultaneously.
+
+---
+
+## Responsibility Assignment
+
+Represents assignment of Responsibility to a Person or Team.
+
+Attributes:
+
+```text
+ResponsibilityAssignmentId
+ResponsibilityId
+PersonId
+TeamId
+Status
+StartDate
+EndDate
+```
+
+A Responsibility Assignment identifies current accountability.
+
+It does not define how work is performed.
+
 ---
 
 # 6. Aggregates
 
 ## Organization Aggregate
 
-The Organization aggregate represents the authoritative organizational identity.
-
 ```text
 Organization
 ```
 
-The Organization aggregate owns organizational existence and identity.
+The Organization aggregate owns organizational identity.
 
 ---
 
 ## Person Aggregate
-
-The Person aggregate represents an individual and the organizational relationships that are intrinsic to that person.
 
 ```text
 Person
@@ -260,7 +336,7 @@ Person
 └── Role Assignments
 ```
 
-Team and Role are referenced organizational concepts and are not embedded as copies inside Person.
+The Person aggregate owns relationships intrinsic to a Person.
 
 ---
 
@@ -270,7 +346,7 @@ Team and Role are referenced organizational concepts and are not embedded as cop
 Team
 ```
 
-Represents an independently managed organizational group.
+Represents a stable organizational grouping.
 
 ---
 
@@ -280,7 +356,7 @@ Represents an independently managed organizational group.
 Role
 ```
 
-Represents an independently recognized organizational role.
+Represents a recognized organizational position.
 
 ---
 
@@ -290,33 +366,64 @@ Represents an independently recognized organizational role.
 Responsibility
 ```
 
-Represents an independently recognized area of accountability.
+Represents a recognized area of accountability.
+
+Responsibility Assignments are relationships to that responsibility.
 
 ---
 
 # 7. Business Rules
 
-1. Every Person must have a unique identity within the Organization.
+1. The Organization must have a unique identity.
 
-2. A Person may belong to one or more Teams when organizationally required.
+2. Every Person must have a unique identity.
 
-3. A Person may hold one or more Roles when organizationally required.
+3. A Person may belong to multiple Teams.
 
-4. A Role must represent an actual organizational responsibility or position.
+4. A Person may hold multiple Roles.
 
-5. A Team must represent an actual organizational grouping with a meaningful responsibility.
+5. A Team must represent a stable organizational structure.
 
-6. A Responsibility must represent an area of accountability and must not be used as a workflow definition.
+6. A Team must not be used as a temporary operational grouping.
 
-7. Organizational relationships must have an explicit status.
+7. Temporary operational grouping belongs to Work Package.
 
-8. Historical membership and role assignments must not be silently overwritten when the relationship changes.
+8. A Role must represent a recognized organizational position.
 
-9. A Person may become inactive without being removed from historical organizational records.
+9. A Responsibility must represent an area of accountability.
 
-10. Removing a Person from an active organizational relationship does not delete historical operational ownership references.
+10. A Responsibility must not be used as a workflow definition.
 
-11. Organization data is authoritative for organizational identity and responsibility. Other domains reference it rather than redefining the same person, team, or role independently.
+11. Organizational relationships must preserve history.
+
+12. Historical relationships must not be silently overwritten.
+
+13. Inactive Persons remain valid historical references.
+
+14. Inactive Teams remain valid historical references.
+
+15. Inactive Roles remain valid historical references.
+
+16. Inactive Responsibilities remain valid historical references.
+
+17. Organization is the authoritative source of:
+    - People
+    - Teams
+    - Roles
+    - Responsibilities
+    - Organizational Relationships
+
+18. Other domains must reference organizational entities rather than redefining them.
+
+19. Organization does not determine Request ownership.
+
+20. Organization does not determine Work Package ownership.
+
+21. Organization does not determine Product ownership.
+
+22. Organization does not determine Customer ownership.
+
+23. Organization must remain focused on organizational knowledge and must not evolve into an HR system.
 
 ---
 
@@ -330,10 +437,6 @@ ACTIVE
 INACTIVE
 ```
 
-A Person becomes `INACTIVE` when they are no longer an active participant in the Organization.
-
-Historical references to the Person remain valid.
-
 ---
 
 ## Team Lifecycle
@@ -343,10 +446,6 @@ ACTIVE
    ↓
 INACTIVE
 ```
-
-A Team may become inactive when it is no longer an active organizational unit.
-
-Historical references remain valid.
 
 ---
 
@@ -358,10 +457,6 @@ ACTIVE
 INACTIVE
 ```
 
-A Role may become inactive when it is no longer used by the Organization.
-
-Historical assignments remain valid.
-
 ---
 
 ## Responsibility Lifecycle
@@ -371,8 +466,6 @@ ACTIVE
    ↓
 INACTIVE
 ```
-
-A Responsibility may become inactive when the Organization no longer recognizes it as an active area of accountability.
 
 ---
 
@@ -384,7 +477,7 @@ ACTIVE
 ENDED
 ```
 
-Membership represents a relationship, not an organizational entity.
+Membership history must be preserved.
 
 ---
 
@@ -396,17 +489,28 @@ ACTIVE
 ENDED
 ```
 
-Role Assignment represents a relationship between Person and Role.
+Role Assignment history must be preserved.
+
+---
+
+## Responsibility Assignment Lifecycle
+
+```text
+ACTIVE
+   ↓
+ENDED
+```
+
+Responsibility Assignment history must be preserved.
 
 ---
 
 # 9. Domain Events
 
-The Organization domain may produce events representing significant changes to organizational knowledge.
-
 Examples:
 
 ```text
+PersonCreated
 PersonActivated
 PersonInactivated
 
@@ -422,29 +526,45 @@ ResponsibilityCreated
 ResponsibilityActivated
 ResponsibilityInactivated
 
-TeamMembershipStarted
-TeamMembershipEnded
+MembershipStarted
+MembershipEnded
 
-RoleAssignmentStarted
+RoleAssigned
 RoleAssignmentEnded
+
+ResponsibilityAssigned
+ResponsibilityAssignmentEnded
 ```
 
-Events represent changes in organizational state.
+These events describe organizational state changes.
 
-They do not define downstream workflows or operational processes.
+They do not define operational workflow.
 
 ---
 
 # 10. Related Features
 
-The Organization domain may participate in Features that require organizational knowledge, including:
+The Organization domain participates in:
 
-* Manage Organization
-* Manage People
-* Manage Teams
-* Manage Roles
-* Manage Responsibilities
+```text
+FT-02 Organization
+ ├─ FT-02-01 People
+ ├─ FT-02-02 Teams
+ ├─ FT-02-03 Roles
+ └─ FT-02-04 Responsibilities
+```
 
-These references identify consuming Features only.
+The Organization domain also supplies authoritative references to:
 
-Operational workflows, request assignment, project execution, performance analysis, and management reporting are not defined here.
+```text
+FT-03 Customer
+FT-04 Product
+FT-05 Request
+FT-06 Work Package
+FT-07 Post
+FT-08 Feed
+FT-09 Operational Control
+FT-10 Platform
+```
+
+These features consume Organization knowledge but do not redefine it.
