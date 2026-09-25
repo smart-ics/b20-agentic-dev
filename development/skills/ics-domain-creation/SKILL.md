@@ -13,20 +13,38 @@ metadata:
 - Create a new DOMAIN artifact
 - Update an existing DOMAIN artifact
 - Define Ubiquitous Language
-- Define Domain Capabilities (domain responsibilities and services)
+- Define Domain Capabilities
 - Define Actors & Roles
 - Define Domain Objects and Aggregates
 - Define Business Rules
 - Define State Machines and Lifecycles
 - Define Domain Events
 
+## Classification Rules
+
+DOMAIN asks:
+
+"What capability does this part of the business provide?"
+
+FEATURE asks:
+
+"What valuable outcome can a user achieve?"
+
+If the knowledge can exist independently of a specific user outcome,
+it belongs to DOMAIN.
+
+If the knowledge describes a user achieving a meaningful result,
+it belongs to FEATURE.
+
 ## What I do not do
 
-DOMAIN owns business knowledge only. DOMAIN does not own:
+DOMAIN owns business knowledge only. DOMAIN must not own:
 
-- Business Outcomes
-- Operational Flows
+- User Outcomes
+- Outcome Flows
+- Outcome Boundaries
 - Domain Orchestration
+- Acceptance Criteria
 - Technical Realization
 - SOPs
 - Design software architecture
@@ -35,7 +53,7 @@ DOMAIN owns business knowledge only. DOMAIN does not own:
 - Define UI or screens
 - Define operational procedures
 
-Business Outcomes, Operational Flows, and Domain Orchestration belong to FEATURE.
+User Outcomes, Outcome Flows, Outcome Boundaries, and Domain Orchestration belong to FEATURE.
 
 Technical Realization belongs to ARCHITECTURE.
 
@@ -46,7 +64,7 @@ SOPs belong to Generated Knowledge.
 DOMAIN owns:
 
 - Ubiquitous Language
-- Domain Capabilities (domain responsibilities and services)
+- Domain Capabilities
 - Actors & Roles
 - Domain Objects
 - Aggregates
@@ -54,9 +72,39 @@ DOMAIN owns:
 - State Machines & Lifecycles
 - Domain Events
 
-A FEATURE may involve one or more DOMAINs, and a DOMAIN may participate in multiple FEATUREs. FEATURE owns the orchestration between domains. DOMAIN must not define workflows, operational flows, business outcomes, or orchestration.
+A FEATURE may involve one or more DOMAINs, and a DOMAIN may participate in multiple FEATUREs. FEATURE owns the orchestration between domains. DOMAIN must not define workflows, outcome flows, user outcomes, or orchestration.
 
-Domain Capabilities describe the responsibilities and services provided by the domain (for example: Admission Management, Bed Management, Inventory Management). They are not user-facing business capabilities. End-to-end capabilities such as Process Admission, Transfer Bed, or Discharge Patient belong to FEATURE and must not be modeled in DOMAIN.
+Domain Capabilities describe the responsibilities and services provided by the domain (for example: Admission Management, Bed Management, Inventory Management). They are not user outcomes. End-to-end user outcomes such as Process Admission, Transfer Bed, or Discharge Patient belong to FEATURE and must not be modeled in DOMAIN.
+
+## Independence Rule
+
+DOMAIN and FEATURE are independently creatable artifacts.
+
+FEATURE does not require an existing DOMAIN artifact.
+
+DOMAIN does not require an existing FEATURE artifact.
+
+When both exist, they must remain aligned.
+
+A DOMAIN may be created, updated, refined, or formalized
+without any existing FEATURE artifact.
+
+Examples:
+
+- Discovery of previously undocumented business knowledge
+- Refactoring of domain boundaries
+- Formalization of existing business capability
+- Knowledge cleanup
+
+## Retrofit Product Reality
+
+Business capabilities may already exist in the product even when
+their DOMAIN artifacts have not yet been formally documented.
+
+User outcomes may already exist even when DOMAIN knowledge remains incomplete.
+
+Agents must prioritize accurate knowledge capture and alignment,
+not artifact completeness.
 
 ## Output
 
