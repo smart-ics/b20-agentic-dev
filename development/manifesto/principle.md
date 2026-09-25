@@ -42,7 +42,7 @@ DOMAIN owns:
 
 DOMAIN is implementation independent.
 
-DOMAIN does not own user outcomes, cross-domain orchestration, operational workflows, or technical realization.
+DOMAIN does not own user outcomes, cross-domain orchestration, outcome flows, or technical realization.
 
 ---
 
@@ -54,14 +54,15 @@ FEATURE answers: "What valuable outcome can a user achieve?"
 
 FEATURE owns:
 
-* User outcome
-* User-facing behavior
-* Operational flow
-* Participating domains
-* Domain orchestration
-* Feature-specific constraints
-* Feature-specific exceptions
-* Acceptance criteria
+* User Outcome
+* Outcome Boundary
+* User-Facing Behavior
+* Outcome Flow
+* Participating Domains
+* Domain Orchestration
+* Feature-Specific Constraints
+* Feature-Specific Exceptions
+* Acceptance Criteria
 
 FEATURE is implementation independent.
 
@@ -71,10 +72,24 @@ FEATURE does not own domain capabilities, domain business rules, domain lifecycl
 
 ## Feature Boundary
 
-A FEATURE represents a complete user outcome and must have:
+A FEATURE represents a complete user outcome and defines an Outcome Boundary.
 
-* Outcome Start
-* Outcome End
+Outcome Boundary defines:
+
+- Outcome Start
+- Outcome End
+
+A FEATURE is complete when the defined outcome has been achieved.
+
+The purpose of the boundary is to define the scope of the user outcome.
+
+It is not a technical boundary.
+
+It is not a screen boundary.
+
+It is not a component boundary.
+
+It is not an implementation boundary.
 
 A FEATURE is not:
 
@@ -104,7 +119,7 @@ An ARCHITECTURE realizes exactly one FEATURE or BUG correction. ARCHITECTURE rea
 
 Missing ARCHITECTURE artifact is a signal to evaluate architecture applicability, not an instruction to create ARCHITECTURE.
 An ARCHITECTURE artifact is required only when the change requires formal technical target-state definition.
-If an ARCHITECTURE artifact already exists for the affected capability, it remains authoritative.
+If an ARCHITECTURE artifact already exists for the affected feature, it remains authoritative.
 
 ---
 
@@ -242,7 +257,7 @@ Whenever possible, Generated Knowledge should be regenerated from DOMAIN, FEATUR
 
 ## Completion
 
-A capability is considered fully delivered when DOMAIN, FEATURE, and ARCHITECTURE (if applicable) accurately describe the implemented solution.
+A FEATURE is considered fully delivered when DOMAIN, FEATURE, and ARCHITECTURE (if applicable) accurately describe the implemented solution.
 If implementation materially changes architectural knowledge, ARCHITECTURE must be created or updated before the delivery is considered complete. If the implementation does not change architectural knowledge, no new ARCHITECTURE artifact is required.
 
 For delivery purposes, IMPLEMENTATION-PLAN is COMPLETED only when every slice
