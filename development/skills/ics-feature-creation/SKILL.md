@@ -83,6 +83,24 @@ A FEATURE may involve one or more DOMAINs.
 
 A DOMAIN may participate in multiple FEATUREs.
 
+### Participating Domains
+
+Participating Domains identify the business capabilities involved in achieving the user outcome.
+
+A Participating Domain may be:
+
+- An existing DOMAIN artifact
+- An undocumented existing business capability
+- A new DOMAIN candidate discovered during Feature creation
+
+Participating Domains represent required business capabilities.
+
+They do not represent a dependency on existing DOMAIN documents.
+
+The FEATURE references capabilities.
+
+The DOMAIN artifact documents capabilities.
+
 ## Independence Rule
 
 DOMAIN and FEATURE are independently creatable artifacts.
@@ -93,25 +111,38 @@ DOMAIN does not require an existing FEATURE artifact.
 
 When both exist, they must remain aligned.
 
+Participating Domains do not require existing DOMAIN artifacts.
+
+FEATURE creation must never be blocked by missing DOMAIN documentation.
+
 A FEATURE may be created even when one or more participating DOMAIN
 artifacts do not yet exist.
 
-Missing DOMAIN definitions must never block FEATURE creation.
+When a required DOMAIN artifact does not exist:
 
-When a required domain is missing:
-
-Identify the missing domain as:
-
-- Existing but undocumented, or
-- New domain candidate
-
-Do not fabricate a full DOMAIN definition inside the FEATURE artifact.
-
-Do not refuse to create the FEATURE.
+- Do not refuse FEATURE creation.
+- Do not fabricate a complete DOMAIN definition.
+- Do not automatically create a DOMAIN artifact unless explicitly requested.
+- Record the capability as an undocumented domain or new domain candidate.
+- Continue creating the FEATURE focused on the user outcome.
 
 Do not require DOMAIN completion before FEATURE creation.
 
 The FEATURE must remain focused on the user outcome.
+
+### Example
+
+FEATURE:
+Doctor Can Complete Discharge Summary
+
+Participating Domains:
+
+- Clinical Documentation (existing DOMAIN artifact)
+- Medical Record Management (existing business capability, no DOMAIN artifact yet)
+
+FEATURE creation proceeds normally.
+
+Missing DOMAIN documentation is recorded as knowledge debt, not a blocker.
 
 ## Retrofit Product Reality
 
