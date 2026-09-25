@@ -39,9 +39,16 @@ FEASIBILITY-ASSESSMENT
         ↓
 GAP CLOSURE
         ↓
-ARCHITECTURE UPDATE
+ARCHITECTURE APPLICABILITY
+├── ARCHITECTURE-REQUIRED
+│       ↓
+│   ARCHITECTURE UPDATE
+│       ↓
+│      PLANNING
+│
+└── ARCHITECTURE-NOT-REQUIRED
         ↓
-PLANNING
+     PLANNING
         ↓
 IMPLEMENTATION
         ↓
@@ -67,9 +74,9 @@ ISSUE (BUG)
         ↓
 BUG-INVESTIGATION
         ↓
-ARCHITECTURE UPDATE
-        ↓
-PLANNING
+ARCHITECTURE APPLICABILITY
+├── REQUIRED → ARCHITECTURE UPDATE → PLANNING
+└── NOT REQUIRED → PLANNING
         ↓
 IMPLEMENTATION
         ↓
@@ -139,9 +146,9 @@ ISSUE (BUG)
         ↓
 BUG-INVESTIGATION
         ↓
-ARCHITECTURE UPDATE
-        ↓
-PLANNING
+ARCHITECTURE APPLICABILITY
+├── REQUIRED → ARCHITECTURE UPDATE → PLANNING
+└── NOT REQUIRED → PLANNING
         ↓
 IMPLEMENTATION
         ↓
@@ -215,7 +222,7 @@ Rules:
 * Roles are executed by agents through their corresponding skills.
 * An agent acts under exactly one role per workflow step.
 * Implementation and Review of the same slice must be performed by different agent executions.
-* DOMAIN and FEATURE skills may be executed by an analyst or an architect acting as Analyst.
+* DOMAIN and FEATURE skills may be executed by an ica-analyst or an ica-architect acting as Analyst.
 * The Deployer role is defined by the Deployment stage and does not require a dedicated skill.
 
 ### Knowledge Ownership
@@ -426,13 +433,13 @@ IMPLEMENTED
 
 GO
 
-* Granted by: Reviewer
+* Granted by: ica-reviewer
 * Condition: no BLOCKER or MAJOR findings, and slice scope, architecture compliance, and dependencies are satisfied
 * Unlocks: the slice counts toward plan completion
 
 NO-GO
 
-* Granted by: Reviewer
+* Granted by: ica-reviewer
 * Condition: at least one BLOCKER or MAJOR finding exists
 * Effect: the slice returns to Implementation for remediation and re-review. NO-GO stays inside the Implementation ↔ Review execution loop: it does not create an ISSUE, does not invoke BUG-INVESTIGATION, and is not testing.
 
@@ -445,7 +452,7 @@ COMPLETED
 
 TEST PASSED
 
-* Granted by: Tester
+* Granted by: ica-tester
 * Condition: every test case in TEST-EXECUTION is PASS, or every FAIL has been resolved through an ISSUE and retested as PASS
 * Unlocks: Deployment
 
@@ -587,7 +594,7 @@ Rules:
 
 * ARCHITECTURE owns and represents the approved target state.
 * All approved decisions must be reflected in ARCHITECTURE.
-* Planning must not begin until ARCHITECTURE has been updated.
+* Planning must not begin until ARCHITECTURE has been updated, unless Architecture Applicability is ARCHITECTURE-NOT-REQUIRED.
 
 ---
 
@@ -600,7 +607,7 @@ Create an implementation plan that transforms the current system into the target
 Inputs:
 
 * FEATURE
-* ARCHITECTURE
+* ARCHITECTURE (if ARCHITECTURE-REQUIRED)
 * Current Codebase
 
 Outputs:
@@ -617,9 +624,10 @@ Planner responsibilities:
 
 Rules:
 
-* Planning must use ARCHITECTURE as the source of target-state truth.
+* Planning must use ARCHITECTURE as the source of target-state truth, if ARCHITECTURE-REQUIRED.
+* If ARCHITECTURE-NOT-REQUIRED, planning must explicitly record that implementation relies on existing technical structure and approved feasibility decisions.
 * Planning must use the current codebase as the source of current-state truth.
-* Planning must consume the updated ARCHITECTURE, not unresolved feasibility findings.
+* Planning must consume the updated ARCHITECTURE (if applicable), not unresolved feasibility findings.
 
 ---
 
@@ -642,7 +650,7 @@ Outputs:
 Rules:
 
 * Implementation must follow ARCHITECTURE.
-* Implementers must not invent business or architecture decisions.
+* ica-implementers must not invent business or architecture decisions.
 
 ---
 

@@ -17,6 +17,7 @@ Rules:
 * Permanent Knowledge must remain up-to-date with the implemented system.
 * Permanent Knowledge is the source of truth for business knowledge, business outcomes, and technical realization.
 * When the implemented system changes, the affected Permanent Knowledge artifacts must be updated accordingly.
+* If implementation materially changes architectural knowledge, ARCHITECTURE must be created or updated. If it does not, no new ARCHITECTURE artifact is required.
 * Agents must not treat outdated Permanent Knowledge as authoritative.
 * Permanent Knowledge must not be physically deleted as part of normal workflow.
 * Historical versions are preserved by Git rather than inside the artifact itself.

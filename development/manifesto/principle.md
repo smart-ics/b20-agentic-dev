@@ -75,6 +75,10 @@ ARCHITECTURE owns:
 
 An ARCHITECTURE realizes exactly one FEATURE or BUG correction.
 
+Missing ARCHITECTURE artifact is a signal to evaluate architecture applicability, not an instruction to create ARCHITECTURE.
+An ARCHITECTURE artifact is required only when the change requires formal technical target-state definition.
+If an ARCHITECTURE artifact already exists for the affected capability, it remains authoritative.
+
 ---
 
 ## Domain–Feature–Architecture Relationship
@@ -151,16 +155,20 @@ are consumed by ARCHITECTURE:
 ```text
 ISSUE (CHANGE-REQUEST)
     → FEASIBILITY-ASSESSMENT
-    → ARCHITECTURE
+    → ARCHITECTURE APPLICABILITY
+    ├── REQUIRED → ARCHITECTURE
+    └── NOT REQUIRED → (no architecture artifact)
 
 ISSUE (BUG)
     → BUG-INVESTIGATION
-    → ARCHITECTURE
+    → ARCHITECTURE APPLICABILITY
+    ├── REQUIRED → ARCHITECTURE
+    └── NOT REQUIRED → (no architecture artifact)
 ```
 
 ISSUE ownership belongs to the role responsible for issue intake and issue
-documentation. It is not owned by the Architect, Implementer, Reviewer, or
-Tester.
+documentation. It is not owned by the ica-architect, ica-implementer, ica-reviewer, or
+ica-tester.
 
 ---
 
@@ -192,7 +200,8 @@ Whenever possible, Generated Knowledge should be regenerated from DOMAIN, FEATUR
 
 ## Completion
 
-A capability is considered fully delivered when DOMAIN, FEATURE, and ARCHITECTURE accurately describe the implemented solution.
+A capability is considered fully delivered when DOMAIN, FEATURE, and ARCHITECTURE (if applicable) accurately describe the implemented solution.
+If implementation materially changes architectural knowledge, ARCHITECTURE must be created or updated before the delivery is considered complete. If the implementation does not change architectural knowledge, no new ARCHITECTURE artifact is required.
 
 For delivery purposes, IMPLEMENTATION-PLAN is COMPLETED only when every slice
 has implementation status IMPLEMENTED and review status GO. Testing cannot
