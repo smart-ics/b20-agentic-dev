@@ -27,6 +27,7 @@ The lifecycle applies to the operational domains:
 * Product
 * Work Package
 * Request
+* Post
 
 Derived concepts are not domains and do not have an independent lifecycle:
 
@@ -156,6 +157,7 @@ Customer     → ACTIVE
 Product      → ACTIVE
 Work Package → ACTIVE
 Request      → ACTIVE
+Post         → ACTIVE
 ```
 
 An active object:
@@ -405,6 +407,7 @@ Customer     → Customer Owner
 Product      → Product Owner
 Work Package → Work Package Owner
 Request      → Request Owner
+Post         → Author and/or moderation authority
 ```
 
 Ownership may be delegated.

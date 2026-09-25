@@ -18,7 +18,7 @@ The workflow must remain simple enough to support daily operations without creat
 
 # Domains and Workflow
 
-The Operational System has exactly five operational domains:
+The Operational System has exactly six operational domains:
 
 ```text
 Organization
@@ -26,6 +26,7 @@ Customer
 Product
 Work Package
 Request
+Post
 ```
 
 Operational workflow operates on Requests and Work Packages.
