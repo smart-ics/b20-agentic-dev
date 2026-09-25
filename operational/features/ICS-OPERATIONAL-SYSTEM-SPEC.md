@@ -1,12 +1,18 @@
 List of Domain:
 
 DOM-01 Organization Domain
+
 DOM-02 Customer Domain
+
 DOM-03 Product Domain
+
 DOM-04 Request Domain
+
 DOM-05 Work Package Domain
+
 DOM-06 Post Domain
 
+---
 
 List of Feature
 
