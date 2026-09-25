@@ -230,8 +230,8 @@ Rules:
 Each class of knowledge has exactly one authoritative artifact:
 
 ```text
-Business Knowledge          → DOMAIN
-Business Outcome            → FEATURE
+Business Capability          → DOMAIN
+User Outcome                → FEATURE
 Issue Request or Problem    → ISSUE
 Current State and Analysis  → FEASIBILITY-ASSESSMENT or BUG-INVESTIGATION
 Technical Realization       → ARCHITECTURE
@@ -489,14 +489,14 @@ Define the requested business change.
 
 Outputs:
 
-* DOMAIN (new or updated)
-* FEATURE (new or updated)
+* DOMAIN (defines business capabilities)
+* FEATURE (defines user outcomes)
 
 Rules:
 
-* Discovery focuses on business understanding.
+* Discovery focuses on business understanding, answering: "What capabilities exist? What outcome must be delivered?" before any technical realization is considered.
 * Technical implementation must not be defined during this stage.
-* Discovery is complete when the requested capability is sufficiently described by DOMAIN and FEATURE.
+* Discovery is complete when the requested capabilities and user outcomes are sufficiently described by DOMAIN and FEATURE.
 
 ---
 
@@ -504,7 +504,7 @@ Rules:
 
 Objective:
 
-Assess a CHANGE-REQUEST or investigate a BUG against the current system.
+Assess a CHANGE-REQUEST or investigate a BUG against the current system. FEASIBILITY evaluates whether the requested user outcome can be achieved using existing capabilities and current system constraints.
 
 Inputs:
 
@@ -577,7 +577,7 @@ Rules:
 
 Objective:
 
-Update the target architecture based on approved decisions.
+Update the target architecture to define the technical realization of a FEATURE or BUG correction based on approved decisions.
 
 Inputs:
 
@@ -592,6 +592,7 @@ Outputs:
 
 Rules:
 
+* ARCHITECTURE realizes a FEATURE outcome; ARCHITECTURE does not realize a DOMAIN. DOMAIN provides capability, FEATURE consumes capability, and ARCHITECTURE realizes the outcome.
 * ARCHITECTURE owns and represents the approved target state.
 * All approved decisions must be reflected in ARCHITECTURE.
 * Planning must not begin until ARCHITECTURE has been updated, unless Architecture Applicability is ARCHITECTURE-NOT-REQUIRED.

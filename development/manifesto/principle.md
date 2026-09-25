@@ -26,7 +26,9 @@ These artifacts form the authoritative knowledge base of the product.
 
 ## DOMAIN
 
-DOMAIN defines business knowledge.
+DOMAIN = Defined Business Capability
+
+DOMAIN answers: "What can this part of the business do?"
 
 DOMAIN owns:
 
@@ -40,25 +42,50 @@ DOMAIN owns:
 
 DOMAIN is implementation independent.
 
-DOMAIN does not own business outcomes, operational flows, domain orchestration, or technical realization.
+DOMAIN does not own user outcomes, cross-domain orchestration, operational workflows, or technical realization.
 
 ---
 
 ## FEATURE
 
-FEATURE defines a business outcome delivered to users.
+FEATURE = Defined User Outcome
 
-FEATURE describes how one or more DOMAINs collaborate to achieve that outcome.
+FEATURE answers: "What valuable outcome can a user achieve?"
 
 FEATURE owns:
 
-* Business outcome
+* User outcome
+* User-facing behavior
 * Operational flow
-* Domain orchestration
 * Participating domains
-* Business constraints
-* Business exceptions
+* Domain orchestration
+* Feature-specific constraints
+* Feature-specific exceptions
 * Acceptance criteria
+
+FEATURE is implementation independent.
+
+FEATURE does not own domain capabilities, domain business rules, domain lifecycles, or technical realization. Those remain owned by DOMAIN or ARCHITECTURE.
+
+---
+
+## Feature Boundary
+
+A FEATURE represents a complete user outcome and must have:
+
+* Outcome Start
+* Outcome End
+
+A FEATURE is not:
+
+* a screen
+* a menu
+* a button
+* an API endpoint
+* a database operation
+* a technical component
+
+Those are implementation concerns. A FEATURE remains valid regardless of how many screens, APIs, services, components, or technical operations are required to realize it.
 
 ---
 
@@ -73,7 +100,7 @@ ARCHITECTURE owns:
 * Integration design
 * Technical decisions
 
-An ARCHITECTURE realizes exactly one FEATURE or BUG correction.
+An ARCHITECTURE realizes exactly one FEATURE or BUG correction. ARCHITECTURE realizes a FEATURE outcome; ARCHITECTURE does not realize a DOMAIN.
 
 Missing ARCHITECTURE artifact is a signal to evaluate architecture applicability, not an instruction to create ARCHITECTURE.
 An ARCHITECTURE artifact is required only when the change requires formal technical target-state definition.
@@ -83,28 +110,43 @@ If an ARCHITECTURE artifact already exists for the affected capability, it remai
 
 ## Domain–Feature–Architecture Relationship
 
-The core relationship is:
+The core conceptual model is:
 
 ```text
 DOMAIN
-    = Business Knowledge
+    = Defined Business Capability
 
 FEATURE
-    = Business Outcome
-      Operational Flow
-      Domain Orchestration
+    = Defined User Outcome
 
 ARCHITECTURE
     = Technical Realization
 ```
 
+The relationship is:
+
+```text
+DOMAIN
+    provides capability
+        ↓
+FEATURE
+    produces user outcome
+        ↓
+ARCHITECTURE
+    realizes the outcome technically
+```
+
 Rules:
 
-* A FEATURE may involve one or more DOMAINs.
+* A DOMAIN provides capability.
+* A FEATURE consumes one or more DOMAIN capabilities.
+* A FEATURE produces a user outcome.
+* A FEATURE may involve one DOMAIN or multiple DOMAINs.
 * A DOMAIN may participate in multiple FEATUREs.
-* FEATURE owns orchestration between participating DOMAINs but does not own domain knowledge or technical realization.
-* ARCHITECTURE realizes a FEATURE or BUG correction.
-* Each piece of knowledge has a single authoritative owner.
+* A FEATURE may be realized entirely by a single DOMAIN capability; a FEATURE is not required to span multiple domains.
+* FEATURE owns orchestration between participating DOMAINs but does not own domain capabilities, domain knowledge, or technical realization.
+* ARCHITECTURE realizes a FEATURE or BUG correction. ARCHITECTURE does not realize a DOMAIN.
+* Each piece of knowledge has a single authoritative owner (DOMAIN → Business Capability, FEATURE → User Outcome, ARCHITECTURE → Technical Realization).
 * Knowledge must not be duplicated across artifacts.
 
 ---

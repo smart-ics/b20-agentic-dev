@@ -8,14 +8,14 @@ Permanent Knowledge is the authoritative knowledge base of the system.
 
 Permanent Knowledge consists of:
 
-* DOMAIN
-* FEATURE
-* ARCHITECTURE
+* DOMAIN = capability knowledge
+* FEATURE = outcome knowledge
+* ARCHITECTURE = realization knowledge
 
 Rules:
 
 * Permanent Knowledge must remain up-to-date with the implemented system.
-* Permanent Knowledge is the source of truth for business knowledge, business outcomes, and technical realization.
+* Permanent Knowledge is the source of truth for business capabilities (DOMAIN), user outcomes (FEATURE), and technical realization (ARCHITECTURE).
 * When the implemented system changes, the affected Permanent Knowledge artifacts must be updated accordingly.
 * If implementation materially changes architectural knowledge, ARCHITECTURE must be created or updated. If it does not, no new ARCHITECTURE artifact is required.
 * Agents must not treat outdated Permanent Knowledge as authoritative.
