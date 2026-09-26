@@ -95,9 +95,11 @@ Work Package Owner
 
 Operational Assignment:
 
-* is temporary;
+* defines who is currently responsible for executing or managing a specific operational object;
 * is workload-oriented;
 * exists to execute work.
+
+The assignment may change over time and must preserve relevant history.
 
 Operational Assignment does not imply accountability for an entire operational area.
 
@@ -131,9 +133,9 @@ Accountability and assignment are intentionally separated.
 
 # Assignment Rules
 
-1. Any qualified Programmer may be assigned to any Request.
+1. A Request may be assigned to any Person considered appropriate for the work.
 
-2. Any qualified Implementator may be assigned to any Request.
+2. The assignment is independent of Module PIC and Customer Pimpro responsibility.
 
 3. A Request Owner does not need to be the Module PIC.
 
