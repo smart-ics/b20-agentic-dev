@@ -1,310 +1,355 @@
----
+# Customer Domain
 
-Title: Customer Domain
-Code: CUSTOMER
-Artifact: DOMAIN
-Version: 1.1
-LastUpdated: 2026-09-26
----
+## Business Overview
 
-# 1. Business Overview
+### Purpose
 
-The Customer Domain defines the customers served by ICS and the customer representatives who interact with ICS.
+The Customer Domain manages the organizations served by ICS.
 
-The domain provides authoritative customer knowledge used by operational domains.
+It provides the authoritative current state of each customer organization, its operational relationship with ICS, and the contact information required to support ongoing operational activities.
 
-The domain answers:
-
-* Who is the customer?
-* Who represents the customer?
-* What is the current relationship status?
-* How can ICS identify and contact the customer?
-
-The Customer Domain does not manage Projects, Requests, operational work, performance metrics, or financial transactions.
-
-Those concerns belong to other domains.
-
----
-
-# 2. Ubiquitous Language
-
-| Term                | Meaning                                                                      |
-| ------------------- | ---------------------------------------------------------------------------- |
-| Customer            | An organization that receives products or services from ICS.                 |
-| Customer Contact    | A person representing a Customer in interactions with ICS.                   |
-| Relationship Status | The current operational relationship between ICS and the Customer.           |
-| Primary Contact     | The primary representative used for operational communication.               |
-| Customer Ownership  | The organizational responsibility for maintaining the customer relationship. |
-
----
-
-# 3. Domain Capabilities
-
-The Customer Domain provides:
-
-* Customer Management
-* Customer Contact Management
-* Relationship Status Management
-* Customer Ownership Management
-
-The domain exists to maintain authoritative customer information.
-
-The domain does not manage operational execution.
-
----
-
-# 4. Actors
-
-## Management
-
-Maintains strategic customer information.
-
-## Administrator
-
-Maintains customer master data.
-
-## Customer Representative
-
-Represents the customer organization during operational interactions.
-
----
-
-# 5. Domain Objects
-
-## Customer
-
-Represents an organization served by ICS.
-
-Attributes:
+The Customer Domain exists to answer:
 
 ```text
-CustomerId
-Name
-ShortName
-Status
-RelationshipStatus
+Who is the customer?
+Who represents the customer?
+Who is responsible for the customer within ICS?
+What is the current relationship status?
 ```
+
+---
+
+### Scope
+
+The Customer Domain is responsible for:
+
+* Customer identity
+* Customer profile
+* Customer contacts
+* Customer relationship status
+* Customer ownership
+
+The Customer Domain is not responsible for:
+
+* Product management
+* Request management
+* Work Package management
+* Operational communication
+* Operational analytics
+* Operational performance
+
+---
+
+## Ubiquitous Language
+
+### Customer
+
+An organization that receives products or services from ICS.
 
 Examples:
 
 ```text
-RSUD Kota A
-RSUD Kota B
-RS Swasta C
+RSUP Dr. Sardjito
+RSUD Wonosari
+RSUD Sleman
 ```
-
-A Customer represents an organization.
-
-A Customer is not a project.
-
-A Customer is not a request.
 
 ---
 
-## Customer Contact
+### Customer Contact
 
-Represents an individual acting on behalf of a Customer.
+A person representing a Customer organization.
 
-Attributes:
+Examples:
+
+```text
+Hospital Director
+IT Manager
+Head of Medical Records
+Billing Coordinator
+```
+
+---
+
+### Customer Owner
+
+The ICS person currently responsible for maintaining the operational relationship with a Customer.
+
+A Customer has at most one active Customer Owner.
+
+---
+
+### Relationship Status
+
+The current operational relationship between ICS and a Customer.
+
+Examples:
+
+```text
+Prospect
+Active
+Inactive
+```
+
+---
+
+## Domain Capabilities
+
+### Customer Management
+
+Maintain Customer identity and profile information.
+
+---
+
+### Customer Contact Management
+
+Maintain Customer representatives and contact information.
+
+---
+
+### Relationship Management
+
+Maintain the current operational relationship status between ICS and a Customer.
+
+---
+
+### Customer Ownership Management
+
+Maintain the current ICS owner responsible for a Customer relationship.
+
+---
+
+## Actors & Roles
+
+### Customer Owner
+
+Responsible for maintaining the operational relationship with a Customer.
+
+---
+
+### Customer Representative
+
+Represents the Customer organization when communicating with ICS.
+
+---
+
+### Management
+
+Reviews Customer information and relationship status.
+
+---
+
+## Domain Objects
+
+### Customer
+
+Represents an organization served by ICS.
+
+#### Attributes
+
+```text
+CustomerId
+CustomerCode
+CustomerName
+RelationshipStatus
+OwnerPersonId
+Status
+CreatedAt
+UpdatedAt
+```
+
+---
+
+### Customer Contact
+
+Represents a Customer representative.
+
+#### Attributes
 
 ```text
 ContactId
 CustomerId
 Name
 Position
-Phone
+PhoneNumber
 Email
 Status
+CreatedAt
+UpdatedAt
 ```
-
-A Customer may have multiple Contacts.
 
 ---
 
-## Customer Ownership
-
-Represents the organizational responsibility for maintaining the customer relationship.
-
-Attributes:
-
-```text
-CustomerId
-OwnerPersonId
-StartDate
-EndDate
-Status
-```
-
-Customer ownership identifies who within ICS is responsible for maintaining the customer relationship.
-
-Ownership does not imply project ownership.
-
-Ownership does not imply request ownership.
-
----
-
-# 6. Aggregates
-
-## Customer Aggregate
+## Aggregate Structure
 
 ```text
 Customer
-├── Contacts
-└── Ownerships
+└── Customer Contacts
 ```
 
-The Customer Aggregate is the authoritative source of customer identity and customer relationship information.
+The Customer Aggregate is the authoritative source of Customer information.
 
-Customer Contacts and Customer Ownerships cannot exist without a Customer.
-
----
-
-# 7. Relationships
-
-## Customer → Organization
-
-A Customer is served by the Organization.
-
-The Customer Domain references the Organization Domain but does not own organizational structures.
+Customer Contacts cannot exist without a Customer.
 
 ---
 
-## Customer → Person
+## Relationships
 
-Customer Ownership references a Person defined in the Organization Domain.
+### Customer → Organization
 
-The Customer Domain does not define people belonging to ICS.
+A Customer Owner references a Person managed by the Organization Domain.
 
----
-
-## Customer → Project
-
-Projects may reference a Customer.
-
-The Customer Domain does not manage Projects.
+The Organization Domain remains authoritative for People and organizational structure.
 
 ---
 
-## Customer → Request
+### Customer → Request
 
 Requests may reference a Customer.
 
-The Customer Domain does not manage Requests.
+The Request Domain remains authoritative for Requests and their lifecycle.
 
 ---
 
-# 8. Business Rules
+### Customer → Work Package
 
-1. Every Customer must have a unique identity.
+Work Packages may reference a Customer.
 
-2. A Customer represents an organization, not an individual person.
-
-3. A Customer may have multiple Contacts.
-
-4. A Customer Contact must belong to exactly one Customer.
-
-5. A Customer may have zero or more Ownership records.
-
-6. Historical ownership changes must be preserved.
-
-7. Customer ownership identifies relationship responsibility only.
-
-8. Customer ownership does not automatically grant project ownership.
-
-9. Customer ownership does not automatically grant request ownership.
-
-10. A Customer may become inactive while preserving historical references.
-
-11. Projects and Requests must reference existing Customers when customer context is required.
+The Work Package Domain remains authoritative for Work Packages and their lifecycle.
 
 ---
 
-# 9. State Machines & Lifecycles
+### Customer → Product
 
-## Customer Lifecycle
+Products may be used by Customers.
+
+The Product Domain remains authoritative for Products and product ownership.
+
+---
+
+### Customer → Post
+
+Posts may reference a Customer.
+
+The Post Domain remains authoritative for Posts, comments, reactions, visibility, and discussion history.
+
+---
+
+## Business Rules
+
+### Customer Identity
+
+A Customer represents an organization, not an individual person.
+
+---
+
+### Contact Ownership
+
+A Customer Contact must belong to exactly one Customer.
+
+---
+
+### Customer Ownership
+
+A Customer may have at most one active Customer Owner.
+
+The Customer Owner is responsible for the operational relationship with the Customer.
+
+Customer ownership does not imply ownership of Requests.
+
+Customer ownership does not imply ownership of Work Packages.
+
+Customer ownership does not imply ownership of Products.
+
+---
+
+### Relationship Status
+
+A Customer must have exactly one Relationship Status.
+
+---
+
+### Historical Preservation
+
+A Customer may become inactive while preserving all historical references.
+
+A Customer must not be physically removed when historical operational objects reference it.
+
+---
+
+## Lifecycle
+
+### Customer Lifecycle
 
 ```text
 ACTIVE
-   ↓
-INACTIVE
-```
-
-Inactive customers remain valid historical references.
-
----
-
-## Customer Contact Lifecycle
-
-```text
-ACTIVE
-   ↓
-INACTIVE
-```
-
-Inactive contacts remain valid historical references.
-
----
-
-## Customer Ownership Lifecycle
-
-```text
-ACTIVE
-   ↓
-ENDED
-```
-
-Ownership records represent historical responsibility and must not be deleted when ownership changes.
-
----
-
-# 10. Relationship Status
-
-Relationship Status represents the operational relationship between ICS and the Customer.
-
-```text
-PROSPECT
     ↓
+INACTIVE
+```
+
+An inactive Customer remains available for historical reference.
+
+---
+
+### Customer Contact Lifecycle
+
+```text
 ACTIVE
     ↓
 INACTIVE
 ```
 
-Definitions:
-
-```text
-PROSPECT
-Customer is known but has not yet become an active customer.
-
-ACTIVE
-Customer currently maintains an active relationship with ICS.
-
-INACTIVE
-Customer relationship is no longer active.
-```
-
-Relationship Status is independent of Customer Lifecycle.
+An inactive Contact remains available for historical reference.
 
 ---
 
-# 11. Domain Events
+## Domain Events
 
-Examples:
+### Customer Events
 
 ```text
 CustomerCreated
+CustomerUpdated
 CustomerActivated
 CustomerInactivated
-
-CustomerContactAdded
-CustomerContactActivated
-CustomerContactInactivated
-
-CustomerOwnershipStarted
-CustomerOwnershipEnded
-
 RelationshipStatusChanged
+CustomerOwnerChanged
 ```
 
-Events represent changes in customer state.
+---
 
-Events do not define operational workflows.
+### Customer Contact Events
+
+```text
+CustomerContactAdded
+CustomerContactUpdated
+CustomerContactActivated
+CustomerContactInactivated
+```
+
+---
+
+## Authority
+
+The Customer Domain is the authoritative source for:
+
+```text
+Customer identity
+Customer profile
+Customer contacts
+Customer relationship status
+Customer ownership
+```
+
+The Customer Domain is not authoritative for:
+
+```text
+People
+Products
+Requests
+Work Packages
+Posts
+Operational analytics
+Operational performance
+```
+
