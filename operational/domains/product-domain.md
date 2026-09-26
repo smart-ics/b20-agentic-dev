@@ -22,7 +22,7 @@ The domain answers:
 The Product Domain does not manage:
 
 * Customers
-* Projects
+* Work Packages
 * Requests
 * Development workflow
 * Roadmaps
@@ -35,8 +35,11 @@ The Product Domain does not manage:
 | Term           | Meaning                                                       |
 | -------------- | ------------------------------------------------------------- |
 | Product        | A business product provided, maintained, or developed by ICS. |
-| Product Owner  | The Person currently responsible for the Product.             |
-| Product Status | The current lifecycle state of a Product.                     |
+| Product Owner  | Ownership of the Product.                                     |
+| Request Owner  | Ownership of a Request.                                       |
+| Work Package Owner | Ownership of a Work Package.                                |
+| Organization   | Authoritative source of Person identity.                     |
+| Product Status | The authoritative current lifecycle state of a Product.      |
 
 ---
 
@@ -92,7 +95,7 @@ Jetset
 
 A Product is not a Customer.
 
-A Product is not a Project.
+A Product is not a Work Package.
 
 A Product is not a Request.
 
@@ -122,21 +125,27 @@ Product Owner references a Person from the Organization Domain.
 
 Customers may use Products.
 
+The Product Domain does not own Customer–Product relationships.
+
 Customer relationships are owned by the Customer Domain.
 
 ---
 
-## Product → Project
+## Product → Work Package
 
-Projects may reference Products.
+Work Packages may reference Products.
 
-Projects are owned by the Project Domain.
+The Product Domain does not own Work Package–Product relationships.
+
+Work Packages are owned by the Work Package Domain.
 
 ---
 
 ## Product → Request
 
 Requests may reference Products.
+
+The Product Domain does not own Request–Product relationships.
 
 Requests are owned by the Request Domain.
 
@@ -150,13 +159,19 @@ Requests are owned by the Request Domain.
 
 3. Product Owner must reference a Person from the Organization Domain.
 
-4. Product ownership does not imply Project ownership.
+4. Product ownership does not imply Work Package ownership.
 
 5. Product ownership does not imply Request ownership.
 
-6. Product identity must remain stable throughout its lifecycle.
+6. Product ownership does not determine organizational responsibility assignments.
 
-7. A Product may become inactive while preserving historical references.
+7. Product identity must remain stable throughout its lifecycle.
+
+8. A Product may become inactive while preserving historical references.
+
+9. Product Status is the authoritative current lifecycle state of the Product.
+
+No feature, analytics model, or UI may invent an alternative authoritative Product state such as "Product Health" or "Product Condition"; such states must be derived projections.
 
 ---
 
@@ -165,30 +180,18 @@ Requests are owned by the Request Domain.
 ## Product Lifecycle
 
 ```text
-PLANNED
-    ↓
 ACTIVE
     ↓
-DEPRECATED
-    ↓
-RETIRED
+INACTIVE
 ```
-
-### PLANNED
-
-Recognized by ICS but not yet active.
 
 ### ACTIVE
 
 Currently provided, maintained, or developed.
 
-### DEPRECATED
+### INACTIVE
 
-Still supported but no longer strategically expanded.
-
-### RETIRED
-
-No longer an active business product.
+No longer actively provided or maintained, but retained for historical reference.
 
 ---
 
@@ -199,8 +202,7 @@ Examples:
 ```text
 ProductCreated
 ProductActivated
-ProductDeprecated
-ProductRetired
+ProductDeactivated
 
 ProductOwnerChanged
 ```
