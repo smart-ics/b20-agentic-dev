@@ -13,7 +13,10 @@ The Request Domain defines a request for ICS to perform, change, investigate, pr
 
 A Request represents an operational demand placed on ICS.
 
-A Request may originate from a Customer, an internal Person, a Project, a Work Package, or another operational context.
+A Request may originate from:
+- a Person;
+- a Customer Contact; or
+- another recognized operational actor.
 
 The domain answers:
 
@@ -26,8 +29,6 @@ The domain answers:
 A Request is not a Commitment.
 
 A Request is not a Work Package.
-
-A Request is not a Project.
 
 A Request does not imply that ICS has agreed to perform the requested work.
 
@@ -72,8 +73,8 @@ The Person or external party that originates a Request.
 
 A Requester may be:
 
-* an ICS Person;
-* a Customer Contact;
+* a Person;
+* a Customer Contact; or
 * another recognized operational actor.
 
 ## Request Owner
@@ -251,7 +252,7 @@ The referenced Person or Customer Contact remains owned by its source domain.
 
 12. A Request may be rejected without being executed.
 
-13. A Request may be resolved directly without creating a Project or Work Package.
+13. A Request may be resolved directly without creating a Work Package.
 
 14. Request history must preserve significant ownership, state, and resolution changes.
 
@@ -283,7 +284,9 @@ The Request has been recorded but has not yet been sufficiently validated.
 
 ### VALIDATED
 
-The Request is understood sufficiently to be treated as reliable operational knowledge.
+The Request is sufficiently understood to be treated as reliable operational knowledge.
+
+`VALIDATED` is a knowledge condition, not a mandatory workflow step. It may be skipped when the Request is already sufficiently understood at capture.
 
 Validation does not mean acceptance or commitment.
 
@@ -348,21 +351,16 @@ Examples:
 
 ```text
 RequestCreated
-RequestValidated
-RequestActivated
-RequestClosed
-
 RequestOwnerChanged
-
 RequestCustomerChanged
 RequestProductChanged
 RequestWorkPackageChanged
-
+RequestStatusChanged
 RequestResolved
 RequestRejected
 RequestCancelled
 ```
 
-Events represent changes in Request knowledge.
+Events represent changes in authoritative Request state.
 
 They do not define the workflow used to process the Request.
