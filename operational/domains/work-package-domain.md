@@ -206,7 +206,7 @@ Request lifecycle remains authoritative in the Request domain.
 
 7. A Work Package may reference zero or one Product.
 
-8. A Work Package may contain zero or more Requests.
+8. A Work Package may contain zero or more Requests. A Work Package may temporarily have zero Requests while in DRAFT state, but an ACTIVE Work Package should normally contain at least one Request.
 
 9. A Request may belong to zero or one Work Package.
 
@@ -246,7 +246,7 @@ The Work Package represents current operational work.
 
 ### CLOSED
 
-The Work Package objective has been completed, cancelled, or is otherwise no longer an active operational matter.
+The objective has been completed, cancelled, or the Work Package has been explicitly determined to no longer require active work.
 
 A Work Package may move directly from `DRAFT` to `CLOSED` when no active work is required.
 
