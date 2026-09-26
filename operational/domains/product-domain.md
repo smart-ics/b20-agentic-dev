@@ -36,9 +36,6 @@ The Product Domain does not manage:
 | -------------- | ------------------------------------------------------------- |
 | Product        | A business product provided, maintained, or developed by ICS. |
 | Product Owner  | Ownership of the Product.                                     |
-| Request Owner  | Ownership of a Request.                                       |
-| Work Package Owner | Ownership of a Work Package.                                |
-| Organization   | Authoritative source of Person identity.                     |
 | Product Status | The authoritative current lifecycle state of a Product.      |
 
 ---
