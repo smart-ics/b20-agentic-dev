@@ -43,7 +43,7 @@ A Request does not imply that ICS has agreed to perform the requested work.
 | Request Owner   | The Person responsible for maintaining and resolving the Request.                         |
 | Request Type    | A classification describing the nature of the Request.                                    |
 | Request Status  | The authoritative current state of the Request.                                           |
-| Request Context | The Customer, Product, Work Package, or other context associated with the Request.        |
+| Request Context | The Customer, Product, or Work Package associated with the Request.                       |
 | Resolution      | The outcome that satisfies or terminates the Request.                                     |
 
 ---
