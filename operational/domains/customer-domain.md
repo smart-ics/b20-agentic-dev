@@ -32,13 +32,12 @@ The Customer Domain is not responsible for:
 
 # 2. Ubiquitous Language
 
-| Term                   | Meaning |
-| ---------------------- | ------- |
-| Customer               | An organization that receives products or services from ICS. |
-| Customer Contact       | A person representing a Customer organization. |
-| Active                 | Currently valid and operational. |
-| Inactive               | No longer active but preserved for historical reference. |
-| Maintenance Contract   | The current state of the maintenance agreement between ICS and a Customer. |
+| Term             | Meaning |
+| ---------------- | ------- |
+| Customer         | An organization that receives products or services from ICS. |
+| Customer Contact | A person representing a Customer organization. |
+| Active           | Currently valid and operational. |
+| Inactive         | No longer active but preserved for historical reference. |
 
 ---
 
@@ -134,7 +133,7 @@ Customer Contacts cannot exist without a Customer.
 
 8. Customer Contact Status must be either ACTIVE or INACTIVE.
 
-9. Maintenance Contract Status reflects the current authoritative state only.
+9. HasActiveMaintenanceContract reflects the current authoritative state only.
 
 10. The Customer Domain does not manage Requests, Work Packages, Products, Posts, Analytics, or Performance.
 
