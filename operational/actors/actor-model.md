@@ -172,3 +172,13 @@ Customer Pimpro
 These relationships are independent.
 
 ---
+
+# Actor Discovery Rule
+
+The Actor Model defines broad organizational actors.
+
+Additional actors must not be created unless they represent a materially different operational perspective.
+
+Operational scenarios are the primary mechanism for discovering whether a new actor is required.
+
+---
