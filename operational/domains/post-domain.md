@@ -379,7 +379,7 @@ Those remain owned by their respective domains.
 
 29. A hidden or archived Post remains historically retrievable according to applicable access rules.
 
-30. Deletion of a Post, when permitted, must preserve the historical record required by the Operational Knowledge Lifecycle.
+30. Physical deletion of a Post is exceptional and permitted only under specific governance reasons. Hiding or archiving is the preferred mechanism for removing a Post from normal visibility while preserving the historical record required by the Operational Knowledge Lifecycle.
 
 31. Deletion of a referenced Request, Work Package, Customer, Product, or Organization entity does not require deletion of the Post.
 
@@ -407,7 +407,7 @@ Those remain owned by their respective domains.
 
 ## Post Lifecycle
 
-The Post lifecycle distinguishes the existence of the Post from its visibility.
+The Post lifecycle defines the existence condition of the Post.
 
 ```text
 ACTIVE
@@ -415,15 +415,19 @@ ACTIVE
 ARCHIVED
 ```
 
-A Post may also be:
+---
+
+## Visibility
+
+Visibility is not part of the Post lifecycle. It is an independent property of the current Post state.
 
 ```text
-ACTIVE
+VISIBLE
    ↕
 HIDDEN
 ```
 
-Visibility is an attribute of the current Post state and does not replace the Post lifecycle.
+A Post may be visible or hidden regardless of its lifecycle state, subject to the rules below.
 
 ---
 
@@ -444,6 +448,8 @@ An Active Post may be visible or hidden.
 ---
 
 ## HIDDEN
+
+HIDDEN is a visibility condition, not a lifecycle state.
 
 The Post remains part of the authoritative operational record but is excluded from normal visibility.
 
@@ -482,10 +488,10 @@ Archiving does not delete the Post.
 Post lifecycle and visibility must remain distinct.
 
 ```text
-Post Status
+Post Status (lifecycle)
 ACTIVE / ARCHIVED
 
-Visibility
+Visibility (independent property)
 VISIBLE / HIDDEN
 ```
 
@@ -494,10 +500,13 @@ This allows states such as:
 ```text
 ACTIVE + VISIBLE
 ACTIVE + HIDDEN
+ARCHIVED + VISIBLE
 ARCHIVED + HIDDEN
 ```
 
 An archived Post should not normally be visible in the active Feed regardless of its prior visibility.
+
+Visibility is not part of the Post lifecycle; it is an independent property of the current Post state.
 
 ---
 
@@ -544,6 +553,8 @@ ACTIVE
    ↓
 HIDDEN
 ```
+
+HIDDEN is a visibility condition, not a lifecycle state for Comments.
 
 A hidden Comment remains part of the Post discussion history but is excluded from normal discussion display.
 
