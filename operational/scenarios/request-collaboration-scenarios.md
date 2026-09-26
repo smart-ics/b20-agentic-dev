@@ -83,7 +83,7 @@ Scenario ID:
 SC-COL-004
 
 Scenario Name:
-Implementator Tracks All Owned Requests
+Implementator Tracks All Assigned Requests
 
 Primary Actor:
 Implementator
@@ -99,5 +99,5 @@ Trigger:
 The Implementator needs an overview of their assigned Requests.
 
 Expected Outcome:
-A list of all Requests owned by the Implementator is displayed with their statuses.
+A list of all Requests assigned to the Implementator is displayed with their statuses.
 ```
