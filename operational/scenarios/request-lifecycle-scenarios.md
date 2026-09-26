@@ -59,10 +59,10 @@ Scenario ID:
 SC-REQ-003
 
 Scenario Name:
-Programmer Evaluates Request
+Request Owner Evaluates Request
 
 Primary Actor:
-Programmer
+Request Owner
 
 Goal:
 Determine whether the Request can be handled.
@@ -71,7 +71,7 @@ Related Domains:
 Request
 
 Trigger:
-The Programmer becomes aware of the Request.
+The Request Owner becomes aware of the Request.
 
 Expected Outcome:
 The Request is accepted, rejected, escalated, or sent for decision.
@@ -84,22 +84,22 @@ Scenario ID:
 SC-REQ-004
 
 Scenario Name:
-Programmer Accepts Request
+Request Owner Accepts Request
 
 Primary Actor:
-Programmer
+Request Owner
 
 Goal:
-Take responsibility for handling the Request.
+Accept responsibility for maintaining and resolving the Request.
 
 Related Domains:
 Request
 
 Trigger:
-The Programmer evaluates the Request and determines it can be handled.
+The Request Owner evaluates the Request and determines it can be handled.
 
 Expected Outcome:
-The Programmer becomes the Request Owner.
+The Request Owner assumes ownership and the Request becomes active.
 ```
 
 ## SC-REQ-005
@@ -109,22 +109,22 @@ Scenario ID:
 SC-REQ-005
 
 Scenario Name:
-Programmer Rejects Request
+Request Is Rejected
 
 Primary Actor:
-Programmer
+Request Owner
 
 Goal:
-Decline responsibility for the Request.
+Decline responsibility for the Request or reject a completed resolution.
 
 Related Domains:
 Request
 
 Trigger:
-The Programmer evaluates the Request and determines it cannot be handled.
+The Request Owner evaluates the Request and determines it cannot be handled, or a completed resolution is reviewed and found unacceptable.
 
 Expected Outcome:
-The Request is marked as rejected.
+The Request is marked as rejected and closed.
 ```
 
 ## SC-REQ-006
@@ -137,16 +137,16 @@ Scenario Name:
 Request Requires Escalation
 
 Primary Actor:
-System
+Request Owner
 
 Goal:
-Signal that the Request exceeds the current handler's authority or capability.
+Escalate the Request when it exceeds the current owner's authority or capability.
 
 Related Domains:
 Request
 
 Trigger:
-The Request cannot be resolved within the current level of authority or expertise.
+The Request Owner cannot resolve the Request within their authority.
 
 Expected Outcome:
 The Request is escalated to a higher authority level.
@@ -162,17 +162,17 @@ Scenario Name:
 Request Requires Management Decision
 
 Primary Actor:
-System
+Request Owner
 
 Goal:
-Signal that the Request requires a management-level decision.
+Elevate the Request for a management-level decision.
 
 Related Domains:
 Request
-Management
+Organization
 
 Trigger:
-The Request involves policy, risk, or resource allocation beyond operational scope.
+The Request involves policy, risk, or resource allocation beyond the Request Owner's authority.
 
 Expected Outcome:
 The Request is flagged for management decision.
@@ -185,120 +185,20 @@ Scenario ID:
 SC-REQ-008
 
 Scenario Name:
-Programmer Reports Request Completion
-
-Primary Actor:
-Programmer
-
-Goal:
-Notify that work on the Request is complete.
-
-Related Domains:
-Request
-
-Trigger:
-The Programmer finishes work on the Request.
-
-Expected Outcome:
-The Request is marked as completed and ready for resolution review.
-```
-
-## SC-REQ-009
-
-```text id="sc-req-009"
-Scenario ID:
-SC-REQ-009
-
-Scenario Name:
-Implementator Accepts Resolution
+Request Completion Is Reviewed
 
 Primary Actor:
 Implementator
 
 Goal:
-Approve the completed work on the Request.
+Review completed work on a Request and decide whether to accept or reject the resolution.
 
 Related Domains:
 Request
 
 Trigger:
-The Request is reported as completed.
+The Request Owner reports that work on the Request is complete.
 
 Expected Outcome:
-The Request resolution is accepted.
-```
-
-## SC-REQ-010
-
-```text id="sc-req-010"
-Scenario ID:
-SC-REQ-010
-
-Scenario Name:
-Implementator Rejects Resolution
-
-Primary Actor:
-Implementator
-
-Goal:
-Reject the completed work on the Request.
-
-Related Domains:
-Request
-
-Trigger:
-The Request is reported as completed but does not meet standards.
-
-Expected Outcome:
-The Request resolution is rejected and returned for rework.
-```
-
-## SC-REQ-011
-
-```text id="sc-req-011"
-Scenario ID:
-SC-REQ-011
-
-Scenario Name:
-Request Is Resolved
-
-Primary Actor:
-System
-
-Goal:
-Close the Request as successfully completed.
-
-Related Domains:
-Request
-
-Trigger:
-The Request resolution is accepted.
-
-Expected Outcome:
-The Request is marked as resolved and closed.
-```
-
-## SC-REQ-012
-
-```text id="sc-req-012"
-Scenario ID:
-SC-REQ-012
-
-Scenario Name:
-Request Is Rejected
-
-Primary Actor:
-System
-
-Goal:
-Close the Request as rejected.
-
-Related Domains:
-Request
-
-Trigger:
-The Request is rejected during evaluation or resolution.
-
-Expected Outcome:
-The Request is marked as rejected and closed.
+The resolution is accepted (and the Request is resolved) or rejected (and the Request is returned for rework).
 ```

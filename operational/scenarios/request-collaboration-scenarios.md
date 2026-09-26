@@ -13,17 +13,17 @@ Primary Actor:
 Implementator
 
 Goal:
-Supply additional context or details about a Request.
+Record additional context or evidence with an existing Request.
 
 Related Domains:
 Request
-Information
+Post
 
 Trigger:
-The Request requires clarification or additional information.
+Additional context or evidence needs to be recorded with an existing Request.
 
 Expected Outcome:
-Supporting information is attached to the Request.
+Supporting information is attached to the Request, typically as a Post or Comment.
 ```
 
 ## SC-COL-002
@@ -43,7 +43,6 @@ Find previous Requests or related information.
 
 Related Domains:
 Request
-History
 
 Trigger:
 The Implementator needs to reference past Requests or similar issues.
@@ -69,7 +68,6 @@ Monitor the current status and steps of a Request.
 
 Related Domains:
 Request
-Progress
 
 Trigger:
 The Implementator needs to know the current state of a Request.
@@ -95,7 +93,7 @@ Monitor all Requests assigned to them.
 
 Related Domains:
 Request
-Ownership
+Organization
 
 Trigger:
 The Implementator needs an overview of their assigned Requests.
