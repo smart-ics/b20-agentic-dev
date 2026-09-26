@@ -59,10 +59,10 @@ Scenario ID:
 SC-REQ-003
 
 Scenario Name:
-Request Owner Evaluates Request
+Assigned Handler Evaluates Request
 
 Primary Actor:
-Request Owner
+Assigned Handler
 
 Goal:
 Determine whether the Request can be handled.
@@ -71,7 +71,7 @@ Related Domains:
 Request
 
 Trigger:
-The Request Owner becomes aware of the Request.
+The assigned handler becomes aware of the Request.
 
 Expected Outcome:
 The Request is accepted, rejected, escalated, or sent for decision.
@@ -84,10 +84,10 @@ Scenario ID:
 SC-REQ-004
 
 Scenario Name:
-Request Owner Accepts Request
+Assigned Handler Accepts Request
 
 Primary Actor:
-Request Owner
+Assigned Handler
 
 Goal:
 Accept responsibility for maintaining and resolving the Request.
@@ -96,10 +96,10 @@ Related Domains:
 Request
 
 Trigger:
-The Request Owner evaluates the Request and determines it can be handled.
+The assigned handler evaluates the Request and determines it can be handled.
 
 Expected Outcome:
-The Request Owner assumes ownership and the Request becomes active.
+The assigned handler becomes the Request Owner and the Request becomes active.
 ```
 
 ## SC-REQ-005
@@ -109,19 +109,19 @@ Scenario ID:
 SC-REQ-005
 
 Scenario Name:
-Request Is Rejected
+Assigned Handler Rejects Request
 
 Primary Actor:
-Request Owner
+Assigned Handler
 
 Goal:
-Decline responsibility for the Request or reject a completed resolution.
+Decline responsibility for the Request during evaluation.
 
 Related Domains:
 Request
 
 Trigger:
-The Request Owner evaluates the Request and determines it cannot be handled, or a completed resolution is reviewed and found unacceptable.
+The assigned handler evaluates the Request and determines it cannot be handled.
 
 Expected Outcome:
 The Request is marked as rejected and closed.
@@ -134,7 +134,7 @@ Scenario ID:
 SC-REQ-006
 
 Scenario Name:
-Request Requires Escalation
+Request Owner Escalates Request
 
 Primary Actor:
 Request Owner
@@ -159,7 +159,7 @@ Scenario ID:
 SC-REQ-007
 
 Scenario Name:
-Request Requires Management Decision
+Request Owner Requests Management Decision
 
 Primary Actor:
 Request Owner
@@ -172,7 +172,7 @@ Request
 Organization
 
 Trigger:
-The Request involves policy, risk, or resource allocation beyond the Request Owner's authority.
+The Request Owner cannot resolve the Request because it involves policy, risk, or resource allocation beyond their authority.
 
 Expected Outcome:
 The Request is flagged for management decision.
