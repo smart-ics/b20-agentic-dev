@@ -1,5 +1,5 @@
 ---
-Title: ICS Actor Model
+Title: ICS Operational Actor Model
 Artifact: ACTOR_MODEL
 Version: 1.0
 ---
