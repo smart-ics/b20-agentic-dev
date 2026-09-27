@@ -21,6 +21,12 @@ Navigation defines the destinations available to actors and the paths used to mo
 ```text
 ICS Operational System
 │
+├── Operational Feed Area
+│   ├── Operational Feed (SCR-FEED-001)
+│   │   ├── Post Detail (SCR-POST-001)
+│   │   │   └── Request Detail (SCR-REQ-003)
+│   │   └── Create Post (SCR-POST-002)
+│
 ├── Requests Area
 │   ├── Request List (SCR-REQ-001)
 │   │   ├── Create Request (SCR-REQ-002)
@@ -42,6 +48,27 @@ ICS Operational System
 ---
 
 ## 3. Navigation Areas and Destinations
+
+### Area: Operational Feed
+
+Contains destinations for observing operational activity, participating in discussions, and creating operational communications.
+
+* **Primary Actors:** Implementator, Management, Request Owner
+* **Destinations:**
+  * **`SCR-FEED-001`: Operational Feed**
+    * *Purpose:* Primary workspace for observing and participating in operational activity.
+    * *Entry Points:* Global Navigation (`Operational Feed` — primary), System Default Landing.
+    * *Exit / Destinations:* `SCR-POST-001: Post Detail`, `SCR-POST-002: Create Post`, `SCR-REQ-003: Request Detail` (via Post Reference).
+  * **`SCR-POST-001`: Post Detail**
+    * *Purpose:* Focused view of a single Post and its complete discussion thread.
+    * *Entry Points:* `SCR-FEED-001` (select Post), Direct Link / Permanent Link.
+    * *Exit / Destinations:* `SCR-FEED-001: Operational Feed`, `SCR-REQ-003: Request Detail` (via Post Reference).
+  * **`SCR-POST-002`: Create Post**
+    * *Purpose:* Author a new operational Post.
+    * *Entry Points:* `SCR-FEED-001` (create action), `SCR-REQ-003: Request Detail` (create Post referencing current Request).
+    * *Exit / Destinations:* `SCR-FEED-001: Operational Feed`, `SCR-POST-001: Post Detail`.
+
+---
 
 ### Area 1: Requests
 
@@ -97,6 +124,12 @@ Contains destinations for reviewing operational request progress, performance re
 
 ```mermaid
 flowchart TD
+    subgraph Feed_Area [Operational Feed Area]
+        FEED["SCR-FEED-001<br/>Operational Feed"]
+        POST_DETAIL["SCR-POST-001<br/>Post Detail"]
+        POST_CREATE["SCR-POST-002<br/>Create Post"]
+    end
+
     subgraph Requests_Area [Requests Area]
         REQ_LIST["SCR-REQ-001<br/>Request List"]
         REQ_CREATE["SCR-REQ-002<br/>Create Request"]
@@ -112,6 +145,14 @@ flowchart TD
     end
 
     %% Movement Paths
+    FEED -->|"Select Post"| POST_DETAIL
+    FEED -->|"Create Post"| POST_CREATE
+    FEED -->|"Post Reference"| REQ_DETAIL
+    POST_DETAIL -->|"Post Reference"| REQ_DETAIL
+    POST_DETAIL -->|"Back"| FEED
+    POST_CREATE -->|"On Creation"| FEED
+    POST_CREATE -->|"On Creation"| POST_DETAIL
+
     REQ_LIST <-->|"Navigate"| REQ_CREATE
     REQ_LIST -->|"Select Request"| REQ_DETAIL
     REQ_CREATE -->|"On Creation"| REQ_DETAIL
@@ -154,6 +195,9 @@ Every screen in this navigation map traces directly to approved operational arti
 
 | Screen ID | Screen Name | User Journey | Use Case | Operational Scenario | Primary Actor | Related Domains |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **SCR-FEED-001** | Operational Feed | UJ-AWR-001, UJ-AWR-002, UJ-AWR-003, UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-005 | UC-AWR-001, UC-AWR-002, UC-AWR-003, UC-FCOL-001, UC-FCOL-002, UC-FCOL-005 | SC-AWR-001, SC-AWR-002, SC-AWR-003, SC-FCOL-001, SC-FCOL-002, SC-FCOL-005 | All Actors | Post, Request, Customer, Product |
+| **SCR-POST-001** | Post Detail | UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-004 | UC-FCOL-001, UC-FCOL-002, UC-FCOL-004 | SC-FCOL-001, SC-FCOL-002, SC-FCOL-004 | All Actors | Post, Request |
+| **SCR-POST-002** | Create Post | UJ-FCOL-003 | UC-FCOL-003 | SC-FCOL-003 | Implementator | Post |
 | **SCR-REQ-001** | Request List | UJ-REQ-002<br/>UJ-REQ-008<br/>UJ-COL-003 | UC-REQ-002<br/>UC-REQ-008<br/>UC-COL-003 | SC-REQ-002<br/>SC-REQ-008<br/>SC-COL-003 | Implementator<br/>Request Owner | Request, Customer, Organization |
 | **SCR-REQ-002** | Create Request | UJ-REQ-001 | UC-REQ-001 | SC-REQ-001 | Implementator | Request, Customer, Product, Work Package |
 | **SCR-REQ-003** | Request Detail | UJ-REQ-002<br/>UJ-REQ-003<br/>UJ-REQ-004<br/>UJ-REQ-005<br/>UJ-REQ-006<br/>UJ-REQ-007<br/>UJ-REQ-008<br/>UJ-COL-001<br/>UJ-COL-003<br/>UJ-MGT-001 | UC-REQ-002<br/>UC-REQ-003<br/>UC-REQ-004<br/>UC-REQ-005<br/>UC-REQ-006<br/>UC-REQ-007<br/>UC-REQ-008<br/>UC-COL-001<br/>UC-COL-003<br/>UC-MGT-001 | SC-REQ-002<br/>SC-REQ-003<br/>SC-REQ-004<br/>SC-REQ-005<br/>SC-REQ-006<br/>SC-REQ-007<br/>SC-REQ-008<br/>SC-COL-001<br/>SC-COL-003<br/>SC-MGT-001 | Implementator<br/>Request Owner<br/>Management | Request, Post, Customer, Organization, Product |
@@ -169,7 +213,7 @@ Every screen in this navigation map traces directly to approved operational arti
 
 Verification against the **Navigation Creation Skill** checklist:
 
-* [x] **Every screen maps to a User Journey:** All 8 screens directly satisfy at least one approved user journey.
+* [x] **Every screen maps to a User Journey:** All 11 screens directly satisfy at least one approved user journey.
 * [x] **Every screen maps to a Use Case:** All screens trace directly to approved use cases.
 * [x] **Every screen maps to an Operational Scenario:** All use cases are anchored in approved operational scenarios.
 * [x] **No new business concepts introduced:** Structure reflects only approved domain concepts (Request, Customer, Organization, Post, Product).

@@ -16,6 +16,9 @@ Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios*
 | `SCR-MGT-001` | Customer Progress Review | Management Oversight | Management | UJ-MGT-002 | UC-MGT-002 |
 | `SCR-MGT-002` | Programmer Performance Review | Management Oversight | Management | UJ-MGT-003 | UC-MGT-003 |
 | `SCR-MGT-003` | Programmer Workload Review | Management Oversight | Management | UJ-MGT-004 | UC-MGT-004 |
+| `SCR-FEED-001` | Operational Feed | Operational Feed | Implementator, Management, Request Owner | UJ-AWR-001, UJ-AWR-002, UJ-AWR-003, UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-005 | UC-AWR-001, UC-AWR-002, UC-AWR-003, UC-FCOL-001, UC-FCOL-002, UC-FCOL-005 |
+| `SCR-POST-001` | Post Detail | Operational Feed | Implementator, Management, Request Owner | UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-004 | UC-FCOL-001, UC-FCOL-002, UC-FCOL-004 |
+| `SCR-POST-002` | Create Post | Operational Feed | Implementator | UJ-FCOL-003 | UC-FCOL-003 |
 
 ---
 
@@ -257,3 +260,97 @@ View active Request assignments for a Programmer.
 
 **Exit / Destination:**
 * `SCR-REQ-003: Request Detail`
+
+---
+
+### SCR-FEED-001
+
+**Screen Name:** Operational Feed
+
+**Purpose:** Primary workspace for observing and participating in operational activity.
+
+**Primary Actors:**
+* Implementator
+* Management
+* Request Owner
+
+**Supported Use Cases:**
+* UC-AWR-001: Observe Operational Feed
+* UC-AWR-002: Discover Request via Feed
+* UC-AWR-003: Monitor Operational Exceptions via Feed
+* UC-FCOL-001: Comment on Post
+* UC-FCOL-002: React to Post
+* UC-FCOL-005: Filter Operational Feed
+
+**Supported User Journeys:**
+* UJ-AWR-001: Observe Operational Feed
+* UJ-AWR-002: Discover Request via Feed
+* UJ-AWR-003: Monitor Operational Exceptions via Feed
+* UJ-FCOL-001: Comment on Post
+* UJ-FCOL-002: React to Post
+* UJ-FCOL-005: Filter Feed by Context
+
+**Entry Points:**
+* Global Navigation (`Operational Feed`) — Primary
+* System Default Landing Page
+
+**Exit / Destination:**
+* `SCR-POST-001: Post Detail`
+* `SCR-POST-002: Create Post`
+* `SCR-REQ-003: Request Detail` (via Post Reference)
+
+---
+
+### SCR-POST-001
+
+**Screen Name:** Post Detail
+
+**Purpose:** Focused view of a single Post and its complete discussion thread.
+
+**Primary Actors:**
+* Implementator
+* Management
+* Request Owner
+
+**Supported Use Cases:**
+* UC-FCOL-001: Comment on Post
+* UC-FCOL-002: React to Post
+* UC-FCOL-004: Navigate from Post to Request
+
+**Supported User Journeys:**
+* UJ-FCOL-001: Comment on Post
+* UJ-FCOL-002: React to Post
+* UJ-FCOL-004: Navigate from Post to Request
+
+**Entry Points:**
+* Operational Feed (`SCR-FEED-001`)
+* Direct URL / Permanent Link
+
+**Exit / Destination:**
+* `SCR-FEED-001: Operational Feed`
+* `SCR-REQ-003: Request Detail` (via Post Reference)
+
+---
+
+### SCR-POST-002
+
+**Screen Name:** Create Post
+
+**Purpose:** Author a new operational Post.
+
+**Primary Actors:**
+* Implementator
+
+**Supported Use Cases:**
+* UC-FCOL-003: Create Operational Post
+
+**Supported User Journeys:**
+* UJ-FCOL-003: Create Operational Post
+
+**Entry Points:**
+* Operational Feed (`SCR-FEED-001`)
+* Request Detail (`SCR-REQ-003`) — Create Post referencing current Request
+
+**Exit / Destination:**
+* `SCR-FEED-001: Operational Feed`
+* `SCR-POST-001: Post Detail`
