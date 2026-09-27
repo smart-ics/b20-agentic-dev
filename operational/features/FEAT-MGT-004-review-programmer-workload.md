@@ -8,16 +8,17 @@ Type: Query
 
 ## Purpose
 
-Enables the actor to review programmer workload to achieve operational outcomes.
+Provides management with a real-time overview of active request assignments distributed across all programmers, identifying team capacity and bottleneck imbalances.
 
 ## User Outcome
 
-The user can successfully execute the operational intent defined in the use case.
+Management inspects the active workload of the development team, spots overloaded individuals, and determines whether new requests can be assigned or active requests need rebalancing.
 
 ## Traceability
 
 ### Domains
 - Request
+- Organization
 
 ### Scenarios
 - SC-MGT-004
@@ -33,34 +34,39 @@ The user can successfully execute the operational intent defined in the use case
 
 ## Preconditions
 
-The actor is authenticated and authorized to perform this action. System state allows the execution of this capability.
+- The actor holds the `Management` organizational role.
+- Active team members exist with development or implementation roles in the Organization Domain.
 
 ## Capability
 
-The system provides the necessary capability to review programmer workload, facilitating the interaction required by the actor.
+The system displays a team distribution summary on `SCR-MGT-003: Programmer Workload Review` showing each programmer alongside their active request count and workload alert indicators. Selecting an individual displays their detailed active queue (Request ID, Title, Status, Priority, Customer) and allows management to navigate directly to `SCR-REQ-003: Request Detail` to initiate reassignment or investigate blockers.
 
 ## Business Rules
 
-- Execution must comply with constraints defined in the related domain and operational scenario.
-- Proper authorization must be enforced.
+- Operational assignment defines current ownership of specific requests and is distinct from organizational responsibility or Module PIC accountability (Actor Model Section Core Principle, Lines 86-117).
+- Active workload calculations consider only Requests in `ACTIVE` or `CAPTURED` lifecycle states where `OwnerPersonId` matches the individual (Request Domain Section 5, 9).
+- Closed requests are excluded from active workload tallies.
+- Capacity assessment is a derived projection computed from active request ownership facts (Manifesto Principles 7, 16).
+- Selecting an active request navigates to `SCR-REQ-003: Request Detail` (UI Layout 20-scr-mgt-003, lines 45-48).
 
 ## Success Result
 
-The authoritative state of the system is updated to reflect the successful execution of review programmer workload.
+Management views real-time active assignment counts across all team members and drills down into individual queues to make informed workload balancing decisions.
 
 ## Failure Conditions
 
-- Validation failures (e.g., missing required input).
-- Authority failures (actor lacks permission).
-- State conflicts (action invalid in current state).
+- Actor lacks the `Management` organizational role (authority failure).
+- Selected programmer has zero active assignments (system displays an empty active queue for that individual).
 
 ## Acceptance Criteria
 
-- [ ] Capability is accessible from SCR-MGT-003
-- [ ] Supports UC-MGT-004 outcome
-- [ ] Successfully updates or retrieves necessary state
-- [ ] Handles failure conditions gracefully
+- [ ] Screen `SCR-MGT-003` is accessible to authorized Management actors.
+- [ ] Team overview displays active request counts for all active programmers.
+- [ ] Selecting a programmer populates their active queue with Request ID, Title, Status, Priority, and Customer.
+- [ ] Closed requests are excluded from workload metrics and queue lists.
+- [ ] Selecting an active request navigates to `SCR-REQ-003: Request Detail` to support reassignment.
+- [ ] Workload review operations produce zero mutations on domain entities.
 
 ## Implementation Notes
 
-None.
+Real-time query projection over active Request Aggregate instances grouped by assigned Person identity.

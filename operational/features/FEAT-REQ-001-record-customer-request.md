@@ -8,16 +8,17 @@ Type: Command
 
 ## Purpose
 
-Enables the actor to record customer request to achieve operational outcomes.
+Enables operational actors to capture and formalize a customer operational demand, issue, or need into an authoritative structured Request record.
 
 ## User Outcome
 
-The user can successfully execute the operational intent defined in the use case.
+The operational demand is formally recorded in the system in `CAPTURED` state, anchored to relevant customer and product context, and queued for ownership triage.
 
 ## Traceability
 
 ### Domains
 - Request
+- Customer
 
 ### Scenarios
 - SC-REQ-001
@@ -29,38 +30,47 @@ The user can successfully execute the operational intent defined in the use case
 - UJ-REQ-001
 
 ### Screens
-- SCR-REQ-001
+- SCR-REQ-002
 
 ## Preconditions
 
-The actor is authenticated and authorized to perform this action. System state allows the execution of this capability.
+- The actor is authenticated and authorized to submit requests (Implementator, Management).
+- Referenced Customer or Product (if specified) exist as valid entities in Customer and Product domains.
 
 ## Capability
 
-The system provides the necessary capability to record customer request, facilitating the interaction required by the actor.
+The system provides a structured request creation form on `SCR-REQ-002: Create Request` capturing Title, Detailed Description, Request Type (e.g., Bug, Feature, Support), Customer selection, Product selection, and optional Work Package. Upon submission, the system validates the input, generates a unique Request ID, sets initial status to `CAPTURED`, creates an associated system post in the Operational Feed, and navigates to `SCR-REQ-003: Request Detail` or returns to `SCR-REQ-001: Request List`.
 
 ## Business Rules
 
-- Execution must comply with constraints defined in the related domain and operational scenario.
-- Proper authorization must be enforced.
+- Every Request must have a unique identity (Request Domain Rule 1).
+- A Request must contain sufficient information (non-empty Title and Description) to understand what is being requested (Request Domain Rule 4).
+- Initial lifecycle status of a newly recorded request is `CAPTURED` (Request Domain Section 9).
+- A Request may exist without a Customer, without a Product, and without a Work Package (Request Domain Rules 5, 6, 7).
+- A Request is an operational demand and does not constitute a commitment or guarantee that ICS will execute the work (Request Domain Rules 10, 11; Manifesto Principle 9).
+- Submitting the form emits a `RequestCreated` event and automatically generates a system post visible in `SCR-FEED-001: Operational Feed` (Post Domain Rule 7, 594; UI Layout 14-scr-req-002 line 48).
+- Screen mapping is strictly `SCR-REQ-002: Create Request` (UI Layout 14-scr-req-002; Navigation req-nav).
 
 ## Success Result
 
-The authoritative state of the system is updated to reflect the successful execution of record customer request.
+A new Request aggregate is created with status `CAPTURED`, a unique Request ID, and optional context links, and a corresponding system post is broadcast to the Operational Feed.
 
 ## Failure Conditions
 
-- Validation failures (e.g., missing required input).
-- Authority failures (actor lacks permission).
-- State conflicts (action invalid in current state).
+- Title, Description, or Request Type is blank or missing (validation failure).
+- Selected Customer, Product, or Work Package ID is invalid or not found (referential integrity failure).
+- Actor lacks authorization to record requests (authority failure).
 
 ## Acceptance Criteria
 
-- [ ] Capability is accessible from SCR-REQ-001
-- [ ] Supports UC-REQ-001 outcome
-- [ ] Successfully updates or retrieves necessary state
-- [ ] Handles failure conditions gracefully
+- [ ] Creation form is accessible on `SCR-REQ-002: Create Request` via `SCR-REQ-001` or Global Quick Action.
+- [ ] Form enforces validation on required fields (Title, Description, Type).
+- [ ] Actor can associate active Customer and Product entities from dropdowns.
+- [ ] Internal requests can be recorded without selecting a Customer.
+- [ ] Successful submission creates a Request with lifecycle status `CAPTURED`.
+- [ ] Submission generates a system-generated post on `SCR-FEED-001: Operational Feed`.
+- [ ] Successful submission navigates to `SCR-REQ-003: Request Detail`.
 
 ## Implementation Notes
 
-None.
+Creates a new Request Aggregate and emits a `RequestCreated` domain event to trigger feed integration.

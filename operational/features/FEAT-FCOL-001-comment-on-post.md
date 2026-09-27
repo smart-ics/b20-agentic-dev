@@ -8,11 +8,11 @@ Type: Collaboration
 
 ## Purpose
 
-Enables the actor to comment on post to achieve operational outcomes.
+Enables operational actors to participate in collaborative discussions by submitting comments on active posts from the feed stream, post detail, or request detail.
 
 ## User Outcome
 
-The user can successfully execute the operational intent defined in the use case.
+The actor contributes operational insights, technical findings, clarifications, or feedback to an existing post discussion, visible to all stakeholders.
 
 ## Traceability
 
@@ -30,37 +30,44 @@ The user can successfully execute the operational intent defined in the use case
 
 ### Screens
 - SCR-FEED-001
+- SCR-POST-001
 
 ## Preconditions
 
-The actor is authenticated and authorized to perform this action. System state allows the execution of this capability.
+- Target Post exists, is in `ACTIVE` lifecycle state, and has `VISIBLE` visibility.
+- The actor is authenticated and recognized as a Person within the Organization Domain.
 
 ## Capability
 
-The system provides the necessary capability to comment on post, facilitating the interaction required by the actor.
+The system provides an input control to compose and submit comment text on `SCR-FEED-001: Operational Feed`, `SCR-POST-001: Post Detail`, and the associated feed section of `SCR-REQ-003: Request Detail`. Upon submission, the system records the comment as an element of the Post aggregate with the author's identity and timestamp, updates the post's comment count, and immediately displays the new comment in the flat discussion thread.
 
 ## Business Rules
 
-- Execution must comply with constraints defined in the related domain and operational scenario.
-- Proper authorization must be enforced.
+- Comments belong to exactly one Post and cannot exist independently of that Post (Post Domain Rules 17, 18).
+- Comments follow a flat discussion model; comments cannot be nested or contain child comments (Post Domain Rule 19).
+- Every comment must identify its author referencing an active Person from the Organization Domain (Post Domain Rule 20).
+- Submitting a comment does not alter the lifecycle state, visibility, or status of the parent Post (Post Domain Rule 25).
+- Comment text must contain non-empty content (validation requirement).
+- Comments inherit visibility from the parent Post unless individually hidden by administrative moderation (Post Domain Section 8).
 
 ## Success Result
 
-The authoritative state of the system is updated to reflect the successful execution of comment on post.
+A new Comment record is appended to the Post aggregate with the author's identity and timestamp, the post's comment count is incremented, and the comment becomes visible across all views displaying the Post.
 
 ## Failure Conditions
 
-- Validation failures (e.g., missing required input).
-- Authority failures (actor lacks permission).
-- State conflicts (action invalid in current state).
+- Comment text is empty or whitespace-only (validation failure).
+- Target Post does not exist, is archived, or is hidden (state conflict).
+- Actor is not authenticated or not recognized as an organizational Person (authority failure).
 
 ## Acceptance Criteria
 
-- [ ] Capability is accessible from SCR-FEED-001
-- [ ] Supports UC-FCOL-001 outcome
-- [ ] Successfully updates or retrieves necessary state
-- [ ] Handles failure conditions gracefully
+- [ ] Actor can submit a comment from `SCR-FEED-001`, `SCR-POST-001`, or `SCR-REQ-003`.
+- [ ] Submitted comment appears in the flat discussion list with author name and timestamp.
+- [ ] Comment count on the Post increments upon submission.
+- [ ] Submitting empty comment text is rejected with a validation error.
+- [ ] Comments cannot be submitted against archived or hidden posts.
 
 ## Implementation Notes
 
-None.
+Appends a Comment entity to the Post Aggregate in accordance with the flat discussion model.

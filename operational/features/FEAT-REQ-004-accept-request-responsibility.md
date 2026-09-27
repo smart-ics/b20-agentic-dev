@@ -8,11 +8,11 @@ Type: Command
 
 ## Purpose
 
-Enables the actor to accept request responsibility to achieve operational outcomes.
+Enables the designated Request Owner to formally accept operational responsibility for resolving an assigned Request, advancing the request into the active operational lifecycle.
 
 ## User Outcome
 
-The user can successfully execute the operational intent defined in the use case.
+The Request transitions from captured/evaluation state to `ACTIVE` state, confirming the owner's commitment to manage, coordinate, and resolve the operational demand.
 
 ## Traceability
 
@@ -33,34 +33,38 @@ The user can successfully execute the operational intent defined in the use case
 
 ## Preconditions
 
-The actor is authenticated and authorized to perform this action. System state allows the execution of this capability.
+- Target Request exists and is in `CAPTURED` state.
+- The actor is the designated Request Owner.
 
 ## Capability
 
-The system provides the necessary capability to accept request responsibility, facilitating the interaction required by the actor.
+The system provides an "Accept Responsibility" action on `SCR-REQ-003: Request Detail`, allows the owner to record optional initial notes or target expectations, transitions the Request lifecycle state to `ACTIVE`, appends an acceptance entry to the State & Audit log, and emits a `RequestStatusChanged` event.
 
 ## Business Rules
 
-- Execution must comply with constraints defined in the related domain and operational scenario.
-- Proper authorization must be enforced.
+- Only the currently designated Request Owner can accept operational responsibility (Request Domain Section 4; UC-REQ-004).
+- Confirming acceptance transitions the Request lifecycle state from `CAPTURED` to `ACTIVE` (Request Domain Section 9).
+- Accepting responsibility establishes accountability for resolving the request, but does not by itself constitute a delivery commitment (Request Domain Rules 10, 11; Manifesto Principle 9).
+- The acceptance timestamp and actor identity must be permanently preserved in the Request audit log (Request Domain Rule 14).
+- Acceptance generates a system feed event visible on `SCR-FEED-001: Operational Feed` (Post Domain Event 594).
 
 ## Success Result
 
-The authoritative state of the system is updated to reflect the successful execution of accept request responsibility.
+Authoritative Request status becomes `ACTIVE`, acceptance details are appended to the audit trail, and the request is recognized as an active operational work item.
 
 ## Failure Conditions
 
-- Validation failures (e.g., missing required input).
-- Authority failures (actor lacks permission).
-- State conflicts (action invalid in current state).
+- Actor is not the assigned Request Owner (authority failure).
+- Target Request is already in `ACTIVE` or `CLOSED` state (state conflict).
 
 ## Acceptance Criteria
 
-- [ ] Capability is accessible from SCR-REQ-003
-- [ ] Supports UC-REQ-004 outcome
-- [ ] Successfully updates or retrieves necessary state
-- [ ] Handles failure conditions gracefully
+- [ ] Accept Responsibility action is enabled on `SCR-REQ-003` only for the assigned Request Owner.
+- [ ] Confirming acceptance updates the authoritative Request status to `ACTIVE`.
+- [ ] Acceptance event and timestamp are appended to the State & Audit section of `SCR-REQ-003`.
+- [ ] Acceptance generates an operational update in the associated feed and `SCR-FEED-001`.
+- [ ] Non-owners are prevented from accepting responsibility.
 
 ## Implementation Notes
 
-None.
+Executes authoritative state transition from `CAPTURED` to `ACTIVE` on the Request Aggregate.

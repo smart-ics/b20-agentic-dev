@@ -8,11 +8,11 @@ Type: Workflow
 
 ## Purpose
 
-Enables the actor to review request completion to achieve operational outcomes.
+Enables an authorized Implementator to inspect completed work and resolution evidence on a Request, and formally accept the resolution (closing the request) or reject it (returning it to the owner for rework).
 
 ## User Outcome
 
-The user can successfully execute the operational intent defined in the use case.
+Completed requests are systematically verified against original operational demands; satisfactory work is formally closed, while deficient resolutions are returned to the owner with concrete rework feedback.
 
 ## Traceability
 
@@ -29,38 +29,46 @@ The user can successfully execute the operational intent defined in the use case
 - UJ-REQ-008
 
 ### Screens
+- SCR-REQ-001
 - SCR-REQ-003
 
 ## Preconditions
 
-The actor is authenticated and authorized to perform this action. System state allows the execution of this capability.
+- Target Request exists, is in `ACTIVE` state, and the Request Owner has reported work completion with proposed resolution details.
+- The actor holds the `Implementator` role in the Organization Domain.
 
 ## Capability
 
-The system provides the necessary capability to review request completion, facilitating the interaction required by the actor.
+The system provides completion review controls on `SCR-REQ-003: Request Detail` (and filterable completed queues on `SCR-REQ-001: Request List`), displays the original demand alongside recorded resolution notes and evidence, and provides two decisive operational actions: "Accept Resolution" and "Request Rework".
 
 ## Business Rules
 
-- Execution must comply with constraints defined in the related domain and operational scenario.
-- Proper authorization must be enforced.
+- Closing a Request must record its meaningful outcome (`ResolvedBy`, `ResolvedAt`, `Outcome`, `Description`) (Request Domain Rules 15, Resolution Section 5).
+- Accepting the resolution transitions Request lifecycle status to `CLOSED` with outcome `RESOLVED` (Request Domain Section 9).
+- Rejecting the resolution maintains Request status as `ACTIVE` and routes the request back to the Request Owner with mandatory rework feedback appended to the audit history (UC-REQ-008; UJ-REQ-008 Alternative Path).
+- A closed Request remains historically retrievable and cannot undergo further active workflow changes without reopening (Request Domain Rule 16).
+- The review outcome generates a system feed post on `SCR-FEED-001: Operational Feed` (Post Domain Events 597).
 
 ## Success Result
 
-The authoritative state of the system is updated to reflect the successful execution of review request completion.
+If resolution is accepted: Request lifecycle status becomes `CLOSED` with Resolution outcome `RESOLVED`, and active work ends.
+If rework is requested: Request remains in `ACTIVE` status with rework feedback logged, notifying the Request Owner.
 
 ## Failure Conditions
 
-- Validation failures (e.g., missing required input).
-- Authority failures (actor lacks permission).
-- State conflicts (action invalid in current state).
+- Actor does not hold the `Implementator` role (authority failure).
+- Target Request is not in a completion-pending state (state conflict).
+- Rework requested without providing mandatory rework feedback (validation failure).
 
 ## Acceptance Criteria
 
-- [ ] Capability is accessible from SCR-REQ-003
-- [ ] Supports UC-REQ-008 outcome
-- [ ] Successfully updates or retrieves necessary state
-- [ ] Handles failure conditions gracefully
+- [ ] Completion review controls are available on `SCR-REQ-003: Request Detail` for Implementators.
+- [ ] Implementator can inspect original demand details and resolution evidence side by side.
+- [ ] Confirming "Accept Resolution" transitions Request status to `CLOSED` with outcome `RESOLVED`.
+- [ ] Confirming "Request Rework" requires explanatory feedback and keeps Request status `ACTIVE`.
+- [ ] Resolution details (`ResolvedBy`, `ResolvedAt`, outcome, description) are permanently preserved in the Request audit log.
+- [ ] Completed requests awaiting review can be filtered on `SCR-REQ-001: Request List`.
 
 ## Implementation Notes
 
-None.
+Finalizes the Resolution component within the Request Aggregate and handles the terminal transition to `CLOSED` or continuation in `ACTIVE`.
