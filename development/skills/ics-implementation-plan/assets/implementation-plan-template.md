@@ -10,23 +10,26 @@ Execution Approval: PENDING | APPROVED
 
 # 1. Objective
 
-Feature being implemented.
+Feature or system capability being implemented.
+
+Planning Mode: [FEATURE-PLANNING | GREENFIELD-PLANNING]
 
 Referenced artifacts:
 
-- FEATURE
-- ARCHITECTURE (if applicable)
-- FEASIBILITY-ASSESSMENT
+- FEATURE (if Feature Planning)
+- ARCHITECTURE (target system architecture or capability architecture)
+- FEASIBILITY-ASSESSMENT (if Feature Planning)
 
-Architecture Applicability: [ARCHITECTURE-REQUIRED | ARCHITECTURE-NOT-REQUIRED]
+Architecture Applicability: [ARCHITECTURE-REQUIRED | ARCHITECTURE-NOT-REQUIRED | GREENFIELD-ARCHITECTURE]
 
 (If ARCHITECTURE-NOT-REQUIRED, explicitly record: "No architectural target-state artifact was required. Implementation relies on existing technical structure. Approved feasibility decisions are authoritative for the change. The current codebase is the source of current technical truth.")
+(If GREENFIELD-PLANNING, explicitly record: "Greenfield planning mode based on complete target architecture. Scope encompasses the entire target system architecture.")
 
 ---
 
 # 2. Planning Scope
 
-Describe the implementation scope.
+Describe the implementation scope (Feature scope or Greenfield system scope).
 
 ---
 

@@ -31,27 +31,89 @@ IMPLEMENTATION-PLAN does not:
 - Implement code
 - Review code
 
-## Inputs
+## Supported Planning Modes
 
-- FEATURE
-- ARCHITECTURE (if applicable)
-- FEASIBILITY-ASSESSMENT (READY-FOR-PLANNING)
-- Current Codebase
+The implementation-plan skill supports two planning workflows. The planner must automatically determine which mode applies based on the input artifacts.
 
-Missing ARCHITECTURE artifact is a signal to evaluate architecture applicability, not an instruction to create ARCHITECTURE.
+### Feature Planning Mode
 
-If ARCHITECTURE is required but absent:
-- stop planning
-- route to Architecture Update
+Plan implementation of a single approved feature, change request, or bug fix within an existing or developing system.
 
-If ARCHITECTURE is not required:
-- continue planning without creating ARCHITECTURE
+Workflow:
 
-If an ARCHITECTURE artifact already exists for the affected capability:
-- Planning must read it
-- the Architect must update it if the change makes it inconsistent
-- it remains authoritative
-- a simple change must never bypass or contradict existing ARCHITECTURE
+```text
+FEATURE
+    ↓
+ARCHITECTURE (if required)
+    ↓
+IMPLEMENTATION PLAN
+```
+
+Inputs:
+
+- FEATURE (required: defines the requested outcome and capability scope)
+- FEASIBILITY-ASSESSMENT with Planning Readiness `READY-FOR-PLANNING` (required: authoritative for feasibility decisions and architecture applicability)
+- ARCHITECTURE (optional: required if evaluated as ARCHITECTURE-REQUIRED; absent if ARCHITECTURE-NOT-REQUIRED)
+- Current Codebase (current technical truth)
+
+In Feature Planning Mode:
+- Missing ARCHITECTURE artifact is a signal to evaluate architecture applicability, not an instruction to create ARCHITECTURE.
+- If ARCHITECTURE is required but absent:
+  - stop planning
+  - route to Architecture Update
+- If ARCHITECTURE is not required:
+  - continue planning without creating ARCHITECTURE
+- If an ARCHITECTURE artifact already exists for the affected capability:
+  - Planning must read it
+  - the Architect must update it if the change makes it inconsistent
+  - it remains authoritative; a simple change must never bypass or contradict existing ARCHITECTURE
+
+### Greenfield Planning Mode
+
+Plan implementation of the complete architecture for a new system.
+
+Workflow:
+
+```text
+Complete Product Definition
+        ↓
+Greenfield Architecture
+        ↓
+ARCHITECTURE
+        ↓
+IMPLEMENTATION PLAN
+```
+
+Inputs:
+
+- ARCHITECTURE (required: authoritative target system architecture covering all module boundaries, data models, services, and integration contracts derived from complete product definition)
+- Current Codebase (pre-implementation state of the target repository; may be empty, scaffolded, or partially initialized)
+
+In Greenfield Planning Mode:
+- ARCHITECTURE is mandatory. If absent, stop planning and route to Greenfield Architecture Creation (`ics-greenfield-architecture-creation`).
+- No separate FEATURE or FEASIBILITY-ASSESSMENT artifact is required; the target architecture embodies the complete approved product definition.
+- Planning decomposes the entire target architecture into phased execution slices covering foundation, core domain modules, supporting services, integration/feed mechanisms, and interfaces.
+
+## Planning Scope Detection
+
+The planner must automatically detect and apply the appropriate planning mode and scope:
+
+```text
+If ARCHITECTURE represents a complete system (and no FEATURE is provided):
+
+    Scope = Entire Architecture
+
+If FEATURE is provided:
+
+    Scope = Requested Feature
+
+If both are provided:
+
+    FEATURE determines scope.
+    ARCHITECTURE provides realization context.
+```
+
+The planner must never assume a FEATURE artifact is always required or present. When given a complete system ARCHITECTURE without a specific FEATURE input, the planner must operate in Greenfield Planning Mode and scope the plan to the entire target architecture.
 
 ## Artifact Ownership
 
@@ -85,11 +147,20 @@ The Planning skill defines the structure of the plan, not the execution state or
 
 ## Planning Principles
 
-When Architecture Applicability is ARCHITECTURE-NOT-REQUIRED, the IMPLEMENTATION-PLAN must explicitly record that:
-- no architectural target-state artifact was required
-- implementation relies on existing technical structure
-- approved feasibility decisions are authoritative for the change
-- the current codebase is the source of current technical truth
+In Feature Planning Mode:
+- When Architecture Applicability is ARCHITECTURE-NOT-REQUIRED, the IMPLEMENTATION-PLAN must explicitly record that:
+  - no architectural target-state artifact was required
+  - implementation relies on existing technical structure
+  - approved feasibility decisions are authoritative for the change
+  - the current codebase is the source of current technical truth
+- When Architecture Applicability is ARCHITECTURE-REQUIRED, the IMPLEMENTATION-PLAN must reference the capability ARCHITECTURE artifact.
+
+In Greenfield Planning Mode:
+- The IMPLEMENTATION-PLAN must explicitly record that:
+  - planning mode is Greenfield Planning
+  - scope encompasses the entire target system architecture
+  - target ARCHITECTURE is the authoritative technical target state
+  - the current codebase reflects the pre-implementation baseline
 
 Each slice must:
 
@@ -343,7 +414,7 @@ A slice must target exactly one repository.
 
 A slice must not require changes across multiple repositories.
 
-When a FEATURE spans multiple repositories, create separate slices for each repository.
+When a FEATURE or capability spans multiple repositories, create separate slices for each repository.
 
 Example:
 
