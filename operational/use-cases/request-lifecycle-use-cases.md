@@ -38,7 +38,7 @@ Derived from **Request Lifecycle Scenarios** using the **Use‑Case Discovery Sk
 
 **Goal:** Determine whether the Request can be handled.
 
-**System Interaction:** Assigned Handler accesses the assigned Request in the system and inspects its demand details, context, and operational requirements to evaluate feasibility and decide the next operational action.
+**System Interaction:** Assigned Handler accesses the assigned Request in the system and inspects its demand details, context, and operational requirements to evaluate feasibility.
 
 **Related Domains:** Request
 
