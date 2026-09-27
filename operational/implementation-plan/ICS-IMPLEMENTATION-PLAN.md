@@ -2,7 +2,7 @@
 Title: ICS Operational System Implementation Plan
 Code: ICS
 Artifact: IMPLEMENTATION-PLAN
-Version: 3.0
+Version: 3.1
 LastUpdated: 2026-09-27
 Status: NOT-STARTED
 Execution Approval: PENDING
@@ -31,16 +31,19 @@ The plan covers the complete ICS Operational System architecture comprising nine
 | Boundary | Assembly | Architecture §22 Dependency |
 |---|---|---|
 | Foundation | `ICS.Core` | None |
-| Organization | `ICS.Modules.Organization` | `ICS.Core` |
-| Customer | `ICS.Modules.Customer` | `ICS.Core` |
-| Product | `ICS.Modules.Product` | `ICS.Core`, `Organization` (Read) |
 | Identity & Access | `ICS.Modules.Identity` | `ICS.Core`, `Organization` (Read) |
-| Request | `ICS.Modules.Request` | `ICS.Core`, `Organization`, `Customer`, `Product` |
-| Work Package | `ICS.Modules.WorkPackage` | `ICS.Core`, `Organization`, `Customer`, `Product`, `Request` |
-| Post & Feed | `ICS.Modules.Post` | `ICS.Core`, Domain Events from all modules |
-| Management Analytics | `ICS.Modules.Analytics` | `ICS.Core`, `Request`, `Organization`, `Customer` |
+| Organization | `ICS.Modules.Organization` | `ICS.Core`, `Identity` Context |
+| Customer | `ICS.Modules.Customer` | `ICS.Core`, `Identity` Context |
+| Product | `ICS.Modules.Product` | `ICS.Core`, `Organization` (Read), `Identity` Context |
+| Request | `ICS.Modules.Request` | `ICS.Core`, `Organization`, `Customer`, `Product`, `Identity` Context |
+| Work Package | `ICS.Modules.WorkPackage` | `ICS.Core`, `Organization`, `Customer`, `Product`, `Request`, `Identity` Context |
+| Post & Feed | `ICS.Modules.Post` | `ICS.Core`, Domain Events from all modules, `Identity` Context |
+| Management Analytics | `ICS.Modules.Analytics` | `ICS.Core`, `Request`, `Organization`, `Customer`, `Identity` Context |
 
-Scope derives directly from Architecture §22 (Implementation Boundaries) and §23 (Implementation Dependency Graph). No feature sub-scope is applied; the plan covers the entire target system. Presentation screens are delivered vertically within each module's phase to enable early feedback rather than accumulating all UI work at the end.
+Scope derives directly from Architecture §22 (Implementation Boundaries) and §23 (Implementation Dependency Graph). No feature sub-scope is applied; the plan covers the entire target system.
+
+**Vertical Slice Mandate for Implementation Agents**:
+Presentation screens and endpoints are delivered vertically within each module's phase to enable early verification rather than accumulating horizontal layered batch work packages. Implementation agents must execute each slice as a cohesive vertical deliverable (coupling domain rules, Dapper parameterized persistence, MediatR handlers, and presentation controllers/Vue SFCs where applicable).
 
 Technology stack is explicitly defined in Architecture §19 and is authoritative for all implementation phases. Key mandates:
 
@@ -49,7 +52,7 @@ Technology stack is explicitly defined in Architecture §19 and is authoritative
 - **Frontend**: Vue 3 (Composition API, `<script setup lang="ts">`), TypeScript, Bootstrap 5, Vite, Pinia, Vue Router 4 — Architecture §19.4
 - **Testing**: xUnit, FluentAssertions, `WebApplicationFactory<Program>` (integration), Respawn (test isolation) — Architecture §19.8
 - **Logging**: Serilog (structured JSON, enriched with TraceId, UserId, PersonId) — Architecture §19.9
-- **Deployment**: Single ASP.NET Core process, Docker multi-stage build (`mcr.microsoft.com/dotnet/sdk:8.0` / `aspnet:8.0`) — Architecture §19.10
+- **Deployment**: Modular Monolith hosted as a single ASP.NET Core process running Kestrel as a Windows Service, systemd service, or behind an IIS/Nginx reverse proxy. Vue 3 SPA compiled via Vite into `ICS.Web/wwwroot/`, published via `dotnet publish -c Release`, with DbUp migrations executing on deployment — Architecture §19.10
 
 ---
 
@@ -64,7 +67,8 @@ Milestones represent observable business-level delivery checkpoints, independent
 | **M2 — Request Lifecycle Operational** | P4-S19 | Complete request management operational: Record, Assign, Evaluate, Accept, Reject, Escalate, Decision, Complete. All request screens (`SCR-REQ-001..005`) functional. Core business operations running |
 | **M3 — Work Package Operational** | P5-S22 | Work Packages can be created, managed, activated, closed, and linked to Requests. Work Package screen (`SCR-WP-001`) functional |
 | **M4 — Operational Feed Live** | P6-S26 | Feed screen (`SCR-FEED-001`) operational. Posts, comments, reactions functional. Exception badges working. Post detail modal (`SCR-POST-001`) functional. Feed filtering by Customer, Product, and Exception active |
-| **M5 — Full System Operational** | P7-S31 | Management dashboards (`SCR-MGT-001..003`) operational. Analytics snapshot job running. Docker image builds and runs. All cross-cutting concerns verified end-to-end. System ready for UAT |
+| **M5 — Full System Operational** | P7-S31 | Management dashboards (`SCR-MGT-001..003`) operational. Analytics snapshot job running. Production deployment package and hosting scripts generated and verified. All cross-cutting concerns verified end-to-end. System ready for UAT |
+| **M6 — UAT Approved** | Post-P7 Acceptance Gate | Formal business stakeholder and QA acceptance completed across all primary user journeys (Request lifecycle, Collaboration, Feed, and Management oversight). Test package executed, defect package verified, and operational acceptance sign-off granted |
 
 ---
 
@@ -85,6 +89,11 @@ Milestones represent observable business-level delivery checkpoints, independent
 - Dependencies represent real implementation prerequisites; they are not conceptual or sequential associations.
 - `Depends On: P1-S06` transitively implies all P1 application pipeline slices are implemented, since P1-S06 is the terminal application-pipeline slice of the Foundation phase.
 
+## Parallel Execution Opportunities
+
+- **Customer and Product Concurrency**: In Phase 3, Customer (P3-S13) does not depend on Organization (P3-S12) or Product (P3-S14). Product (P3-S14) depends on Organization (P3-S12) for owner validation, but has zero dependency on Customer (P3-S13). Consequently, Customer and Product can execute concurrently in parallel to compress the delivery schedule.
+- **Foundation Scaffold Concurrency**: In Phase 1, P1-S07 (Test Infrastructure) and P1-S08 (Frontend Scaffolding) can execute concurrently with P1-S02 through P1-S06 once P1-S01 is established.
+
 ---
 
 # 5. Progress Summary
@@ -92,8 +101,8 @@ Milestones represent observable business-level delivery checkpoints, independent
 | Phase | Slices | Implementation Status | Review Status | Progress |
 |---|---|---|---|---|
 | P1 — Foundation | S01–S08 | NOT-STARTED | NOT-REVIEWED | 0/8 |
-| P2 — Core Master Data APIs | S09–S11 | NOT-STARTED | NOT-REVIEWED | 0/3 |
-| P3 — Identity, Authentication & Product Catalog | S12–S15 | NOT-STARTED | NOT-REVIEWED | 0/4 |
+| P2 — Identity & Access | S09–S11 | NOT-STARTED | NOT-REVIEWED | 0/3 |
+| P3 — Core Master Data & Product Catalog | S12–S15 | NOT-STARTED | NOT-REVIEWED | 0/4 |
 | P4 — Request Lifecycle | S16–S19 | NOT-STARTED | NOT-REVIEWED | 0/4 |
 | P5 — Work Package | S20–S22 | NOT-STARTED | NOT-REVIEWED | 0/3 |
 | P6 — Post & Feed | S23–S26 | NOT-STARTED | NOT-REVIEWED | 0/4 |
@@ -121,7 +130,7 @@ Title: Solution Structure & Project Scaffolding
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Create the solution file, project references, and exact directory structure for the modular monolith as specified in Architecture §19.11. Establish `ICS.Core`, all `ICS.Modules.*` project skeletons (empty, buildable), the `ICS.Web` host application project, and the `docker/` directory. All projects target .NET 8. Define inter-project reference graph matching Architecture §22 dependency table.
+Objective: Create the solution file, project references, and exact directory structure for the modular monolith as specified in Architecture §19.11. Establish `ICS.Core`, all `ICS.Modules.*` project skeletons (empty, buildable), the `ICS.Web` host application project, and the `deploy/` directory. All projects target .NET 8. Define inter-project reference graph matching Architecture §22 dependency table.
 
 Depends On: None
 
@@ -140,13 +149,13 @@ Completion Criteria:
   - `src/ICS.Modules.Post/`
   - `src/ICS.Modules.Analytics/`
   - `src/ICS.Web/` (ASP.NET Core host, API Controllers, Middleware, DbUp migrations)
-  - `docker/` (placeholder directory for Dockerfile)
+  - `deploy/` (placeholder directory for production hosting definitions and publish scripts)
 - All projects target `net8.0`. C# 12 language version, nullable reference types enabled, implicit usings enabled — Architecture §19.1.
 - `ICS.Web` project references all module projects.
 - Project reference graph matches Architecture §22 dependency table with no circular references.
 - `dotnet build ICS.sln` succeeds on the solution with zero errors.
 
-Notes: Produces no business logic. Its output is the compilable project structure that all subsequent slices build into. The `tests/` directory and `docker/Dockerfile` are created by P1-S07 and P7-S31 respectively; only the `docker/` placeholder directory is created here.
+Notes: Produces no business logic. Its output is the compilable project structure that all subsequent slices build into. The `tests/` directory and `deploy/` packaging scripts are created by P1-S07 and P7-S31 respectively; only the `deploy/` placeholder directory is created here.
 
 ---
 
@@ -337,31 +346,119 @@ Completion Criteria:
 - ASP.NET Core `ICS.Web` is configured to serve the built SPA assets from `wwwroot` (or equivalent static file path), falling back to `index.html` for SPA routing.
 - Placeholder root component renders "ICS Operational System" confirmation message; the application loads in browser without console errors.
 
-Notes: Can execute in parallel with P1-S02 through P1-S06 (depends only on P1-S01 for project structure). The `client/` SPA is built as part of the Docker multi-stage build defined in P7-S31. Each screen implementation (P3-S14, P3-S15, P4-S19, P5-S22, P6-S26, P7-S29) adds Vue SFC components to this scaffold. Architecture §19.4 (Frontend Stack), §19.5 (Authentication), §19.10 (Deployment), and §20 ("Frontend Component Architecture") are authoritative.
+Notes: Can execute in parallel with P1-S02 through P1-S06 (depends only on P1-S01 for project structure). The `client/` SPA is built via Vite into `wwwroot/` during the production publish process defined in P7-S31. Each screen implementation (P2-S11, P3-S15, P4-S19, P5-S22, P6-S26, P7-S29) adds Vue SFC components to this scaffold. Architecture §19.4 (Frontend Stack), §19.5 (Authentication), §19.10 (Deployment & Runtime Strategy), and §20 ("Frontend Component Architecture") are authoritative.
 
 ---
 
-## P2 — Core Master Data APIs
+## P2 — Identity & Access
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the three foundational master-data modules — Organization, Customer, and Product — including domain, application services, and persistence using Dapper with explicit parameterized SQL (Architecture §19.3). These modules expose published query interfaces consumed by all subsequent modules. Organization and Customer can be implemented in parallel; Product depends on Organization for owner validation.
+Objective: Implement the Identity & Access module, the authentication middleware pipeline, and the Login screen (`SCR-AUTH-001`). Establishes `UserAccounts` and `UserSessions` tables via DbUp, credential verification via Argon2id or ASP.NET Core `IPasswordHasher` (PBKDF2/HMAC-SHA512), secure cookie-based session management (`HttpOnly`, `SameSite=Strict`), and the concrete `CurrentContextProvider` that exposes `CurrentUserId`, `CurrentPersonId`, and `CurrentRoles` across all HTTP requests. Delivers the Login screen (`SCR-AUTH-001`) as a Vue 3 SFC. Placing Identity immediately after Foundation ensures all subsequent modules (Master Data, Requests, Work Packages, Feed, Analytics) execute with active security context, user identification, and RBAC authorization without requiring post-hoc refactoring.
 
-Source: Architecture §22 — Boundaries: **Organization**, **Customer**, **Product**. Architecture §6 (Module Boundaries), §16 (Data Ownership), §19.3 (Persistence & Data Access).
+Source: Architecture §22 — Boundary: **Identity & Access** (`ICS.Modules.Identity`, Depends On: `ICS.Core`, `Organization` (Read)). Architecture §14 (Identity & Authentication Architecture). Architecture §18, §19.5.
 
 ---
 
 ### P2-S09
+
+Title: Identity Module — Domain, Application Services & Persistence
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the complete Identity & Access module: `UserAccount` and `UserSession` domain entities, `AuthenticationService` (Login, Logout, ValidateSession), DbUp SQL migration scripts for `identity.*` tables, and Dapper repository implementations using explicit parameterized SQL. Credential verification uses Argon2id or ASP.NET Core `IPasswordHasher` (PBKDF2/HMAC-SHA512), per Architecture §19.5. Session token stored in `identity.UserSessions`.
+
+Depends On: P1-S06, P1-S07
+
+Repository: `ICS.Modules.Identity`
+
+Completion Criteria:
+- DbUp SQL migration scripts create `identity.*` schema tables: `UserAccounts`, `UserSessions` — Architecture §14 (IAM Persistence Tables).
+- All repository operations use Dapper with explicit parameterized SQL against SQL Server; no EF Core — Architecture §19.3, §20.
+- `AuthenticationService.Login(usernameOrEmail, password, clientInfo)`: verifies password using Argon2id or `IPasswordHasher` (PBKDF2/HMAC-SHA512) — Architecture §19.5; checks `UserAccount.Status == 'ACTIVE'`; creates `UserSession`; issues `SessionToken` (stored in `identity.UserSessions`). (Note: If Organization module is not yet populated, status checks support bootstrap admin accounts; once Organization module is active, Person active status is resolved via `OrganizationQueryService`).
+- `AuthenticationService.Logout(sessionToken)`: marks `UserSession.IsRevoked = TRUE` in `identity.UserSessions`.
+- `AuthenticationService.ValidateSession(sessionToken)`: validates token, checks expiry and revocation, returns `SecurityContext` with `UserId` and `PersonId`.
+- Repository implementations write exclusively to `identity.*` schema using parameterized SQL.
+- Integration tests (xUnit + WebApplicationFactory + Respawn): Login success, Login failure (bad credentials), ValidateSession with valid token, ValidateSession with expired token, Logout invalidates session.
+
+Notes: Architecture §14 is authoritative for all IAM component specifications. Architecture §19.5 is authoritative for authentication mechanism (Cookie Auth, server-side session, password hashing). Running Identity in P2 establishes user credentials, sessions, and security context before master data is provisioned.
+
+---
+
+### P2-S10
+
+Title: Authentication Middleware & Security Context Pipeline
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the concrete HTTP authentication middleware that intercepts every incoming request, validates the session cookie via `AuthenticationService.ValidateSession`, populates `CurrentContextProvider` with `CurrentUserId`, `CurrentPersonId`, and `CurrentRoles`, and rejects unauthenticated requests with HTTP 401. Uses ASP.NET Core Cookie Authentication (`CookieAuthenticationDefaults.AuthenticationScheme`) with secure, `HttpOnly`, `SameSite=Strict` cookies per Architecture §19.5. Implement the RBAC enforcement mechanism (`[Authorize(Roles = "...")]`) backed by dynamically resolved roles.
+
+Depends On: P2-S09
+
+Repository: `ICS.Modules.Identity` / `ICS.Web`
+
+Completion Criteria:
+- ASP.NET Core Cookie Authentication registered with `HttpOnly = true`, `SameSite = SameSiteMode.Strict`, `Secure = true` — Architecture §19.5.
+- Authentication middleware is registered in `ICS.Web` pipeline (fulfils the placeholder established in P1-S06).
+- Every request without a valid session cookie returns HTTP 401 on protected endpoints.
+- Every request with a valid cookie calls `AuthenticationService.ValidateSession` and populates `CurrentContextProvider` with `CurrentUserId`, `CurrentPersonId`, and `CurrentRoles` — Architecture §19.5.
+- RBAC enforcement mechanism is in place and verified: `[Authorize(Roles = "Management")]` attribute rejects non-Management users with HTTP 403.
+- Integration tests (xUnit + WebApplicationFactory): authenticated request (200), unauthenticated request (401), insufficient-role request (403) pass.
+
+Notes: Architecture §18 (Authentication & Security Context, RBAC) and §19.5 are authoritative.
+
+---
+
+### P2-S11
+
+Title: Login Screen — SCR-AUTH-001
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement `SCR-AUTH-001` (Login Screen) as a Vue 3 SFC (`<script setup lang="ts">`) with Bootstrap 5 styling, and the corresponding ASP.NET Core REST API controller (`/api/v1/auth/login`, `/api/v1/auth/logout`). Wires `AuthenticationService.Login` and `Logout`, sets the session cookie on success, handles login failures with distinct error messages, and redirects to `SCR-FEED-001` on success.
+
+Depends On: P2-S10, P1-S08
+
+Repository: `ICS.Web`, `ICS.Web/client/`
+
+Completion Criteria:
+- Vue 3 SFC `LoginView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders username/password input fields — Architecture §19.4, §20.
+- Vue Router 4 route `/login` maps to `LoginView.vue`.
+- POST `/api/v1/auth/login` ASP.NET Core Controller endpoint calls `AuthenticationService.Login`; sets secure `HttpOnly` `SameSite=Strict` session cookie on success — Architecture §19.5.
+- Login failure returns distinct RFC 7807 `ProblemDetails` responses: invalid credentials, account locked — Architecture §19.6.
+- Successful login redirects Vue Router to `SCR-FEED-001` route.
+- POST `/api/v1/auth/logout` endpoint calls `AuthenticationService.Logout` and clears the session cookie.
+- Integration tests (xUnit + WebApplicationFactory): login success and each login failure scenario pass.
+
+Notes: Architecture §14 (UI Boundary — SCR-AUTH-001), §19.4, §19.5, §19.6 are authoritative.
+
+---
+
+## P3 — Core Master Data & Product Catalog
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the three foundational master-data modules — Organization, Customer, and Product — including domain, application services, and persistence using Dapper with explicit parameterized SQL (Architecture §19.3), along with the Product Catalog screen (`SCR-PRD-001`). These modules operate within the authenticated security context established in P2. Customer and Product are architecturally decoupled and can execute in parallel: Customer has zero dependency on Organization or Product; Product depends on Organization for owner validation, but has zero dependency on Customer. M1 is achieved when P3-S15 is complete.
+
+Source: Architecture §22 — Boundaries: **Organization**, **Customer**, **Product**. Architecture §6 (Module Boundaries), §10 (Product Module Architecture), §16 (Data Ownership), §19.3 (Persistence & Data Access).
+
+---
+
+### P3-S12
 
 Title: Organization Module — Domain, Application Services & Persistence
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the complete Organization module: domain entities (`Person`, `Team`, `Role`, `Responsibility`, `TeamMembership`, `RoleAssignment`, `ResponsibilityAssignment`), `OrganizationService` command methods, `OrganizationQueryService` query methods, DbUp SQL migration scripts for `organization.*` tables, and Dapper repository implementations using explicit parameterized SQL.
+Objective: Implement the complete Organization module: domain entities (`Person`, `Team`, `Role`, `Responsibility`, `TeamMembership`, `RoleAssignment`, `ResponsibilityAssignment`), `OrganizationService` command methods, `OrganizationQueryService` query methods, DbUp SQL migration scripts for `organization.*` tables, and Dapper repository implementations using explicit parameterized SQL. Connects `OrganizationQueryService` with `AuthorizationService` for dynamic role resolution.
 
-Depends On: P1-S06, P1-S07
+Depends On: P1-S06, P1-S07, P2-S10
 
 Repository: `ICS.Modules.Organization`
 
@@ -370,16 +467,17 @@ Completion Criteria:
 - All repository operations use Dapper with explicit parameterized SQL against SQL Server; no EF Core — Architecture §19.3, §20.
 - MediatR command and query handlers implement: create/update Person, create Team, assign Person to Team, create Role, assign Role to Person, create Responsibility, assign Responsibility to Person, deactivate Person — via `OrganizationService`.
 - `OrganizationQueryService` implements: `GetPersonById`, `ListActivePersons`, `GetTeamRoster`, `GetPersonRoles`, `GetPersonResponsibilities` — Architecture §7.
+- Dynamic role resolution wired: `AuthorizationService.ResolveRoles(personId)` delegates to `OrganizationQueryService.GetPersonRoles` — Architecture §14.
 - Domain events emitted: `PersonCreated`, `PersonDeactivated`, `RoleAssigned`, `RoleRevoked`.
 - `OrganizationQueryService` is accessible as a published interface to other modules; internal repositories are not exposed — Architecture §20 (Strict Vertical Slice Boundary).
 - Repository implementations write exclusively to `organization.*` schema using parameterized SQL.
 - Integration tests (xUnit + WebApplicationFactory + Respawn): query service returns accurate results after service commands.
 
-Notes: Architecture §6 (Module Boundaries — Organization), §7, and §16 are authoritative. No tables from other modules are written. Depends on P1-S07 for test infrastructure.
+Notes: Architecture §6 (Module Boundaries — Organization), §7, and §16 are authoritative. No tables from other modules are written. Depends on P1-S07 for test infrastructure and P2-S10 for security context.
 
 ---
 
-### P2-S10
+### P3-S13
 
 Title: Customer Module — Domain, Application Services & Persistence
 
@@ -388,7 +486,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the complete Customer module: domain entities (`Customer`, `CustomerContact`), `CustomerService` command methods, `CustomerQueryService` query methods, DbUp SQL migration scripts for `customer.*` tables, and Dapper repository implementations using explicit parameterized SQL.
 
-Depends On: P1-S06, P1-S07
+Depends On: P1-S06, P1-S07, P2-S10
 
 Repository: `ICS.Modules.Customer`
 
@@ -401,11 +499,11 @@ Completion Criteria:
 - Repository implementations write exclusively to `customer.*` schema using parameterized SQL.
 - Integration tests (xUnit + WebApplicationFactory + Respawn): query service returns accurate results after service commands.
 
-Notes: Architecture §6 (Module Boundaries — Customer) and §16 are authoritative. Customer module does not own Request or Work Package relationships. Can execute in parallel with P2-S09. Depends on P1-S07 for test infrastructure.
+Notes: Architecture §6 (Module Boundaries — Customer) and §16 are authoritative. Customer module does not own Request or Work Package relationships. **Parallel Execution**: Customer has zero dependency on Organization (P3-S12) or Product (P3-S14). It can execute concurrently in parallel with P3-S12 and P3-S14.
 
 ---
 
-### P2-S11
+### P3-S14
 
 Title: Product Module — Domain, Application Services & Persistence
 
@@ -414,7 +512,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the complete Product module: domain entity (`Product`), `ProductService` command methods, `ProductQueryService` query methods, DbUp SQL migration scripts for `product.*` tables, and Dapper repository implementations. Owner validation reads from `OrganizationQueryService`.
 
-Depends On: P1-S06, P1-S07, P2-S09
+Depends On: P1-S06, P1-S07, P2-S10, P3-S12
 
 Repository: `ICS.Modules.Product`
 
@@ -429,96 +527,7 @@ Completion Criteria:
 - Repository implementations write exclusively to `product.*` schema using parameterized SQL.
 - Integration tests (xUnit + WebApplicationFactory + Respawn) pass.
 
-Notes: Architecture §10 (Product Module Architecture) is authoritative. Depends on P2-S09 because `CreateProduct` and `AssignProductOwner` call `OrganizationQueryService` to validate the owner.
-
----
-
-## P3 — Identity, Authentication & Product Catalog
-
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
-
-Objective: Implement the Identity & Access module, the authentication middleware pipeline, the Login screen (`SCR-AUTH-001`), and the Product Catalog screen (`SCR-PRD-001`). Authentication uses cookie-based session (Architecture §19.5). Screens are implemented as Vue 3 SFCs served by ASP.NET Core REST API endpoints (Architecture §19.4, §19.6). This phase delivers the first vertical user-facing capability (log in, view and manage products). M1 is achieved when this phase is complete.
-
-Source: Architecture §22 — Boundary: **Identity & Access** (`ICS.Modules.Identity`, Depends On: `ICS.Core`, `Organization` (Read)). Architecture §14 (Identity & Authentication Architecture). Architecture §18, §19.5.
-
----
-
-### P3-S12
-
-Title: Identity Module — Domain, Application Services & Persistence
-
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
-
-Objective: Implement the complete Identity & Access module: `UserAccount` and `UserSession` domain entities, `AuthenticationService` (Login, Logout, ValidateSession), DbUp SQL migration scripts for `identity.*` tables, and Dapper repository implementations. Credential verification uses Argon2id or ASP.NET Core `IPasswordHasher` (PBKDF2/HMAC-SHA512), per Architecture §19.5. Session token stored in `identity.UserSessions`.
-
-Depends On: P1-S06, P1-S07, P2-S09
-
-Repository: `ICS.Modules.Identity`
-
-Completion Criteria:
-- DbUp SQL migration scripts create `identity.*` schema tables: `UserAccounts`, `UserSessions` — Architecture §14 (IAM Persistence Tables).
-- All repository operations use Dapper with explicit parameterized SQL; no EF Core — Architecture §19.3, §20.
-- `AuthenticationService.Login(usernameOrEmail, password, clientInfo)`: verifies password using Argon2id or `IPasswordHasher` (PBKDF2/HMAC-SHA512) — Architecture §19.5; checks `UserAccount.Status == 'ACTIVE'`; checks linked `Person.Status == 'ACTIVE'` via `OrganizationQueryService`; creates `UserSession`; issues `SessionToken` (stored in `identity.UserSessions`).
-- `AuthenticationService.Logout(sessionToken)`: marks `UserSession.IsRevoked = TRUE` in `identity.UserSessions`.
-- `AuthenticationService.ValidateSession(sessionToken)`: validates token, checks expiry and revocation, returns `SecurityContext` with `UserId` and `PersonId`.
-- `AuthorizationService.ResolveRoles(personId)`: fetches active `RoleAssignments` via `OrganizationQueryService`.
-- Repository implementations write exclusively to `identity.*` schema using parameterized SQL.
-- Integration tests (xUnit + WebApplicationFactory + Respawn): Login success, Login failure (bad credentials), Login failure (inactive Person), ValidateSession with valid token, ValidateSession with expired token, Logout invalidates session.
-
-Notes: Architecture §14 is authoritative for all IAM component specifications. Architecture §19.5 is authoritative for authentication mechanism (Cookie Auth, server-side session, password hashing).
-
----
-
-### P3-S13
-
-Title: Authentication Middleware & Security Context Pipeline
-
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
-
-Objective: Implement the concrete HTTP authentication middleware that intercepts every incoming request, validates the session cookie via `AuthenticationService.ValidateSession`, populates `CurrentContextProvider` with `CurrentUserId`, `CurrentPersonId`, and `CurrentRoles`, and rejects unauthenticated requests with HTTP 401. Uses ASP.NET Core Cookie Authentication (`CookieAuthenticationDefaults.AuthenticationScheme`) with secure, `HttpOnly`, `SameSite=Strict` cookies per Architecture §19.5. Implement the RBAC enforcement mechanism (`[Authorize(Roles = "...")]`) backed by dynamically resolved roles from `organization.RoleAssignments` — Architecture §19.5, §18.
-
-Depends On: P3-S12
-
-Repository: `ICS.Modules.Identity` / `ICS.Web`
-
-Completion Criteria:
-- ASP.NET Core Cookie Authentication registered with `HttpOnly = true`, `SameSite = SameSiteMode.Strict`, `Secure = true` — Architecture §19.5.
-- Authentication middleware is registered in `ICS.Web` pipeline (fulfils the placeholder established in P1-S06).
-- Every request without a valid session cookie returns HTTP 401.
-- Every request with a valid cookie calls `AuthenticationService.ValidateSession` and populates `CurrentContextProvider` with `CurrentUserId`, `CurrentPersonId`, and `CurrentRoles` — roles dynamically resolved from `organization.RoleAssignments` via `AuthorizationService` — Architecture §19.5.
-- RBAC enforcement mechanism is in place and verified: `[Authorize(Roles = "Management")]` attribute rejects non-Management users with HTTP 403.
-- Integration tests (xUnit + WebApplicationFactory): authenticated request (200), unauthenticated request (401), insufficient-role request (403) pass.
-
-Notes: Architecture §18 (Authentication & Security Context, RBAC) and §19.5 are authoritative.
-
----
-
-### P3-S14
-
-Title: Login Screen — SCR-AUTH-001
-
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
-
-Objective: Implement `SCR-AUTH-001` (Login Screen) as a Vue 3 SFC (`<script setup lang="ts">`) with Bootstrap 5 styling, and the corresponding ASP.NET Core REST API controller (`/api/v1/auth/login`, `/api/v1/auth/logout`). Wires `AuthenticationService.Login` and `Logout`, sets the session cookie on success, handles login failures with distinct error messages, and redirects to `SCR-FEED-001` on success.
-
-Depends On: P3-S13, P1-S08
-
-Repository: `ICS.Web`, `ICS.Web/client/`
-
-Completion Criteria:
-- Vue 3 SFC `LoginView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders username/password input fields — Architecture §19.4, §20.
-- Vue Router 4 route `/login` maps to `LoginView.vue`.
-- POST `/api/v1/auth/login` ASP.NET Core Controller endpoint calls `AuthenticationService.Login`; sets secure `HttpOnly` `SameSite=Strict` session cookie on success — Architecture §19.5.
-- Login failure returns distinct RFC 7807 `ProblemDetails` responses: invalid credentials, account locked, inactive person — Architecture §19.6.
-- Successful login redirects Vue Router to `SCR-FEED-001` route.
-- POST `/api/v1/auth/logout` endpoint calls `AuthenticationService.Logout` and clears the session cookie.
-- Integration tests (xUnit + WebApplicationFactory): login success and each login failure scenario pass.
-
-Notes: Architecture §14 (UI Boundary — SCR-AUTH-001), §19.4, §19.5, §19.6 are authoritative.
+Notes: Architecture §10 (Product Module Architecture) is authoritative. **Parallel Execution**: Depends on P3-S12 because `CreateProduct` and `AssignProductOwner` call `OrganizationQueryService` to validate the owner, but has zero dependency on Customer (P3-S13). Executes in parallel with P3-S13.
 
 ---
 
@@ -529,9 +538,9 @@ Title: Product Catalog Screen — SCR-PRD-001
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement `SCR-PRD-001` (Product Catalog Screen) as a Vue 3 SFC with Bootstrap 5 styling, and the corresponding ASP.NET Core REST API controller (`/api/v1/products/*`). Wires `ProductService` commands and `ProductQueryService` queries. Delivers the first content management screen; users can view the product catalog, create products, update attributes, assign product owners, and toggle product status.
+Objective: Implement `SCR-PRD-001` (Product Catalog Screen) as a Vue 3 SFC with Bootstrap 5 styling, and the corresponding ASP.NET Core REST API controller (`/api/v1/products/*`). Wires `ProductService` commands and `ProductQueryService` queries. Delivers the first content management screen; users can view the product catalog, create products, update attributes, assign product owners, and toggle product status. M1 is achieved when this slice is complete.
 
-Depends On: P3-S13, P1-S08, P2-S11
+Depends On: P3-S14, P2-S10, P1-S08
 
 Repository: `ICS.Web`, `ICS.Web/client/`
 
@@ -539,11 +548,11 @@ Completion Criteria:
 - Vue 3 SFC `ProductCatalogView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders product catalog — Architecture §19.4.
 - ASP.NET Core Controller at `/api/v1/products` exposes REST endpoints for: list all products (`ListAllProducts`), list active products (`ListActiveProducts`), get product detail (`GetProductById`), create product (`CreateProduct`), update product (`UpdateProduct`), assign product owner (`AssignProductOwner`), activate/deactivate product.
 - Product owner selector uses `OrganizationQueryService.ListActivePersons` for dropdown — Architecture §10.
-- All endpoints protected by `[Authorize]` (authentication middleware from P3-S13).
+- All endpoints protected by `[Authorize]` (authentication middleware from P2-S10).
 - Axios HTTP client in Vue component calls `/api/v1/products` endpoints with authentication interceptors — Architecture §19.4.
 - Integration tests (xUnit + WebApplicationFactory): catalog listing, product creation, and owner assignment pass.
 
-Notes: Architecture §10 and §9 (FEAT-PRD-001) are authoritative.
+Notes: Architecture §10 and §9 (FEAT-PRD-001) are authoritative. This slice completes Milestone M1.
 
 ---
 
@@ -578,7 +587,7 @@ Completion Criteria:
 - `RequestResolution` and `RequestAssignment` entities are implemented.
 - Unit tests (xUnit + FluentAssertions) covering all valid state transitions and all invalid transition rejections pass — Architecture §19.8.
 
-Notes: Domain layer only — no database, no service layer. Clean separation enables P4-S16 to start as soon as P1-S06 is complete, independently of P2. Architecture §7, §8, §20 are authoritative.
+Notes: Domain layer only — no database, no service layer. Clean separation enables P4-S16 to start as soon as P1-S06 is complete, independently of P3. Architecture §7, §8, §20 are authoritative.
 
 ---
 
@@ -591,7 +600,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement `RequestService` application commands as MediatR handlers, `RequestQueryService` queries using Dapper explicit parameterized SQL, DbUp SQL migration scripts for `request.*` tables, and Dapper repository implementations. Cross-module validation reads from Organization, Customer, and Product via their published query interfaces. Audit logging is applied to every state change.
 
-Depends On: P4-S16, P1-S07, P2-S09, P2-S10, P2-S11
+Depends On: P4-S16, P1-S07, P2-S10, P3-S12, P3-S13, P3-S14
 
 Repository: `ICS.Modules.Request`
 
@@ -642,7 +651,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement all five Request screens as Vue 3 SFCs with Bootstrap 5 styling and their corresponding ASP.NET Core REST API controllers (`/api/v1/requests/*`). Delivers the complete request management UI. Dropdowns for Customer, Product, and Person use the respective published query services.
 
-Depends On: P4-S18, P3-S13, P1-S08
+Depends On: P4-S18, P2-S10, P1-S08
 
 Repository: `ICS.Web`, `ICS.Web/client/`
 
@@ -706,7 +715,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement `WorkPackageService` commands as MediatR handlers, `WorkPackageQueryService` queries using Dapper explicit parameterized SQL, DbUp SQL migration scripts for `workpackage.*` tables, and Dapper repository implementations. Cross-module validation uses `OrganizationQueryService`, `CustomerQueryService`, `ProductQueryService`, and `RequestQueryService`.
 
-Depends On: P5-S20, P1-S07, P2-S09, P2-S10, P2-S11, P4-S17
+Depends On: P5-S20, P1-S07, P2-S10, P3-S12, P3-S13, P3-S14, P4-S17
 
 Repository: `ICS.Modules.WorkPackage`
 
@@ -734,7 +743,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement `SCR-WP-001` (Work Package screen) as a Vue 3 SFC with Bootstrap 5 styling and the corresponding ASP.NET Core REST API controller (`/api/v1/work-packages/*`). Delivers Work Package creation, lifecycle management, and scope review. Wires `WorkPackageService` MediatR handlers and `WorkPackageQueryService`.
 
-Depends On: P5-S21, P3-S13, P1-S08
+Depends On: P5-S21, P2-S10, P1-S08
 
 Repository: `ICS.Web`, `ICS.Web/client/`
 
@@ -771,7 +780,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the Post domain layer and persistence: `Post`, `Comment`, `Reaction`, `PostReference` entities, `PostService` commands as MediatR handlers, `PostQueryService` queries using Dapper, DbUp SQL migration scripts for `post.*` tables (excluding `FeedItems`), and Dapper repository implementations. `PostService` validates cross-domain references via published query services.
 
-Depends On: P1-S06, P1-S07, P4-S17, P5-S21
+Depends On: P1-S06, P1-S07, P2-S10, P4-S17, P5-S21
 
 Repository: `ICS.Modules.Post`
 
@@ -847,7 +856,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the Feed screen (`SCR-FEED-001`) and Post detail modal (`SCR-POST-001`) as Vue 3 SFCs with Bootstrap 5 styling and their corresponding ASP.NET Core REST API controllers (`/api/v1/feed/*`, `/api/v1/posts/*`). Wire `FeedQueryService` and `PostQueryService` to presentation endpoints. Deliver post authoring, commenting, reacting, and navigation from feed card to request detail.
 
-Depends On: P6-S25, P3-S13, P1-S08
+Depends On: P6-S25, P2-S10, P1-S08
 
 Repository: `ICS.Web`, `ICS.Web/client/`
 
@@ -873,7 +882,7 @@ Notes: Architecture §9 (FEAT-AWR-001, FEAT-FCOL-001..003, FEAT-FCOL-005) and §
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Management Analytics module using Dapper real-time queries and `AnalyticsSnapshotJob` as an ASP.NET Core `BackgroundService` (Architecture §19.7), deliver management dashboard screens as Vue 3 SFCs, perform final cross-cutting validation, and produce the Docker deployment artifact. M5 is achieved when this phase is complete.
+Objective: Implement the Management Analytics module using Dapper real-time queries and `AnalyticsSnapshotJob` as an ASP.NET Core `BackgroundService` (Architecture §19.7), deliver management dashboard screens as Vue 3 SFCs, perform final cross-cutting validation, and produce the production deployment package and hosting scripts. M5 is achieved when this phase is complete.
 
 Source: Architecture §22 — Boundary: **Management Analytics** (`ICS.Modules.Analytics`, Depends On: `ICS.Core`, `Request`, `Organization`, `Customer`). Architecture §13 (Analytics Architecture). Architecture §18, §19.7, §19.10.
 
@@ -903,7 +912,7 @@ Completion Criteria:
 - All reads are via Dapper parameterized SQL; no EF Core — Architecture §19.3, §20.
 - Integration test (xUnit + WebApplicationFactory): trigger daily snapshot job; verify `DailyWorkloadSnapshots` row inserted with correct metric counts.
 
-Notes: Architecture §13 and §19.7 (ASP.NET Core Hosted Services) are authoritative. Depends on P4-S17 because snapshot queries aggregate from `Requests` and resolve `PersonId`/`CustomerId` via Organization and Customer query services (transitively covered since P4-S17 depends on P2-S09 and P2-S10).
+Notes: Architecture §13 and §19.7 (ASP.NET Core Hosted Services) are authoritative. Depends on P4-S17 because snapshot queries aggregate from `Requests` and resolve `PersonId`/`CustomerId` via Organization and Customer query services (transitively covered since P4-S17 depends on P3-S12 and P3-S13).
 
 ---
 
@@ -941,7 +950,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the three Management Analytics screens as Vue 3 SFCs with Bootstrap 5 styling and their corresponding ASP.NET Core REST API controllers (`/api/v1/analytics/*`). All management screens are RBAC-protected to the Management role via `[Authorize(Roles = "Management")]`.
 
-Depends On: P7-S28, P3-S13, P1-S08
+Depends On: P7-S28, P2-S10, P1-S08
 
 Repository: `ICS.Web`, `ICS.Web/client/`
 
@@ -987,29 +996,33 @@ Notes: Architecture §18 (Cross-Cutting Concerns), §19.5, §19.6, §19.7, §19.
 
 ### P7-S31
 
-Title: Docker Deployment Configuration
+Title: Production Deployment Packaging & Hosting Configuration
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Produce the multi-stage `docker/Dockerfile` that builds the complete ICS Operational System into a single deployable Linux container image per Architecture §19.10. The Dockerfile must build the Vue 3 frontend via Vite and publish it as static assets alongside the ASP.NET Core backend.
+Objective: Produce the production build and deployment configuration that packages the complete ICS Operational System into a deployable native host package per Architecture §19.10. Configure Vite frontend compilation into `ICS.Web/wwwroot/`, `dotnet publish` Release packaging, hosting service definitions (systemd / Windows Service / IIS), deployment automation scripts (`publish.ps1` / `publish.sh`), and automated DbUp migration execution on deploy. M5 is achieved when this slice is complete.
 
 Depends On: P7-S30
 
-Repository: `docker/`, `ICS.Web`
+Repository: `deploy/`, `ICS.Web`
 
 Completion Criteria:
-- `docker/Dockerfile` exists and implements a multi-stage build — Architecture §19.10:
-  - **Stage 1 (Node build)**: Runs `vite build` inside `src/ICS.Web/client/` and produces the optimized SPA bundle.
-  - **Stage 2 (.NET build)**: Uses `mcr.microsoft.com/dotnet/sdk:8.0` to restore and publish `ICS.Web` in Release configuration. Copies Vue bundle output from Stage 1 into the `wwwroot/` of the published application.
-  - **Stage 3 (Runtime)**: Uses `mcr.microsoft.com/dotnet/aspnet:8.0` (Linux) as the final base image; copies published output from Stage 2.
-- Container reads `ConnectionStrings__DefaultConnection` from environment variable at runtime — Architecture §19.10.
-- Application is stateless: session state maintained in SQL Server `identity.UserSessions`; no local file system session state — Architecture §19.10.
-- `docker build -f docker/Dockerfile -t ics-operational-system .` completes successfully with zero errors from repository root.
-- Container starts and the `/health/ready` endpoint returns HTTP 200 when SQL Server is available.
-- TLS/HTTPS termination is documented as the responsibility of an upstream reverse proxy or ingress controller; the container listens on HTTP — Architecture §19.10.
+- Production publish script (`publish.ps1` / `publish.sh`) automates end-to-end release build:
+  1. Executes `vite build` in `src/ICS.Web/client/`, emitting production assets into `src/ICS.Web/wwwroot/`.
+  2. Executes `dotnet publish src/ICS.Web/ICS.Web.csproj -c Release -o ./publish`.
+- Hosting service definitions are created:
+  - Linux systemd service unit template (`deploy/ics-web.service`) with auto-restart and environment variable configuration.
+  - Windows Service hosting configuration or IIS `web.config` with ASP.NET Core Module (ANCM).
+  - Reverse proxy configuration guide (Nginx / YARP) terminating TLS on port 443 and forwarding to Kestrel.
+- Database migration execution is integrated into deployment:
+  - DbUp migration runner executes automatically on application startup or via CLI flag (`dotnet ICS.Web.dll --migrate`) before traffic serving.
+- Production configuration template `appsettings.Production.json` configured for SQL Server connection string override via `ConnectionStrings__DefaultConnection` environment variable.
+- `publish.ps1` runs from repository root and produces a fully populated, runnable `./publish` folder with zero errors.
+- Application starts from the published artifact, serves the Vue 3 SPA at `/`, and `/health/ready` returns HTTP 200 when SQL Server is available.
+- Docker and container references are completely excluded from the project repository.
 
-Notes: Architecture §19.10 (Deployment & Runtime Model) is authoritative. This is the terminal slice of the plan. Depends on P7-S30 to ensure the system passes all integration validation before the deployment artifact is produced.
+Notes: Architecture §19.10 (Deployment & Runtime Strategy) is authoritative. This is the terminal implementation slice of the plan. Depends on P7-S30 to ensure the system passes all integration validation before the deployment artifact is produced. Achieving this slice marks completion of Milestone M5.
 
 ---
 
@@ -1036,3 +1049,11 @@ Result: 7 phases (P1–P7), 28 slices (S01–S28). No architectural decisions cr
 (10) §2 Planning Scope updated: §21→§22 boundary reference corrected to match renumbered architecture.
 (11) Business Milestones updated: M1 (→P3-S15), M2 (→P4-S19), M3 (→P5-S22), M4 (→P6-S26), M5 (→P7-S31).
 Result: 7 phases (P1–P7), 31 slices (S01–S31). No architectural decisions created or reinterpreted.
+
+2026-09-27 — v3.1 — Reviewer feedback remediation pass (pre-approval). Addressed all five reviewer recommendations:
+(1) Identity ordering: Reordered phases so Identity & Access is Phase 2 (P2-S09..S11) immediately following Foundation, moving Core Master Data to Phase 3 (P3-S12..S15). Ensures `CurrentUser`, `CurrentPerson`, `AuthorizationService`, `CurrentContextProvider`, and authentication middleware are operational before any master data or transactional logic is implemented.
+(2) Parallel execution: Explicitly decoupled Customer (P3-S13) and Product (P3-S14) in Phase 3. Customer has zero dependency on Organization or Product; Product depends on Organization for owner validation, but has zero dependency on Customer. Documented and enabled parallel execution to compress delivery.
+(3) Vertical slice clarity: Reinforced vertical slice guidance across all phase objectives and completion criteria, instructing implementation agents to deliver complete vertical slices (domain invariants, Dapper parameterized persistence, MediatR handlers, and UI/API endpoints) rather than accumulating horizontal layered batch work packages.
+(4) UAT milestone boundary: Added Milestone M6 (UAT Approved) to Section 3 as a formal business acceptance checkpoint distinct from technical implementation completion (M5).
+(5) Docker removal & actual deployment strategy: Removed all Docker references from architecture (§19.9, §19.10) and implementation plan (§2, §3, P1-S01, P1-S08, P7 intro, P7-S31). Replaced with concrete native deployment strategy: Modular Monolith single ASP.NET Core process running Kestrel as a Windows Service, systemd service, or behind an IIS/Nginx reverse proxy, with Vite SPA compilation into `ICS.Web/wwwroot/`, `dotnet publish -c Release`, deployment packaging script (`publish.ps1`), and automated DbUp migration runner.
+Result: 7 phases (P1–P7), 31 slices (S01–S31). Milestones M0–M6. No architectural decisions created or reinterpreted.

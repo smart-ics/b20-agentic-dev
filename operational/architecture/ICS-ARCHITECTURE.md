@@ -2,7 +2,7 @@
 Title: ICS Operational System Target Architecture
 Code: ICS
 Artifact: ARCHITECTURE
-Version: 1.1
+Version: 1.2
 LastUpdated: 2026-09-27
 ---
 
@@ -534,17 +534,24 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 ## 19.9 Logging & Observability
 - **Logging Framework**: Serilog configured with `Microsoft.Extensions.Logging`.
 - **Log Format**: Structured JSON logging enriched with `TraceId`, `SpanId`, `UserId`, `PersonId`, and `SourceContext`.
-- **Sinks**: Console (stdout for container environments) and rolling file logs.
+- **Sinks**: Console (stdout / system log) and rolling file logs.
 - **Health Checks**: ASP.NET Core Health Checks (`/health/live`, `/health/ready`) validating database connectivity and subsystem readiness.
 - **Diagnostics**: Built-in .NET 8 `System.Diagnostics.Activity` and OpenTelemetry-compatible tracing identifiers.
 
-## 19.10 Deployment & Runtime Model
-- **Deployment Model**: Modular Monolith hosted as a single ASP.NET Core executable process serving both REST API endpoints and static SPA frontend assets.
-- **Container Strategy**: Containerized Linux image using multi-stage `Dockerfile` based on `mcr.microsoft.com/dotnet/sdk:8.0` for building and `mcr.microsoft.com/dotnet/aspnet:8.0` for runtime execution.
-- **Runtime Assumptions**:
-  - Database connection strings provided via standard environment variables (`ConnectionStrings__DefaultConnection`).
+## 19.10 Deployment & Runtime Strategy
+- **Deployment Model**: Modular Monolith hosted as a single ASP.NET Core executable process serving both REST API endpoints and static SPA frontend assets from `wwwroot/`.
+- **Target Hosting Strategy**: Native host process deployment — configured to run as a **Windows Service** on Windows Server, an **IIS In-Process Application** via ASP.NET Core Module (ANCM), or a **systemd service** on Linux behind an edge reverse proxy (Nginx or YARP).
+- **Unified Build & Packaging Process**:
+  1. **Frontend Compilation**: Vue 3 SPA is compiled via `vite build` directly emitting production static assets into `src/ICS.Web/wwwroot/`.
+  2. **Backend Publication**: .NET 8 CLI executes `dotnet publish src/ICS.Web/ICS.Web.csproj -c Release -o ./publish` producing a self-contained or framework-dependent release package containing the host executable, module assemblies, dependencies, static web assets, and runtime configuration.
+  3. **Release Packaging**: Automated build script (`publish.ps1` / `publish.sh`) packages the publication directory into a versioned deployment artifact ready for promotion across environments.
+- **Database Migrations on Deployment**:
+  DbUp-SqlServer automated migration runner executes at application startup or via a standalone CLI migration switch (`dotnet ICS.Web.dll --migrate`) to apply idempotent SQL migrations in strict dependency order against SQL Server before HTTP traffic is served.
+- **Runtime Assumptions & Configuration**:
+  - Configuration supplied via environment variables (`ConnectionStrings__DefaultConnection`, `ASPNETCORE_ENVIRONMENT=Production`) or environment-specific `appsettings.Production.json`.
   - Stateless application tier (session state maintained in SQL Server `identity.UserSessions`).
-  - TLS/HTTPS termination handled by upstream reverse proxy or ingress controller.
+  - Process supervisor (Windows Service Manager / systemd / IIS AppPool) handles process lifecycle and automatic restart on unexpected termination.
+  - Reverse proxy handles TLS/HTTPS termination (port 443) and forwards requests to Kestrel listening on an internal port (e.g., HTTP 5000), monitoring health via `/health/live` and `/health/ready`.
 
 ## 19.11 Solution & Project Layout (Planning Compatibility)
 The repository structure and project breakdown are strictly standardized as follows to ensure unambiguous implementation planning:
@@ -567,8 +574,6 @@ ics-operational-system/
 ├── tests/
 │   ├── ICS.Tests.Unit/                 # Unit tests for domain logic, rules, and state machines
 │   └── ICS.Tests.Integration/          # Integration tests using WebApplicationFactory and SQL Server
-└── docker/
-    └── Dockerfile                      # Multi-stage Docker build for backend and Vue frontend
 ```
 
 ### Core Package Dependencies:
@@ -664,5 +669,5 @@ ics-operational-system/
 14. The backend technology stack (.NET 8, ASP.NET Core, C# 12, MediatR, FluentValidation) is explicitly defined and authoritative.
 15. The persistence stack (SQL Server, Dapper, explicit SQL) is explicitly defined, and Entity Framework (EF Core) is explicitly prohibited.
 16. The frontend stack (Vue 3, TypeScript, Bootstrap 5, Vite, Pinia, Vue Router) is explicitly defined.
-17. Authentication (Cookie Authentication, session backing in `UserSessions`), Authorization (RBAC), Testing (Integration-first, xUnit, FluentAssertions, WebApplicationFactory), Logging (Serilog structured logging), and Deployment (Modular Monolith single process, Docker) are authoritative and unambiguous.
+17. Authentication (Cookie Authentication, session backing in `UserSessions`), Authorization (RBAC), Testing (Integration-first, xUnit, FluentAssertions, WebApplicationFactory), Logging (Serilog structured logging), and Deployment (Modular Monolith single process, environment-configured runtime) are authoritative and unambiguous.
 
