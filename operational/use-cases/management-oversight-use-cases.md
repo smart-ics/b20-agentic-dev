@@ -4,36 +4,40 @@ Derived from **Management Oversight Scenarios** using the **Use‑Case Discovery
 
 ---
 
-## Use‑Case UC‑MGT‑001: Reassign Request Ownership
+## UC-MGT-001: Reassign Request Ownership
+
 - **Actor:** Management
-- **Goal:** Change the ownership of a Request to another handler.
-- **System Interaction:** The system must provide a function to edit the `OwnerPersonId` of a Request (see [request-domain.md](file:///d:/Project.Aktif/b20-agentic-dev/operational/domains/request-domain.md)).
-- **Related Domains:** Request, Organization (Person handling the request).
+- **Goal:** Change responsibility for handling a Request.
+- **System Interaction:** Management identifies a Request requiring reassignment, selects another handler, and confirms the ownership transfer in the system.
+- **Related Domains:** Request, Organization
 
 ---
 
-## Use‑Case UC‑MGT‑002: Review Customer Request Progress
+## UC-MGT-002: Review Customer Request Progress
+
 - **Actor:** Management
-- **Goal:** Monitor the status of all Requests associated with a specific Customer.
-- **System Interaction:** The system offers a filtered view/list of Requests by `CustomerId` with status summaries (see [request-domain.md](file:///d:/Project.Aktif/b20-agentic-dev/operational/domains/request-domain.md)) and accesses Customer details (see [customer-domain.md](file:///d:/Project.Aktif/b20-agentic-dev/operational/domains/customer-domain.md)).
-- **Related Domains:** Request, Customer.
+- **Goal:** Monitor operational progress and request status for a Customer.
+- **System Interaction:** Management identifies a Customer and reviews the current status and progress of all associated Requests in the system.
+- **Related Domains:** Request, Customer
 
 ---
 
-## Use‑Case UC‑MGT‑003: Review Programmer Request Performance
+## UC-MGT-003: Review Programmer Request Performance
+
 - **Actor:** Management
-- **Goal:** Monitor the volume and outcomes of Requests handled by a specific Programmer.
-- **System Interaction:** The system aggregates Requests where `OwnerPersonId` references the Programmer (a Person in the Organization domain) and provides metrics such as count, completion rate, and outcome breakdown.
-- **Related Domains:** Request, Organization (Programmer as Person).
+- **Goal:** Evaluate the volume, completion rates, and outcomes of Requests handled by a Programmer.
+- **System Interaction:** Management selects a Programmer and reviews their request processing history, completion rates, and resolution outcomes in the system.
+- **Related Domains:** Request, Organization
 
 ---
 
-## Use‑Case UC‑MGT‑004: Review Programmer Workload
+## UC-MGT-004: Review Programmer Workload
+
 - **Actor:** Management
-- **Goal:** Assess the current assignment load of a Programmer.
-- **System Interaction:** The system lists active Requests assigned to the Programmer (`OwnerPersonId`) and displays workload indicators (e.g., number of open Requests, priority distribution).
-- **Related Domains:** Request, Organization.
+- **Goal:** Assess the current active assignment load of a Programmer.
+- **System Interaction:** Management selects a Programmer and inspects their active request assignments and current workload status in the system.
+- **Related Domains:** Request, Organization
 
 ---
 
-*These use‑cases follow the discovery principle: an actor must interact with the system to achieve a goal.*
+*These use‑cases describe what actors accomplish through system interaction to support operational scenarios, without specifying UI, database schema, or implementation mechanics.*
