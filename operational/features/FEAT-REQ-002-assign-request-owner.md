@@ -8,7 +8,7 @@ Type: Command
 
 ## Purpose
 
-Enables operational actors to assign initial operational ownership to a captured request, or reassign an active request to a different handler, establishing and maintaining unambiguous accountability for request handling and resolution.
+Enables operational actors to assign initial operational ownership to a captured request, or reassign an active request to a different assignee, establishing and maintaining unambiguous accountability for request assignment and resolution.
 
 ## User Outcome
 
