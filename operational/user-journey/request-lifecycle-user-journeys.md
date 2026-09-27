@@ -2,6 +2,10 @@
 
 Derived from **Request Lifecycle Use Cases** (`operational/use-cases/request-lifecycle-use-cases.md`) using the **User Journey Generation Skill** (`operational/user-journey/user-journey-generation-skill.md`).
 
+Canonical actors follow the **ICS Operational Actor Model** (`operational/actors/actor-model.md`):
+* **Implementator:** Organizational Role responsible for capturing requests, assigning ownership, and reviewing completion.
+* **Request Owner:** Operational Assignment responsible for evaluating, accepting or declining, managing, and resolving a specific Request.
+
 ---
 
 ## UJ-REQ-001: Record Customer Request
@@ -52,14 +56,14 @@ A captured Request requires an operational owner.
 ### Main Journey
 1. Implementator locates a Request requiring ownership.
 2. Implementator reviews the request details to understand the required capability.
-3. Implementator selects a suitable handler from the organization.
+3. Implementator selects a suitable person from the organization as Request Owner.
 4. Implementator confirms the assignment.
 
 ### Alternative Paths
-* **Reassigning owner:** Implementator selects an already-assigned Request and assigns it to a different handler.
+* **Reassigning owner:** Implementator selects an already-assigned Request and assigns it to a different Request Owner.
 
 ### Success Outcome
-A handler is assigned as the responsible owner for the Request.
+A Request Owner is assigned to take responsibility for the Request.
 
 ### Information Needed
 * Request details and operational context
@@ -72,24 +76,24 @@ A handler is assigned as the responsible owner for the Request.
 **Use Case Reference:** UC-REQ-003
 
 ### Actor
-Assigned Handler
+Request Owner
 
 ### Goal
 Determine whether the Request can be handled.
 
 ### Trigger
-Assigned Handler becomes aware of a Request assigned to them.
+Request Owner becomes aware of a Request assigned to them.
 
 ### Main Journey
-1. Assigned Handler accesses the assigned Request.
-2. Assigned Handler reviews the demand details and context.
-3. Assigned Handler evaluates the request and decides whether it can be handled within their authority and capability.
+1. Request Owner accesses the assigned Request.
+2. Request Owner reviews the demand details and context.
+3. Request Owner evaluates the request and decides whether it can be handled within their authority and capability.
 
 ### Alternative Paths
-* **Request clarification:** Assigned Handler identifies missing or ambiguous details and requests clarification before concluding evaluation.
+* **Request clarification:** Request Owner identifies missing or ambiguous details and requests clarification before concluding evaluation.
 
 ### Success Outcome
-Assigned Handler determines the handling disposition: accept, reject, escalate, or request a decision.
+Request Owner determines the handling disposition: accept, reject, escalate, or request a decision.
 
 ### Information Needed
 * Request details, demand context, and supporting information
@@ -101,23 +105,23 @@ Assigned Handler determines the handling disposition: accept, reject, escalate, 
 **Use Case Reference:** UC-REQ-004
 
 ### Actor
-Assigned Handler
+Request Owner
 
 ### Goal
 Accept responsibility for maintaining and resolving the Request.
 
 ### Trigger
-Assigned Handler determines the Request can be handled.
+Request Owner determines the Request can be handled.
 
 ### Main Journey
-1. Assigned Handler selects the evaluated Request.
-2. Assigned Handler confirms acceptance of responsibility for resolving the Request.
+1. Request Owner selects the evaluated Request.
+2. Request Owner confirms acceptance of responsibility for resolving the Request.
 
 ### Alternative Paths
-* **Acceptance with notes:** Assigned Handler records initial notes or target expectations when confirming acceptance.
+* **Acceptance with notes:** Request Owner records initial notes or target expectations when confirming acceptance.
 
 ### Success Outcome
-Assigned Handler becomes the confirmed Request Owner, and the Request becomes active.
+Request Owner confirms ownership, and the Request becomes active.
 
 ### Information Needed
 * Request details
@@ -129,22 +133,22 @@ Assigned Handler becomes the confirmed Request Owner, and the Request becomes ac
 **Use Case Reference:** UC-REQ-005
 
 ### Actor
-Assigned Handler
+Request Owner
 
 ### Goal
 Decline responsibility for the Request during evaluation.
 
 ### Trigger
-Assigned Handler determines the Request cannot be handled.
+Request Owner determines the Request cannot be handled.
 
 ### Main Journey
-1. Assigned Handler selects the evaluated Request.
-2. Assigned Handler decides to decline the Request.
-3. Assigned Handler provides an explanatory reason for declining.
-4. Assigned Handler confirms the rejection.
+1. Request Owner selects the evaluated Request.
+2. Request Owner decides to decline the Request.
+3. Request Owner provides an explanatory reason for declining.
+4. Request Owner confirms the rejection.
 
 ### Alternative Paths
-* **Duplicate request:** Assigned Handler identifies the request as a duplicate and references the existing request.
+* **Duplicate request:** Request Owner identifies the request as a duplicate and references the existing request.
 
 ### Success Outcome
 The Request is marked as rejected with an explanatory reason and closed.

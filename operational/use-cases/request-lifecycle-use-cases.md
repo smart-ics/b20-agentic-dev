@@ -34,11 +34,11 @@ Derived from **Request Lifecycle Scenarios** using the **Use‑Case Discovery Sk
 
 ## UC-REQ-003: Evaluate Request
 
-**Actor:** Assigned Handler
+**Actor:** Request Owner
 
 **Goal:** Determine whether the Request can be handled.
 
-**System Interaction:** Assigned Handler accesses the assigned Request in the system and inspects its demand details, context, and operational requirements to evaluate feasibility.
+**System Interaction:** Request Owner accesses the assigned Request in the system and inspects its demand details, context, and operational requirements to evaluate feasibility.
 
 **Related Domains:** Request
 
@@ -48,11 +48,11 @@ Derived from **Request Lifecycle Scenarios** using the **Use‑Case Discovery Sk
 
 ## UC-REQ-004: Accept Request Responsibility
 
-**Actor:** Assigned Handler
+**Actor:** Request Owner
 
 **Goal:** Accept responsibility for maintaining and resolving the Request.
 
-**System Interaction:** Assigned Handler confirms acceptance of the Request in the system; the system transitions the Request to the active state and establishes the handler as the confirmed Request Owner.
+**System Interaction:** Request Owner confirms acceptance of the Request in the system; the system transitions the Request to the active state and confirms ownership.
 
 **Related Domains:** Request
 
@@ -62,11 +62,11 @@ Derived from **Request Lifecycle Scenarios** using the **Use‑Case Discovery Sk
 
 ## UC-REQ-005: Reject Request
 
-**Actor:** Assigned Handler
+**Actor:** Request Owner
 
 **Goal:** Decline responsibility for the Request during evaluation.
 
-**System Interaction:** Assigned Handler records the rejection with an explanatory reason in the system; the system marks the Request as rejected, records the resolution outcome, and transitions the Request to the closed state.
+**System Interaction:** Request Owner records the rejection with an explanatory reason in the system; the system marks the Request as rejected, records the resolution outcome, and transitions the Request to the closed state.
 
 **Related Domains:** Request
 
