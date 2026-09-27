@@ -493,7 +493,7 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 - **Validation**: FluentValidation (strongly typed request validation executed automatically via MediatR pipeline behaviors prior to handler execution).
 
 ## 19.3 Persistence & Data Access
-- **Database Engine**: Microsoft SQL Server 2022 / Azure SQL Database.
+- **Database Engine**: Microsoft SQL Server 2019.
 - **Data Access**: Dapper (Lightweight high-performance micro-ORM).
 - **SQL Strategy**: Explicit SQL. All database operations must execute explicit, handcrafted, optimized, parameterized SQL queries and commands against SQL Server schemas (`identity`, `organization`, `customer`, `product`, `workpackage`, `request`, `post`, `analytics`).
 - **ORM Prohibition**: Entity Framework (EF Core) or any other full ORM is **not used and strictly prohibited**. Implementation agents must not reference EF Core packages (`Microsoft.EntityFrameworkCore*`) or introduce automated ORM change tracking.
