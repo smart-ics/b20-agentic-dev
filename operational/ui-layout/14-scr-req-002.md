@@ -45,7 +45,7 @@ Displays:
 
 * **Submit Request**
   * Actor: Implementator
-  * Outcome: Creates the authoritative Request record, generates an initial system Activity in the Operational Feed, and navigates to the resulting Request Detail or back to the list.
+  * Outcome: Creates the authoritative Request record, generates an initial system feed item in the Operational Feed, and navigates to the resulting Request Detail or back to the list.
 * **Cancel Creation**
   * Actor: Implementator
   * Outcome: Discards input and returns to the originating screen.

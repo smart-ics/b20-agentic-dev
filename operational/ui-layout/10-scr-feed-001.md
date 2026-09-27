@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The primary workspace for operational awareness and collaboration. It is a projection of operational activity, displaying a chronological stream of Request updates, state changes, and discussions. It enables stakeholders to observe activity, collaborate around operational work, and access structured records when needed.
+The primary workspace for operational awareness and collaboration. It is a projection of operational activity. Each feed item is generated from a Request or Request-related operational event. It enables stakeholders to observe Request progression, collaborate around operational work, and access structured records when needed.
 
 ## Primary Actors
 
@@ -18,8 +18,8 @@ All Actors (Management, Implementator, Request Owner)
 * UC-AWR-001: Observe Operational Feed
 * UC-AWR-002: Discover Request via Feed
 * UC-AWR-003: Monitor Operational Exceptions via Feed
-* UC-FCOL-001: Comment on Request Activity
-* UC-FCOL-002: React to Request Activity
+* UC-FCOL-001: Comment on Feed Item
+* UC-FCOL-002: React to Feed Item
 * UC-FCOL-005: Filter Operational Feed
 
 ## Related User Journeys
@@ -37,13 +37,13 @@ Displays:
 * Filter toggles (Customer, Product, Team)
 * Search/Filter input
 
-### Section: Activity Stream
+### Section: Feed Stream
 
-Purpose: Displays a chronological list of operational activities (Updates, State Changes, Escalations, Comments).
+Purpose: Displays a chronological list of operational feed items. Each feed item is generated from a Request or Request-related operational event (Updates, State Changes, Escalations, Comments).
 
 Displays:
-* Activity Actor and Timestamp
-* Activity Details / System Event Summary
+* Feed Item Actor and Timestamp
+* Request Event Details / System Event Summary
 * Referenced Operational Objects (e.g., Request ID, Customer Name)
 * Recent Comments preview
 * Reaction summary (counts and types)
@@ -52,11 +52,11 @@ Displays:
 
 * **Filter Feed**
   * Actor: All Actors
-  * Outcome: Updates Activity Stream to show only matching activities.
-* **React to Activity**
+  * Outcome: Updates Feed Stream to show only matching feed items.
+* **React to Feed Item**
   * Actor: All Actors
   * Outcome: Records reaction as an operational signal and updates Reaction summary.
-* **Comment on Activity**
+* **Comment on Feed Item**
   * Actor: All Actors
   * Outcome: Adds a comment inline, attached to the Request.
 
@@ -71,7 +71,7 @@ Displays:
 +--------------------------------------------------+
 | Feed Filters: [Customer] [Product] [Team]        |
 +--------------------------------------------------+
-| Activity Feed                                    |
+| Feed Stream                                      |
 |                                                  |
 | +----------------------------------------------+ |
 | | [System] - [Time]                            | |

@@ -10,7 +10,7 @@ Implementator, Request Owner, Management
 
 ## Entry Points
 
-* `SCR-FEED-001: Operational Feed` (via Request Activity reference)
+* `SCR-FEED-001: Operational Feed` (via Feed Item reference)
 * `SCR-REQ-001: Request List` (via selection)
 * `SCR-REQ-004: Request Search & History` (via search result)
 * `SCR-REQ-005: My Assigned Requests` (via selection)
@@ -57,24 +57,24 @@ Displays:
 * Authority history (Who approved what and when)
 * Status change log
 
-### Section: Feed Integration (Associated Activity)
+### Section: Feed Integration (Associated Feed Stream)
 
-Purpose: Displays a filtered view of the Operational Feed showing only activity related to this specific Request.
+Purpose: Displays a filtered view of the Operational Feed showing only feed items generated from this specific Request.
 
 Displays:
-* Embedded stream of related Comments, Updates, and System Events
+* Embedded stream of related feed items (Comments, Updates, and System Events)
 
 ## Available Actions
 
 * **Update Request Status**
   * Actor: Implementator, Request Owner
-  * Outcome: Transitions the request state and emits a system update to the Feed.
+  * Outcome: Transitions the request state and generates a system feed item.
 * **Edit Core Attributes**
   * Actor: Request Owner
   * Outcome: Updates the authoritative record.
 * **Assign / Reassign**
   * Actor: Management, Request Owner
-  * Outcome: Changes responsibility and emits a system update.
+  * Outcome: Changes responsibility and generates a system feed item.
 
 ## Navigation Destinations
 
@@ -96,7 +96,7 @@ Displays:
 | Created: 2026-09-26 10:00 by Bob                 |
 | Last Change: Assigned to Alice at 11:00          |
 +--------------------------------------------------+
-| Associated Activity (Feed Projection)            |
+| Associated Feed Stream                           |
 |                                                  |
 | [Bob] - System: Created Request #123             |
 | [Alice] - "I'm looking into the logs now."       |
