@@ -24,7 +24,7 @@ Derived from **Request Collaboration Scenarios** using the **Use‑Case Discover
 
 **Goal:** Find previous Requests or related information.
 
-**System Interaction:** Implementator initiates a search and provides criteria; the system returns matching historical Requests.
+**System Interaction:** Implementator searches for previous Requests using relevant criteria and reviews the matching results.
 
 **Related Domains:** Request
 
@@ -52,7 +52,7 @@ Derived from **Request Collaboration Scenarios** using the **Use‑Case Discover
 
 **Goal:** Review the Requests currently assigned to them.
 
-**System Interaction:** Implementator requests the list of their assigned Requests; the system provides the Requests with their current status.
+**System Interaction:** Implementator reviews the Requests currently assigned to them; the system supplies the Requests with their current status.
 
 **Related Domains:** Request, Organization
 
