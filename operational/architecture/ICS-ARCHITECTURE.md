@@ -477,23 +477,130 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 - **Domain Event Bus**: In-process synchronous event dispatcher with transactional consistency. Events trigger projection updates (`FeedItems`) and automated system post generation without distributed queue complexity.
 - **Exception Handling & Validation**: Centralized application validation layer verifying preconditions and business rules before mutating aggregate state.
 
-# 19. Technical Decisions Summary
+# 19. Technology Decisions
 
-- **Architecture Pattern**: Modular Monolith with vertical slices per module.
-- **Persistence**: Relational Database with schema segregation per module.
-- **Feed Model**: Materialized Read Model (`FeedItems`) updated via in-process domain events.
-- **Analytics Model**: Dual Model (Real-time dynamic query aggregation for active workload + daily/monthly snapshot tables for trends and historical comparisons).
-- **Identity Architecture**: Independent IAM technical module linking `UserAccount` 1-to-1 to Organization `Person`, with role resolution for RBAC.
-- **Inter-Module Communication**: In-process direct query interfaces for reads, command services for writes, and in-process domain events for decoupled notifications.
+> [!IMPORTANT]
+> **Architecture Authority Rule**: Technology Decisions defined in this section are authoritative and binding for all implementation phases. Implementation agents must not substitute, alter, or introduce alternative technologies, frameworks, libraries, or data access paradigms unless this Architecture document is formally updated and approved.
 
-# 20. Implementation Constraints
+## 19.1 Backend Stack
+- **Runtime**: .NET 8 (LTS)
+- **Web Framework**: ASP.NET Core 8.0
+- **Programming Language**: C# 12 (nullable reference types enabled, implicit usings enabled)
 
-- **Strict Vertical Slice Boundary**: Modules must not directly reference internal repositories or entities of another module. Cross-module communication must use published application interfaces or domain events.
+## 19.2 Application Architecture
+- **Pattern**: Vertical Slice Architecture (feature-oriented vertical slices where each slice encapsulates its own request, handler, domain operations, Dapper SQL queries, and response model).
+- **In-Process Mediator**: MediatR (Mediator pattern for CQRS Command and Query dispatching, pipeline behaviors, and domain event notifications).
+- **Validation**: FluentValidation (strongly typed request validation executed automatically via MediatR pipeline behaviors prior to handler execution).
+
+## 19.3 Persistence & Data Access
+- **Database Engine**: Microsoft SQL Server 2022 / Azure SQL Database.
+- **Data Access**: Dapper (Lightweight high-performance micro-ORM).
+- **SQL Strategy**: Explicit SQL. All database operations must execute explicit, handcrafted, optimized, parameterized SQL queries and commands against SQL Server schemas (`identity`, `organization`, `customer`, `product`, `workpackage`, `request`, `post`, `analytics`).
+- **ORM Prohibition**: Entity Framework (EF Core) or any other full ORM is **not used and strictly prohibited**. Implementation agents must not reference EF Core packages (`Microsoft.EntityFrameworkCore*`) or introduce automated ORM change tracking.
+- **Database Migrations & Schema Provisioning**: Sequential idempotent raw SQL scripts managed and executed in strict dependency order via DbUp upon application startup or migration CLI tool execution.
+
+## 19.4 Frontend Stack
+- **Framework**: Vue 3 (Composition API with `<script setup lang="ts">`).
+- **Language**: TypeScript.
+- **UI Framework & Design System**: Bootstrap 5 (with Bootstrap Icons and standard responsive grid layout).
+- **Build Tooling**: Vite.
+- **Routing & State Management**: Vue Router 4 for client-side navigation; Pinia for shared client-side application state.
+- **HTTP Client**: Axios or native `fetch` with standard authentication interceptors.
+
+## 19.5 Authentication & Authorization
+- **Authentication Mechanism**: Cookie Authentication using secure, HttpOnly, SameSite=Strict session cookies.
+- **Session Strategy**: Server-side session verification backed by `identity.UserSessions`. Each successful login creates an active `SessionToken` tied to `UserId` and `PersonId` with configurable expiration and absolute/sliding timeout. Logout explicitly revokes the session in `identity.UserSessions`.
+- **Authorization Mechanism**: Role-Based Access Control (RBAC). User roles are dynamically resolved from `organization.RoleAssignments` for the authenticated `PersonId` and mapped to ASP.NET Core claims and authorization policies (`[Authorize(Roles = "...")]`).
+- **Credential Security**: Cryptographic password hashing using Argon2id (or ASP.NET Core `IPasswordHasher` using PBKDF2 with HMAC-SHA512).
+
+## 19.6 API Style & Communication
+- **API Style**: REST API (JSON over HTTP/HTTPS).
+- **Endpoints**: ASP.NET Core Controllers (`[ApiController]`) or Minimal API route endpoints organizing REST routes (`/api/v1/{module}/{resource}`) and delegating execution to MediatR commands and queries.
+- **Serialization**: `System.Text.Json` with camelCase naming policy.
+- **Error Handling**: Centralized exception handling middleware producing standard RFC 7807 Problem Details (`ProblemDetails`) JSON responses with consistent error codes.
+
+## 19.7 Background Processing
+- **Mechanism**: ASP.NET Core Hosted Services (`IHostedService` / `BackgroundService`).
+- **Worker Responsibilities**:
+  - `AnalyticsSnapshotJob`: Periodic background timer worker triggering daily workload snapshot aggregation (at 23:59:59) into `analytics.DailyWorkloadSnapshots` and monthly customer performance snapshot aggregation (on the 1st of each month at 00:05:00) into `analytics.MonthlyCustomerPerformanceSnapshots`.
+  - **Asynchronous Projection Processing**: In-process background worker queue (`System.Threading.Channels`) for background tasks and administrative feed rebuilds (`FeedProjectionRebuilder`).
+
+## 19.8 Testing Strategy
+- **Strategy**: Integration-first testing for vertical slices and HTTP endpoints; unit testing for pure domain models, business logic invariants, and state machine transition rules.
+- **Test Framework**: xUnit.
+- **Assertions**: FluentAssertions.
+- **Integration Test Infrastructure**: `Microsoft.AspNetCore.Mvc.Testing` (`WebApplicationFactory<Program>`) executing against an isolated SQL Server test instance, using Respawn or transactional isolation to ensure clean test state between test runs.
+
+## 19.9 Logging & Observability
+- **Logging Framework**: Serilog configured with `Microsoft.Extensions.Logging`.
+- **Log Format**: Structured JSON logging enriched with `TraceId`, `SpanId`, `UserId`, `PersonId`, and `SourceContext`.
+- **Sinks**: Console (stdout for container environments) and rolling file logs.
+- **Health Checks**: ASP.NET Core Health Checks (`/health/live`, `/health/ready`) validating database connectivity and subsystem readiness.
+- **Diagnostics**: Built-in .NET 8 `System.Diagnostics.Activity` and OpenTelemetry-compatible tracing identifiers.
+
+## 19.10 Deployment & Runtime Model
+- **Deployment Model**: Modular Monolith hosted as a single ASP.NET Core executable process serving both REST API endpoints and static SPA frontend assets.
+- **Container Strategy**: Containerized Linux image using multi-stage `Dockerfile` based on `mcr.microsoft.com/dotnet/sdk:8.0` for building and `mcr.microsoft.com/dotnet/aspnet:8.0` for runtime execution.
+- **Runtime Assumptions**:
+  - Database connection strings provided via standard environment variables (`ConnectionStrings__DefaultConnection`).
+  - Stateless application tier (session state maintained in SQL Server `identity.UserSessions`).
+  - TLS/HTTPS termination handled by upstream reverse proxy or ingress controller.
+
+## 19.11 Solution & Project Layout (Planning Compatibility)
+The repository structure and project breakdown are strictly standardized as follows to ensure unambiguous implementation planning:
+
+```text
+ics-operational-system/
+├── ICS.sln
+├── src/
+│   ├── ICS.Core/                       # Common domain abstractions, MediatR pipeline behaviors, Dapper helpers
+│   ├── ICS.Modules.Identity/           # IAM vertical slices, UserAccount & UserSession commands/queries
+│   ├── ICS.Modules.Organization/       # Organization slices: Persons, Teams, Roles, Responsibilities
+│   ├── ICS.Modules.Customer/           # Customer slices: Customers, Contacts
+│   ├── ICS.Modules.Product/            # Product slices: Products, Catalog queries
+│   ├── ICS.Modules.WorkPackage/        # Work Package slices: WorkPackages, Scope management
+│   ├── ICS.Modules.Request/            # Request slices: Lifecycle state machine, assignments, resolutions
+│   ├── ICS.Modules.Post/               # Post & Feed slices: Posts, Comments, Reactions, Feed projection
+│   ├── ICS.Modules.Analytics/          # Analytics queries and AnalyticsSnapshotJob hosted service
+│   ├── ICS.Web/                        # ASP.NET Core Host, API Controllers, Middleware, DbUp migrations
+│   │   └── client/                     # Vue 3 + Bootstrap 5 + Vite Single Page Application
+├── tests/
+│   ├── ICS.Tests.Unit/                 # Unit tests for domain logic, rules, and state machines
+│   └── ICS.Tests.Integration/          # Integration tests using WebApplicationFactory and SQL Server
+└── docker/
+    └── Dockerfile                      # Multi-stage Docker build for backend and Vue frontend
+```
+
+### Core Package Dependencies:
+- `MediatR`
+- `Dapper`
+- `Microsoft.Data.SqlClient`
+- `FluentValidation.AspNetCore`
+- `Serilog.AspNetCore`
+- `DbUp-SqlServer`
+- `Microsoft.AspNetCore.Mvc.Testing` (Test)
+- `xunit` & `xunit.runner.visualstudio` (Test)
+- `FluentAssertions` (Test)
+- `Respawn` (Test)
+
+# 20. Technical Constraints
+
+- **SQL Server Relational Persistence**: All application data must reside in Microsoft SQL Server segregated by schema (`identity`, `organization`, `customer`, `product`, `workpackage`, `request`, `post`, `analytics`).
+- **Strict EF Core Prohibition**: Entity Framework is not used. All persistence must use Dapper with explicit parameterized SQL.
+- **Zero Cross-Schema Foreign Keys & Cross-Schema Direct Writes**: Tables in one schema must not have direct physical foreign key constraints or direct write operations to tables in another schema (except within documented same-module projections). References across modules are stored as raw identifier values (`UNIQUEIDENTIFIER`) and validated through application query interfaces.
+- **Parameterization Requirement**: All Dapper queries must use SQL parameters. String interpolation or dynamic SQL concatenation of user input is strictly prohibited to prevent SQL injection vulnerabilities.
+- **In-Process Communication**: Cross-module communication must use MediatR requests/notifications or in-process direct query interfaces. No distributed message brokers or HTTP calls between internal modules.
+- **Sub-50ms Feed & Query Latency**: Landing screen queries (such as `SCR-FEED-001` over `post.FeedItems`) must execute as single-table indexed queries with sub-50ms target execution times.
+
+# 21. Implementation Constraints
+
+- **Strict Vertical Slice Boundary**: Each feature or use case must be implemented as a self-contained vertical slice (Request, Handler, Response, Validator, Dapper Query/Command). Modules must not expose internal domain entities or direct database commands across module boundaries.
 - **Zero Shared Write Ownership**: Under no circumstances may a module perform `INSERT`, `UPDATE`, or `DELETE` on a table owned by another module.
-- **Non-Mutating Projections**: Projections (`FeedItems`, `DailyWorkloadSnapshots`, `MonthlyCustomerPerformanceSnapshots`) are strictly read models and must never be treated as authoritative write state.
-- **Permanent Retention**: Soft-delete or archiving only; operational history, posts, comments, and requests must never be physically purged from the database.
+- **Non-Mutating Projections**: Projections (`post.FeedItems`, `analytics.DailyWorkloadSnapshots`, `analytics.MonthlyCustomerPerformanceSnapshots`) are strictly read models and must never be treated as authoritative write state.
+- **Permanent Data Retention**: Soft-delete or archiving only; operational history, posts, comments, and requests must never be physically purged from the database (`IsArchived = 1` / `Status = 'ARCHIVED'`).
+- **Frontend Component Architecture**: Frontend screens (`SCR-*`) must be built as Vue 3 Single-File Components using Bootstrap 5 semantic classes, strictly adhering to the approved UI layouts in `operational/ui-layout/*` and navigation paths in `operational/navigation/*`.
 
-# 21. Implementation Boundaries
+# 22. Implementation Boundaries
 
 | Boundary | Responsibility | Repository / Assembly | Depends On | Implementation Notes |
 |---|---|---|---|---|
@@ -507,7 +614,7 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 | **Post & Feed** | Communication, comments, reactions, and feed read model | `ICS.Modules.Post` | `ICS.Core`, Domain Events from all modules | Feed materialized projection tier |
 | **Management Analytics** | Workload capacity queries and historical snapshot batch jobs | `ICS.Modules.Analytics` | `ICS.Core`, `Request`, `Organization`, `Customer` | Management oversight read tier |
 
-# 22. Implementation Dependency Graph
+# 23. Implementation Dependency Graph
 
 ```text
        ┌──────────────┐
@@ -539,7 +646,7 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
        └───────────────────────┘
 ```
 
-# 23. Acceptance Conditions
+# 24. Acceptance Conditions
 
 1. Every approved domain (Customer, Organization, Product, Work Package, Request, Post) has an explicit owning module and technical boundary.
 2. The Work Package module is fully defined with `WorkPackageService`, `WorkPackageQueryService`, `WorkPackages` and `WorkPackageRequests` tables, data ownership, and use case/feature mappings.
@@ -554,3 +661,8 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 11. Integration interfaces between modules are documented and respect domain boundaries.
 12. Historical operational state, discussions, and analytics snapshots are permanently preserved.
 13. The implementation-plan skill can generate clean phases and slices directly from this architecture without making unresolved architectural decisions.
+14. The backend technology stack (.NET 8, ASP.NET Core, C# 12, MediatR, FluentValidation) is explicitly defined and authoritative.
+15. The persistence stack (SQL Server, Dapper, explicit SQL) is explicitly defined, and Entity Framework (EF Core) is explicitly prohibited.
+16. The frontend stack (Vue 3, TypeScript, Bootstrap 5, Vite, Pinia, Vue Router) is explicitly defined.
+17. Authentication (Cookie Authentication, session backing in `UserSessions`), Authorization (RBAC), Testing (Integration-first, xUnit, FluentAssertions, WebApplicationFactory), Logging (Serilog structured logging), and Deployment (Modular Monolith single process, Docker) are authoritative and unambiguous.
+
