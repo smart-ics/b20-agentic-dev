@@ -2,23 +2,28 @@
 Title: ICS Operational System Target Architecture
 Code: ICS
 Artifact: ARCHITECTURE
-Version: 1.0
+Version: 1.1
 LastUpdated: 2026-09-27
 ---
 
 # 1. Overview
 
 Target architecture for the greenfield ICS Operational System.
-This architecture realizes the complete product definition encompassing the Customer, Organization, Post, and Request domains, and all defined operational features and use-cases.
+This architecture realizes the complete product definition encompassing the Customer, Organization, Product, Work Package, Request, and Post domains, cross-cutting Identity and Access Management, and all operational features and use cases.
 
 # 2. Architectural Basis
 
 ## Business Context
 
 Reference complete product definition:
-- `operational/domains/*` (Customer, Organization, Post, Request, Product, Work Package)
+- `operational/domains/*` (Customer, Organization, Product, Work Package, Request, Post)
+- `operational/actors/actor-model.md`
+- `operational/manifesto/*` (Operational Principles, Knowledge Lifecycle, Workflow)
+- `operational/scenarios/*`
 - `operational/use-cases/*`
 - `operational/features/*`
+- `operational/ui-layout/*`
+- `operational/navigation/*`
 
 ## Analysis Input
 
@@ -26,185 +31,526 @@ Greenfield execution based on approved product-definition artifacts.
 The architecture is derived from:
 
 ```text
-Approved Product Definition (Domains, Scenarios, Features)
-        ↓
-    ARCHITECTURE
+Approved Product Definition (Domains, Actor Model, Scenarios, Features)
+                            ↓
+                       ARCHITECTURE
 ```
 
 # 3. Scope
 
-Included:
-- Technical boundaries for the complete ICS Operational System
-- Data ownership for Customer, Organization, Post, Request, Product domains
-- UI/API and Database structuring
-- Module and Application Component mappings
+## Included
+- Technical boundaries for all core modules: Identity & Access, Organization, Customer, Product, Work Package, Request, Post, and Management Analytics
+- Data ownership and relational persistence schemas for all domains
+- Detailed Feed Architecture using an asynchronous/in-process Materialized Read Model (`FeedItems`)
+- Detailed Analytics Architecture using a Dual Model: Real-Time Dynamic Queries for active operational workload and Materialized Snapshot Tables for historical performance and monthly comparisons
+- Detailed Identity & Authentication boundary defining login credentials, session management, and the explicit 1-to-1 binding between authenticated `UserAccount` and organizational `Person`
+- Application components, CQRS command/query service separation, integration contracts, and module dependency graphs
 
-Excluded:
-- Human Resources Management (out of scope for Organization domain)
-- Detailed implementation code
+## Excluded
+- Human Resources Management (payroll, attendance, leave management, recruitment)
+- External billing/accounting execution engines (contracts and invoices are referenced, not processed)
+- Implementation code and framework-specific low-level boilerplate
 
 # 4. Architectural Drivers
 
-- Clear domain boundaries and strict data ownership (no shared write ownership).
-- Presentation projections for cross-domain features (like Feed and Analytics) must not mutate authoritative domain state.
-- Permanent preservation of operational and historical history.
+- **Strict Single Ownership of Write Models**: Each domain entity has exactly one authoritative owning module with exclusive write authority. No cross-module database writes are permitted.
+- **Derived Read Models & Projections**: Presentation projections for cross-domain features (such as the Feed and Management Analytics) derive from authoritative domain state and must never mutate authoritative business entities.
+- **Explicit Actor & Identity Distinction**: Clear separation between Security User (`UserAccount`), Organizational Individual (`Person`), Organizational Role (`Role`), Area Accountability (`Responsibility`), and Work Ownership (`Operational Assignment`).
+- **Permanent History Preservation**: Operational history, lifecycle state transitions, discussions, reactions, and periodic analytical snapshots are preserved permanently for auditability and institutional learning.
+- **Predictable Sub-50ms Feed & Operational Response Times**: Core landing views (Feed, Active Queues) rely on denormalized read models and targeted queries rather than runtime distributed joins.
 
-# 5. System Structure
+# 5. System Structure & Architectural Pattern
+
+The system is architected as a **Modular Monolith** organized into distinct, decoupled vertical modules sharing an in-process host, with clean layer separation inside each module:
 
 ```text
-Presentation
-Application
-Domain
-Infrastructure
+┌─────────────────────────────────────────────────────────────┐
+│                     Presentation Layer                      │
+│   (Web UI, Screen Views SCR-*, API Controllers, ViewModels) │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Dispatches Commands / Queries
+┌──────────────────────────────▼──────────────────────────────┐
+│                      Application Layer                      │
+│   (Command Services, Query Services, Projection Handlers)   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Invokes Aggregates & Emits Events
+┌──────────────────────────────▼──────────────────────────────┐
+│                        Domain Layer                         │
+│  (Aggregates, Value Objects, Domain Events, State Machines) │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Persists via Repositories
+┌──────────────────────────────▼──────────────────────────────┐
+│                    Infrastructure Layer                     │
+│  (Relational DB Segregation, Event Bus, Session Store, IAM) │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-- **Presentation**: Renders UI, handles user input, dispatches commands/queries to Application layer.
-- **Application**: Coordinates use cases, manages transactions, cross-module orchestration.
-- **Domain**: Pure business rules, state machines, domain events.
-- **Infrastructure**: Database access, external integrations, event bus.
+- **Presentation**: Renders UI screens (`SCR-*`), handles HTTP/WebSocket connections, evaluates display view-models, and invokes application services.
+- **Application**: Orchestrates use cases, coordinates database transactions, executes query projections, and dispatches in-process domain events.
+- **Domain**: Encapsulates pure business logic, invariants, state transitions, and domain event creation without external dependencies.
+- **Infrastructure**: Provides database access via relational repositories, in-process event publishing, security token handling, and system clock/audit logging.
 
 # 6. Module Boundaries
 
-| Module | Responsibility | Owned Domains | Owned Data |
+| Module | Responsibility | Owned Domains | Owned Data / Tables |
 |---|---|---|---|
-| Customer | Customer master data | Customer | Customers, Contacts |
-| Organization | Organizational identity & roles | Organization | Persons, Teams, Roles, Responsibilities, Memberships, Assignments |
-| Request | Request lifecycle and resolution | Request | Requests, Resolutions, Assignments |
-| Post | Operational communication and feed | Post | Posts, Comments, Reactions, References |
-| Product | Product catalog reference | Product | Products |
-| Work Package | Work collaboration | Work Package | Work Packages |
+| **Identity & Access** | Authentication, credentials, sessions, security tokens | Identity | `UserAccounts`, `UserSessions` |
+| **Organization** | Authoritative organizational identity, structure, roles, and accountability | Organization | `Persons`, `Teams`, `Roles`, `Responsibilities`, `TeamMemberships`, `RoleAssignments`, `ResponsibilityAssignments` |
+| **Customer** | Customer master data and institutional contacts | Customer | `Customers`, `CustomerContacts` |
+| **Product** | Product catalog master data, product codes, and product ownership | Product | `Products` |
+| **Work Package** | Temporary grouping container for related requests sharing a common objective | Work Package | `WorkPackages`, `WorkPackageRequests` |
+| **Request** | Operational request lifecycle, evaluation, assignment, escalation, and resolution | Request | `Requests`, `RequestResolutions`, `RequestAssignments` |
+| **Post** | Persistent operational communication, discussions, comments, reactions, and references | Post | `Posts`, `Comments`, `Reactions`, `PostReferences` |
+| **Feed (Read Tier)** | Denormalized operational feed stream, search, filtering, and exception badges | Post (Projection) | `FeedItems` (Materialized Read Model) |
+| **Management Analytics (Read Tier)** | Real-time workload capacity and periodic historical performance snapshots | Cross-Domain (Read Model) | `DailyWorkloadSnapshots`, `MonthlyCustomerPerformanceSnapshots` |
 
 # 7. Component Responsibilities
 
-| Component | Responsibility |
-|------------|---------------|
-| `CustomerService` | Customer & Contact management commands/queries |
-| `OrganizationService` | Person, Role, Team management commands/queries |
-| `RequestService` | Request lifecycle commands (Record, Assign, Evaluate, Accept, Reject, Escalate, Complete) |
-| `RequestQueryService` | Request historical search and progress queries |
-| `PostService` | Post authoring, commenting, reacting commands |
-| `FeedQueryService` | Cross-domain feed projection and filtering queries |
-| `ManagementAnalyticsService` | Cross-domain analytical projections (Workload, Performance, Customer Progress) |
+| Component | Layer | Responsibility |
+|---|---|---|
+| `AuthenticationService` | Application | Validates credentials, checks account/person active status, manages sessions, issues tokens |
+| `AuthorizationService` | Application | Resolves user's assigned organizational roles and evaluates role-based access policies |
+| `CurrentContextProvider` | Infrastructure | Exposes ambient `CurrentUserId`, `CurrentPersonId`, and `CurrentRoles` for request execution |
+| `CustomerService` | Application | Customer & Contact creation and master updates |
+| `CustomerQueryService` | Application | Queries active customer records, contacts, and contract statuses for UI dropdowns |
+| `OrganizationService` | Application | Manages Persons, Teams, Roles, Responsibilities, Memberships, and Assignments |
+| `OrganizationQueryService` | Application | Queries active persons, team rosters, and role assignments for routing and UI lookups |
+| `ProductService` | Application | Commands to create products, update attributes, assign product owners, and toggle status |
+| `ProductQueryService` | Application | Queries active products, catalog listings, and product owner associations |
+| `WorkPackageService` | Application | Commands to create work packages, update objectives, assign owners, add/remove requests, and manage lifecycle (DRAFT, ACTIVE, CLOSED) |
+| `WorkPackageQueryService` | Application | Queries work package details, scope listings, and request-to-work-package associations |
+| `RequestService` | Application | Executes request state transitions: Record, Assign, Evaluate, Accept, Reject, Escalate, Request Decision, Complete |
+| `RequestQueryService` | Application | Queries request details, state history, my assigned requests, and filtered request grids |
+| `PostService` | Application | Authoring human operational posts, recording system posts, posting comments, adding reactions, toggling visibility, archiving |
+| `PostQueryService` | Application | Queries post thread details, full comments, and reaction lists for post modal |
+| `FeedProjectionHandler` | Application | Listens to domain events (`PostCreated`, `CommentAdded`, `ReactionAdded`, etc.) and synchronously/asynchronously updates `FeedItems` |
+| `FeedQueryService` | Application | Executes high-performance indexed queries over `FeedItems` with filtering by Customer, Product, Team, or Exception |
+| `ManagementAnalyticsService` | Application | Computes dynamic real-time workload aggregations (`SCR-MGT-003`, `SCR-MGT-001`) and serves snapshot performance trends (`SCR-MGT-002`) |
+| `AnalyticsSnapshotJob` | Infrastructure | Scheduled background worker capturing daily workload snapshots and monthly customer performance records |
 
 # 8. Use Case Mapping
 
-| Use Case | Application Component | Domain Components |
-|---|---|---|
-| UC-COL-001 | `RequestService`, `PostService` | Request, Post |
-| UC-COL-002 | `RequestQueryService` | Request |
-| UC-COL-003 | `RequestQueryService` | Request |
-| UC-COL-004 | `RequestQueryService` | Request, Organization |
-| UC-FCOL-001 | `PostService` | Post |
-| UC-FCOL-002 | `PostService` | Post |
-| UC-FCOL-003 | `PostService` | Post |
-| UC-FCOL-004 | `FeedQueryService` | Post, Request |
-| UC-FCOL-005 | `FeedQueryService` | Post, Customer, Product, Organization |
-| UC-MGT-001 | `RequestService` | Request, Organization |
-| UC-MGT-002 | `ManagementAnalyticsService`| Request, Customer |
-| UC-MGT-003 | `ManagementAnalyticsService`| Request, Organization |
-| UC-MGT-004 | `ManagementAnalyticsService`| Request, Organization |
-| UC-AWR-001..003 | `FeedQueryService` | Post, Request |
-| UC-REQ-001..008 | `RequestService` | Request, Organization, Customer |
+| Use Case | Name | Application Component | Participating Domains |
+|---|---|---|---|
+| **UC-AUTH-001** | Authenticate User & Establish Session | `AuthenticationService` | Identity, Organization |
+| **UC-REQ-001** | Record Customer Request | `RequestService` | Request, Customer, Organization, Product |
+| **UC-REQ-002** | Assign Request Owner | `RequestService` | Request, Organization |
+| **UC-REQ-003** | Evaluate Request | `RequestService` | Request, Organization |
+| **UC-REQ-004** | Accept Request Responsibility | `RequestService` | Request, Organization |
+| **UC-REQ-005** | Reject Request | `RequestService` | Request, Organization |
+| **UC-REQ-006** | Escalate Request | `RequestService` | Request, Organization |
+| **UC-REQ-007** | Request Management Decision | `RequestService` | Request, Organization |
+| **UC-REQ-008** | Review Request Completion | `RequestService` | Request, Customer, Organization |
+| **UC-COL-001** | Record Supporting Information | `PostService`, `RequestService` | Request, Post |
+| **UC-COL-002** | Search Request History | `RequestQueryService` | Request |
+| **UC-COL-003** | Track Request Progress | `RequestQueryService` | Request |
+| **UC-COL-004** | Review Assigned Requests | `RequestQueryService` | Request, Organization |
+| **UC-FCOL-001** | Comment on Post | `PostService` | Post |
+| **UC-FCOL-002** | React to Post | `PostService` | Post |
+| **UC-FCOL-003** | Create Operational Post | `PostService` | Post, Request, Customer, Product, Work Package |
+| **UC-FCOL-004** | Navigate from Post to Request | `FeedQueryService`, `RequestQueryService` | Post, Request |
+| **UC-FCOL-005** | Filter Operational Feed | `FeedQueryService` | Post, Customer, Product, Organization |
+| **UC-AWR-001** | Observe Operational Feed | `FeedQueryService` | Post |
+| **UC-AWR-002** | Discover Request via Feed | `FeedQueryService`, `RequestQueryService` | Post, Request |
+| **UC-AWR-003** | Monitor Operational Exceptions via Feed | `FeedQueryService` | Post, Request |
+| **UC-MGT-001** | Reassign Request Ownership | `RequestService` | Request, Organization |
+| **UC-MGT-002** | Review Customer Request Progress | `ManagementAnalyticsService` | Request, Customer |
+| **UC-MGT-003** | Review Programmer Request Performance | `ManagementAnalyticsService` | Request, Organization |
+| **UC-MGT-004** | Review Programmer Workload | `ManagementAnalyticsService` | Request, Organization |
+| **UC-PRD-001** | Maintain Product Catalog | `ProductService` | Product, Organization |
+| **UC-PRD-002** | Query Products for Operational Context | `ProductQueryService` | Product |
+| **UC-WP-001** | Manage Work Package Lifecycle | `WorkPackageService` | Work Package, Organization |
+| **UC-WP-002** | Manage Work Package Scope | `WorkPackageService` | Work Package, Request |
+| **UC-WP-003** | Review Work Package Scope & Progress | `WorkPackageQueryService` | Work Package, Request |
 
 # 9. Feature Mapping
 
-| Feature | Technical Module | Application Component | UI Boundary | Persistence |
-|---|---|---|---|---|
-| FEAT-REQ-001..008 | Request | `RequestService` | `SCR-REQ-*` | Request DB |
-| FEAT-COL-001..004 | Request | `RequestQueryService`, `RequestService` | `SCR-REQ-*` | Request DB |
-| FEAT-FCOL-001..005 | Post | `PostService`, `FeedQueryService` | `SCR-FEED-*`, `SCR-POST-*` | Post DB |
-| FEAT-MGT-002..004 | Request | `ManagementAnalyticsService` | `SCR-MGT-*` | Request DB (Read) |
-| FEAT-AWR-001 | Post | `FeedQueryService` | `SCR-FEED-001` | Post DB |
+| Feature ID | Feature Name | Technical Module | Application Component | Primary UI Boundary | Persistence |
+|---|---|---|---|---|---|
+| **FEAT-AUTH-001** | Authenticate & Manage Session | Identity | `AuthenticationService` | `SCR-AUTH-001` | `UserAccounts`, `UserSessions` |
+| **FEAT-REQ-001..008** | Request Lifecycle Operations | Request | `RequestService` | `SCR-REQ-001`, `SCR-REQ-002`, `SCR-REQ-003` | `Requests`, `RequestResolutions` |
+| **FEAT-COL-001..004** | Request Collaboration & Tracking | Request | `RequestQueryService`, `RequestService` | `SCR-REQ-003`, `SCR-REQ-004`, `SCR-REQ-005` | `Requests`, `PostReferences` |
+| **FEAT-FCOL-001..003** | Post Authoring, Comments & Reactions | Post | `PostService` | `SCR-FEED-001`, `SCR-POST-001` | `Posts`, `Comments`, `Reactions` |
+| **FEAT-FCOL-005** | Filter Operational Feed | Post / Feed | `FeedQueryService` | `SCR-FEED-001` | `FeedItems` (Read Model) |
+| **FEAT-AWR-001** | Observe Operational Feed | Post / Feed | `FeedQueryService` | `SCR-FEED-001` | `FeedItems` (Read Model) |
+| **FEAT-MGT-002** | Review Customer Request Progress | Analytics | `ManagementAnalyticsService` | `SCR-MGT-001` | `Requests` (Real-Time Query) |
+| **FEAT-MGT-003** | Review Programmer Request Performance | Analytics | `ManagementAnalyticsService` | `SCR-MGT-002` | `Requests`, `DailyWorkloadSnapshots` |
+| **FEAT-MGT-004** | Review Programmer Workload | Analytics | `ManagementAnalyticsService` | `SCR-MGT-003` | `Requests` (Real-Time Query) |
+| **FEAT-PRD-001** | Product Catalog & Ownership | Product | `ProductService`, `ProductQueryService` | `SCR-PRD-001`, Selectors | `Products` |
+| **FEAT-WP-001** | Work Package Lifecycle & Grouping | Work Package | `WorkPackageService`, `WorkPackageQueryService` | `SCR-WP-001`, `SCR-REQ-003` | `WorkPackages`, `WorkPackageRequests` |
 
-# 10. Integration Design
+# 10. Product Module Architecture
 
-| Source | Target | Interface | Purpose | Ownership |
-|---|---|---|---|---|
-| Post | Request/Customer/Org | Domain Events | Link context to posts | Post |
-| Request | Organization | Read API / DB View | Validate owner assignment | Request |
-| ManagementAnalytics | Request, Org, Customer | Read APIs / Projections | Aggregate metrics | Request |
+## Domain Context
+The Product Domain is the authoritative source of product identity, product code, description, ownership, and lifecycle status (`ACTIVE` vs `INACTIVE`). Products represent business products developed, maintained, or provided by ICS (e.g. MyHospital, PenaEl, BTrade3).
 
-# 11. Data Ownership
+## Components & Responsibilities
+- **`ProductService`**:
+  - `CreateProduct(code, name, description, ownerPersonId)`: Validates unique code, ensures owner exists in Organization, initializes status to `ACTIVE`, emits `ProductCreated`.
+  - `UpdateProduct(productId, name, description)`: Updates descriptive attributes.
+  - `AssignProductOwner(productId, newOwnerPersonId)`: Updates owner and emits `ProductOwnerChanged`.
+  - `ActivateProduct(productId)` / `DeactivateProduct(productId)`: Transitions lifecycle status, emitting `ProductActivated` or `ProductDeactivated`.
+- **`ProductQueryService`**:
+  - `GetProductById(productId)`: Returns authoritative product record.
+  - `GetProductByCode(code)`: Returns product record by unique business code.
+  - `ListActiveProducts()`: Supplies active product list for UI dropdown selectors on `SCR-REQ-002` (Create Request), `SCR-FEED-001` (Feed Filter), and `SCR-WP-001` (Work Package).
+  - `ListAllProducts()`: Supplies complete catalog including inactive products for historical audit views.
 
-| Data | Owner Module | Write Authority | Read Consumers |
-|---|---|---|---|
-| Customer, Contact | Customer | Customer Module | Request, Post, Analytics |
-| Person, Role, Team | Organization | Organization Module | Request, Post, Analytics |
-| Request, Resolution | Request | Request Module | Post, Analytics |
-| Post, Comment, Reaction| Post | Post Module | Feed UI, Request UI |
+## Data Ownership & Rules
+- Owns the `Products` table.
+- Does not own Customer-Product relationships (Customer Domain), Request-Product relationships (Request Domain), or Work Package-Product relationships (Work Package Domain).
+- Product status is authoritative; external modules and analytics cannot invent synthetic product states.
 
-# 12. Database Design
+# 11. Work Package Module Architecture
 
-## New Tables
+## Domain Context
+The Work Package Domain defines a temporary container of related operational Requests that share a common objective. It provides operational grouping context without owning or altering Request lifecycles.
 
-| Table | Owner Module | Purpose |
-|---------|---------|---------|
-| `Customers` | Customer | Customer master |
-| `CustomerContacts`| Customer | Contact master |
-| `Persons` | Organization | Individual master |
-| `Teams`, `Roles` | Organization | Structure master |
-| `Requests` | Request | Request state and details |
-| `Resolutions` | Request | Request completion details |
-| `Posts` | Post | Content and state |
-| `Comments` | Post | Thread messages |
-| `Reactions` | Post | Structured reactions |
-| `PostReferences`| Post | Links to external domains |
+## Components & Responsibilities
+- **`WorkPackageService`**:
+  - `CreateWorkPackage(name, objective, ownerPersonId, customerId?, productId?)`: Creates package in `DRAFT` state, assigns owner, associates optional customer or product, emits `WorkPackageCreated`.
+  - `UpdateObjective(workPackageId, name, objective)`: Updates objective and title.
+  - `AssignOwner(workPackageId, newOwnerPersonId)`: Reassigns package ownership, emits `WorkPackageOwnerChanged`.
+  - `AddRequestToWorkPackage(workPackageId, requestId)`: Validates that the request is not already in another active package (Business Rule 9), associates request in `WorkPackageRequests`, emits `RequestAddedToWorkPackage`.
+  - `RemoveRequestFromWorkPackage(workPackageId, requestId)`: Deactivates membership link, records removal timestamp, emits `RequestRemovedFromWorkPackage`.
+  - `ActivateWorkPackage(workPackageId)`: Transitions state from `DRAFT` to `ACTIVE`, emits `WorkPackageActivated`.
+  - `CloseWorkPackage(workPackageId, reason)`: Transitions state from `ACTIVE` (or `DRAFT`) to `CLOSED`, records close timestamp, emits `WorkPackageClosed`.
+- **`WorkPackageQueryService`**:
+  - `GetWorkPackageById(workPackageId)`: Returns package details with owner and customer/product references.
+  - `ListWorkPackages(statusFilter, customerId?, productId?, ownerPersonId?)`: Returns filtered list of work packages.
+  - `GetWorkPackageScope(workPackageId)`: Returns current and historical requests included in the package.
+  - `GetRequestWorkPackage(requestId)`: Resolves active work package containing a given request.
 
-## Migration Considerations
+## Data Ownership & Rules
+- Owns `WorkPackages` and `WorkPackageRequests` tables.
+- A Request belongs to zero or one active Work Package.
+- Adding or removing a Request does not alter the Request Owner or the Request lifecycle state.
+- Closing a Work Package does not close its constituent Requests, and closing all Requests does not automatically close the Work Package.
 
-Greenfield system. No legacy migration required.
+# 12. Feed Architecture
 
-# 13. Cross-Cutting Concerns
+## Architectural Decision: Materialized Read Model (`FeedItems`)
+The Feed is architected as an **in-process Materialized Read Model** backed by a dedicated projection table (`FeedItems`) residing in the Post module schema.
 
-- **Security & Authorization**: Role-based access control based on Organization domain Persons.
-- **Audit Logging**: Mandatory tracking of state changes (e.g. Request transitions).
-- **Domain Events**: Internal event bus for triggering system-generated posts.
+## Justification
+1. **Primary Landing Workspace**: `SCR-FEED-001` is the main screen accessed continuously by all actors. High concurrency, sub-50ms render, and immediate pagination responsiveness are critical.
+2. **Elimination of Cross-Schema Joins**: Feed cards require data from 5 distinct contexts: Post content, Author identity (Organization), Referenced Request details (Request), Referenced Customer name (Customer), Referenced Product name (Product), and aggregate Reaction counts and Comment previews. Executing dynamic cross-schema joins with sorting and filtering at runtime would create severe database bottlenecks and tight coupling.
+3. **Strict Domain Integrity**: The projection table is strictly read-only for queries. Authoritative state remains in `Posts`, `Comments`, `Reactions`, and `PostReferences`.
 
-# 14. Technical Decisions
-
-- Architecture Pattern: Modular Monolith
-- Communication: In-process method calls or internal event bus
-- Persistence: Relational DB with schema segregation per module
-
-# 15. Implementation Constraints
-
-- Vertical-slice organization per module.
-- Strict data ownership: No cross-module direct database writes.
-- Read projections allowed across boundaries for Analytics and Feed.
-
-# 16. Implementation Boundaries
-
-| Boundary | Responsibility | Repository | Depends On | Implementation Notes |
-|---|---|---|---|---|
-| Foundation | Core abstractions | ICS-Core | None | Shared interfaces |
-| Organization | Org master | ICS-Modules | Foundation | No upstream dependencies |
-| Customer | Customer master | ICS-Modules | Foundation | No upstream dependencies |
-| Request | Request lifecycle | ICS-Modules | Foundation, Org, Cust | Core operational flow |
-| Post | Feed and comms | ICS-Modules | Foundation | Event-driven integration |
-
-# 17. Implementation Dependency Graph
-
+## Feed Projection Table Schema (`FeedItems`)
 ```text
-Foundation
-    ↓
-Organization / Customer / Product
-    ↓
-Request / Work Package
-    ↓
-Post (Feed)
-    ↓
-Management Analytics
+FeedItemId (UUID, Primary Key)
+PostId (UUID, Unique Index, FK -> Posts.PostId)
+AuthorPersonId (UUID)
+AuthorName (VARCHAR(100))
+PostType (VARCHAR(30))              -- 'SYSTEM_GENERATED' | 'HUMAN_AUTHORED'
+Title (VARCHAR(255))
+ContentExcerpt (VARCHAR(500))
+Status (VARCHAR(20))                -- 'ACTIVE' | 'ARCHIVED'
+Visibility (VARCHAR(20))            -- 'VISIBLE' | 'HIDDEN'
+IsException (BOOLEAN)               -- TRUE if escalation, rejection, or stalled request
+ExceptionType (VARCHAR(50) NULL)    -- 'ESCALATION' | 'STALLED' | 'REJECTION'
+ReferenceType (VARCHAR(50) NULL)    -- 'REQUEST' | 'WORK_PACKAGE' | 'CUSTOMER' | 'PRODUCT'
+ReferenceId (UUID NULL)
+ReferenceDisplay (VARCHAR(200) NULL) -- e.g. 'REQ-2026-0042: Billing Error'
+CustomerId (UUID NULL, INDEXED)
+CustomerName (VARCHAR(150) NULL)
+ProductId (UUID NULL, INDEXED)
+ProductName (VARCHAR(150) NULL)
+CommentCount (INT DEFAULT 0)
+LatestCommentExcerpt (VARCHAR(300) NULL)
+ReactionCountsJson (JSON / TEXT)    -- e.g. {"SEEN": 4, "EXPERIENCED": 2, "HAVE_IDEA": 1}
+CreatedAt (DATETIME, INDEXED)
+UpdatedAt (DATETIME)
 ```
 
-# 18. Acceptance Conditions
+## Update Triggers & Synchronization
+Updates to `FeedItems` are orchestrated by `FeedProjectionHandler` subscribing to in-process domain events:
+- **`PostCreated`**: Inserts a new row into `FeedItems`. Enriches customer/product/reference display attributes from event payload or in-memory caches.
+- **`CommentAdded`**: Increments `CommentCount`, updates `LatestCommentExcerpt` and `UpdatedAt`.
+- **`ReactionAdded` / `ReactionRemoved`**: Updates `ReactionCountsJson` atomically.
+- **`PostVisibilityChanged`**: Updates `Visibility` (`VISIBLE` or `HIDDEN`).
+- **`PostArchived`**: Updates `Status = 'ARCHIVED'`.
 
-1. Every approved domain has a technical home.
-2. Every approved use case has an implementing application boundary.
-3. Every approved feature has an explicit technical mapping.
-4. Every important persistent data concept has an owner.
-5. Integration boundaries are explicit.
-6. Major cross-cutting concerns are resolved.
-7. Technical constraints are explicit.
-8. Implementation boundaries are identifiable.
-9. Architectural dependencies are identifiable.
-10. The implementation-plan skill can create slices without having to redesign the target architecture.
+*Synchronization Guarantee*: Events are handled in-process within the same database transaction scope as the command, ensuring zero eventual consistency lag for the user executing the action.
+
+## Query Semantics
+`FeedQueryService.GetFeed(filter, pagination)` executes a single-table indexed query:
+```sql
+SELECT * FROM FeedItems
+WHERE Visibility = 'VISIBLE' AND Status = 'ACTIVE'
+  AND (:CustomerId IS NULL OR CustomerId = :CustomerId)
+  AND (:ProductId IS NULL OR ProductId = :ProductId)
+  AND (:ExceptionsOnly IS FALSE OR IsException = TRUE)
+ORDER BY CreatedAt DESC
+LIMIT :PageSize OFFSET :Offset;
+```
+
+## Rebuild Strategy
+`FeedProjectionRebuilder.RebuildAll()` is an idempotent administrative routine that can truncate `FeedItems` and completely regenerate it from authoritative `Posts`, `PostReferences`, `Comments`, `Reactions`, and reference lookup tables at any time without data loss.
+
+# 13. Analytics Architecture
+
+## Architectural Decision: Dual Analytics Model
+Analytics is architected using a **Dual Model**:
+1. **Real-Time Dynamic Aggregations** for operational visibility, active workload distribution, and current customer queue health.
+2. **Periodic Materialized Snapshot Tables** for historical performance analysis, turnaround trends, and monthly management comparisons.
+
+## Justification
+- **Operational Visibility (`FEAT-MGT-004`, `FEAT-MGT-002`)**: Management needs 100% up-to-the-second accuracy when evaluating programmer workloads and reassigning blocked requests. Because active requests form a compact operational working set (hundreds of rows), dynamic query aggregation on indexed operational tables is fast (< 20ms) and eliminates cache invalidation bugs.
+- **Historical Analysis & Trends (`FEAT-MGT-003`, COO Monthly Reports)**: Historical requests accumulate indefinitely over years. Calculating historical throughput, resolution time averages, and month-over-month comparisons on raw transaction logs is inefficient. Materialized snapshot tables freeze periodic operational facts at regular intervals, ensuring immutable historical auditability even when employees change roles or leave the company.
+
+## Analytics Components & Storage
+
+### 1. Real-Time Operational Projections (`ManagementAnalyticsService`)
+- `GetProgrammerActiveWorkload(personId?)`: Dynamically aggregates `Requests` where `Status IN ('CAPTURED', 'ACTIVE')` grouped by `OwnerPersonId` and sub-state (`CAPTURED`, `EVALUATING`, `ACCEPTED`, `IN_PROGRESS`, `ESCALATED`).
+- `GetCustomerRequestPortfolio(customerId)`: Dynamically queries active requests, open blockers, and recent completions for a customer, joined with customer maintenance contract status.
+
+### 2. Snapshot Storage Tables (`Analytics` Schema)
+
+#### `DailyWorkloadSnapshots`
+Records end-of-day workload and throughput for each team member:
+```text
+SnapshotId (UUID, Primary Key)
+SnapshotDate (DATE, Indexed)
+PersonId (UUID, Indexed, FK -> Persons.PersonId)
+ActiveRequestsCount (INT)
+EscalatedRequestsCount (INT)
+StalledRequestsCount (INT)
+CompletedRequestsToday (INT)
+AvgAgeHours (DECIMAL(10,2))
+CapturedAt (DATETIME)
+-- Constraint: UNIQUE(SnapshotDate, PersonId)
+```
+
+#### `MonthlyCustomerPerformanceSnapshots`
+Records end-of-month operational summary per customer:
+```text
+SnapshotId (UUID, Primary Key)
+YearMonth (VARCHAR(7), Indexed)     -- '2026-09'
+CustomerId (UUID, Indexed, FK -> Customers.CustomerId)
+TotalRequests (INT)
+ResolvedRequestsCount (INT)
+RejectedRequestsCount (INT)
+AvgResolutionHours (DECIMAL(10,2))
+SlaMetCount (INT)
+SlaBreachedCount (INT)
+CapturedAt (DATETIME)
+-- Constraint: UNIQUE(YearMonth, CustomerId)
+```
+
+## Refresh & Execution Model
+- **`AnalyticsSnapshotJob`**:
+  - **Daily Snapshot**: Runs nightly at 23:59:59. Computes end-of-day metrics for all active persons and inserts into `DailyWorkloadSnapshots`.
+  - **Monthly Snapshot**: Runs on the 1st day of each month at 00:05:00. Aggregates preceding calendar month metrics per customer and inserts into `MonthlyCustomerPerformanceSnapshots`.
+- **On-Demand Recomputation**: `ManagementAnalyticsService.RecomputeSnapshots(startDate, endDate)` allows idempotent backfilling or recomputing snapshot records if historical corrections occur.
+- **Immutability**: Once recorded, snapshot records are treated as immutable historical facts.
+
+# 14. Identity & Authentication Architecture
+
+## Architectural Decision: Explicit IAM Boundary Bound to Organization Person
+The system defines an independent **Identity & Access Management (IAM)** technical module answering "Who logs in?" and managing credentials, sessions, and authentication tokens, while delegating business identity and organizational roles to the Organization Domain.
+
+## Separation of Concerns
+- **Identity Module**: Owns authentication credentials, password hashing, active sessions, security tokens, and login audit trails.
+- **Organization Domain**: Owns the `Person` business entity, organizational `Roles` (e.g. `Management`, `Programmer`, `Implementator`, `Administrator`), and area `Responsibilities` (e.g. `Module PIC`, `Customer Pimpro`).
+- **1-to-1 Association**: Every `UserAccount` possesses a unique foreign key `PersonId` referencing an authoritative `Person`. A user cannot log in unless both their `UserAccount` and linked `Person` are in `ACTIVE` status.
+
+## IAM Components
+- **`AuthenticationService`**:
+  - `Login(usernameOrEmail, password, clientInfo) -> LoginResult`: Verifies password against cryptographic hash (Argon2id / bcrypt), checks `UserAccount.Status == 'ACTIVE'`, checks linked `Person.Status == 'ACTIVE'`, creates record in `UserSessions`, issues session token/cookie.
+  - `Logout(sessionToken)`: Invalidates session in `UserSessions`.
+  - `ValidateSession(sessionToken) -> SecurityContext`: Validates token, checks expiry, returns authenticated `UserId` and `PersonId`.
+- **`AuthorizationService`**:
+  - Resolves active `Roles` assigned to `PersonId` from the Organization module's `RoleAssignments`.
+  - Enforces role-based permissions (e.g. checking `Management` role for `SCR-MGT-*`, or `Programmer`/`Implementator` role for request evaluations).
+- **`CurrentContextProvider`**:
+  - Ambient request context populated on every incoming request, exposing `CurrentUserId`, `CurrentPersonId`, and `CurrentRoles`.
+
+## IAM Persistence Tables
+
+### `UserAccounts`
+```text
+UserId (UUID, Primary Key)
+PersonId (UUID, Unique Index, FK -> Persons.PersonId)
+Username (VARCHAR(50), Unique Index)
+Email (VARCHAR(150), Unique Index)
+PasswordHash (VARCHAR(255))
+Status (VARCHAR(20))                -- 'ACTIVE' | 'LOCKED' | 'SUSPENDED'
+FailedLoginAttempts (INT DEFAULT 0)
+LastLoginAt (DATETIME NULL)
+CreatedAt (DATETIME)
+UpdatedAt (DATETIME)
+```
+
+### `UserSessions`
+```text
+SessionId (UUID, Primary Key)
+UserId (UUID, FK -> UserAccounts.UserId)
+PersonId (UUID, FK -> Persons.PersonId)
+SessionToken (VARCHAR(255), Unique Index)
+ExpiresAt (DATETIME, Indexed)
+CreatedAt (DATETIME)
+ClientIp (VARCHAR(45))
+UserAgent (VARCHAR(255))
+IsRevoked (BOOLEAN DEFAULT FALSE)
+```
+
+## UI Boundary
+- `SCR-AUTH-001: Login Screen`: Accepts username/password, handles login failures, sets authentication cookie/token, and redirects user to `SCR-FEED-001`.
+
+# 15. Integration Design
+
+| Source Component | Target Component | Integration Style | Purpose | Ownership |
+|---|---|---|---|---|
+| `AuthenticationService` | `OrganizationQueryService` | In-Process Query | Validate `Person` status and resolve `PersonId` | Identity |
+| `AuthorizationService` | `OrganizationQueryService` | In-Process Query | Fetch active `Roles` assigned to `PersonId` | Identity |
+| `RequestService` | `OrganizationQueryService` | In-Process Query | Validate assignee exists and holds valid role | Request |
+| `RequestService` | `CustomerQueryService` | In-Process Query | Validate customer identity and maintenance contract | Request |
+| `RequestService` | `ProductQueryService` | In-Process Query | Validate product reference | Request |
+| `WorkPackageService` | `OrganizationQueryService` | In-Process Query | Validate work package owner exists | Work Package |
+| `WorkPackageService` | `RequestQueryService` | In-Process Query | Validate request exists and check active membership | Work Package |
+| `PostService` | Request, Customer, Product, Org, WP | Domain Events & Query | Attach contextual references to posts | Post |
+| `FeedProjectionHandler` | Domain Events | In-Process Event Bus | Update `FeedItems` projection on post/comment/reaction | Post (Feed) |
+| `ManagementAnalyticsService` | `RequestQueryService`, `CustomerQueryService` | Read Projection / Query | Compute real-time workload and customer portfolio | Analytics |
+| `AnalyticsSnapshotJob` | Request, Organization, Customer | Scheduled Query Batch | Capture daily and monthly frozen snapshot metrics | Analytics |
+
+# 16. Data Ownership
+
+| Data Concept | Owning Module | Write Authority | Read Consumers |
+|---|---|---|---|
+| User Credentials & Sessions | Identity & Access | Identity Module | Web Presentation Layer, Security Middleware |
+| Person, Team, Role, Responsibility, Assignments | Organization | Organization Module | Identity, Request, Work Package, Post, Analytics |
+| Customer, Customer Contact | Customer | Customer Module | Request, Work Package, Post, Analytics |
+| Product | Product | Product Module | Request, Work Package, Post, Analytics |
+| Work Package, Work Package Membership | Work Package | Work Package Module | Request, Post, Analytics |
+| Request, Request Resolution, Request Assignment | Request | Request Module | Work Package, Post, Analytics |
+| Post, Comment, Reaction, Post Reference | Post | Post Module | Feed UI, Post UI, Request UI |
+| Feed Projection Items | Post (Feed Tier) | `FeedProjectionHandler` | Feed UI (`SCR-FEED-001`) |
+| Workload & Performance Snapshots | Analytics | `AnalyticsSnapshotJob` | Management UI (`SCR-MGT-*`) |
+
+# 17. Database Design
+
+## Schema Segregation
+Relational database with schema segregation per module:
+- `identity.*`: IAM tables
+- `organization.*`: Organizational master tables
+- `customer.*`: Customer master tables
+- `product.*`: Product catalog tables
+- `workpackage.*`: Work package grouping tables
+- `request.*`: Request lifecycle tables
+- `post.*`: Communication and feed read model tables
+- `analytics.*`: Snapshot tables
+
+## New Tables Summary
+
+| Table | Schema | Owner Module | Purpose |
+|---|---|---|---|
+| `UserAccounts` | `identity` | Identity | User credentials and 1-to-1 linkage to Person |
+| `UserSessions` | `identity` | Identity | Active login sessions and token expiration |
+| `Persons` | `organization` | Organization | Authoritative person records |
+| `Teams`, `Roles`, `Responsibilities` | `organization` | Organization | Organizational structure and accountability definitions |
+| `TeamMemberships`, `RoleAssignments`, `ResponsibilityAssignments` | `organization` | Organization | Person-to-team/role/responsibility relationships |
+| `Customers` | `customer` | Customer | Customer master records and contract status |
+| `CustomerContacts` | `customer` | Customer | Customer contact persons |
+| `Products` | `product` | Product | Product catalog, codes, and product owners |
+| `WorkPackages` | `workpackage` | Work Package | Work package identity, objective, and owner |
+| `WorkPackageRequests` | `workpackage` | Work Package | Membership link between work packages and requests |
+| `Requests` | `request` | Request | Request lifecycle state, owner, priority, customer, product |
+| `RequestResolutions` | `request` | Request | Resolution outcome, summary, and resolution timestamp |
+| `Posts` | `post` | Post | Human and system operational communication records |
+| `Comments` | `post` | Post | Thread discussion comments |
+| `Reactions` | `post` | Post | Structured operational reactions on posts |
+| `PostReferences` | `post` | Post | Contextual links from posts to external domain objects |
+| `FeedItems` | `post` | Post (Feed) | Materialized read model for high-performance feed queries |
+| `DailyWorkloadSnapshots` | `analytics` | Analytics | Daily frozen snapshots of programmer workloads |
+| `MonthlyCustomerPerformanceSnapshots` | `analytics` | Analytics | Monthly frozen snapshots of customer delivery metrics |
+
+## Migration Considerations
+Greenfield system. Initial schema migration scripts will execute in dependency order (Identity & Foundation -> Organization -> Customer -> Product -> Work Package -> Request -> Post -> Analytics).
+
+# 18. Cross-Cutting Concerns
+
+- **Authentication & Security Context**: Every incoming HTTP/API request passes through authentication middleware that validates the session token against `UserSessions` and populates `CurrentContextProvider`.
+- **Role-Based Access Control (RBAC)**: Authorization is enforced at application service and presentation boundaries using `[Authorize(Roles = "...")]` mapped to the authenticated user's active `Roles` resolved from Organization.
+- **Audit Logging**: Every state change in `Requests`, `WorkPackages`, and `Posts` records actor `PersonId`, timestamp, and previous state.
+- **Domain Event Bus**: In-process synchronous event dispatcher with transactional consistency. Events trigger projection updates (`FeedItems`) and automated system post generation without distributed queue complexity.
+- **Exception Handling & Validation**: Centralized application validation layer verifying preconditions and business rules before mutating aggregate state.
+
+# 19. Technical Decisions Summary
+
+- **Architecture Pattern**: Modular Monolith with vertical slices per module.
+- **Persistence**: Relational Database with schema segregation per module.
+- **Feed Model**: Materialized Read Model (`FeedItems`) updated via in-process domain events.
+- **Analytics Model**: Dual Model (Real-time dynamic query aggregation for active workload + daily/monthly snapshot tables for trends and historical comparisons).
+- **Identity Architecture**: Independent IAM technical module linking `UserAccount` 1-to-1 to Organization `Person`, with role resolution for RBAC.
+- **Inter-Module Communication**: In-process direct query interfaces for reads, command services for writes, and in-process domain events for decoupled notifications.
+
+# 20. Implementation Constraints
+
+- **Strict Vertical Slice Boundary**: Modules must not directly reference internal repositories or entities of another module. Cross-module communication must use published application interfaces or domain events.
+- **Zero Shared Write Ownership**: Under no circumstances may a module perform `INSERT`, `UPDATE`, or `DELETE` on a table owned by another module.
+- **Non-Mutating Projections**: Projections (`FeedItems`, `DailyWorkloadSnapshots`, `MonthlyCustomerPerformanceSnapshots`) are strictly read models and must never be treated as authoritative write state.
+- **Permanent Retention**: Soft-delete or archiving only; operational history, posts, comments, and requests must never be physically purged from the database.
+
+# 21. Implementation Boundaries
+
+| Boundary | Responsibility | Repository / Assembly | Depends On | Implementation Notes |
+|---|---|---|---|---|
+| **Foundation** | Core interfaces, base entities, domain event dispatchers, clock | `ICS.Core` | None | Shared technical contracts |
+| **Identity & Access** | Authentication, credentials, sessions, security tokens | `ICS.Modules.Identity` | `ICS.Core`, `Organization` (Read) | Owns `UserAccounts`, `UserSessions` |
+| **Organization** | Person, team, role, and responsibility master data | `ICS.Modules.Organization` | `ICS.Core` | Foundational organizational master |
+| **Customer** | Customer and contact master data | `ICS.Modules.Customer` | `ICS.Core` | Foundational customer master |
+| **Product** | Product catalog master data and product ownership | `ICS.Modules.Product` | `ICS.Core`, `Organization` (Read) | Foundational product master |
+| **Work Package** | Work package lifecycle and request grouping | `ICS.Modules.WorkPackage` | `ICS.Core`, `Organization`, `Customer`, `Product`, `Request` | Operational grouping container |
+| **Request** | Request lifecycle, evaluation, assignment, resolution | `ICS.Modules.Request` | `ICS.Core`, `Organization`, `Customer`, `Product` | Core operational transactional engine |
+| **Post & Feed** | Communication, comments, reactions, and feed read model | `ICS.Modules.Post` | `ICS.Core`, Domain Events from all modules | Feed materialized projection tier |
+| **Management Analytics** | Workload capacity queries and historical snapshot batch jobs | `ICS.Modules.Analytics` | `ICS.Core`, `Request`, `Organization`, `Customer` | Management oversight read tier |
+
+# 22. Implementation Dependency Graph
+
+```text
+       ┌──────────────┐
+       │  Foundation  │
+       └──────┬───────┘
+              │
+       ┌──────▼───────────────────────────┐
+       │ Organization / Customer / Product│
+       └──────┬───────────────────────────┘
+              │
+       ┌──────▼───────┐
+       │   Identity   │ (depends on Organization for Person link)
+       └──────┬───────┘
+              │
+       ┌──────▼───────┐
+       │   Request    │ (depends on Org, Customer, Product)
+       └──────┬───────┘
+              │
+       ┌──────▼───────┐
+       │ Work Package │ (depends on Org, Customer, Product, Request)
+       └──────┬───────┘
+              │
+       ┌──────▼───────┐
+       │  Post & Feed │ (subscribes to domain events across all modules)
+       └──────┬───────┘
+              │
+       ┌──────▼────────────────┐
+       │  Management Analytics │ (reads Request, Org, Customer; snapshots)
+       └───────────────────────┘
+```
+
+# 23. Acceptance Conditions
+
+1. Every approved domain (Customer, Organization, Product, Work Package, Request, Post) has an explicit owning module and technical boundary.
+2. The Work Package module is fully defined with `WorkPackageService`, `WorkPackageQueryService`, `WorkPackages` and `WorkPackageRequests` tables, data ownership, and use case/feature mappings.
+3. The Product module is fully defined with `ProductService`, `ProductQueryService`, `Products` table, data ownership, and catalog use cases.
+4. The Feed Architecture is explicitly defined as a Materialized Read Model (`FeedItems`) with documented projection schema, update triggers, in-process synchronization, and rebuild strategy.
+5. The Analytics Architecture is explicitly defined using a Dual Model: real-time dynamic query aggregation for active workload visibility and scheduled snapshot tables (`DailyWorkloadSnapshots`, `MonthlyCustomerPerformanceSnapshots`) for historical trends and monthly comparisons.
+6. The Identity and Authentication boundary is explicitly defined, detailing credential management, sessions, login flow on `SCR-AUTH-001`, and the 1-to-1 linkage between `UserAccount` and Organization `Person`.
+7. Role-based access control (RBAC) maps authenticated users to `Roles` in the Organization domain without conflating identity with organizational accountability.
+8. Every approved use case and feature has an explicit technical mapping to an application component, UI boundary, and persistence table.
+9. Every database table has a single owning module with exclusive write authority.
+10. Read projections (Feed, Analytics) do not mutate authoritative domain state.
+11. Integration interfaces between modules are documented and respect domain boundaries.
+12. Historical operational state, discussions, and analytics snapshots are permanently preserved.
+13. The implementation-plan skill can generate clean phases and slices directly from this architecture without making unresolved architectural decisions.
