@@ -68,6 +68,7 @@ The skill must:
 5. Define screen purpose.
 6. Define primary actors for each screen.
 7. Define navigation entry points.
+8. Define exit points and outgoing destinations.
 
 The skill must NOT:
 
@@ -78,6 +79,7 @@ The skill must NOT:
 5. Invent new business capabilities.
 6. Invent new features.
 7. Invent new operational concepts.
+8. Define internal destination behavior, business logic, or lifecycle processing rules.
 
 ---
 
@@ -170,6 +172,35 @@ Those belong to UI Layout.
 
 ---
 
+## Rule 6 — Navigation Does Not Define Behavior
+
+Navigation answers:
+
+```text
+Where can the actor go?
+How do they move between destinations?
+```
+
+Navigation does not answer:
+
+```text
+What happens inside the destination?
+```
+
+Navigation MUST NOT define:
+
+```text
+Business logic
+Processing rules
+Lifecycle state machines (e.g., CAPTURED, ACTIVE, CLOSED)
+Detailed business actions (e.g., Accept, Reject, Escalate, Reassign)
+Capacity, workload, or intervention evaluations
+```
+
+Those belong to Use Case, User Journey, or Feature artifacts.
+
+---
+
 # Screen Identification Process
 
 For every User Journey:
@@ -241,7 +272,7 @@ Supported User Journeys
 
 Entry Points
 
-Primary Actions
+Exit / Destination
 ```
 
 Example:
@@ -252,7 +283,7 @@ SCR-003
 Request Detail
 
 Purpose:
-View and manage a request.
+View and interact with a specific Request record.
 
 Primary Actors:
 Trainer
@@ -269,11 +300,9 @@ Entry Points:
 Request List
 Customer Detail
 
-Primary Actions:
-Assess
-Decide
-Escalate
-Close
+Exit / Destination:
+Request List
+Customer Detail
 ```
 
 ---
@@ -299,6 +328,8 @@ Verify:
 ✓ Navigation contains only structural information
 
 ✓ UI decisions are absent
+
+✓ Business behavior, lifecycle semantics, and internal processing actions are absent
 
 ---
 
