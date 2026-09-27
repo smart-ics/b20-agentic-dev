@@ -10,11 +10,7 @@ Derived from **Request Collaboration Scenarios** using the **Use‑Case Discover
 
 **Goal:** Record additional context or evidence with an existing Request.
 
-**System Interaction:**
-- Implementator selects the target Request.
-- System presents an option to add supporting information.
-- Implementator provides the supporting information (e.g., a Post or Comment).
-- System attaches the information to the Request and persists it.
+**System Interaction:** Implementator selects the Request and adds supporting information (e.g., a Post or Comment); the system attaches the information to the Request.
 
 **Related Domains:** Request, Post
 
@@ -28,11 +24,7 @@ Derived from **Request Collaboration Scenarios** using the **Use‑Case Discover
 
 **Goal:** Find previous Requests or related information.
 
-**System Interaction:**
-- Implementator initiates a search operation.
-- System presents a query interface for specifying criteria (e.g., Request ID, keywords, date range).
-- Implementator enters search parameters.
-- System retrieves matching historical Requests and displays summaries.
+**System Interaction:** Implementator initiates a search and provides criteria; the system returns matching historical Requests.
 
 **Related Domains:** Request
 
@@ -46,10 +38,7 @@ Derived from **Request Collaboration Scenarios** using the **Use‑Case Discover
 
 **Goal:** Monitor the current status and steps of a Request.
 
-**System Interaction:**
-- Implementator selects the Request to track.
-- System retrieves the current progress, status, and step‑history of the Request.
-- System displays the status and detailed progress information to the Implementator.
+**System Interaction:** Implementator selects the Request; the system provides the current progress, status, and step history.
 
 **Related Domains:** Request
 
@@ -57,16 +46,13 @@ Derived from **Request Collaboration Scenarios** using the **Use‑Case Discover
 
 ---
 
-## UC‑COL‑004: Track All Assigned Requests
+## UC‑COL‑004: Review Assigned Requests
 
 **Actor:** Implementator
 
-**Goal:** Monitor all Requests assigned to the Implementator.
+**Goal:** Review the Requests currently assigned to them.
 
-**System Interaction:**
-- Implementator navigates to the “My Assigned Requests” view.
-- System queries all Requests where the owner/assignee is the Implementator.
-- System displays a list of these Requests with their current statuses and key details.
+**System Interaction:** Implementator requests the list of their assigned Requests; the system provides the Requests with their current status.
 
 **Related Domains:** Request, Organization
 
