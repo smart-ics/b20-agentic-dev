@@ -2,7 +2,7 @@
 Title: ICS Operational System Implementation Plan
 Code: ICS
 Artifact: IMPLEMENTATION-PLAN
-Version: 3.1
+Version: 3.2
 LastUpdated: 2026-09-27
 Status: NOT-STARTED
 Execution Approval: PENDING
@@ -52,7 +52,7 @@ Technology stack is explicitly defined in Architecture §19 and is authoritative
 - **Frontend**: Vue 3 (Composition API, `<script setup lang="ts">`), TypeScript, Bootstrap 5, Vite, Pinia, Vue Router 4 — Architecture §19.4
 - **Testing**: xUnit, FluentAssertions, `WebApplicationFactory<Program>` (integration), Respawn (test isolation) — Architecture §19.8
 - **Logging**: Serilog (structured JSON, enriched with TraceId, UserId, PersonId) — Architecture §19.9
-- **Deployment**: Modular Monolith hosted as a single ASP.NET Core process running Kestrel as a Windows Service, systemd service, or behind an IIS/Nginx reverse proxy. Vue 3 SPA compiled via Vite into `ICS.Web/wwwroot/`, published via `dotnet publish -c Release`, with DbUp migrations executing on deployment — Architecture §19.10
+- **Deployment**: Modular Monolith hosted as a single ASP.NET Core process running in-process within **IIS (Internet Information Services) on Windows Server** via the ASP.NET Core Module (`AspNetCoreHostingModel = InProcess`). Vue 3 SPA compiled via Vite into `ICS.Web/wwwroot/`, published via `dotnet publish -c Release`, with DbUp migrations executing on deployment — Architecture §19.10
 
 ---
 
@@ -67,7 +67,7 @@ Milestones represent observable business-level delivery checkpoints, independent
 | **M2 — Request Lifecycle Operational** | P4-S19 | Complete request management operational: Record, Assign, Evaluate, Accept, Reject, Escalate, Decision, Complete. All request screens (`SCR-REQ-001..005`) functional. Core business operations running |
 | **M3 — Work Package Operational** | P5-S22 | Work Packages can be created, managed, activated, closed, and linked to Requests. Work Package screen (`SCR-WP-001`) functional |
 | **M4 — Operational Feed Live** | P6-S26 | Feed screen (`SCR-FEED-001`) operational. Posts, comments, reactions functional. Exception badges working. Post detail modal (`SCR-POST-001`) functional. Feed filtering by Customer, Product, and Exception active |
-| **M5 — Full System Operational** | P7-S31 | Management dashboards (`SCR-MGT-001..003`) operational. Analytics snapshot job running. Production deployment package and hosting scripts generated and verified. All cross-cutting concerns verified end-to-end. System ready for UAT |
+| **M5 — Full System Operational** | P7-S31 | Management dashboards (`SCR-MGT-001..003`) operational. Analytics snapshot job running. Authoritative IIS on Windows Server production deployment package (`deploy/publish.ps1`, `web.config`, AppPool configuration) generated and verified. All cross-cutting concerns verified end-to-end. System ready for UAT |
 | **M6 — UAT Approved** | Post-P7 Acceptance Gate | Formal business stakeholder and QA acceptance completed across all primary user journeys (Request lifecycle, Collaboration, Feed, and Management oversight). Test package executed, defect package verified, and operational acceptance sign-off granted |
 
 ---
@@ -882,7 +882,7 @@ Notes: Architecture §9 (FEAT-AWR-001, FEAT-FCOL-001..003, FEAT-FCOL-005) and §
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Management Analytics module using Dapper real-time queries and `AnalyticsSnapshotJob` as an ASP.NET Core `BackgroundService` (Architecture §19.7), deliver management dashboard screens as Vue 3 SFCs, perform final cross-cutting validation, and produce the production deployment package and hosting scripts. M5 is achieved when this phase is complete.
+Objective: Implement the Management Analytics module using Dapper real-time queries and `AnalyticsSnapshotJob` as an ASP.NET Core `BackgroundService` (Architecture §19.7), deliver management dashboard screens as Vue 3 SFCs, perform final cross-cutting validation, and produce the authoritative IIS on Windows Server production deployment package. M5 is achieved when this phase is complete.
 
 Source: Architecture §22 — Boundary: **Management Analytics** (`ICS.Modules.Analytics`, Depends On: `ICS.Core`, `Request`, `Organization`, `Customer`). Architecture §13 (Analytics Architecture). Architecture §18, §19.7, §19.10.
 
@@ -996,31 +996,31 @@ Notes: Architecture §18 (Cross-Cutting Concerns), §19.5, §19.6, §19.7, §19.
 
 ### P7-S31
 
-Title: Production Deployment Packaging & Hosting Configuration
+Title: IIS Production Deployment Packaging & Configuration
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Produce the production build and deployment configuration that packages the complete ICS Operational System into a deployable native host package per Architecture §19.10. Configure Vite frontend compilation into `ICS.Web/wwwroot/`, `dotnet publish` Release packaging, hosting service definitions (systemd / Windows Service / IIS), deployment automation scripts (`publish.ps1` / `publish.sh`), and automated DbUp migration execution on deploy. M5 is achieved when this slice is complete.
+Objective: Produce the production build and deployment configuration that packages the complete ICS Operational System for the authoritative production target: **IIS (Internet Information Services) on Windows Server** per Architecture §19.10. Configure Vite frontend compilation into `ICS.Web/wwwroot/`, `dotnet publish` Release packaging, IIS `web.config` with ASP.NET Core Module (`AspNetCoreHostingModel = InProcess`), dedicated AppPool provisioning script (`deploy/setup-iis.ps1`), deployment automation script (`deploy/publish.ps1`), and automated DbUp migration execution on deploy. M5 is achieved when this slice is complete.
 
 Depends On: P7-S30
 
 Repository: `deploy/`, `ICS.Web`
 
 Completion Criteria:
-- Production publish script (`publish.ps1` / `publish.sh`) automates end-to-end release build:
+- Production publish script (`deploy/publish.ps1`) automates end-to-end release build:
   1. Executes `vite build` in `src/ICS.Web/client/`, emitting production assets into `src/ICS.Web/wwwroot/`.
   2. Executes `dotnet publish src/ICS.Web/ICS.Web.csproj -c Release -o ./publish`.
-- Hosting service definitions are created:
-  - Linux systemd service unit template (`deploy/ics-web.service`) with auto-restart and environment variable configuration.
-  - Windows Service hosting configuration or IIS `web.config` with ASP.NET Core Module (ANCM).
-  - Reverse proxy configuration guide (Nginx / YARP) terminating TLS on port 443 and forwarding to Kestrel.
+  3. Generates the production `web.config` in `./publish` configuring `aspNetCore` handler with `hostingModel="inprocess"`.
+- IIS site and application pool configuration script (`deploy/setup-iis.ps1`) provisions:
+  - Dedicated Application Pool (`ICSAppPool`) targeting `No Managed Code`, 64-bit, with automatic start and recycling settings.
+  - IIS Website / Web Application binding with HTTPS binding (port 443) and physical path mapped to the published folder.
 - Database migration execution is integrated into deployment:
-  - DbUp migration runner executes automatically on application startup or via CLI flag (`dotnet ICS.Web.dll --migrate`) before traffic serving.
+  - DbUp migration runner executes automatically on application startup within `Program.cs` (or via standalone CLI flag `dotnet ICS.Web.dll --migrate`) to apply idempotent SQL migrations against SQL Server 2019 before traffic is served.
 - Production configuration template `appsettings.Production.json` configured for SQL Server connection string override via `ConnectionStrings__DefaultConnection` environment variable.
-- `publish.ps1` runs from repository root and produces a fully populated, runnable `./publish` folder with zero errors.
-- Application starts from the published artifact, serves the Vue 3 SPA at `/`, and `/health/ready` returns HTTP 200 when SQL Server is available.
-- Docker and container references are completely excluded from the project repository.
+- `deploy/publish.ps1` runs from repository root and produces a fully populated, runnable `./publish` folder with zero errors.
+- Application starts under IIS / `w3wp.exe`, serves the Vue 3 SPA at `/`, and `/health/ready` returns HTTP 200 when SQL Server 2019 is available.
+- All non-IIS alternatives (systemd, Linux Nginx, Windows Service) and Docker/container references are completely excluded from the project repository.
 
 Notes: Architecture §19.10 (Deployment & Runtime Strategy) is authoritative. This is the terminal implementation slice of the plan. Depends on P7-S30 to ensure the system passes all integration validation before the deployment artifact is produced. Achieving this slice marks completion of Milestone M5.
 
@@ -1057,3 +1057,9 @@ Result: 7 phases (P1–P7), 31 slices (S01–S31). No architectural decisions cr
 (4) UAT milestone boundary: Added Milestone M6 (UAT Approved) to Section 3 as a formal business acceptance checkpoint distinct from technical implementation completion (M5).
 (5) Docker removal & actual deployment strategy: Removed all Docker references from architecture (§19.9, §19.10) and implementation plan (§2, §3, P1-S01, P1-S08, P7 intro, P7-S31). Replaced with concrete native deployment strategy: Modular Monolith single ASP.NET Core process running Kestrel as a Windows Service, systemd service, or behind an IIS/Nginx reverse proxy, with Vite SPA compilation into `ICS.Web/wwwroot/`, `dotnet publish -c Release`, deployment packaging script (`publish.ps1`), and automated DbUp migration runner.
 Result: 7 phases (P1–P7), 31 slices (S01–S31). Milestones M0–M6. No architectural decisions created or reinterpreted.
+
+2026-09-27 — v3.2 — Production deployment target clarification pass (pre-approval). Addressed reviewer feedback regarding broad deployment alternatives:
+(1) Locked down the authoritative production deployment target to **IIS (Internet Information Services) on Windows Server** via In-Process hosting (`AspNetCoreHostingModel = InProcess` in `web.config`) and dedicated AppPool (`ICSAppPool`).
+(2) Removed all deployment alternatives (Linux systemd, Nginx reverse proxy, standalone Windows Service) from Architecture §19.10 and Implementation Plan (§2, §3, P7 objective, P7-S31).
+(3) Updated P7-S31 to generate the IIS deployment scripts (`deploy/publish.ps1`, `deploy/setup-iis.ps1`), in-process `web.config`, and SQL Server 2019 DbUp startup migration execution.
+Result: 7 phases (P1–P7), 31 slices (S01–S31). Milestones M0–M6. Fully deterministic production target for implementation agents.

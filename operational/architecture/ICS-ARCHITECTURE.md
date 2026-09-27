@@ -540,18 +540,18 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 
 ## 19.10 Deployment & Runtime Strategy
 - **Deployment Model**: Modular Monolith hosted as a single ASP.NET Core executable process serving both REST API endpoints and static SPA frontend assets from `wwwroot/`.
-- **Target Hosting Strategy**: Native host process deployment — configured to run as a **Windows Service** on Windows Server, an **IIS In-Process Application** via ASP.NET Core Module (ANCM), or a **systemd service** on Linux behind an edge reverse proxy (Nginx or YARP).
+- **Authoritative Production Target**: **IIS (Internet Information Services) on Windows Server** using In-Process hosting via the ASP.NET Core Module (`AspNetCoreHostingModel = InProcess` in `web.config`).
+- **IIS Process Lifecycle & Supervision**: The dedicated IIS Application Pool (`ICSAppPool`) manages worker process execution (`w3wp.exe`), automatic process recycling, idle timeout management, and automatic crash restarts.
 - **Unified Build & Packaging Process**:
-  1. **Frontend Compilation**: Vue 3 SPA is compiled via `vite build` directly emitting production static assets into `src/ICS.Web/wwwroot/`.
-  2. **Backend Publication**: .NET 8 CLI executes `dotnet publish src/ICS.Web/ICS.Web.csproj -c Release -o ./publish` producing a self-contained or framework-dependent release package containing the host executable, module assemblies, dependencies, static web assets, and runtime configuration.
-  3. **Release Packaging**: Automated build script (`publish.ps1` / `publish.sh`) packages the publication directory into a versioned deployment artifact ready for promotion across environments.
+  1. **Frontend Compilation**: Vue 3 SPA is compiled via Vite (`npm run build`) in `src/ICS.Web/client/`, emitting production static assets directly into `src/ICS.Web/wwwroot/`.
+  2. **Backend Publication**: .NET 8 CLI executes `dotnet publish src/ICS.Web/ICS.Web.csproj -c Release -o ./publish` producing the release package containing compiled binaries, dependencies, static web assets, and the IIS `web.config`.
+  3. **Release Packaging**: Automated PowerShell deployment script (`deploy/publish.ps1`) packages the publication directory into a versioned deployment artifact ready for extraction into the IIS website physical directory.
 - **Database Migrations on Deployment**:
-  DbUp-SqlServer automated migration runner executes at application startup or via a standalone CLI migration switch (`dotnet ICS.Web.dll --migrate`) to apply idempotent SQL migrations in strict dependency order against SQL Server before HTTP traffic is served.
+  DbUp-SqlServer automated migration runner executes at application startup within `Program.cs` or via a standalone CLI migration switch (`dotnet ICS.Web.dll --migrate`) to apply idempotent SQL migrations in strict dependency order against SQL Server 2019 before HTTP traffic is served.
 - **Runtime Assumptions & Configuration**:
-  - Configuration supplied via environment variables (`ConnectionStrings__DefaultConnection`, `ASPNETCORE_ENVIRONMENT=Production`) or environment-specific `appsettings.Production.json`.
+  - Configuration supplied via `appsettings.Production.json` or Windows environment variables (`ConnectionStrings__DefaultConnection`, `ASPNETCORE_ENVIRONMENT=Production`).
   - Stateless application tier (session state maintained in SQL Server `identity.UserSessions`).
-  - Process supervisor (Windows Service Manager / systemd / IIS AppPool) handles process lifecycle and automatic restart on unexpected termination.
-  - Reverse proxy handles TLS/HTTPS termination (port 443) and forwards requests to Kestrel listening on an internal port (e.g., HTTP 5000), monitoring health via `/health/live` and `/health/ready`.
+  - IIS HTTPS site binding terminates TLS/HTTPS (port 443) and routes traffic directly in-process to the ASP.NET Core application pipeline, monitoring health via `/health/live` and `/health/ready`.
 
 ## 19.11 Solution & Project Layout (Planning Compatibility)
 The repository structure and project breakdown are strictly standardized as follows to ensure unambiguous implementation planning:
