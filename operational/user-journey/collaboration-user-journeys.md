@@ -3,7 +3,7 @@
 Derived from **Collaboration Use Cases** (`operational/use-cases/collaboration-use-cases.md`) using the **User Journey Generation Skill** (`operational/user-journey/user-journey-generation-skill.md`).
 
 Canonical actors follow the **ICS Operational Actor Model** (`operational/actors/actor-model.md`):
-* **Implementator:** Organizational Role responsible for handling operational demands, documenting progress, collaborating on requests, and tracking assigned workload.
+* **Implementator:** Organizational Role responsible for handling operational demands, documenting progress, collaborating on requests, and managing requests for which they are responsible.
 
 ---
 
@@ -114,24 +114,24 @@ Implementator gains full visibility into the current standing, ownership, and hi
 Implementator
 
 ### Goal
-Review the collection of Requests currently assigned to them to organize and prioritize work.
+Review Requests for which they are currently responsible to organize and prioritize work.
 
 ### Trigger
-Implementator begins an operational session or needs an updated overview of their personal responsibilities.
+Implementator begins an operational session or needs an updated overview of Requests for which they are currently responsible.
 
 ### Main Journey
-1. Implementator navigates to their assigned requests overview.
-2. Implementator reviews the list of Requests assigned to them along with current statuses, priorities, and deadlines.
+1. Implementator navigates to the overview of Requests for which they are responsible.
+2. Implementator reviews the list of Requests for which they are currently responsible along with current statuses, priorities, and deadlines.
 3. Implementator assesses which Requests require immediate action, evaluation, or follow-up.
 4. Implementator selects a specific Request to begin or continue active work.
 
 ### Alternative Paths
-* **Filtering and grouping workload:** Implementator sorts or filters assigned requests by urgency, customer, product, or lifecycle stage.
-* **Zero assigned requests:** Implementator finds no active assigned requests and proceeds to check unassigned queues or other team duties.
+* **Filtering and grouping workload:** Implementator sorts or filters Requests by urgency, customer, product, or lifecycle stage.
+* **No active Requests:** Implementator finds no active Requests for which they are responsible and proceeds to check unassigned queues or other operational duties.
 
 ### Success Outcome
-Implementator possesses a clear understanding of their active assignments and selects the next priority Request to work on.
+Implementator possesses a clear understanding of the Requests for which they are currently responsible and selects the next priority Request to address.
 
 ### Information Needed
-* List of assigned Requests with identifier, customer, summary, status, and priority
-* Personal assignment context
+* List of Requests for which the Implementator is responsible (with identifier, customer, summary, status, and priority)
+* Operational responsibility context

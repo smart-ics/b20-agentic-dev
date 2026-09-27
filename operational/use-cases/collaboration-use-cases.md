@@ -50,9 +50,9 @@ Derived from **Request Collaboration Scenarios** using the **Use‑Case Discover
 
 **Actor:** Implementator
 
-**Goal:** Review the Requests currently assigned to them.
+**Goal:** Review Requests for which they are currently responsible.
 
-**System Interaction:** Implementator reviews the Requests currently assigned to them; the system supplies the Requests with their current status.
+**System Interaction:** Implementator reviews the Requests for which they are currently responsible; the system supplies the Requests with their current status.
 
 **Related Domains:** Request, Organization
 
