@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The primary workspace for operational awareness and collaboration. It behaves as a social activity stream, displaying a chronological projection of operational activity, enabling users to observe activity, join discussions, collaborate, and access structured records when needed.
+The primary workspace for operational awareness and collaboration. It is a projection of operational activity, displaying a chronological stream of Request updates, state changes, and discussions. It enables stakeholders to observe activity, collaborate around operational work, and access structured records when needed.
 
 ## Primary Actors
 
@@ -18,8 +18,8 @@ All Actors (Management, Implementator, Request Owner)
 * UC-AWR-001: Observe Operational Feed
 * UC-AWR-002: Discover Request via Feed
 * UC-AWR-003: Monitor Operational Exceptions via Feed
-* UC-FCOL-001: Comment on Post
-* UC-FCOL-002: React to Post
+* UC-FCOL-001: Comment on Request Activity
+* UC-FCOL-002: React to Request Activity
 * UC-FCOL-005: Filter Operational Feed
 
 ## Related User Journeys
@@ -28,14 +28,6 @@ All Actors (Management, Implementator, Request Owner)
 * UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-005
 
 ## Information Sections
-
-### Section: Feed Composer
-
-Purpose: Provides a quick entry point for users to author new operational communications.
-
-Displays:
-* Input area for post content
-* Tools for referencing operational objects (Request, Customer, Product)
 
 ### Section: Feed Filters
 
@@ -47,11 +39,11 @@ Displays:
 
 ### Section: Activity Stream
 
-Purpose: Displays a chronological list of operational activities (Posts, Updates, Escalations).
+Purpose: Displays a chronological list of operational activities (Updates, State Changes, Escalations, Comments).
 
 Displays:
-* Post Author and Timestamp
-* Post Content / System Event Summary
+* Activity Actor and Timestamp
+* Activity Details / System Event Summary
 * Referenced Operational Objects (e.g., Request ID, Customer Name)
 * Recent Comments preview
 * Reaction summary (counts and types)
@@ -60,21 +52,16 @@ Displays:
 
 * **Filter Feed**
   * Actor: All Actors
-  * Outcome: Updates Activity Stream to show only matching Posts.
-* **Create Quick Post**
-  * Actor: Implementator
-  * Outcome: Publishes a new Post to the Activity Stream.
-* **React to Post**
+  * Outcome: Updates Activity Stream to show only matching activities.
+* **React to Activity**
   * Actor: All Actors
-  * Outcome: Records reaction and updates Reaction summary.
-* **Comment on Post**
+  * Outcome: Records reaction as an operational signal and updates Reaction summary.
+* **Comment on Activity**
   * Actor: All Actors
-  * Outcome: Adds a comment to the Post inline.
+  * Outcome: Adds a comment inline, attached to the Request.
 
 ## Navigation Destinations
 
-* `SCR-POST-001: Post Detail` (via selecting a Post)
-* `SCR-POST-002: Create Post` (via expanded creation flow)
 * `SCR-REQ-003: Request Detail` (via clicking a referenced Request)
 
 ## Layout Sketch
@@ -84,20 +71,18 @@ Displays:
 +--------------------------------------------------+
 | Feed Filters: [Customer] [Product] [Team]        |
 +--------------------------------------------------+
-| Feed Composer: [ What's happening?       ] [Post]|
-+--------------------------------------------------+
 | Activity Feed                                    |
 |                                                  |
 | +----------------------------------------------+ |
-| | [Author] - [Time]                            | |
+| | [System] - [Time]                            | |
 | | System Event: Request #123 Escalated         | |
 | | Reference: [Request #123] [Customer A]       | |
 | | [Reaction: Alert 2]  [Comment]               | |
 | +----------------------------------------------+ |
 |                                                  |
 | +----------------------------------------------+ |
-| | [Author] - [Time]                            | |
-| | Just finished the initial design for X.      | |
+| | [Implementator] - [Time]                     | |
+| | Updated Design Document for Authentication   | |
 | | Reference: [Request #124]                    | |
 | |                                              | |
 | |   [User B]: Looks good!                      | |

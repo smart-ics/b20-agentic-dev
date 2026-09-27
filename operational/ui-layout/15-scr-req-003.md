@@ -10,7 +10,7 @@ Implementator, Request Owner, Management
 
 ## Entry Points
 
-* `SCR-FEED-001: Operational Feed` (via Post reference)
+* `SCR-FEED-001: Operational Feed` (via Request Activity reference)
 * `SCR-REQ-001: Request List` (via selection)
 * `SCR-REQ-004: Request Search & History` (via search result)
 * `SCR-REQ-005: My Assigned Requests` (via selection)
@@ -59,22 +59,22 @@ Displays:
 
 ### Section: Feed Integration (Associated Activity)
 
-Purpose: Displays a filtered view of the Operational Feed showing only Posts and activity related to this specific Request.
+Purpose: Displays a filtered view of the Operational Feed showing only activity related to this specific Request.
 
 Displays:
-* Embedded stream of related Posts, Comments, and System Events
+* Embedded stream of related Comments, Updates, and System Events
 
 ## Available Actions
 
 * **Update Request Status**
   * Actor: Implementator, Request Owner
-  * Outcome: Transitions the request state and emits a system post to the Feed.
+  * Outcome: Transitions the request state and emits a system update to the Feed.
 * **Edit Core Attributes**
   * Actor: Request Owner
   * Outcome: Updates the authoritative record.
 * **Assign / Reassign**
   * Actor: Management, Request Owner
-  * Outcome: Changes responsibility and emits a system post.
+  * Outcome: Changes responsibility and emits a system update.
 
 ## Navigation Destinations
 
@@ -102,5 +102,5 @@ Displays:
 | [Alice] - "I'm looking into the logs now."       |
 |   [Reaction: Thumbs Up 2]                        |
 |                                                  |
-| [Write an update...]                      [Post] |
+| [Write a comment...]                   [Comment] |
 +--------------------------------------------------+

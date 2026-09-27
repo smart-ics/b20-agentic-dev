@@ -5,8 +5,6 @@ This artifact maps the operational UI screens to the authoritative Use Cases the
 | Screen ID | Screen Name | Supported Use Cases | Primary Actor |
 | :--- | :--- | :--- | :--- |
 | **SCR-FEED-001** | Operational Feed | UC-AWR-001, UC-AWR-002, UC-AWR-003, UC-FCOL-001, UC-FCOL-002, UC-FCOL-005 | All Actors |
-| **SCR-POST-001** | Post Detail | UC-FCOL-001, UC-FCOL-002, UC-FCOL-004 | All Actors |
-| **SCR-POST-002** | Create Post | UC-FCOL-003 | Implementator |
 | **SCR-REQ-001** | Request List | UC-REQ-002, UC-REQ-008, UC-COL-003 | Implementator, Request Owner |
 | **SCR-REQ-002** | Create Request | UC-REQ-001 | Implementator |
 | **SCR-REQ-003** | Request Detail | UC-REQ-002, UC-REQ-003, UC-REQ-004, UC-REQ-005, UC-REQ-006, UC-REQ-007, UC-REQ-008, UC-COL-001, UC-COL-003, UC-MGT-001 | Implementator, Request Owner, Management |

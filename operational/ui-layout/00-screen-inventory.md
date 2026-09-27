@@ -7,8 +7,6 @@ This artifact defines the authoritative list of screens for the Operational Syst
 | Screen ID | Screen Name | Purpose |
 | :--- | :--- | :--- |
 | **SCR-FEED-001** | Operational Feed | The primary workspace for operational awareness and collaboration. Displays a chronological stream of operational activity. |
-| **SCR-POST-001** | Post Detail | View an individual post, its associated operational context, and full comment thread. |
-| **SCR-POST-002** | Create Post | Compose and publish a new operational communication or update. |
 
 ## Requests Area
 
