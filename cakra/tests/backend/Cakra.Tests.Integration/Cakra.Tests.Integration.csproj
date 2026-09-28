@@ -30,6 +30,12 @@
   <!-- Architecture §19.8: WebApplicationFactory<Program> targets the Cakra.Api host -->
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\backend\Cakra.Api\Cakra.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Cakra.Core\Cakra.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Customer\Cakra.Modules.Customer.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Identity\Cakra.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Organization\Cakra.Modules.Organization.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Product\Cakra.Modules.Product.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Request\Cakra.Modules.Request.csproj" />
   </ItemGroup>
 
 </Project>

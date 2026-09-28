@@ -13,4 +13,16 @@
     <ProjectReference Include="..\Cakra.Modules.Organization\Cakra.Modules.Organization.csproj" />
   </ItemGroup>
 
+  <!-- Architecture §19.3: Dapper data access; §19.2: IModule DI registration -->
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <!-- Architecture §21: Internal repositories are not exposed to other modules, but visible to test suites -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cakra.Tests.Unit" />
+    <InternalsVisibleTo Include="Cakra.Tests.Integration" />
+  </ItemGroup>
+
 </Project>

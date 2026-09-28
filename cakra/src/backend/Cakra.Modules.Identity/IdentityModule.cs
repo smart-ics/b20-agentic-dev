@@ -1,5 +1,9 @@
 using Cakra.Core;
+using Cakra.Modules.Identity.Domain;
+using Cakra.Modules.Identity.Persistence;
 using Cakra.Modules.Identity.Registration;
+using Cakra.Modules.Identity.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Cakra.Modules.Identity;
@@ -27,5 +31,12 @@ public sealed class IdentityModule : IModule
 
         // Technical probe proving the module self-registration pattern end to end.
         services.AddSingleton<StubRegistrationProbe>();
+
+        // Architecture §14, §19.3, §19.5: IAM Repositories and Application Services
+        services.AddScoped<IUserAccountRepository, UserAccountRepository>();
+        services.AddScoped<IUserSessionRepository, UserSessionRepository>();
+        services.AddSingleton<IPasswordHasher<UserAccount>, PasswordHasher<UserAccount>>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddScoped<IAuthorizationService, AuthorizationService>();
     }
 }

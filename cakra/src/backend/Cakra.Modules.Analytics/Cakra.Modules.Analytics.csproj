@@ -7,12 +7,23 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Architecture §19.3, §19.7: BackgroundService (IHostedService), DI, logging, and Dapper data access -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Dapper" Version="2.1.66" />
+  </ItemGroup>
+
   <!-- Architecture §22: Analytics depends on Cakra.Core, Request, Organization, Customer -->
   <ItemGroup>
     <ProjectReference Include="..\Cakra.Core\Cakra.Core.csproj" />
     <ProjectReference Include="..\Cakra.Modules.Organization\Cakra.Modules.Organization.csproj" />
     <ProjectReference Include="..\Cakra.Modules.Customer\Cakra.Modules.Customer.csproj" />
     <ProjectReference Include="..\Cakra.Modules.Request\Cakra.Modules.Request.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cakra.Tests.Unit" />
+    <InternalsVisibleTo Include="Cakra.Tests.Integration" />
   </ItemGroup>
 
 </Project>

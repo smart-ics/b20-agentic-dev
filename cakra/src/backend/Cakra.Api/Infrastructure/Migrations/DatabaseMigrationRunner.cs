@@ -27,13 +27,19 @@ public sealed class DatabaseMigrationRunner
     /// migration scripts in order.
     /// </summary>
     /// <returns>The DbUp upgrade result; callers should check <c>Successful</c>.</returns>
-    public DatabaseUpgradeResult Run()
+    public DatabaseUpgradeResult Run() => Run(_connectionString, _logger);
+
+    /// <summary>
+    /// Static entrypoint for executing DbUp SQL Server migrations against the supplied
+    /// <paramref name="connectionString"/> (Architecture §19.3, §19.10).
+    /// </summary>
+    public static DatabaseUpgradeResult Run(string connectionString, ILogger? logger = null)
     {
         // Creates the database if it does not already exist.
-        EnsureDatabase.For.SqlDatabase(_connectionString);
+        EnsureDatabase.For.SqlDatabase(connectionString);
 
         var upgrader = DeployChanges.To
-            .SqlDatabase(_connectionString)
+            .SqlDatabase(connectionString)
             .WithScriptsEmbeddedInAssembly(
                 typeof(DatabaseMigrationRunner).Assembly,
                 resourceName => resourceName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
@@ -47,12 +53,12 @@ public sealed class DatabaseMigrationRunner
         {
             foreach (var script in result.Scripts)
             {
-                _logger.LogInformation("Applied database migration script {ScriptName}", script.Name);
+                logger?.LogInformation("Applied database migration script {ScriptName}", script.Name);
             }
         }
         else
         {
-            _logger.LogError(result.Error, "Database migration failed");
+            logger?.LogError(result.Error, "Database migration failed");
         }
 
         return result;

@@ -27,6 +27,7 @@ public sealed class DatabaseResetHelper
     {
         // The DbUp migration journal is owned by the host and must survive test resets.
         new("dbo", "__SchemaVersions"),
+        new("dbo", "SchemaVersions"),
     };
 
     private readonly string? _connectionString;

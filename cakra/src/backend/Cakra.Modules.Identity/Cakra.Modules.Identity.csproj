@@ -7,6 +7,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Architecture §19.5: PasswordHasher, DI and ASP.NET Core abstractions -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <!-- Architecture §22: Identity depends on Cakra.Core, Organization (Read) -->
   <ItemGroup>
     <ProjectReference Include="..\Cakra.Core\Cakra.Core.csproj" />

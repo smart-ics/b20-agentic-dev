@@ -1,6 +1,8 @@
 using Cakra.Api.Extensions;
 using Cakra.Api.Infrastructure.Context;
+using Cakra.Api.Infrastructure.Persistence;
 using Cakra.Core;
+using Cakra.Core.Infrastructure.Persistence;
 using Cakra.Modules.Identity.Registration;
 using FluentAssertions;
 using FluentValidation;
@@ -27,6 +29,7 @@ public class ModuleRegistrationTests
         var services = new ServiceCollection();
         var moduleAssemblies = ModuleRegistrationExtensions.DiscoverModuleAssemblies();
         services.AddCakraCore(moduleAssemblies);
+        services.AddSingleton<IDbConnectionFactory>(_ => new Cakra.Api.Infrastructure.Persistence.SqlConnectionFactory("Server=localhost;Database=Test;"));
         services.AddCakraModules(moduleAssemblies);
 
         return services.BuildServiceProvider(new ServiceProviderOptions
