@@ -8,7 +8,7 @@ Type: Query
 
 ## Purpose
 
-Enables operational actors to maintain continuous operational awareness by presenting a chronological stream of active operational posts (system-generated and human-authored), displaying summaries of requests and exceptions, comment previews, and reaction counts, and providing direct navigation links from post references to structured request records.
+Enables operational actors to maintain continuous operational awareness by presenting a chronological stream of active operational posts (system-generated from operational events such as Request creation and lifecycle transitions, alongside preserved historical posts), displaying summaries of requests and exceptions, comment previews, and reaction counts, and providing direct navigation links from post references to structured request records.
 
 ## User Outcome
 

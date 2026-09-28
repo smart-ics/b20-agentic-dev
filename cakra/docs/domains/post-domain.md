@@ -2,8 +2,8 @@
 Title: Post Domain
 Code: POST
 Artifact: DOMAIN
-Version: 1.0
-LastUpdated: 2026-09-26
+Version: 1.1
+LastUpdated: 2026-09-29
 ---
 
 # 1. Business Overview
@@ -12,7 +12,7 @@ The Post Domain defines persistent operational communication and discussion with
 
 A Post is an operational object used to communicate, discuss, explain, share, or preserve knowledge about something relevant to ICS operations.
 
-A Post may be created automatically by the Operational System when a significant operational object is created or changed, or may be created directly by an authorized actor when a human-authored operational communication is required.
+A Post is created automatically by the Operational System when a significant operational object is created or changed (specifically originating from Request creation and associated request lifecycle events). Direct user creation of operational posts is revoked; users have no direct mechanism to author or submit operational posts.
 
 A Post has its own authoritative current state and lifecycle.
 
@@ -51,8 +51,8 @@ It does not own the operational truth of the objects being discussed.
 | Post Status | The authoritative current lifecycle state of the Post. |
 | Visibility | The current visibility condition determining whether a Post is available in normal operational views. |
 | Permanent Link | The stable identity and address used to reference a Post from another communication channel. |
-| System-Generated Post | A Post created automatically by the system in response to an operational event or state change. |
-| Human-Authored Post | A Post intentionally created by a Person for operational communication or knowledge sharing. |
+| System-Generated Post | A Post created automatically by the system in response to an operational event or state change (e.g., Request creation and lifecycle transitions). |
+| Human-Authored Post | (Revoked) Previously a post directly authored by a Person. Direct creation of human-authored posts is decommissioned via CR-001; all active posts originate from operational events. |
 | Post Discussion | The Post and its associated comments and reactions. |
 | Orphaned Reference | A Post reference whose referenced operational object no longer exists or is no longer resolvable. |
 | Post History | The historical record of significant Post state and content changes. |
@@ -96,14 +96,11 @@ The Post Domain may record references to objects owned by those domains, but doe
 
 ## Post Author
 
-The Person or system actor that creates a Post.
+The system actor or originating Person attributed to the creation of an operational Post.
 
-A Post Author may be:
+Operational Posts are system-generated in response to operational events (e.g., Request creation). The Post Author records the attributed originating Person (e.g., the Request submitter) or the Operational System. Direct manual authoring of operational posts by users is revoked.
 
-* a Person from the Organization Domain; or
-* the Operational System for a System-Generated Post.
-
-The Post Domain records authorship but does not own Person identity.
+The Post Domain records authorship attribution but does not own Person identity.
 
 ---
 
@@ -151,27 +148,23 @@ CreatedAt
 UpdatedAt
 ```
 
-`Source` identifies whether the Post was:
+`Source` identifies the origin of the Post:
 
 ```text
 SYSTEM_GENERATED
-HUMAN_AUTHORED
+HUMAN_AUTHORED (historical; direct human authoring is revoked per CR-001)
 ```
+
+Direct human creation of operational posts is revoked; active posts originate as `SYSTEM_GENERATED` from operational events (specifically Request creation and associated request lifecycle events).
 
 A Post may exist with or without a reference to another operational object.
 
 Examples:
 
 ```text
-A Request was created for a pharmacy printing problem.
+A Request was created for a pharmacy printing problem (system-generated post).
 
-A programmer documents the root cause of a recurring issue.
-
-A trainer shares an implementation finding.
-
-A Product Owner announces an important product behavior.
-
-The system records that a significant Request changed state.
+The system records that a significant Request changed state or experienced an exception.
 ```
 
 A Post is not a Request.
@@ -331,7 +324,7 @@ Those remain owned by their respective domains.
 
 5. Every Post has exactly one authoritative current Visibility condition.
 
-6. A Post may be system-generated or human-authored.
+6. Operational Posts must be system-generated originating from operational events (specifically Request creation and associated request lifecycle events). Direct user creation of human-authored operational posts is revoked. Historical human-authored posts retain their original source identity for audit and historical fidelity.
 
 7. A system-generated Post must identify the operational source event or source object that caused its creation when such information is available.
 

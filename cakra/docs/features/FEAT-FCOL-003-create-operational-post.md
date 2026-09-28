@@ -5,75 +5,67 @@
 ID: FEAT-FCOL-003
 Name: Create Operational Post
 Type: Command
+Status: REVOKED (Decommissioned via CR-001)
 
 ## Purpose
 
-Enables authorized actors to compose and publish a new human-authored operational post, optionally associating it with an existing Request, Work Package, Customer, or Product to preserve and communicate operational knowledge.
+[REVOKED per Issue CR-001] Formerly enabled actors to compose and publish a new human-authored operational post. Direct user creation of operational posts is decommissioned. Operational posts in the Operational Feed are generated solely from Request creation (and associated request lifecycle events).
 
 ## User Outcome
 
-The actor publishes operational findings, root cause explanations, progress updates, or announcements to the entire organization, creating a durable discussion record anchored to relevant business entities.
+[REVOKED per Issue CR-001] Users no longer directly author operational posts. Operational awareness is driven by system-generated posts derived from authoritative Request creation and lifecycle events.
 
 ## Traceability
 
+### Issue
+- CR-001 (Revocation of direct creation of operational posts)
+
 ### Domains
-- Post
+- Post (Updated: direct creation revoked)
 - Request
-- Customer
-- Product
-- Organization
 
 ### Scenarios
-- SC-FCOL-003
+- SC-FCOL-003 (Decommissioned)
 
 ### Use Cases
-- UC-FCOL-003
+- UC-FCOL-003 (Decommissioned)
 
 ### User Journeys
-- UJ-FCOL-003
+- UJ-FCOL-003 (Decommissioned)
 
 ### Screens
-- SCR-POST-002
+- SCR-POST-002 (Decommissioned)
 
 ## Preconditions
 
-- The actor is authenticated and authorized to author operational communications (Implementator, Request Owner, Management).
-- Any referenced operational entity (Request, Work Package, Customer, Product) must exist in its respective domain.
+- None. Feature is decommissioned and direct invocation is disallowed.
 
 ## Capability
 
-The system provides an authoring form on `SCR-POST-002: Create Post` (accessible from `SCR-FEED-001` or `SCR-REQ-003`) capturing Post Title, Post Content, and optional references to operational objects (Request, Work Package, Customer, Product). Upon submission, the system creates a new Post aggregate with `HUMAN_AUTHORED` source, sets initial lifecycle status to `ACTIVE` and visibility to `VISIBLE`, assigns a permanent identity/link, and surfaces the post in the Operational Feed.
+[DECOMMISSIONED] The authoring form on `SCR-POST-002: Create Post` and corresponding direct creation action buttons on `SCR-FEED-001` and `SCR-REQ-003` are removed. The backend endpoint `POST /api/v1/posts` and `CreateOperationalPostCommand` are decommissioned. Operational posts are generated exclusively by system events when Requests are created.
 
 ## Business Rules
 
-- Every Post must have a unique identity, an author referencing an active Person from the Organization Domain, and non-empty title and content (Post Domain Rules 1, 2, 3).
-- The Post source is set to `HUMAN_AUTHORED` (Post Domain Section 5).
-- Initial Post lifecycle status is `ACTIVE` and visibility is `VISIBLE` (Post Domain Rules 4, 5, Section 8).
-- A Post may exist with or without references to other operational objects (Post Domain Rule 8).
-- A Post Reference only records contextual association; it does not transfer ownership or change the lifecycle state of the referenced object (Post Domain Rules 10, 11, 37).
-- Creating a Post does not create a Request, Work Package, Commitment, or Decision (Post Domain Rules 37, 38, 40).
-- When initiated from `SCR-REQ-003: Request Detail`, the Post Reference is pre-populated with the current Request (UJ-FCOL-003 Step 1; screen-inventory.md line 352).
-- Upon submission, navigation redirects to `SCR-FEED-001: Operational Feed` or `SCR-POST-001: Post Detail` (screen-inventory.md line 355).
+- Direct user authoring or submission of operational posts is strictly prohibited (CR-001 directive; Post Domain Rule 6).
+- Operational posts in the Operational Feed must originate as system-generated records from Request creation events (Post Domain Rule 6; Request Domain).
+- Historical human-authored posts created prior to revocation remain preserved in read/thread views for audit integrity, but no new human-authored posts can be submitted.
 
 ## Success Result
 
-A new Post entity is created in authoritative state `ACTIVE` / `VISIBLE` with `HUMAN_AUTHORED` source, a permanent link, and optional contextual references, appearing immediately at the top of the Operational Feed.
+Attempts to access `SCR-POST-002` or directly create operational posts are not available in the user interface. Operational feed items are generated strictly through Request creation.
 
 ## Failure Conditions
 
-- Post Title or Content is blank or missing (validation failure).
-- Selected reference ID does not exist in the referenced domain (referential failure).
-- Actor lacks authorization to author operational communications (authority failure).
+- Any attempt to submit direct post creation via API returns an error or is rejected by the system.
 
 ## Acceptance Criteria
 
-- [ ] Creation screen is accessible at `SCR-POST-002` via actions on `SCR-FEED-001` and `SCR-REQ-003`.
-- [ ] Form validates that Title and Content are non-empty before submission.
-- [ ] Users can optionally attach references to valid Requests, Work Packages, Customers, or Products.
-- [ ] Opening the form from `SCR-REQ-003` pre-populates the current Request reference.
-- [ ] Submitted post receives a unique ID, status `ACTIVE`, visibility `VISIBLE`, and appears in `SCR-FEED-001`.
-- [ ] Creating a post does not alter the lifecycle or ownership of any referenced entity.
+- [x] Direct post creation capability (`FEAT-FCOL-003`) is marked as REVOKED per CR-001.
+- [ ] Direct authoring UI (`SCR-POST-002`, "New Operational Post" button in `SCR-FEED-001`, and reference links in `SCR-REQ-003`) is removed.
+- [ ] Backend direct post creation endpoint (`POST /api/v1/posts`) and command are decommissioned.
+- [ ] Operational Feed entries are produced automatically upon Request creation (`RequestRecorded` domain event).
+- [ ] Historical human-authored posts remain readable without schema corruption.
 
 ## Implementation Notes
 
-Creates an independent Post Aggregate while establishing optional Post Reference links to upstream domain entities.
+Decommissioning of `FEAT-FCOL-003` requires removing UI entry points, decommissioning the command/endpoint, and routing operational post generation to the `RequestRecorded` domain event handler.

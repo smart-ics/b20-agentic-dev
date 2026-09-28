@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+  </PropertyGroup>
+
+  <!-- Architecture 19.2: In-process mediator + validation -->
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="12.5.0" />
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <!-- Architecture §19.3: DbUp-SqlServer migration runner -->
+    <PackageReference Include="DbUp-SqlServer" Version="7.2.0" />
+    <!-- Architecture §19.3: SQL Server data access (Dapper executes over these connections) -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+  </ItemGroup>
+
+  <!-- Architecture §19.3: embedded, sequentially ordered raw SQL migration scripts -->
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations\Scripts\**\*.sql" />
+  </ItemGroup>
+
+  <!-- Architecture §22: Backend Host depends on all backend modules -->
+  <ItemGroup>
+    <ProjectReference Include="..\Cakra.Core\Cakra.Core.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Identity\Cakra.Modules.Identity.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Organization\Cakra.Modules.Organization.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Customer\Cakra.Modules.Customer.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Product\Cakra.Modules.Product.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.WorkPackage\Cakra.Modules.WorkPackage.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Request\Cakra.Modules.Request.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Post\Cakra.Modules.Post.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Analytics\Cakra.Modules.Analytics.csproj" />
+  </ItemGroup>
+
+</Project>

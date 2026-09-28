@@ -1,0 +1,28 @@
+# Visual Studio Solution & IDE directories
+.vs/
+.idea/
+*.sln.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# User-specific solution files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# Build results fallback
+[Bb]in/
+[Oo]bj/
+[Tt]est[Rr]esult*/
+
+# OS files
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
