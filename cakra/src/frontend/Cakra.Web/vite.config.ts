@@ -26,12 +26,12 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     proxy: {
-      // Development convenience only: forward API calls to the local
-      // Cakra.Api host so the SPA can be developed independently.
+      // Forward API calls to local IIS backend at http://localhost:8084/api
       '/api': {
-        target: 'https://localhost:7156',
+        target: 'http://localhost:8084',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => (path.startsWith('/api/api') ? path : `/api${path}`),
       },
     },
   },

@@ -38,6 +38,25 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Configure CORS for local development environments
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.SetIsOriginAllowed(origin =>
+            {
+                if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
+                }
+                return false;
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
 // Architecture §19.5: Authentication & Authorization services (P2-S10 concrete)
 builder.Services.AddCakraAuthentication();
 builder.Services.AddAuthorization();
@@ -151,6 +170,7 @@ if (app.Environment.IsDevelopment())
 
 // 4. UseRouting()
 app.UseRouting();
+app.UseCors();
 
 // 5. UseAuthentication() — concrete cookie handler wired in P2-S10
 app.UseAuthentication();

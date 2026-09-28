@@ -51,7 +51,7 @@ public static class CakraAuthenticationExtensions
             options.Cookie.Name = CakraAuthenticationDefaults.CookieName;
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Strict;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             options.TicketDataFormat = new SessionCookieTicketFormat();
             options.LoginPath = PathString.Empty;
             options.AccessDeniedPath = PathString.Empty;

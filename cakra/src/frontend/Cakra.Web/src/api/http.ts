@@ -11,8 +11,28 @@ import axios, { AxiosError, type AxiosInstance } from 'axios'
  *   response emits a `cakra:unauthorized` browser event so the shell can
  *   clear local session state without coupling this module to the router.
  */
+function resolveApiBaseUrl(): string {
+  // In development, use Vite's dev proxy (/api/v1) so all requests are same-origin
+  // to avoid browser CORS/cookie restrictions on localhost:5173.
+  if (import.meta.env.DEV) {
+    return '/api/v1'
+  }
+
+  const configured = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+  if (!configured) {
+    return '/api/v1'
+  }
+  if (configured.endsWith('/api/v1')) {
+    return configured
+  }
+  if (configured.endsWith('/api')) {
+    return `${configured}/api/v1`
+  }
+  return `${configured}/api/v1`
+}
+
 export const httpClient: AxiosInstance = axios.create({
-  baseURL: '/api/v1',
+  baseURL: resolveApiBaseUrl(),
   withCredentials: true,
   timeout: 30000,
   headers: {
