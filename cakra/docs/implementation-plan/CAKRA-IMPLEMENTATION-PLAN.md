@@ -2,8 +2,8 @@
 Title: CAKRA - ICS Operational System Implementation Plan
 Code: CAKRA
 Artifact: IMPLEMENTATION-PLAN
-Version: 3.2
-LastUpdated: 2026-09-27
+Version: 3.3
+LastUpdated: 2026-09-28
 Status: NOT-STARTED
 Execution Approval: APPROVED
 ---
@@ -16,7 +16,7 @@ Planning Mode: GREENFIELD-PLANNING
 
 Referenced artifacts:
 
-- ARCHITECTURE: `operational/architecture/CAKRA-ARCHITECTURE.md` (target system architecture — authoritative)
+- ARCHITECTURE: `cakra/docs/architecture/CAKRA-ARCHITECTURE.md` (target system architecture — authoritative)
 
 Architecture Applicability: GREENFIELD-ARCHITECTURE
 
@@ -26,7 +26,7 @@ Greenfield planning mode based on complete target architecture. Scope encompasse
 
 # 2. Planning Scope
 
-The plan covers the complete CAKRA - ICS Operational System architecture comprising nine implementation boundaries:
+The plan covers the complete CAKRA - ICS Operational System architecture comprising eleven implementation boundaries:
 
 | Boundary | Assembly | Architecture §22 Dependency |
 |---|---|---|
@@ -39,6 +39,8 @@ The plan covers the complete CAKRA - ICS Operational System architecture compris
 | Work Package | `Cakra.Modules.WorkPackage` | `Cakra.Core`, `Organization`, `Customer`, `Product`, `Request`, `Identity` Context |
 | Post & Feed | `Cakra.Modules.Post` | `Cakra.Core`, Domain Events from all modules, `Identity` Context |
 | Management Analytics | `Cakra.Modules.Analytics` | `Cakra.Core`, `Request`, `Organization`, `Customer`, `Identity` Context |
+| Backend Host | `Cakra.Api` | All Backend Modules |
+| Frontend Web | `Cakra.Web` | Backend REST API (`/api/v1/*`) |
 
 Scope derives directly from Architecture §22 (Implementation Boundaries) and §23 (Implementation Dependency Graph). No feature sub-scope is applied; the plan covers the entire target system.
 
@@ -52,7 +54,7 @@ Technology stack is explicitly defined in Architecture §19 and is authoritative
 - **Frontend**: Vue 3 (Composition API, `<script setup lang="ts">`), TypeScript, Bootstrap 5, Vite, Pinia, Vue Router 4 — Architecture §19.4
 - **Testing**: xUnit, FluentAssertions, `WebApplicationFactory<Program>` (integration), Respawn (test isolation) — Architecture §19.8
 - **Logging**: Serilog (structured JSON, enriched with TraceId, UserId, PersonId) — Architecture §19.9
-- **Deployment**: Modular Monolith hosted as a single ASP.NET Core process running in-process within **IIS (Internet Information Services) on Windows Server** via the ASP.NET Core Module (`AspNetCoreHostingModel = InProcess`). Vue 3 SPA compiled via Vite into `Cakra.Web/wwwroot/`, published via `dotnet publish -c Release`, with DbUp migrations executing on deployment — Architecture §19.10
+- **Deployment**: Modular Monolith hosted as a single ASP.NET Core executable process (`Cakra.Api`) running in-process within **IIS (Internet Information Services) on Windows Server** via the ASP.NET Core Module (`AspNetCoreHostingModel = InProcess`). Vue 3 SPA (`Cakra.Web`) compiled via Vite in `src/frontend/Cakra.Web/` into `dist/` (which are ingested into `src/backend/Cakra.Api/wwwroot/`), published via `dotnet publish src/backend/Cakra.Api/Cakra.Api.csproj -c Release -o ./publish`, with DbUp migrations executing on deployment — Architecture §19.10
 
 ---
 
@@ -117,7 +119,7 @@ Milestones represent observable business-level delivery checkpoints, independent
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Establish the complete shared technical foundation (`Cakra.Core`) that all modules depend on. Covers solution structure and project layout (Architecture §19.11), shared contracts, database infrastructure using DbUp-SqlServer (Architecture §19.3), dependency injection conventions with MediatR (Architecture §19.2), in-process domain event bus, application pipeline skeleton with Serilog structured logging (Architecture §19.9), test project infrastructure (Architecture §19.8), and Vue 3 frontend project scaffolding (Architecture §19.4). No business module is implemented in this phase. M0 is achieved when P1-S06 (Application Pipeline Foundation) is complete.
+Objective: Establish the complete shared technical foundation that all modules depend on. Covers solution structure and repository-level project layout with `src/backend` and `src/frontend` (Architecture §19.11), shared contracts (`Cakra.Core`), database infrastructure using DbUp-SqlServer (Architecture §19.3), dependency injection conventions with MediatR (Architecture §19.2), in-process domain event bus, ASP.NET Core backend host application pipeline skeleton (`Cakra.Api`) with Serilog structured logging (Architecture §19.9), backend test project infrastructure under `tests/backend/` (Architecture §19.8, §19.11), and Vue 3 frontend project scaffolding (`Cakra.Web` in `src/frontend/Cakra.Web/`) per Architecture §19.4 and §19.11. No business module is implemented in this phase. M0 is achieved when P1-S06 (Application Pipeline Foundation) is complete.
 
 Source: Architecture §22 — Boundary: **Foundation** (`Cakra.Core`, Depends On: None). Architecture §18 (Cross-Cutting Concerns). Architecture §19 (Technology Decisions). Architecture §5 (System Structure).
 
@@ -130,32 +132,47 @@ Title: Solution Structure & Project Scaffolding
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Create the solution file, project references, and exact directory structure for the modular monolith as specified in Architecture §19.11. Establish `Cakra.Core`, all `Cakra.Modules.*` project skeletons (empty, buildable), the `Cakra.Web` host application project, and the `deploy/` directory. All projects target .NET 8. Define inter-project reference graph matching Architecture §22 dependency table.
+Objective: Create the solution file, project references, and exact directory structure for the modular monolith as specified in Architecture §19.11. Establish `src/backend/Cakra.Core`, all `src/backend/Cakra.Modules.*` project skeletons (empty, buildable), the `src/backend/Cakra.Api` backend host application project, the `src/frontend/Cakra.Web` Single Page Application project, and the `deploy/` directory. All backend projects target .NET 8. Define inter-project reference graph matching Architecture §22 dependency table.
 
 Depends On: None
 
-Repository: Solution root / `Cakra.Core`
+Repository: Solution root / `src/backend/Cakra.Core`
 
 Completion Criteria:
 - Solution file `Cakra.sln` exists at repository root and compiles successfully with zero errors.
 - Directory structure matches Architecture §19.11 exactly:
-  - `src/Cakra.Core/`
-  - `src/Cakra.Modules.Identity/`
-  - `src/Cakra.Modules.Organization/`
-  - `src/Cakra.Modules.Customer/`
-  - `src/Cakra.Modules.Product/`
-  - `src/Cakra.Modules.WorkPackage/`
-  - `src/Cakra.Modules.Request/`
-  - `src/Cakra.Modules.Post/`
-  - `src/Cakra.Modules.Analytics/`
-  - `src/Cakra.Web/` (ASP.NET Core host, API Controllers, Middleware, DbUp migrations)
-  - `deploy/` (placeholder directory for production hosting definitions and publish scripts)
-- All projects target `net8.0`. C# 12 language version, nullable reference types enabled, implicit usings enabled — Architecture §19.1.
-- `Cakra.Web` project references all module projects.
+  ```text
+  cakra/
+  ├── Cakra.sln
+  ├── src/
+  │   ├── backend/
+  │   │   ├── Cakra.Core/                       # Common domain abstractions, MediatR pipeline behaviors, Dapper helpers
+  │   │   ├── Cakra.Modules.Identity/           # IAM vertical slices, UserAccount & UserSession commands/queries
+  │   │   ├── Cakra.Modules.Organization/       # Organization slices: Persons, Teams, Roles, Responsibilities
+  │   │   ├── Cakra.Modules.Customer/           # Customer slices: Customers, Contacts
+  │   │   ├── Cakra.Modules.Product/            # Product slices: Products, Catalog queries
+  │   │   ├── Cakra.Modules.WorkPackage/        # Work Package slices: WorkPackages, Scope management
+  │   │   ├── Cakra.Modules.Request/            # Request slices: Lifecycle state machine, assignments, resolutions
+  │   │   ├── Cakra.Modules.Post/               # Post & Feed slices: Posts, Comments, Reactions, Feed projection
+  │   │   ├── Cakra.Modules.Analytics/          # Analytics queries and AnalyticsSnapshotJob hosted service
+  │   │   └── Cakra.Api/                        # ASP.NET Core Host, API Controllers, Middleware, DbUp migrations, Static Asset Host
+  │   │
+  │   └── frontend/
+  │       └── Cakra.Web/                        # Vue 3 + TypeScript + Bootstrap 5 + Vite Single Page Application
+  │
+  ├── tests/
+  │   └── backend/
+  │       ├── Cakra.Tests.Unit/                 # Unit tests for domain logic, rules, and state machines
+  │       └── Cakra.Tests.Integration/          # Integration tests using WebApplicationFactory and SQL Server
+  │
+  └── docs/
+  ```
+- All .NET backend projects target `net8.0`. C# 12 language version, nullable reference types enabled, implicit usings enabled — Architecture §19.1.
+- `Cakra.Api` project references all backend module projects and `Cakra.Core`.
 - Project reference graph matches Architecture §22 dependency table with no circular references.
 - `dotnet build Cakra.sln` succeeds on the solution with zero errors.
 
-Notes: Produces no business logic. Its output is the compilable project structure that all subsequent slices build into. The `tests/` directory and `deploy/` packaging scripts are created by P1-S07 and P7-S31 respectively; only the `deploy/` placeholder directory is created here.
+Notes: Produces no business logic. Its output is the compilable project structure that all subsequent slices build into. The `tests/backend/` test suites and `deploy/` packaging scripts are created by P1-S07 and P7-S31 respectively; only the `deploy/` placeholder directory is created here.
 
 ---
 
@@ -166,7 +183,7 @@ Title: Core Contracts & Base Types
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Define all shared technical contracts and base types in `Cakra.Core`: base entity type, value object base, domain event interface, domain event dispatcher interface, repository interface contract, system clock abstraction, audit context interface, and the `ICurrentContextProvider` interface. Add `MediatR` and `FluentValidation.AspNetCore` NuGet package references to `Cakra.Core` and `Cakra.Web`. Interfaces only — no concrete implementations in this slice.
+Objective: Define all shared technical contracts and base types in `Cakra.Core`: base entity type, value object base, domain event interface, domain event dispatcher interface, repository interface contract, system clock abstraction, audit context interface, and the `ICurrentContextProvider` interface. Add `MediatR` and `FluentValidation.AspNetCore` NuGet package references to `Cakra.Core` and `Cakra.Api`. Interfaces only — no concrete implementations in this slice.
 
 Depends On: P1-S01
 
@@ -202,10 +219,10 @@ Objective: Configure DbUp-SqlServer migration framework, database connection man
 
 Depends On: P1-S01
 
-Repository: `Cakra.Core` / `Cakra.Web`
+Repository: `Cakra.Core` / `Cakra.Api`
 
 Completion Criteria:
-- `DbUp-SqlServer` NuGet package referenced in `Cakra.Web` — Architecture §19.3.
+- `DbUp-SqlServer` NuGet package referenced in `Cakra.Api` — Architecture §19.3.
 - DbUp migration runner is configured to discover and execute sequential idempotent raw SQL scripts in strict dependency order upon application startup — Architecture §19.3 ("Sequential idempotent raw SQL scripts managed and executed in strict dependency order via DbUp").
 - Database connection factory (`SqlConnection` via `Microsoft.Data.SqlClient`) is implemented and configurable via `ConnectionStrings__DefaultConnection` environment variable — Architecture §19.10.
 - Schema-per-module naming convention is established and documented: eight schema prefixes matching Architecture §17 (`identity`, `organization`, `customer`, `product`, `workpackage`, `request`, `post`, `analytics`).
@@ -225,17 +242,17 @@ Title: Dependency Injection & Module Registration
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the module registration pattern and DI container configuration. Each `Cakra.Modules.*` project will implement `IModule` to self-register its services, repositories, MediatR handlers, and FluentValidation validators. The host application (`Cakra.Web`) discovers and invokes all `IModule` implementations at startup. Register MediatR with pipeline behaviors (validation behavior invoking FluentValidation before handler execution). Establish service lifetime conventions (Singleton, Scoped, Transient) per architectural pattern.
+Objective: Implement the module registration pattern and DI container configuration. Each `Cakra.Modules.*` project will implement `IModule` to self-register its services, repositories, MediatR handlers, and FluentValidation validators. The host application (`Cakra.Api`) discovers and invokes all `IModule` implementations at startup. Register MediatR with pipeline behaviors (validation behavior invoking FluentValidation before handler execution). Establish service lifetime conventions (Singleton, Scoped, Transient) per architectural pattern.
 
 Depends On: P1-S02, P1-S03
 
-Repository: `Cakra.Core` / `Cakra.Web`
+Repository: `Cakra.Core` / `Cakra.Api`
 
 Completion Criteria:
 - MediatR is registered in the DI container with pipeline behavior for FluentValidation — Architecture §19.2 ("FluentValidation ... executed automatically via MediatR pipeline behaviors prior to handler execution").
 - FluentValidation validators are auto-discovered and registered via the DI container per module.
 - `IModule` implementation pattern is demonstrated with a stub module that registers successfully.
-- Host application (`Cakra.Web`) startup discovers and registers all `IModule` implementations.
+- Host application (`Cakra.Api`) startup discovers and registers all `IModule` implementations.
 - Service lifetime conventions are established and applied consistently.
 - DI container resolves all core interfaces (`ISystemClock`, `IAuditContext`, `ICurrentContextProvider`) after startup.
 - Build and DI resolution verification tests pass (no unresolved dependencies at startup).
@@ -275,11 +292,11 @@ Title: Application Pipeline Foundation
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Configure the HTTP request pipeline skeleton in `Cakra.Web`: middleware registration order, centralized exception handling middleware producing RFC 7807 `ProblemDetails` responses, input validation pipeline wired via MediatR FluentValidation behavior, Serilog structured logging enriched with `TraceId`, `SpanId`, `UserId`, and `PersonId`, audit logging hook, and security context population middleware placeholder. Establish the application entry point, health check endpoints (`/health/live`, `/health/ready`), and the wiring point for all modules. Application must start, serve requests, and return structured error responses.
+Objective: Configure the HTTP request pipeline skeleton in `Cakra.Api`: middleware registration order, centralized exception handling middleware producing RFC 7807 `ProblemDetails` responses, input validation pipeline wired via MediatR FluentValidation behavior, Serilog structured logging enriched with `TraceId`, `SpanId`, `UserId`, and `PersonId`, audit logging hook, and security context population middleware placeholder. Establish the application entry point, health check endpoints (`/health/live`, `/health/ready`), and the wiring point for all modules. Application must start, serve requests, and return structured error responses.
 
 Depends On: P1-S04, P1-S05
 
-Repository: `Cakra.Web`
+Repository: `Cakra.Api`
 
 Completion Criteria:
 - `Serilog.AspNetCore` NuGet package referenced and configured with structured JSON logging enriched with `TraceId`, `SpanId`, `UserId`, `PersonId`, and `SourceContext` — Architecture §19.9. Console (stdout) and rolling file sinks configured.
@@ -303,17 +320,17 @@ Title: Test Project Infrastructure
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Create and configure the test projects (`Cakra.Tests.Unit` and `Cakra.Tests.Integration`) per Architecture §19.8 and §19.11. Establish all required test NuGet packages, integration test infrastructure using `WebApplicationFactory<Program>`, and the Respawn-based database reset utility for test isolation. This slice produces no business tests — only the scaffolding that all subsequent test slices build into.
+Objective: Create and configure the test projects (`Cakra.Tests.Unit` and `Cakra.Tests.Integration`) under `tests/backend/` per Architecture §19.8 and §19.11. Establish all required test NuGet packages, integration test infrastructure using `WebApplicationFactory<Program>`, and the Respawn-based database reset utility for test isolation. This slice produces no business tests — only the scaffolding that all subsequent test slices build into.
 
 Depends On: P1-S01
 
-Repository: `tests/Cakra.Tests.Unit`, `tests/Cakra.Tests.Integration`
+Repository: `tests/backend/Cakra.Tests.Unit`, `tests/backend/Cakra.Tests.Integration`
 
 Completion Criteria:
-- `tests/Cakra.Tests.Unit/` project created and added to `Cakra.sln` — Architecture §19.11.
-- `tests/Cakra.Tests.Integration/` project created and added to `Cakra.sln` — Architecture §19.11.
+- `tests/backend/Cakra.Tests.Unit/` project created and added to `Cakra.sln` — Architecture §19.11.
+- `tests/backend/Cakra.Tests.Integration/` project created and added to `Cakra.sln` — Architecture §19.11.
 - Both test projects reference NuGet packages: `xunit`, `xunit.runner.visualstudio`, `FluentAssertions`, `Microsoft.NET.Test.Sdk` — Architecture §19.8.
-- `Cakra.Tests.Integration` additionally references: `Microsoft.AspNetCore.Mvc.Testing` and `Respawn` — Architecture §19.8.
+- `Cakra.Tests.Integration` additionally references: `Microsoft.AspNetCore.Mvc.Testing` (referencing `Cakra.Api`) and `Respawn` — Architecture §19.8.
 - `Cakra.Tests.Integration` contains a base `IntegrationTestBase` class wiring `WebApplicationFactory<Program>` for in-process test execution and a Respawn-based database reset helper — Architecture §19.8 ("executing against an isolated SQL Server test instance, using Respawn ... to ensure clean test state").
 - `dotnet test` succeeds (zero test failures; no tests yet, only infrastructure).
 - Integration test infrastructure is configurable via environment variables (test database connection string separate from application connection string).
@@ -329,24 +346,24 @@ Title: Vue 3 Frontend Project Scaffolding
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Scaffold the Vue 3 Single Page Application project inside `src/Cakra.Web/client/` per Architecture §19.4 and §19.11. Establish the Vite build configuration, TypeScript setup, Bootstrap 5 integration, Vue Router 4 for client-side navigation, and Pinia for shared state management. Configure the ASP.NET Core host (`Cakra.Web`) to serve the built Vue SPA assets. No UI screens are implemented in this slice — only the project structure, tooling configuration, and a placeholder root component.
+Objective: Scaffold the Vue 3 Single Page Application project inside `src/frontend/Cakra.Web/` per Architecture §19.4 and §19.11. Establish the Vite build configuration, TypeScript setup, Bootstrap 5 integration, Vue Router 4 for client-side navigation, and Pinia for shared state management. Configure the ASP.NET Core host (`Cakra.Api`) to serve the built Vue SPA assets from `wwwroot/`. No UI screens are implemented in this slice — only the project structure, tooling configuration, and a placeholder root component.
 
 Depends On: P1-S01
 
-Repository: `src/Cakra.Web/client/`
+Repository: `src/frontend/Cakra.Web/`
 
 Completion Criteria:
-- `src/Cakra.Web/client/` Vite-scaffolded Vue 3 project exists — Architecture §19.4, §19.11.
+- `src/frontend/Cakra.Web/` Vite-scaffolded Vue 3 project exists — Architecture §19.4, §19.11.
 - TypeScript is configured (`<script setup lang="ts">` pattern works) — Architecture §19.4.
 - Bootstrap 5 (with Bootstrap Icons) is installed and applied to the root layout — Architecture §19.4.
 - Vue Router 4 is installed and configured with placeholder routes — Architecture §19.4.
 - Pinia is installed and configured as the state management store — Architecture §19.4.
 - Axios (or equivalent) HTTP client is installed and configured with a base URL pointing to `/api/v1` and authentication interceptors wired for cookie-based session handling — Architecture §19.4, §19.5.
 - `vite build` produces a production bundle without errors.
-- ASP.NET Core `Cakra.Web` is configured to serve the built SPA assets from `wwwroot` (or equivalent static file path), falling back to `index.html` for SPA routing.
+- ASP.NET Core `Cakra.Api` is configured to serve the built SPA assets from `wwwroot` (or equivalent static file path), falling back to `index.html` for SPA routing — Architecture §19.10.
 - Placeholder root component renders "CAKRA - ICS Operational System" confirmation message; the application loads in browser without console errors.
 
-Notes: Can execute in parallel with P1-S02 through P1-S06 (depends only on P1-S01 for project structure). The `client/` SPA is built via Vite into `wwwroot/` during the production publish process defined in P7-S31. Each screen implementation (P2-S11, P3-S15, P4-S19, P5-S22, P6-S26, P7-S29) adds Vue SFC components to this scaffold. Architecture §19.4 (Frontend Stack), §19.5 (Authentication), §19.10 (Deployment & Runtime Strategy), and §20 ("Frontend Component Architecture") are authoritative.
+Notes: Can execute in parallel with P1-S02 through P1-S06 (depends only on P1-S01 for project structure). The `src/frontend/Cakra.Web/` SPA is built via Vite (`npm run build`) into `dist/` and ingested into `src/backend/Cakra.Api/wwwroot/` during the production publish process defined in Architecture §19.10 and P7-S31. Each screen implementation (P2-S11, P3-S15, P4-S19, P5-S22, P6-S26, P7-S29) adds Vue SFC components to this scaffold. Architecture §19.4 (Frontend Stack), §19.5 (Authentication), §19.10 (Deployment & Runtime Strategy), and §20 ("Frontend Component Architecture") are authoritative.
 
 ---
 
@@ -398,11 +415,11 @@ Objective: Implement the concrete HTTP authentication middleware that intercepts
 
 Depends On: P2-S09
 
-Repository: `Cakra.Modules.Identity` / `Cakra.Web`
+Repository: `Cakra.Modules.Identity` / `Cakra.Api`
 
 Completion Criteria:
 - ASP.NET Core Cookie Authentication registered with `HttpOnly = true`, `SameSite = SameSiteMode.Strict`, `Secure = true` — Architecture §19.5.
-- Authentication middleware is registered in `Cakra.Web` pipeline (fulfils the placeholder established in P1-S06).
+- Authentication middleware is registered in `Cakra.Api` pipeline (fulfils the placeholder established in P1-S06).
 - Every request without a valid session cookie returns HTTP 401 on protected endpoints.
 - Every request with a valid cookie calls `AuthenticationService.ValidateSession` and populates `CurrentContextProvider` with `CurrentUserId`, `CurrentPersonId`, and `CurrentRoles` — Architecture §19.5.
 - RBAC enforcement mechanism is in place and verified: `[Authorize(Roles = "Management")]` attribute rejects non-Management users with HTTP 403.
@@ -419,11 +436,11 @@ Title: Login Screen — SCR-AUTH-001
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement `SCR-AUTH-001` (Login Screen) as a Vue 3 SFC (`<script setup lang="ts">`) with Bootstrap 5 styling, and the corresponding ASP.NET Core REST API controller (`/api/v1/auth/login`, `/api/v1/auth/logout`). Wires `AuthenticationService.Login` and `Logout`, sets the session cookie on success, handles login failures with distinct error messages, and redirects to `SCR-FEED-001` on success.
+Objective: Implement `SCR-AUTH-001` (Login Screen) as a Vue 3 SFC (`<script setup lang="ts">`) with Bootstrap 5 styling in `src/frontend/Cakra.Web/`, and the corresponding ASP.NET Core REST API controller (`/api/v1/auth/login`, `/api/v1/auth/logout`) in `Cakra.Api`. Wires `AuthenticationService.Login` and `Logout`, sets the session cookie on success, handles login failures with distinct error messages, and redirects to `SCR-FEED-001` on success.
 
 Depends On: P2-S10, P1-S08
 
-Repository: `Cakra.Web`, `Cakra.Web/client/`
+Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
 - Vue 3 SFC `LoginView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders username/password input fields — Architecture §19.4, §20.
@@ -538,11 +555,11 @@ Title: Product Catalog Screen — SCR-PRD-001
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement `SCR-PRD-001` (Product Catalog Screen) as a Vue 3 SFC with Bootstrap 5 styling, and the corresponding ASP.NET Core REST API controller (`/api/v1/products/*`). Wires `ProductService` commands and `ProductQueryService` queries. Delivers the first content management screen; users can view the product catalog, create products, update attributes, assign product owners, and toggle product status. M1 is achieved when this slice is complete.
+Objective: Implement `SCR-PRD-001` (Product Catalog Screen) as a Vue 3 SFC with Bootstrap 5 styling in `src/frontend/Cakra.Web/`, and the corresponding ASP.NET Core REST API controller (`/api/v1/products/*`) in `Cakra.Api`. Wires `ProductService` commands and `ProductQueryService` queries. Delivers the first content management screen; users can view the product catalog, create products, update attributes, assign product owners, and toggle product status. M1 is achieved when this slice is complete.
 
 Depends On: P3-S14, P2-S10, P1-S08
 
-Repository: `Cakra.Web`, `Cakra.Web/client/`
+Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
 - Vue 3 SFC `ProductCatalogView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders product catalog — Architecture §19.4.
@@ -649,11 +666,11 @@ Title: Request Screens — SCR-REQ-001..005
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement all five Request screens as Vue 3 SFCs with Bootstrap 5 styling and their corresponding ASP.NET Core REST API controllers (`/api/v1/requests/*`). Delivers the complete request management UI. Dropdowns for Customer, Product, and Person use the respective published query services.
+Objective: Implement all five Request screens as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/` and their corresponding ASP.NET Core REST API controllers (`/api/v1/requests/*`) in `Cakra.Api`. Delivers the complete request management UI. Dropdowns for Customer, Product, and Person use the respective published query services.
 
 Depends On: P4-S18, P2-S10, P1-S08
 
-Repository: `Cakra.Web`, `Cakra.Web/client/`
+Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
 - Vue 3 SFCs (`<script setup lang="ts">`, Bootstrap 5) implemented for `SCR-REQ-001` through `SCR-REQ-005` — Architecture §19.4, §20.
@@ -741,11 +758,11 @@ Title: Work Package Screen — SCR-WP-001
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement `SCR-WP-001` (Work Package screen) as a Vue 3 SFC with Bootstrap 5 styling and the corresponding ASP.NET Core REST API controller (`/api/v1/work-packages/*`). Delivers Work Package creation, lifecycle management, and scope review. Wires `WorkPackageService` MediatR handlers and `WorkPackageQueryService`.
+Objective: Implement `SCR-WP-001` (Work Package screen) as a Vue 3 SFC with Bootstrap 5 styling in `src/frontend/Cakra.Web/` and the corresponding ASP.NET Core REST API controller (`/api/v1/work-packages/*`) in `Cakra.Api`. Delivers Work Package creation, lifecycle management, and scope review. Wires `WorkPackageService` MediatR handlers and `WorkPackageQueryService`.
 
 Depends On: P5-S21, P2-S10, P1-S08
 
-Repository: `Cakra.Web`, `Cakra.Web/client/`
+Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
 - Vue 3 SFC `WorkPackageView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders Work Package management — Architecture §19.4, §20.
@@ -854,11 +871,11 @@ Title: Feed & Post Screens — SCR-FEED-001, SCR-POST-001
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Feed screen (`SCR-FEED-001`) and Post detail modal (`SCR-POST-001`) as Vue 3 SFCs with Bootstrap 5 styling and their corresponding ASP.NET Core REST API controllers (`/api/v1/feed/*`, `/api/v1/posts/*`). Wire `FeedQueryService` and `PostQueryService` to presentation endpoints. Deliver post authoring, commenting, reacting, and navigation from feed card to request detail.
+Objective: Implement the Feed screen (`SCR-FEED-001`) and Post detail modal (`SCR-POST-001`) as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/` and their corresponding ASP.NET Core REST API controllers (`/api/v1/feed/*`, `/api/v1/posts/*`) in `Cakra.Api`. Wire `FeedQueryService` and `PostQueryService` to presentation endpoints. Deliver post authoring, commenting, reacting, and navigation from feed card to request detail.
 
 Depends On: P6-S25, P2-S10, P1-S08
 
-Repository: `Cakra.Web`, `Cakra.Web/client/`
+Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
 - Vue 3 SFCs (`<script setup lang="ts">`, Bootstrap 5): `FeedView.vue` and `PostDetailModal.vue` — Architecture §19.4, §20.
@@ -948,11 +965,11 @@ Title: Management Analytics Screens — SCR-MGT-001..003
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the three Management Analytics screens as Vue 3 SFCs with Bootstrap 5 styling and their corresponding ASP.NET Core REST API controllers (`/api/v1/analytics/*`). All management screens are RBAC-protected to the Management role via `[Authorize(Roles = "Management")]`.
+Objective: Implement the three Management Analytics screens as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/` and their corresponding ASP.NET Core REST API controllers (`/api/v1/analytics/*`) in `Cakra.Api`. All management screens are RBAC-protected to the Management role via `[Authorize(Roles = "Management")]`.
 
 Depends On: P7-S28, P2-S10, P1-S08
 
-Repository: `Cakra.Web`, `Cakra.Web/client/`
+Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
 - Vue 3 SFCs (`<script setup lang="ts">`, Bootstrap 5) implemented for `SCR-MGT-001`, `SCR-MGT-002`, `SCR-MGT-003` — Architecture §19.4, §20.
@@ -978,7 +995,7 @@ Objective: Verify that all cross-cutting concerns established in P1-S06 are corr
 
 Depends On: P7-S29, P6-S26
 
-Repository: `Cakra.Web` (validation suite)
+Repository: `Cakra.Api` (validation suite)
 
 Completion Criteria:
 - Serilog structured JSON log entries confirmed present for Request, WorkPackage, and Post state changes (actor `PersonId`, timestamp, previous state, `TraceId`) across all modules — Architecture §18, §19.9.
@@ -1001,22 +1018,22 @@ Title: IIS Production Deployment Packaging & Configuration
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Produce the production build and deployment configuration that packages the complete CAKRA - ICS Operational System for the authoritative production target: **IIS (Internet Information Services) on Windows Server** per Architecture §19.10. Configure Vite frontend compilation into `Cakra.Web/wwwroot/`, `dotnet publish` Release packaging, IIS `web.config` with ASP.NET Core Module (`AspNetCoreHostingModel = InProcess`), dedicated AppPool provisioning script (`deploy/setup-iis.ps1`), deployment automation script (`deploy/publish.ps1`), and automated DbUp migration execution on deploy. M5 is achieved when this slice is complete.
+Objective: Produce the production build and deployment configuration that packages the complete CAKRA - ICS Operational System for the authoritative production target: **IIS (Internet Information Services) on Windows Server** per Architecture §19.10. Configure Vite frontend compilation in `src/frontend/Cakra.Web/` emitting production static assets into `src/frontend/Cakra.Web/dist/` (which are ingested into `src/backend/Cakra.Api/wwwroot/`), `dotnet publish` Release packaging of `src/backend/Cakra.Api/Cakra.Api.csproj`, IIS `web.config` with ASP.NET Core Module (`AspNetCoreHostingModel = InProcess`), dedicated AppPool provisioning script (`deploy/setup-iis.ps1`), deployment automation script (`deploy/publish.ps1`), and automated DbUp migration execution on deploy. M5 is achieved when this slice is complete.
 
 Depends On: P7-S30
 
-Repository: `deploy/`, `Cakra.Web`
+Repository: `deploy/`, `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
-- Production publish script (`deploy/publish.ps1`) automates end-to-end release build:
-  1. Executes `vite build` in `src/Cakra.Web/client/`, emitting production assets into `src/Cakra.Web/wwwroot/`.
-  2. Executes `dotnet publish src/Cakra.Web/Cakra.Web.csproj -c Release -o ./publish`.
+- Production publish script (`deploy/publish.ps1`) automates end-to-end release build per Architecture §19.10:
+  1. Executes `npm run build` in `src/frontend/Cakra.Web/`, emitting production static assets into `src/frontend/Cakra.Web/dist/` (which are ingested into `src/backend/Cakra.Api/wwwroot/`).
+  2. Executes `dotnet publish src/backend/Cakra.Api/Cakra.Api.csproj -c Release -o ./publish` producing the release package containing compiled binaries, dependencies, static web assets (in `./publish/wwwroot/`), and the IIS `web.config`.
   3. Generates the production `web.config` in `./publish` configuring `aspNetCore` handler with `hostingModel="inprocess"`.
 - IIS site and application pool configuration script (`deploy/setup-iis.ps1`) provisions:
-  - Dedicated Application Pool (`ICSAppPool`) targeting `No Managed Code`, 64-bit, with automatic start and recycling settings.
+  - Dedicated Application Pool (`CakraAppPool`) targeting `No Managed Code`, 64-bit, with automatic start and recycling settings — Architecture §19.10.
   - IIS Website / Web Application binding with HTTPS binding (port 443) and physical path mapped to the published folder.
 - Database migration execution is integrated into deployment:
-  - DbUp migration runner executes automatically on application startup within `Program.cs` (or via standalone CLI flag `dotnet Cakra.Web.dll --migrate`) to apply idempotent SQL migrations against SQL Server 2019 before traffic is served.
+  - DbUp migration runner executes automatically on application startup within `Program.cs` (or via standalone CLI flag `dotnet Cakra.Api.dll --migrate`) to apply idempotent SQL migrations against SQL Server 2019 before traffic is served — Architecture §19.10.
 - Production configuration template `appsettings.Production.json` configured for SQL Server connection string override via `ConnectionStrings__DefaultConnection` environment variable.
 - `deploy/publish.ps1` runs from repository root and produces a fully populated, runnable `./publish` folder with zero errors.
 - Application starts under IIS / `w3wp.exe`, serves the Vue 3 SPA at `/`, and `/health/ready` returns HTTP 200 when SQL Server 2019 is available.
@@ -1042,7 +1059,7 @@ Result: 7 phases (P1–P7), 28 slices (S01–S28). No architectural decisions cr
 (3) All existing slices (formerly S07–S28) renumbered to S09–S30 to maintain continuous global slice numbering. All `Depends On` references updated accordingly.
 (4) P1-S03 corrected: removed incorrect "FluentMigrator / EF Core Migrations" references; mandates DbUp-SqlServer exclusively per §19.3. EF Core prohibition explicitly stated in completion criteria.
 (5) P1-S06 updated: specifies Serilog structured logging (§19.9), RFC 7807 ProblemDetails (§19.6), `/health/live` and `/health/ready` endpoints (§19.9), REST route convention (§19.6).
-(6) P1-S01 updated: mandates exact §19.11 directory layout (`Cakra.Web` instead of "host application", .NET 8 target, C# 12 settings).
+(6) P1-S01 updated: mandated exact §19.11 directory layout (.NET 8 target, C# 12 settings).
 (7) P1-S02 updated: mandates MediatR, FluentValidation, Dapper, Microsoft.Data.SqlClient NuGet package references as outputs.
 (8) All application-layer slices updated to specify MediatR handlers, Dapper/parameterized SQL, xUnit+FluentAssertions for unit tests, WebApplicationFactory+Respawn for integration tests.
 (9) All screen slices updated to specify Vue 3 SFC (`<script setup lang="ts">`), Bootstrap 5, Axios with auth interceptors, REST API route conventions.
@@ -1055,11 +1072,20 @@ Result: 7 phases (P1–P7), 31 slices (S01–S31). No architectural decisions cr
 (2) Parallel execution: Explicitly decoupled Customer (P3-S13) and Product (P3-S14) in Phase 3. Customer has zero dependency on Organization or Product; Product depends on Organization for owner validation, but has zero dependency on Customer. Documented and enabled parallel execution to compress delivery.
 (3) Vertical slice clarity: Reinforced vertical slice guidance across all phase objectives and completion criteria, instructing implementation agents to deliver complete vertical slices (domain invariants, Dapper parameterized persistence, MediatR handlers, and UI/API endpoints) rather than accumulating horizontal layered batch work packages.
 (4) UAT milestone boundary: Added Milestone M6 (UAT Approved) to Section 3 as a formal business acceptance checkpoint distinct from technical implementation completion (M5).
-(5) Docker removal & actual deployment strategy: Removed all Docker references from architecture (§19.9, §19.10) and implementation plan (§2, §3, P1-S01, P1-S08, P7 intro, P7-S31). Replaced with concrete native deployment strategy: Modular Monolith single ASP.NET Core process running Kestrel as a Windows Service, systemd service, or behind an IIS/Nginx reverse proxy, with Vite SPA compilation into `Cakra.Web/wwwroot/`, `dotnet publish -c Release`, deployment packaging script (`publish.ps1`), and automated DbUp migration runner.
+(5) Docker removal & actual deployment strategy: Removed all Docker references from architecture (§19.9, §19.10) and implementation plan (§2, §3, P1-S01, P1-S08, P7 intro, P7-S31). Replaced with concrete native deployment strategy: Modular Monolith single ASP.NET Core process running Kestrel as a Windows Service, systemd service, or behind an IIS/Nginx reverse proxy, with Vite SPA compilation, `dotnet publish -c Release`, deployment packaging script (`publish.ps1`), and automated DbUp migration runner.
 Result: 7 phases (P1–P7), 31 slices (S01–S31). Milestones M0–M6. No architectural decisions created or reinterpreted.
 
 2026-09-27 — v3.2 — Production deployment target clarification pass (pre-approval). Addressed reviewer feedback regarding broad deployment alternatives:
-(1) Locked down the authoritative production deployment target to **IIS (Internet Information Services) on Windows Server** via In-Process hosting (`AspNetCoreHostingModel = InProcess` in `web.config`) and dedicated AppPool (`ICSAppPool`).
+(1) Locked down the authoritative production deployment target to **IIS (Internet Information Services) on Windows Server** via In-Process hosting (`AspNetCoreHostingModel = InProcess` in `web.config`) and dedicated AppPool (`CakraAppPool`).
 (2) Removed all deployment alternatives (Linux systemd, Nginx reverse proxy, standalone Windows Service) from Architecture §19.10 and Implementation Plan (§2, §3, P7 objective, P7-S31).
 (3) Updated P7-S31 to generate the IIS deployment scripts (`deploy/publish.ps1`, `deploy/setup-iis.ps1`), in-process `web.config`, and SQL Server 2019 DbUp startup migration execution.
 Result: 7 phases (P1–P7), 31 slices (S01–S31). Milestones M0–M6. Fully deterministic production target for implementation agents.
+
+2026-09-28 — v3.3 — Architecture alignment pass. Synchronized implementation plan with current Architecture (§19.10, §19.11, §22):
+(1) Backend host renaming: Replaced backend host references from `Cakra.Web` to `Cakra.Api` across all slices, distinguishing backend host (`Cakra.Api`) from frontend SPA (`Cakra.Web`).
+(2) Repository structure alignment: Updated repository layout to mirror Architecture §19.11 repository-level separation: `src/backend/*`, `src/frontend/Cakra.Web`, `tests/backend/*`, `docs/`, `deploy/`.
+(3) P1-S01 updated: Replaced legacy directory structure with exact Architecture §19.11 structure verbatim.
+(4) Foundation phase description revised: Updated P1 Foundation description to reflect `Cakra.Api`, `Cakra.Web`, `src/backend`, and `src/frontend`.
+(5) Deployment & build alignment: Corrected frontend build output flow (`src/frontend/Cakra.Web/dist/` → `src/backend/Cakra.Api/wwwroot/`), `dotnet publish` path (`src/backend/Cakra.Api/Cakra.Api.csproj`), CLI migration switch (`dotnet Cakra.Api.dll --migrate`), and IIS AppPool name (`CakraAppPool`) per Architecture §19.10.
+(6) Planning scope & slice repositories: Updated Section 2 to include Backend Host (`Cakra.Api`) and Frontend Web (`Cakra.Web`) per Architecture §22, and aligned all slice `Repository:` declarations to reference `Cakra.Api` and `src/frontend/Cakra.Web`.
+Result: 7 phases (P1–P7), 31 slices (S01–S31). Milestones M0–M6. Complete verbatim synchronization with target architecture.
