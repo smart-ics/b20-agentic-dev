@@ -568,9 +568,9 @@ The repository structure and project breakdown are strictly standardized with re
 
 ```text
 cakra/
+├── Cakra.sln
 ├── src/
 │   ├── backend/
-│   │   ├── Cakra.sln
 │   │   ├── Cakra.Core/                       # Common domain abstractions, MediatR pipeline behaviors, Dapper helpers
 │   │   ├── Cakra.Modules.Identity/           # IAM vertical slices, UserAccount & UserSession commands/queries
 │   │   ├── Cakra.Modules.Organization/       # Organization slices: Persons, Teams, Roles, Responsibilities
