@@ -2,7 +2,7 @@
 Title: CAKRA - ICS Operational System Implementation Plan
 Code: CAKRA
 Artifact: IMPLEMENTATION-PLAN
-Version: 3.3
+Version: 4.0
 LastUpdated: 2026-09-28
 Status: NOT-STARTED
 Execution Approval: APPROVED
@@ -21,6 +21,8 @@ Referenced artifacts:
 Architecture Applicability: GREENFIELD-ARCHITECTURE
 
 Greenfield planning mode based on complete target architecture. Scope encompasses the entire target system architecture. The current repository is in pre-implementation state. The CAKRA-ARCHITECTURE.md is the sole authoritative technical target state. No architectural decisions are created or re-interpreted by this plan.
+
+Agent Execution Optimization: This plan is optimized for execution by budget-class AI implementation agents (Gemini 3.8 Flash, GPT-5, Claude Sonnet). Slices are sized for single-cycle completion with minimal context requirements. The dependency graph maximizes concurrent agent utilization. Completion criteria are objective, observable, and testable. Phase boundaries are organizational only — the dependency graph is authoritative for execution ordering.
 
 ---
 
@@ -47,6 +49,9 @@ Scope derives directly from Architecture §22 (Implementation Boundaries) and §
 **Vertical Slice Mandate for Implementation Agents**:
 Presentation screens and endpoints are delivered vertically within each module's phase to enable early verification rather than accumulating horizontal layered batch work packages. Implementation agents must execute each slice as a cohesive vertical deliverable (coupling domain rules, Dapper parameterized persistence, MediatR handlers, and presentation controllers/Vue SFCs where applicable).
 
+**Backend / Frontend Separation for Agent Execution**:
+For modules with complex screens (multiple screens, many endpoints, or complex UI interactions), API controller slices are separated from Vue SFC screen slices. This enables backend and frontend agents to work independently and reduces per-slice context requirements. Simple modules with a single screen may combine API and Vue SFC in one slice.
+
 Technology stack is explicitly defined in Architecture §19 and is authoritative for all implementation phases. Key mandates:
 
 - **Backend**: .NET 8, ASP.NET Core 8.0, C# 12, MediatR, FluentValidation, Serilog — Architecture §19.1, §19.2
@@ -65,11 +70,11 @@ Milestones represent observable business-level delivery checkpoints, independent
 | Milestone | Achieved After | Observable Capability |
 |---|---|---|
 | **M0 — Foundation Ready** | P1-S06 | Infrastructure operational: database migrations run, DI container resolves, event bus dispatches, application starts and serves requests |
-| **M1 — Authentication & Catalog Operational** | P3-S15 | Users can log in. Organization, Customer, and Product master data is accessible. Product catalog screen (`SCR-PRD-001`) is functional. First end-to-end user flows are possible |
-| **M2 — Request Lifecycle Operational** | P4-S19 | Complete request management operational: Record, Assign, Evaluate, Accept, Reject, Escalate, Decision, Complete. All request screens (`SCR-REQ-001..005`) functional. Core business operations running |
-| **M3 — Work Package Operational** | P5-S22 | Work Packages can be created, managed, activated, closed, and linked to Requests. Work Package screen (`SCR-WP-001`) functional |
-| **M4 — Operational Feed Live** | P6-S26 | Feed screen (`SCR-FEED-001`) operational. Posts, comments, reactions functional. Exception badges working. Post detail modal (`SCR-POST-001`) functional. Feed filtering by Customer, Product, and Exception active |
-| **M5 — Full System Operational** | P7-S31 | Management dashboards (`SCR-MGT-001..003`) operational. Analytics snapshot job running. Authoritative IIS on Windows Server production deployment package (`deploy/publish.ps1`, `web.config`, AppPool configuration) generated and verified. All cross-cutting concerns verified end-to-end. System ready for UAT |
+| **M1 — Authentication & Catalog Operational** | P3-S16 | Users can log in. Organization, Customer, and Product master data is accessible. Product catalog screen (`SCR-PRD-001`) is functional. First end-to-end user flows are possible |
+| **M2 — Request Lifecycle Operational** | P4-S22 + P4-S23 | Complete request management operational: Record, Assign, Evaluate, Accept, Reject, Escalate, Decision, Complete. All request screens (`SCR-REQ-001..005`) functional. Core business operations running |
+| **M3 — Work Package Operational** | P5-S27 | Work Packages can be created, managed, activated, closed, and linked to Requests. Work Package screen (`SCR-WP-001`) functional |
+| **M4 — Operational Feed Live** | P6-S32 + P6-S33 | Feed screen (`SCR-FEED-001`) operational. Posts, comments, reactions functional. Exception badges working. Post detail modal (`SCR-POST-001`) functional. Feed filtering by Customer, Product, and Exception active |
+| **M5 — Full System Operational** | P7-S39 | Management dashboards (`SCR-MGT-001..003`) operational. Analytics snapshot job running. Authoritative IIS on Windows Server production deployment package (`deploy/publish.ps1`, `web.config`, AppPool configuration) generated and verified. All cross-cutting concerns verified end-to-end. System ready for UAT |
 | **M6 — UAT Approved** | Post-P7 Acceptance Gate | Formal business stakeholder and QA acceptance completed across all primary user journeys (Request lifecycle, Collaboration, Feed, and Management oversight). Test package executed, defect package verified, and operational acceptance sign-off granted |
 
 ---
@@ -89,12 +94,20 @@ Milestones represent observable business-level delivery checkpoints, independent
 - A dependency is satisfied when the referenced slice has implementation status `IMPLEMENTED` and its required outputs exist in the target repository.
 - Review status does not participate in dependency satisfaction.
 - Dependencies represent real implementation prerequisites; they are not conceptual or sequential associations.
+- Phase boundaries are organizational. A slice may execute as soon as all its declared dependencies are satisfied, regardless of phase membership.
 - `Depends On: P1-S06` transitively implies all P1 application pipeline slices are implemented, since P1-S06 is the terminal application-pipeline slice of the Foundation phase.
 
 ## Parallel Execution Opportunities
 
-- **Customer and Product Concurrency**: In Phase 3, Customer (P3-S13) does not depend on Organization (P3-S12) or Product (P3-S14). Product (P3-S14) depends on Organization (P3-S12) for owner validation, but has zero dependency on Customer (P3-S13). Consequently, Customer and Product can execute concurrently in parallel to compress the delivery schedule.
+The dependency graph enables significant cross-phase concurrency. Implementation orchestrators should dispatch slices based on dependency satisfaction, not phase ordering.
+
+- **Post-Foundation Domain Concurrency**: After P1-S06 (Application Pipeline), the following domain-only slices can start immediately in parallel: P4-S17 (Request Domain), P5-S24 (Work Package Domain). These are pure domain logic with unit tests and have zero dependency on Identity, Organization, Customer, or Product modules.
+- **Post-Foundation Persistence Concurrency**: After P1-S06 + P1-S07, the following persistence slices can also start: P3-S12 (Organization Persistence), P2-S09 (Identity Module). These require only database infrastructure and test project scaffolding.
 - **Foundation Scaffold Concurrency**: In Phase 1, P1-S07 (Test Infrastructure) and P1-S08 (Frontend Scaffolding) can execute concurrently with P1-S02 through P1-S06 once P1-S01 is established.
+- **Customer and Product Concurrency**: In Phase 3, Customer (P3-S14) does not depend on Organization (P3-S12, P3-S13) or Product (P3-S15). Product (P3-S15) depends on Organization Services (P3-S13) for owner validation, but has zero dependency on Customer (P3-S14). Consequently, Customer and Product can execute concurrently.
+- **Request Lifecycle Concurrency**: In Phase 4, P4-S19 (Lifecycle Completion & Queries) and P4-S20 (Escalation & Management) can execute concurrently after P4-S18 (Core Commands) is complete. P4-S22 and P4-S23 (Request Screen groups) can execute concurrently after P4-S21 (Request API Controller) is complete.
+- **Analytics Early Start**: P7-S34 (Analytics Snapshot) depends only on P1-S06, P1-S07, and P4-S19 (Request Queries). It has zero dependency on Work Package (P5) or Post & Feed (P6). Analytics slices can execute concurrently with P5 and P6.
+- **Feed Screen Concurrency**: P6-S32 (Feed Screen) and P6-S33 (Post Detail Modal) can execute concurrently after P6-S31 (Feed & Post API Controller) is complete.
 
 ---
 
@@ -104,11 +117,11 @@ Milestones represent observable business-level delivery checkpoints, independent
 |---|---|---|---|---|
 | P1 — Foundation | S01–S08 | NOT-STARTED | NOT-REVIEWED | 0/8 |
 | P2 — Identity & Access | S09–S11 | NOT-STARTED | NOT-REVIEWED | 0/3 |
-| P3 — Core Master Data & Product Catalog | S12–S15 | NOT-STARTED | NOT-REVIEWED | 0/4 |
-| P4 — Request Lifecycle | S16–S19 | NOT-STARTED | NOT-REVIEWED | 0/4 |
-| P5 — Work Package | S20–S22 | NOT-STARTED | NOT-REVIEWED | 0/3 |
-| P6 — Post & Feed | S23–S26 | NOT-STARTED | NOT-REVIEWED | 0/4 |
-| P7 — Management Analytics & System Finalization | S27–S31 | NOT-STARTED | NOT-REVIEWED | 0/5 |
+| P3 — Core Master Data & Product Catalog | S12–S16 | NOT-STARTED | NOT-REVIEWED | 0/5 |
+| P4 — Request Lifecycle | S17–S23 | NOT-STARTED | NOT-REVIEWED | 0/7 |
+| P5 — Work Package | S24–S27 | NOT-STARTED | NOT-REVIEWED | 0/4 |
+| P6 — Post & Feed | S28–S33 | NOT-STARTED | NOT-REVIEWED | 0/6 |
+| P7 — Management Analytics & System Finalization | S34–S39 | NOT-STARTED | NOT-REVIEWED | 0/6 |
 
 ---
 
@@ -172,7 +185,7 @@ Completion Criteria:
 - Project reference graph matches Architecture §22 dependency table with no circular references.
 - `dotnet build Cakra.sln` succeeds on the solution with zero errors.
 
-Notes: Produces no business logic. Its output is the compilable project structure that all subsequent slices build into. The `tests/backend/` test suites and `deploy/` packaging scripts are created by P1-S07 and P7-S31 respectively; only the `deploy/` placeholder directory is created here.
+Notes: Produces no business logic. Its output is the compilable project structure that all subsequent slices build into. The `tests/backend/` test suites and `deploy/` packaging scripts are created by P1-S07 and P7-S39 respectively; only the `deploy/` placeholder directory is created here.
 
 ---
 
@@ -300,11 +313,18 @@ Repository: `Cakra.Api`
 
 Completion Criteria:
 - `Serilog.AspNetCore` NuGet package referenced and configured with structured JSON logging enriched with `TraceId`, `SpanId`, `UserId`, `PersonId`, and `SourceContext` — Architecture §19.9. Console (stdout) and rolling file sinks configured.
-- HTTP request pipeline is configured with documented middleware order.
+- HTTP middleware pipeline registered in the following exact order in `Program.cs`:
+  1. `UseSerilogRequestLogging()` — request/response logging
+  2. Global exception handling middleware — produces RFC 7807 `ProblemDetails` JSON
+  3. `UseStaticFiles()` — serves SPA assets from `wwwroot/`
+  4. `UseRouting()`
+  5. `UseAuthentication()` — placeholder; concrete handler wired in P2-S10
+  6. `UseAuthorization()`
+  7. `MapControllers()` — endpoint mapping
 - Centralized exception handling middleware returns consistent RFC 7807 `ProblemDetails` JSON responses with consistent error codes — Architecture §19.6 ("standard RFC 7807 Problem Details (`ProblemDetails`) JSON responses"). `System.Text.Json` with camelCase naming policy configured — Architecture §19.6.
 - Input validation pipeline is in place and invoked before application service dispatch (MediatR FluentValidation pipeline behavior).
 - Audit logging hook is registered in the pipeline — Architecture §18 (Audit Logging).
-- Security context population middleware placeholder is registered (concrete implementation supplied by P3-S13).
+- Security context population middleware placeholder is registered (concrete implementation supplied by P2-S10).
 - ASP.NET Core Health Check endpoints respond: `/health/live` (HTTP 200) and `/health/ready` (HTTP 200, validates SQL Server connectivity) — Architecture §19.9.
 - Application starts, wires all registered `IModule` bootstrappers, and serves requests without unresolved dependency errors.
 - REST API base route convention `/api/v1/{module}/{resource}` is established — Architecture §19.6.
@@ -363,7 +383,7 @@ Completion Criteria:
 - ASP.NET Core `Cakra.Api` is configured to serve the built SPA assets from `wwwroot` (or equivalent static file path), falling back to `index.html` for SPA routing — Architecture §19.10.
 - Placeholder root component renders "CAKRA - ICS Operational System" confirmation message; the application loads in browser without console errors.
 
-Notes: Can execute in parallel with P1-S02 through P1-S06 (depends only on P1-S01 for project structure). The `src/frontend/Cakra.Web/` SPA is built via Vite (`npm run build`) into `dist/` and ingested into `src/backend/Cakra.Api/wwwroot/` during the production publish process defined in Architecture §19.10 and P7-S31. Each screen implementation (P2-S11, P3-S15, P4-S19, P5-S22, P6-S26, P7-S29) adds Vue SFC components to this scaffold. Architecture §19.4 (Frontend Stack), §19.5 (Authentication), §19.10 (Deployment & Runtime Strategy), and §20 ("Frontend Component Architecture") are authoritative.
+Notes: Can execute in parallel with P1-S02 through P1-S06 (depends only on P1-S01 for project structure). The `src/frontend/Cakra.Web/` SPA is built via Vite (`npm run build`) into `dist/` and ingested into `src/backend/Cakra.Api/wwwroot/` during the production publish process defined in Architecture §19.10 and P7-S39. Each screen implementation (P2-S11, P3-S16, P4-S22, P4-S23, P5-S27, P6-S32, P6-S33, P7-S37) adds Vue SFC components to this scaffold. Architecture §19.4 (Frontend Stack), §19.5 (Authentication), §19.10 (Deployment & Runtime Strategy), and §20 ("Frontend Component Architecture") are authoritative.
 
 ---
 
@@ -443,7 +463,7 @@ Depends On: P2-S10, P1-S08
 Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
-- Vue 3 SFC `LoginView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders username/password input fields — Architecture §19.4, §20.
+- Vue 3 SFC `LoginView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders a centered card containing: username text input, password input, submit button, error message area — Architecture §19.4, §20.
 - Vue Router 4 route `/login` maps to `LoginView.vue`.
 - POST `/api/v1/auth/login` ASP.NET Core Controller endpoint calls `AuthenticationService.Login`; sets secure `HttpOnly` `SameSite=Strict` session cookie on success — Architecture §19.5.
 - Login failure returns distinct RFC 7807 `ProblemDetails` responses: invalid credentials, account locked — Architecture §19.6.
@@ -451,7 +471,7 @@ Completion Criteria:
 - POST `/api/v1/auth/logout` endpoint calls `AuthenticationService.Logout` and clears the session cookie.
 - Integration tests (xUnit + WebApplicationFactory): login success and each login failure scenario pass.
 
-Notes: Architecture §14 (UI Boundary — SCR-AUTH-001), §19.4, §19.5, §19.6 are authoritative.
+Notes: Architecture §14 (UI Boundary — SCR-AUTH-001), §19.4, §19.5, §19.6 are authoritative. Combined API + Vue slice because scope is minimal (2 endpoints, 1 form).
 
 ---
 
@@ -460,7 +480,7 @@ Notes: Architecture §14 (UI Boundary — SCR-AUTH-001), §19.4, §19.5, §19.6 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the three foundational master-data modules — Organization, Customer, and Product — including domain, application services, and persistence using Dapper with explicit parameterized SQL (Architecture §19.3), along with the Product Catalog screen (`SCR-PRD-001`). These modules operate within the authenticated security context established in P2. Customer and Product are architecturally decoupled and can execute in parallel: Customer has zero dependency on Organization or Product; Product depends on Organization for owner validation, but has zero dependency on Customer. M1 is achieved when P3-S15 is complete.
+Objective: Implement the three foundational master-data modules — Organization, Customer, and Product — including domain, application services, and persistence using Dapper with explicit parameterized SQL (Architecture §19.3), along with the Product Catalog screen (`SCR-PRD-001`). Organization is split into a persistence slice and an application services slice to reduce per-slice scope. Customer and Product are architecturally decoupled and can execute in parallel: Customer has zero dependency on Organization or Product; Product depends on Organization Services for owner validation, but has zero dependency on Customer. M1 is achieved when P3-S16 is complete.
 
 Source: Architecture §22 — Boundaries: **Organization**, **Customer**, **Product**. Architecture §6 (Module Boundaries), §10 (Product Module Architecture), §16 (Data Ownership), §19.3 (Persistence & Data Access).
 
@@ -468,33 +488,55 @@ Source: Architecture §22 — Boundaries: **Organization**, **Customer**, **Prod
 
 ### P3-S12
 
-Title: Organization Module — Domain, Application Services & Persistence
+Title: Organization Module — Domain Entities & Persistence
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the complete Organization module: domain entities (`Person`, `Team`, `Role`, `Responsibility`, `TeamMembership`, `RoleAssignment`, `ResponsibilityAssignment`), `OrganizationService` command methods, `OrganizationQueryService` query methods, DbUp SQL migration scripts for `organization.*` tables, and Dapper repository implementations using explicit parameterized SQL. Connects `OrganizationQueryService` with `AuthorizationService` for dynamic role resolution.
+Objective: Implement the Organization module domain entities and persistence layer: all domain entity classes, DbUp SQL migration scripts for `organization.*` tables, and Dapper repository implementations using explicit parameterized SQL. Domain events are defined but not dispatched in this slice. No MediatR handlers, no query service, no role resolution wiring — those are delivered in P3-S13.
 
-Depends On: P1-S06, P1-S07, P2-S10
+Depends On: P1-S06, P1-S07
 
 Repository: `Cakra.Modules.Organization`
 
 Completion Criteria:
-- DbUp SQL migration scripts create `organization.*` schema tables: `Persons`, `Teams`, `Roles`, `Responsibilities`, `TeamMemberships`, `RoleAssignments`, `ResponsibilityAssignments` — Architecture §17.
+- Domain entities implemented: `Person` (Id, FirstName, LastName, Email, Status [ACTIVE/INACTIVE], CreatedAt, UpdatedAt), `Team` (Id, Name, Description), `Role` (Id, Name, Description), `Responsibility` (Id, Name, Description), `TeamMembership` (PersonId, TeamId, AssignedAt), `RoleAssignment` (PersonId, RoleId, AssignedAt, RevokedAt nullable), `ResponsibilityAssignment` (PersonId, ResponsibilityId, AssignedAt).
+- DbUp SQL migration scripts create `organization.*` schema tables: `Persons`, `Teams`, `Roles`, `Responsibilities`, `TeamMemberships`, `RoleAssignments`, `ResponsibilityAssignments` — Architecture §17. Foreign key constraints defined between junction tables and their parent tables. `Status` column on `Persons` defaults to `'ACTIVE'`.
 - All repository operations use Dapper with explicit parameterized SQL against SQL Server; no EF Core — Architecture §19.3, §20.
-- MediatR command and query handlers implement: create/update Person, create Team, assign Person to Team, create Role, assign Role to Person, create Responsibility, assign Responsibility to Person, deactivate Person — via `OrganizationService`.
-- `OrganizationQueryService` implements: `GetPersonById`, `ListActivePersons`, `GetTeamRoster`, `GetPersonRoles`, `GetPersonResponsibilities` — Architecture §7.
-- Dynamic role resolution wired: `AuthorizationService.ResolveRoles(personId)` delegates to `OrganizationQueryService.GetPersonRoles` — Architecture §14.
-- Domain events emitted: `PersonCreated`, `PersonDeactivated`, `RoleAssigned`, `RoleRevoked`.
-- `OrganizationQueryService` is accessible as a published interface to other modules; internal repositories are not exposed — Architecture §20 (Strict Vertical Slice Boundary).
+- Dapper repository classes implemented: `PersonRepository` (CRUD + status update), `TeamRepository` (CRUD), `RoleRepository` (CRUD), `ResponsibilityRepository` (CRUD), `TeamMembershipRepository` (add/remove), `RoleAssignmentRepository` (assign/revoke), `ResponsibilityAssignmentRepository` (assign/remove).
+- Domain event types defined (no dispatch): `PersonCreated`, `PersonDeactivated`, `RoleAssigned`, `RoleRevoked`.
 - Repository implementations write exclusively to `organization.*` schema using parameterized SQL.
-- Integration tests (xUnit + WebApplicationFactory + Respawn): query service returns accurate results after service commands.
+- Integration tests (xUnit + Respawn): DbUp migration scripts execute without errors against test database; repository CRUD operations return expected results (insert Person, retrieve by Id, update status).
 
-Notes: Architecture §6 (Module Boundaries — Organization), §7, and §16 are authoritative. No tables from other modules are written. Depends on P1-S07 for test infrastructure and P2-S10 for security context.
+Notes: Persistence-only slice. Does NOT require authentication middleware (P2-S10) — integration tests verify database operations directly, not through the API pipeline. Can execute in parallel with P2-S09 and domain-only slices (P4-S17, P5-S24) after P1-S06 + P1-S07. Architecture §6 (Module Boundaries — Organization) and §16 are authoritative.
 
 ---
 
 ### P3-S13
+
+Title: Organization Module — Application Services & Role Resolution
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the Organization module application services: MediatR command handlers, `OrganizationQueryService` query methods, and dynamic role resolution wiring with `AuthorizationService`. Builds on the domain entities and persistence layer established in P3-S12.
+
+Depends On: P3-S12, P2-S10
+
+Repository: `Cakra.Modules.Organization`
+
+Completion Criteria:
+- MediatR command handlers implement: create Person, update Person, create Team, assign Person to Team, create Role, assign Role to Person, create Responsibility, assign Responsibility to Person, deactivate Person — via `OrganizationService`.
+- `OrganizationQueryService` implements using Dapper: `GetPersonById`, `ListActivePersons`, `GetTeamRoster`, `GetPersonRoles`, `GetPersonResponsibilities` — Architecture §7.
+- Dynamic role resolution wired: `AuthorizationService.ResolveRoles(personId)` delegates to `OrganizationQueryService.GetPersonRoles` — Architecture §14.
+- `OrganizationQueryService` is accessible as a published interface to other modules; internal repositories are not exposed — Architecture §20 (Strict Vertical Slice Boundary).
+- Integration tests (xUnit + WebApplicationFactory + Respawn): query service returns accurate results after service commands (create Person → GetPersonById returns correct data; assign Role → GetPersonRoles includes assigned role; deactivate Person → ListActivePersons excludes deactivated person).
+
+Notes: Depends on P2-S10 for security context in MediatR handlers and WebApplicationFactory-based integration tests. Architecture §6, §7, §14 are authoritative.
+
+---
+
+### P3-S14
 
 Title: Customer Module — Domain, Application Services & Persistence
 
@@ -516,11 +558,11 @@ Completion Criteria:
 - Repository implementations write exclusively to `customer.*` schema using parameterized SQL.
 - Integration tests (xUnit + WebApplicationFactory + Respawn): query service returns accurate results after service commands.
 
-Notes: Architecture §6 (Module Boundaries — Customer) and §16 are authoritative. Customer module does not own Request or Work Package relationships. **Parallel Execution**: Customer has zero dependency on Organization (P3-S12) or Product (P3-S14). It can execute concurrently in parallel with P3-S12 and P3-S14.
+Notes: Architecture §6 (Module Boundaries — Customer) and §16 are authoritative. Customer module does not own Request or Work Package relationships. **Parallel Execution**: Customer has zero dependency on Organization (P3-S12, P3-S13) or Product (P3-S15). It can execute concurrently in parallel with P3-S12, P3-S13, and P3-S15.
 
 ---
 
-### P3-S14
+### P3-S15
 
 Title: Product Module — Domain, Application Services & Persistence
 
@@ -529,7 +571,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the complete Product module: domain entity (`Product`), `ProductService` command methods, `ProductQueryService` query methods, DbUp SQL migration scripts for `product.*` tables, and Dapper repository implementations. Owner validation reads from `OrganizationQueryService`.
 
-Depends On: P1-S06, P1-S07, P2-S10, P3-S12
+Depends On: P1-S06, P1-S07, P2-S10, P3-S13
 
 Repository: `Cakra.Modules.Product`
 
@@ -544,11 +586,11 @@ Completion Criteria:
 - Repository implementations write exclusively to `product.*` schema using parameterized SQL.
 - Integration tests (xUnit + WebApplicationFactory + Respawn) pass.
 
-Notes: Architecture §10 (Product Module Architecture) is authoritative. **Parallel Execution**: Depends on P3-S12 because `CreateProduct` and `AssignProductOwner` call `OrganizationQueryService` to validate the owner, but has zero dependency on Customer (P3-S13). Executes in parallel with P3-S13.
+Notes: Architecture §10 (Product Module Architecture) is authoritative. **Parallel Execution**: Depends on P3-S13 because `CreateProduct` and `AssignProductOwner` call `OrganizationQueryService` to validate the owner, but has zero dependency on Customer (P3-S14). Executes in parallel with P3-S14.
 
 ---
 
-### P3-S15
+### P3-S16
 
 Title: Product Catalog Screen — SCR-PRD-001
 
@@ -557,19 +599,19 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement `SCR-PRD-001` (Product Catalog Screen) as a Vue 3 SFC with Bootstrap 5 styling in `src/frontend/Cakra.Web/`, and the corresponding ASP.NET Core REST API controller (`/api/v1/products/*`) in `Cakra.Api`. Wires `ProductService` commands and `ProductQueryService` queries. Delivers the first content management screen; users can view the product catalog, create products, update attributes, assign product owners, and toggle product status. M1 is achieved when this slice is complete.
 
-Depends On: P3-S14, P2-S10, P1-S08
+Depends On: P3-S15, P2-S10, P1-S08
 
 Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
 
 Completion Criteria:
-- Vue 3 SFC `ProductCatalogView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders product catalog — Architecture §19.4.
+- Vue 3 SFC `ProductCatalogView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 table listing all products with columns (Code, Name, Owner, Status), create product button opening an inline form or modal, status toggle button per row — Architecture §19.4.
 - ASP.NET Core Controller at `/api/v1/products` exposes REST endpoints for: list all products (`ListAllProducts`), list active products (`ListActiveProducts`), get product detail (`GetProductById`), create product (`CreateProduct`), update product (`UpdateProduct`), assign product owner (`AssignProductOwner`), activate/deactivate product.
 - Product owner selector uses `OrganizationQueryService.ListActivePersons` for dropdown — Architecture §10.
 - All endpoints protected by `[Authorize]` (authentication middleware from P2-S10).
 - Axios HTTP client in Vue component calls `/api/v1/products` endpoints with authentication interceptors — Architecture §19.4.
 - Integration tests (xUnit + WebApplicationFactory): catalog listing, product creation, and owner assignment pass.
 
-Notes: Architecture §10 and §9 (FEAT-PRD-001) are authoritative. This slice completes Milestone M1.
+Notes: Architecture §10 and §9 (FEAT-PRD-001) are authoritative. This slice completes Milestone M1. Combined API + Vue slice because scope is limited (1 controller, 1 Vue SFC, 6 endpoints).
 
 ---
 
@@ -578,13 +620,13 @@ Notes: Architecture §10 and §9 (FEAT-PRD-001) are authoritative. This slice co
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Request module — the core operational transactional engine — including domain model, application services using Dapper, escalation and management commands, and all Request screens as Vue 3 SFCs. Delivers complete operational request management. M2 is achieved when this phase is complete.
+Objective: Implement the Request module — the core operational transactional engine — including domain model, application services using Dapper, escalation and management commands, API controller, and all Request screens as Vue 3 SFCs. Delivers complete operational request management. The module is split into seven slices to enable maximum parallelism: domain model, persistence + core commands, lifecycle completion + queries, escalation commands, API controller, and two screen groups. M2 is achieved when this phase is complete.
 
 Source: Architecture §22 — Boundary: **Request** (`Cakra.Modules.Request`, Depends On: `Cakra.Core`, `Organization`, `Customer`, `Product`).
 
 ---
 
-### P4-S16
+### P4-S17
 
 Title: Request Module — Domain Model & State Machine
 
@@ -604,48 +646,69 @@ Completion Criteria:
 - `RequestResolution` and `RequestAssignment` entities are implemented.
 - Unit tests (xUnit + FluentAssertions) covering all valid state transitions and all invalid transition rejections pass — Architecture §19.8.
 
-Notes: Domain layer only — no database, no service layer. Clean separation enables P4-S16 to start as soon as P1-S06 is complete, independently of P3. Architecture §7, §8, §20 are authoritative.
+Notes: Domain layer only — no database, no service layer. Clean separation enables P4-S17 to start as soon as P1-S06 is complete, independently of P2 and P3 — executing in parallel with P2-S09, P3-S12, and P5-S24. Architecture §7, §8, §20 are authoritative.
 
 ---
 
-### P4-S17
+### P4-S18
 
-Title: Request Module — Application Services & Persistence
+Title: Request Module — Persistence & Core Commands
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement `RequestService` application commands as MediatR handlers, `RequestQueryService` queries using Dapper explicit parameterized SQL, DbUp SQL migration scripts for `request.*` tables, and Dapper repository implementations. Cross-module validation reads from Organization, Customer, and Product via their published query interfaces. Audit logging is applied to every state change.
+Objective: Implement the Request module persistence layer (DbUp SQL migrations, Dapper repositories) and the core command handlers that initiate and advance the request lifecycle: `RecordRequest`, `AssignRequestOwner`, `EvaluateRequest`. Cross-module validation reads from Organization, Customer, and Product via their published query interfaces. Establishes the audit logging pattern for request state changes.
 
-Depends On: P4-S16, P1-S07, P2-S10, P3-S12, P3-S13, P3-S14
+Depends On: P4-S17, P1-S07, P2-S10, P3-S13, P3-S14, P3-S15
 
 Repository: `Cakra.Modules.Request`
 
 Completion Criteria:
 - DbUp SQL migration scripts create `request.*` schema tables: `Requests`, `RequestResolutions`, `RequestAssignments` — Architecture §17.
 - All repository operations use Dapper with explicit parameterized SQL against SQL Server; no EF Core — Architecture §19.3, §20.
-- MediatR handlers via `RequestService` implement: `RecordRequest`, `AssignRequestOwner`, `EvaluateRequest`, `AcceptRequestResponsibility`, `RejectRequest`, `EscalateRequest`, `RequestManagementDecision`, `ReviewRequestCompletion` — Architecture §7, §8 (UC-REQ-001..008).
-- `RequestQueryService` implements using Dapper: `GetRequestById`, `GetRequestStateHistory`, `ListMyAssignedRequests`, `GetFilteredRequestGrid` — Architecture §7, §8 (UC-COL-002..004).
-- Assignee validated via `OrganizationQueryService`; customer via `CustomerQueryService`; product via `ProductQueryService` — Architecture §15.
-- Every state change records actor `PersonId`, timestamp, and previous state using Dapper parameterized INSERT — Architecture §18 (Audit Logging).
+- MediatR handlers via `RequestService` implement: `RecordRequest` (creates request in CAPTURED state, validates customer via `CustomerQueryService`, product via `ProductQueryService`), `AssignRequestOwner` (validates assignee via `OrganizationQueryService`, transitions to EVALUATING, emits `RequestAssigned`), `EvaluateRequest` (records evaluation notes, emits `RequestEvaluated`) — Architecture §7, §8 (UC-REQ-001..003).
+- Every state change records actor `PersonId`, timestamp, and previous state using Dapper parameterized INSERT into `RequestAssignments` — Architecture §18 (Audit Logging). This audit pattern is reusable by P4-S19 and P4-S20.
 - Repository implementations write exclusively to `request.*` schema.
-- `RequestQueryService` is accessible as a published interface.
-- Integration tests (xUnit + WebApplicationFactory + Respawn): full request lifecycle (Record → Assign → Evaluate → Accept → Complete) pass.
+- Integration tests (xUnit + WebApplicationFactory + Respawn): Record request → Assign owner → Evaluate passes as a sequential lifecycle test.
 
-Notes: Architecture §7, §8, §15, §18, §19.3, §20 are authoritative.
+Notes: Architecture §7, §8, §15, §18, §19.3, §20 are authoritative. This slice establishes the persistence layer and audit pattern that P4-S19 and P4-S20 build upon.
 
 ---
 
-### P4-S18
+### P4-S19
+
+Title: Request Module — Lifecycle Completion Commands & Queries
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the request lifecycle completion command handlers (`AcceptRequestResponsibility`, `RejectRequest`, `ReviewRequestCompletion`) and the complete `RequestQueryService` query methods using Dapper explicit parameterized SQL.
+
+Depends On: P4-S18
+
+Repository: `Cakra.Modules.Request`
+
+Completion Criteria:
+- MediatR handlers via `RequestService` implement: `AcceptRequestResponsibility` (transitions to IN_PROGRESS, emits `RequestAccepted`), `RejectRequest` (transitions to REJECTED, records rejection reason, emits `RequestRejected`), `ReviewRequestCompletion` (transitions to COMPLETED, records completion details, emits `RequestCompleted`) — Architecture §7, §8 (UC-REQ-004, UC-REQ-005, UC-REQ-008).
+- `RequestQueryService` implements using Dapper: `GetRequestById`, `GetRequestStateHistory`, `ListMyAssignedRequests` (filtered by `CurrentContextProvider.CurrentPersonId`), `GetFilteredRequestGrid` (filter by status, assignee, customer, product with pagination) — Architecture §7, §8 (UC-COL-002..004).
+- Every state change records audit entry using the pattern established in P4-S18 — Architecture §18 (Audit Logging).
+- `RequestQueryService` is accessible as a published interface to other modules.
+- Integration tests (xUnit + WebApplicationFactory + Respawn): full request lifecycle (Record → Assign → Evaluate → Accept → Complete) passes; GetFilteredRequestGrid returns correct filtered results.
+
+Notes: Can execute in parallel with P4-S20 (Escalation) after P4-S18. Architecture §7, §8, §15, §18 are authoritative.
+
+---
+
+### P4-S20
 
 Title: Request Module — Escalation & Management Commands
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement escalation, management decision, and reassignment command paths as MediatR handlers in `RequestService` (UC-REQ-006, UC-REQ-007, UC-MGT-001). These commands extend the service layer established in P4-S17 with the escalation-specific business logic and `ReassignRequestOwnership`.
+Objective: Implement escalation, management decision, and reassignment command paths as MediatR handlers in `RequestService` (UC-REQ-006, UC-REQ-007, UC-MGT-001). These commands extend the service layer established in P4-S18 with the escalation-specific business logic and `ReassignRequestOwnership`.
 
-Depends On: P4-S17
+Depends On: P4-S18
 
 Repository: `Cakra.Modules.Request`
 
@@ -655,36 +718,92 @@ Completion Criteria:
 - `ReassignRequestOwnership` (UC-MGT-001) MediatR handler updates `OwnerPersonId` via Dapper parameterized SQL, validates new assignee via `OrganizationQueryService`, emits `RequestAssigned`.
 - Integration tests (xUnit + WebApplicationFactory + Respawn): Escalate, ManagementDecision, and Reassign flows pass.
 
-Notes: Architecture §8 (UC-REQ-006, UC-REQ-007, UC-MGT-001) is authoritative.
+Notes: **Parallel Execution**: Depends on P4-S18 (not P4-S19). Can execute concurrently in parallel with P4-S19 (Lifecycle Completion & Queries). Architecture §8 (UC-REQ-006, UC-REQ-007, UC-MGT-001) is authoritative.
 
 ---
 
-### P4-S19
+### P4-S21
 
-Title: Request Screens — SCR-REQ-001..005
+Title: Request API Controller
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement all five Request screens as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/` and their corresponding ASP.NET Core REST API controllers (`/api/v1/requests/*`) in `Cakra.Api`. Delivers the complete request management UI. Dropdowns for Customer, Product, and Person use the respective published query services.
+Objective: Implement the ASP.NET Core REST API controller for the Request module at `/api/v1/requests/*` in `Cakra.Api`. Wires all `RequestService` MediatR command handlers and `RequestQueryService` query methods to HTTP endpoints. Separated from Vue SFC screen slices to allow backend and frontend agents to work independently.
 
-Depends On: P4-S18, P2-S10, P1-S08
+Depends On: P4-S19, P4-S20
 
-Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
+Repository: `Cakra.Api`
 
 Completion Criteria:
-- Vue 3 SFCs (`<script setup lang="ts">`, Bootstrap 5) implemented for `SCR-REQ-001` through `SCR-REQ-005` — Architecture §19.4, §20.
-- `SCR-REQ-001` (Request List) controller: `RequestQueryService.GetFilteredRequestGrid` with status and assignment filters.
-- `SCR-REQ-002` (Create Request) controller: `RequestService.RecordRequest`; Customer selector via `CustomerQueryService.ListActiveCustomers`; Product selector via `ProductQueryService.ListActiveProducts`; Person selector via `OrganizationQueryService.ListActivePersons`.
-- `SCR-REQ-003` (Request Detail) controller: `RequestQueryService.GetRequestById`; all state-transition command endpoints (`Assign`, `Evaluate`, `Accept`, `Reject`, `Escalate`, `ManagementDecision`, `Complete`, `Reassign`) wired to MediatR `RequestService` handlers.
-- `SCR-REQ-004` (My Requests) controller: `RequestQueryService.ListMyAssignedRequests` using `CurrentContextProvider.CurrentPersonId`.
-- `SCR-REQ-005` (Search / History) controller: `RequestQueryService.GetRequestStateHistory` and search by Customer, Product, or status.
-- All API endpoints at `/api/v1/requests/*` protected by `[Authorize]`.
+- ASP.NET Core Controller at `/api/v1/requests` exposes REST endpoints:
+  - `GET /api/v1/requests` → `RequestQueryService.GetFilteredRequestGrid` with query parameters for status, assignee, customer, product, pagination.
+  - `GET /api/v1/requests/{id}` → `RequestQueryService.GetRequestById`.
+  - `GET /api/v1/requests/{id}/history` → `RequestQueryService.GetRequestStateHistory`.
+  - `GET /api/v1/requests/my` → `RequestQueryService.ListMyAssignedRequests`.
+  - `POST /api/v1/requests` → `RequestService.RecordRequest`.
+  - `POST /api/v1/requests/{id}/assign` → `RequestService.AssignRequestOwner`.
+  - `POST /api/v1/requests/{id}/evaluate` → `RequestService.EvaluateRequest`.
+  - `POST /api/v1/requests/{id}/accept` → `RequestService.AcceptRequestResponsibility`.
+  - `POST /api/v1/requests/{id}/reject` → `RequestService.RejectRequest`.
+  - `POST /api/v1/requests/{id}/escalate` → `RequestService.EscalateRequest`.
+  - `POST /api/v1/requests/{id}/management-decision` → `RequestService.RequestManagementDecision`.
+  - `POST /api/v1/requests/{id}/complete` → `RequestService.ReviewRequestCompletion`.
+  - `POST /api/v1/requests/{id}/reassign` → `RequestService.ReassignRequestOwnership`.
+- Lookup endpoints for dropdowns: `GET /api/v1/customers/active` (proxies `CustomerQueryService.ListActiveCustomers`), `GET /api/v1/products/active` (proxies `ProductQueryService.ListActiveProducts`), `GET /api/v1/organization/persons/active` (proxies `OrganizationQueryService.ListActivePersons`). These may be served from their respective module controllers already; if not, add proxy endpoints.
+- All endpoints protected by `[Authorize]` — Architecture §19.5.
 - Audit logging active on all state-transition endpoints — Architecture §18.
-- Axios HTTP client in Vue components calls request endpoints with authentication interceptors.
-- Integration tests (xUnit + WebApplicationFactory): each screen endpoint (listing, create, state transition) pass.
+- Integration tests (xUnit + WebApplicationFactory): each endpoint category (listing, create, state transition, query) returns expected HTTP status codes.
 
-Notes: Architecture §9 (Feature Mapping — FEAT-REQ-001..008, FEAT-COL-001..004) and §8 (UC-REQ-001..008, UC-COL-001..004) are authoritative.
+Notes: Controller-only slice. Vue SFCs are implemented in P4-S22 and P4-S23. Architecture §19.6 (API Style) and §8 are authoritative.
+
+---
+
+### P4-S22
+
+Title: Request Screens — SCR-REQ-001, SCR-REQ-002
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the Request List screen (`SCR-REQ-001`) and Create Request screen (`SCR-REQ-002`) as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/`. These are the entry-point and creation screens for request management.
+
+Depends On: P4-S21, P1-S08
+
+Repository: `src/frontend/Cakra.Web`
+
+Completion Criteria:
+- Vue 3 SFC `RequestListView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 table listing requests with columns (ID, Title, Customer, Product, Status, Assignee, CreatedAt), filter dropdowns above table for status and assignee, pagination controls below table. Calls `GET /api/v1/requests` with filter query parameters — Architecture §19.4, §20.
+- Vue 3 SFC `CreateRequestView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 form with fields (Title, Description), Customer select dropdown populated from `GET /api/v1/customers/active`, Product select dropdown populated from `GET /api/v1/products/active`, submit button. Calls `POST /api/v1/requests` on submit — Architecture §19.4.
+- Vue Router 4 routes: `/requests` maps to `RequestListView.vue`, `/requests/create` maps to `CreateRequestView.vue`.
+- Axios HTTP client calls request API endpoints with authentication interceptors.
+- Successful request creation navigates to request detail route (`/requests/{id}`).
+
+Notes: Frontend-only slice. **Parallel Execution**: Can execute concurrently with P4-S23 after P4-S21. Architecture §9 (FEAT-REQ-001, FEAT-REQ-002) and §8 (UC-REQ-001) are authoritative.
+
+---
+
+### P4-S23
+
+Title: Request Screens — SCR-REQ-003, SCR-REQ-004, SCR-REQ-005
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the Request Detail screen (`SCR-REQ-003`), My Requests screen (`SCR-REQ-004`), and Request Search / History screen (`SCR-REQ-005`) as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/`.
+
+Depends On: P4-S21, P1-S08
+
+Repository: `src/frontend/Cakra.Web`
+
+Completion Criteria:
+- Vue 3 SFC `RequestDetailView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 card displaying request details (Title, Description, Customer, Product, Status, Assignee, CreatedAt, UpdatedAt), state history timeline below the card, action buttons rendered conditionally based on current request state — e.g., "Assign" button visible only in CAPTURED state, "Accept"/"Reject" in EVALUATING, "Escalate" in EVALUATING/IN_PROGRESS, "Complete" in IN_PROGRESS. Calls `GET /api/v1/requests/{id}` for data, `GET /api/v1/requests/{id}/history` for timeline, and respective `POST` endpoints for actions — Architecture §19.4, §20.
+- Vue 3 SFC `MyRequestsView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 table of requests assigned to the current user. Calls `GET /api/v1/requests/my`.
+- Vue 3 SFC `RequestSearchView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 search form with Customer, Product, and status filter inputs, results table below. Calls `GET /api/v1/requests` with filter parameters, and `GET /api/v1/requests/{id}/history` for selected request history.
+- Vue Router 4 routes: `/requests/:id` maps to `RequestDetailView.vue`, `/requests/my` maps to `MyRequestsView.vue`, `/requests/search` maps to `RequestSearchView.vue`.
+- Axios HTTP client calls request API endpoints with authentication interceptors.
+
+Notes: Frontend-only slice. **Parallel Execution**: Can execute concurrently with P4-S22 after P4-S21. This slice + P4-S22 completes Milestone M2. Architecture §9 (FEAT-REQ-003..008, FEAT-COL-001..004) and §8 (UC-REQ-001..008, UC-COL-001..004) are authoritative.
 
 ---
 
@@ -693,13 +812,13 @@ Notes: Architecture §9 (Feature Mapping — FEAT-REQ-001..008, FEAT-COL-001..00
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Work Package module with Dapper persistence and its management screen as a Vue 3 SFC. M3 is achieved when this phase is complete.
+Objective: Implement the Work Package module with Dapper persistence, API controller, and its management screen as a Vue 3 SFC. M3 is achieved when this phase is complete.
 
 Source: Architecture §22 — Boundary: **Work Package** (`Cakra.Modules.WorkPackage`, Depends On: `Cakra.Core`, `Organization`, `Customer`, `Product`, `Request`). Architecture §11.
 
 ---
 
-### P5-S20
+### P5-S24
 
 Title: Work Package Module — Domain Model
 
@@ -719,11 +838,11 @@ Completion Criteria:
 - Business Rule 9 is enforceable at the domain level.
 - Unit tests (xUnit + FluentAssertions): lifecycle transitions and membership invariants (including Business Rule 9 violation) pass — Architecture §19.8.
 
-Notes: Architecture §11 is authoritative. Domain-only slice; can start as soon as P1-S06 is complete.
+Notes: Architecture §11 is authoritative. Domain-only slice; can start as soon as P1-S06 is complete, executing in parallel with P2-S09, P3-S12, and P4-S17.
 
 ---
 
-### P5-S21
+### P5-S25
 
 Title: Work Package Module — Application Services & Persistence
 
@@ -732,7 +851,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement `WorkPackageService` commands as MediatR handlers, `WorkPackageQueryService` queries using Dapper explicit parameterized SQL, DbUp SQL migration scripts for `workpackage.*` tables, and Dapper repository implementations. Cross-module validation uses `OrganizationQueryService`, `CustomerQueryService`, `ProductQueryService`, and `RequestQueryService`.
 
-Depends On: P5-S20, P1-S07, P2-S10, P3-S12, P3-S13, P3-S14, P4-S17
+Depends On: P5-S24, P1-S07, P2-S10, P3-S13, P3-S14, P3-S15, P4-S19
 
 Repository: `Cakra.Modules.WorkPackage`
 
@@ -751,29 +870,58 @@ Notes: Architecture §11 and §15 are authoritative.
 
 ---
 
-### P5-S22
+### P5-S26
+
+Title: Work Package API Controller
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the ASP.NET Core REST API controller for the Work Package module at `/api/v1/work-packages/*` in `Cakra.Api`. Wires all `WorkPackageService` MediatR command handlers and `WorkPackageQueryService` query methods to HTTP endpoints. Separated from Vue SFC screen slice to reduce per-slice scope.
+
+Depends On: P5-S25
+
+Repository: `Cakra.Api`
+
+Completion Criteria:
+- ASP.NET Core Controller at `/api/v1/work-packages` exposes REST endpoints:
+  - `GET /api/v1/work-packages` → `WorkPackageQueryService.ListWorkPackages` with query parameters for status, owner, customer, product.
+  - `GET /api/v1/work-packages/{id}` → `WorkPackageQueryService.GetWorkPackageById`.
+  - `GET /api/v1/work-packages/{id}/scope` → `WorkPackageQueryService.GetWorkPackageScope`.
+  - `POST /api/v1/work-packages` → `WorkPackageService.CreateWorkPackage`.
+  - `PUT /api/v1/work-packages/{id}/objective` → `WorkPackageService.UpdateObjective`.
+  - `POST /api/v1/work-packages/{id}/assign-owner` → `WorkPackageService.AssignOwner`.
+  - `POST /api/v1/work-packages/{id}/activate` → `WorkPackageService.ActivateWorkPackage`.
+  - `POST /api/v1/work-packages/{id}/close` → `WorkPackageService.CloseWorkPackage`.
+  - `POST /api/v1/work-packages/{id}/requests` → `WorkPackageService.AddRequestToWorkPackage`.
+  - `DELETE /api/v1/work-packages/{id}/requests/{requestId}` → `WorkPackageService.RemoveRequestFromWorkPackage`.
+- All endpoints protected by `[Authorize]`.
+- Integration tests (xUnit + WebApplicationFactory): each endpoint returns expected HTTP status codes.
+
+Notes: Controller-only slice. Vue SFC is implemented in P5-S27. Architecture §19.6 and §8 (UC-WP-001..003) are authoritative.
+
+---
+
+### P5-S27
 
 Title: Work Package Screen — SCR-WP-001
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement `SCR-WP-001` (Work Package screen) as a Vue 3 SFC with Bootstrap 5 styling in `src/frontend/Cakra.Web/` and the corresponding ASP.NET Core REST API controller (`/api/v1/work-packages/*`) in `Cakra.Api`. Delivers Work Package creation, lifecycle management, and scope review. Wires `WorkPackageService` MediatR handlers and `WorkPackageQueryService`.
+Objective: Implement `SCR-WP-001` (Work Package screen) as a Vue 3 SFC with Bootstrap 5 styling in `src/frontend/Cakra.Web/`. Delivers Work Package creation, lifecycle management, and scope review.
 
-Depends On: P5-S21, P2-S10, P1-S08
+Depends On: P5-S26, P1-S08
 
-Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
+Repository: `src/frontend/Cakra.Web`
 
 Completion Criteria:
-- Vue 3 SFC `WorkPackageView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders Work Package management — Architecture §19.4, §20.
-- ASP.NET Core Controller at `/api/v1/work-packages` exposes REST endpoints for: list work packages (`ListWorkPackages` with status/owner/customer/product filters), get Work Package detail (`GetWorkPackageById`), create Work Package (`CreateWorkPackage`), update objective (`UpdateObjective`), assign owner (`AssignOwner`), activate (`ActivateWorkPackage`), close (`CloseWorkPackage`), view scope (`GetWorkPackageScope`), add request to package (`AddRequestToWorkPackage`), remove request (`RemoveRequestFromWorkPackage`).
-- Owner selector uses `OrganizationQueryService.ListActivePersons`.
-- Customer and Product selectors use respective query services.
-- All endpoints protected by `[Authorize]`.
-- Axios HTTP client in Vue component calls endpoints with authentication interceptors.
-- Integration tests (xUnit + WebApplicationFactory): Work Package creation, lifecycle transitions, and request membership management pass.
+- Vue 3 SFC `WorkPackageView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 table listing work packages with columns (ID, Objective, Owner, Customer, Product, Status), filter dropdowns for status/owner/customer/product, create button, detail panel showing scope (linked requests) when a work package is selected — Architecture §19.4, §20.
+- Detail panel includes: objective display/edit, owner selector dropdown (from `GET /api/v1/organization/persons/active`), lifecycle action buttons (Activate, Close) conditionally rendered based on state, scope management section with "Add Request" button and request list with remove buttons.
+- Vue Router 4 routes: `/work-packages` maps to work package list, `/work-packages/:id` maps to detail view.
+- Axios HTTP client calls `/api/v1/work-packages` endpoints with authentication interceptors.
 
-Notes: Architecture §9 (FEAT-WP-001) and §8 (UC-WP-001..003) are authoritative.
+Notes: Frontend-only slice. This slice completes Milestone M3. Architecture §9 (FEAT-WP-001) and §8 (UC-WP-001..003) are authoritative.
 
 ---
 
@@ -782,13 +930,13 @@ Notes: Architecture §9 (FEAT-WP-001) and §8 (UC-WP-001..003) are authoritative
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Post module (authoring, comments, reactions) and the Feed materialized read model using Dapper. Deliver the Feed and Post screens as Vue 3 SFCs. Feed projection handled by MediatR `INotificationHandler` within the same DB transaction scope. M4 is achieved when this phase is complete.
+Objective: Implement the Post module (authoring, comments, reactions) and the Feed materialized read model using Dapper. Deliver the Feed and Post screens as Vue 3 SFCs via a separated API controller slice and independent frontend slices. Feed projection handled by MediatR `INotificationHandler` within the same DB transaction scope. M4 is achieved when this phase is complete.
 
 Source: Architecture §22 — Boundary: **Post & Feed** (`Cakra.Modules.Post`, Depends On: `Cakra.Core`, Domain Events from all modules). Architecture §12 (Feed Architecture).
 
 ---
 
-### P6-S23
+### P6-S28
 
 Title: Post Module — Domain, Application Services & Persistence
 
@@ -797,7 +945,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the Post domain layer and persistence: `Post`, `Comment`, `Reaction`, `PostReference` entities, `PostService` commands as MediatR handlers, `PostQueryService` queries using Dapper, DbUp SQL migration scripts for `post.*` tables (excluding `FeedItems`), and Dapper repository implementations. `PostService` validates cross-domain references via published query services.
 
-Depends On: P1-S06, P1-S07, P2-S10, P4-S17, P5-S21
+Depends On: P1-S06, P1-S07, P2-S10, P4-S19, P5-S25
 
 Repository: `Cakra.Modules.Post`
 
@@ -811,11 +959,11 @@ Completion Criteria:
 - Repository implementations write exclusively to `post.*` schema.
 - Integration tests (xUnit + WebApplicationFactory + Respawn): post authoring, commenting, and reaction flows pass.
 
-Notes: Architecture §7, §8, §18, §19.2 (MediatR notifications), §20 are authoritative. `FeedItems` table and projection are implemented in P6-S24. Depends on P4-S17 and P5-S21 because `PostService` validates `RequestId` and `WorkPackageId` references — Architecture §15.
+Notes: Architecture §7, §8, §18, §19.2 (MediatR notifications), §20 are authoritative. `FeedItems` table and projection are implemented in P6-S29. Depends on P4-S19 and P5-S25 because `PostService` validates `RequestId` and `WorkPackageId` references — Architecture §15.
 
 ---
 
-### P6-S24
+### P6-S29
 
 Title: Feed Projection — FeedItems Table & FeedProjectionHandler
 
@@ -824,13 +972,13 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the `FeedItems` materialized read model: create `FeedItems` table via DbUp SQL migration script, implement `FeedProjectionHandler` as MediatR `INotificationHandler<T>` subscribing to in-process domain events (`PostCreated`, `CommentAdded`, `ReactionAdded`, `ReactionRemoved`, `PostVisibilityChanged`, `PostArchived`), and the `FeedProjectionRebuilder` idempotent rebuild routine using Dapper.
 
-Depends On: P6-S23
+Depends On: P6-S28
 
 Repository: `Cakra.Modules.Post`
 
 Completion Criteria:
 - DbUp SQL migration script creates `FeedItems` table in `post.*` schema with all columns per Architecture §12 (Feed Projection Table Schema).
-- `FeedProjectionHandler` implements MediatR `INotificationHandler<T>` for all five event types and updates `FeedItems` using Dapper parameterized SQL within the same database transaction scope as the originating command — Architecture §12 (Synchronization Guarantee), §19.2.
+- `FeedProjectionHandler` implements MediatR `INotificationHandler<T>` for all six event types and updates `FeedItems` using Dapper parameterized SQL within the same database transaction scope as the originating command — Architecture §12 (Synchronization Guarantee), §19.2.
 - `FeedProjectionRebuilder.RebuildAll()` uses Dapper to truncate and fully regenerate `FeedItems` from authoritative `Posts`, `PostReferences`, `Comments`, `Reactions` — Architecture §12 (Rebuild Strategy). Registered as an `IHostedService` background task via `System.Threading.Channels` — Architecture §19.7.
 - `FeedItems` is strictly read-only for all consumers; no application code writes to `FeedItems` except `FeedProjectionHandler` and `FeedProjectionRebuilder` — Architecture §20 (Non-Mutating Projections).
 - Integration tests (xUnit + WebApplicationFactory + Respawn): post creation inserts correct `FeedItem`; comment increments `CommentCount`; reaction updates `ReactionCountsJson`; visibility change updates `Visibility`; archive sets `Status = 'ARCHIVED'`.
@@ -839,7 +987,7 @@ Notes: Architecture §12 and §19.7 (Background Processing — `System.Threading
 
 ---
 
-### P6-S25
+### P6-S30
 
 Title: Feed Query Service — Filtered Queries & Exception Detection
 
@@ -848,7 +996,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement the full `FeedQueryService` filtering capabilities (Customer, Product, Exception badge, pagination) using Dapper single-table indexed query over `FeedItems`, and exception flag population logic in `FeedProjectionHandler` for escalation, rejection, and stalled request scenarios.
 
-Depends On: P6-S24
+Depends On: P6-S29
 
 Repository: `Cakra.Modules.Post`
 
@@ -864,33 +1012,81 @@ Notes: Architecture §12 (Query Semantics, Update Triggers), §19.3 (Dapper, exp
 
 ---
 
-### P6-S26
+### P6-S31
 
-Title: Feed & Post Screens — SCR-FEED-001, SCR-POST-001
+Title: Feed & Post API Controller
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Feed screen (`SCR-FEED-001`) and Post detail modal (`SCR-POST-001`) as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/` and their corresponding ASP.NET Core REST API controllers (`/api/v1/feed/*`, `/api/v1/posts/*`) in `Cakra.Api`. Wire `FeedQueryService` and `PostQueryService` to presentation endpoints. Deliver post authoring, commenting, reacting, and navigation from feed card to request detail.
+Objective: Implement the ASP.NET Core REST API controllers for the Feed and Post modules at `/api/v1/feed/*` and `/api/v1/posts/*` in `Cakra.Api`. Wires `FeedQueryService`, `PostService`, and `PostQueryService` to HTTP endpoints. Separated from Vue SFC screen slices to enable parallel frontend development.
 
-Depends On: P6-S25, P2-S10, P1-S08
+Depends On: P6-S30
 
-Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
+Repository: `Cakra.Api`
 
 Completion Criteria:
-- Vue 3 SFCs (`<script setup lang="ts">`, Bootstrap 5): `FeedView.vue` and `PostDetailModal.vue` — Architecture §19.4, §20.
-- `SCR-FEED-001` controller at `/api/v1/feed` returns paginated `FeedItems` with filter support (Customer, Product, Exceptions-only).
-- Exception badge indicator rendered by Vue component where `IsException = TRUE`.
-- `SCR-POST-001` post detail modal controller returns full post thread via `PostQueryService.GetPostThreadDetails`, `GetFullComments`, `GetReactionList`.
-- Post authoring form endpoint at `/api/v1/posts` wires `PostService.CreateOperationalPost`.
-- Comment endpoint wires `PostService.PostComment`.
-- Reaction endpoints wire `PostService.AddReaction` and `PostService.RemoveReaction`.
-- Navigation from feed card to Request detail (UC-FCOL-004) wired via Vue Router to `SCR-REQ-003` route.
-- All API endpoints protected by `[Authorize]`.
-- Axios HTTP client in Vue components calls feed/post endpoints with authentication interceptors.
-- Integration tests (xUnit + WebApplicationFactory): feed listing, each filter dimension, post detail, comment, and reaction pass.
+- ASP.NET Core Controller at `/api/v1/feed` exposes REST endpoints:
+  - `GET /api/v1/feed` → `FeedQueryService.GetFeed` with query parameters for CustomerId, ProductId, IsException, PageSize, Offset.
+- ASP.NET Core Controller at `/api/v1/posts` exposes REST endpoints:
+  - `GET /api/v1/posts/{id}` → `PostQueryService.GetPostThreadDetails`.
+  - `GET /api/v1/posts/{id}/comments` → `PostQueryService.GetFullComments`.
+  - `GET /api/v1/posts/{id}/reactions` → `PostQueryService.GetReactionList`.
+  - `POST /api/v1/posts` → `PostService.CreateOperationalPost`.
+  - `POST /api/v1/posts/{id}/comments` → `PostService.PostComment`.
+  - `POST /api/v1/posts/{id}/reactions` → `PostService.AddReaction`.
+  - `DELETE /api/v1/posts/{id}/reactions/{reactionType}` → `PostService.RemoveReaction`.
+- All endpoints protected by `[Authorize]`.
+- Integration tests (xUnit + WebApplicationFactory): feed listing, post detail, comment creation, and reaction endpoints return expected HTTP status codes.
 
-Notes: Architecture §9 (FEAT-AWR-001, FEAT-FCOL-001..003, FEAT-FCOL-005) and §8 (UC-AWR-001..003, UC-FCOL-001..005) are authoritative.
+Notes: Controller-only slice. Vue SFCs are implemented in P6-S32 and P6-S33. Architecture §19.6 and §8 are authoritative.
+
+---
+
+### P6-S32
+
+Title: Feed Screen — SCR-FEED-001
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the Feed screen (`SCR-FEED-001`) as a Vue 3 SFC with Bootstrap 5 styling in `src/frontend/Cakra.Web/`. Delivers the operational feed with filtering by Customer, Product, and Exception status.
+
+Depends On: P6-S31, P1-S08
+
+Repository: `src/frontend/Cakra.Web`
+
+Completion Criteria:
+- Vue 3 SFC `FeedView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 card-based feed layout with each feed item displayed as a card containing (Title, Author, Customer, Product, CreatedAt, CommentCount, ReactionCount), filter sidebar or dropdown row with Customer selector, Product selector, and Exception-only toggle, pagination controls (Next/Previous or infinite scroll) — Architecture §19.4, §20.
+- Exception badge indicator rendered as a Bootstrap 5 badge (`badge bg-danger`) on cards where `IsException = TRUE`, showing `ExceptionType` text.
+- Feed item cards are clickable and navigate to Post Detail modal (SCR-POST-001) or Request Detail (`/requests/{requestId}`) as appropriate — UC-FCOL-004.
+- Vue Router 4 route: `/feed` maps to `FeedView.vue` (this is the post-login landing page).
+- Axios HTTP client calls `GET /api/v1/feed` with filter query parameters and authentication interceptors.
+
+Notes: Frontend-only slice. **Parallel Execution**: Can execute concurrently with P6-S33 after P6-S31. Architecture §9 (FEAT-AWR-001, FEAT-FCOL-005) and §8 (UC-AWR-001..003, UC-FCOL-005) are authoritative.
+
+---
+
+### P6-S33
+
+Title: Post Detail Modal — SCR-POST-001
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the Post detail modal (`SCR-POST-001`) as a Vue 3 SFC with Bootstrap 5 styling in `src/frontend/Cakra.Web/`. Delivers post thread viewing, commenting, and reaction interactions.
+
+Depends On: P6-S31, P1-S08
+
+Repository: `src/frontend/Cakra.Web`
+
+Completion Criteria:
+- Vue 3 SFC `PostDetailModal.vue` (`<script setup lang="ts">`, Bootstrap 5) renders: Bootstrap 5 modal containing post content (Title, Body, Author, CreatedAt), comments list (each showing Author, Content, CreatedAt) loaded from `GET /api/v1/posts/{id}/comments`, comment input form (textarea + submit button) calling `POST /api/v1/posts/{id}/comments`, reaction buttons (e.g., thumbs up, flag) with count badges calling `POST /api/v1/posts/{id}/reactions` and `DELETE /api/v1/posts/{id}/reactions/{type}` — Architecture §19.4, §20.
+- Modal is triggered from Feed screen (P6-S32) feed cards.
+- Navigation link from post modal to Request detail (`/requests/{requestId}`) when the post references a request — UC-FCOL-004.
+- Axios HTTP client calls post API endpoints with authentication interceptors.
+
+Notes: Frontend-only slice. **Parallel Execution**: Can execute concurrently with P6-S32 after P6-S31. This slice + P6-S32 completes Milestone M4. Architecture §9 (FEAT-FCOL-001..003) and §8 (UC-FCOL-001..004) are authoritative.
 
 ---
 
@@ -899,28 +1095,28 @@ Notes: Architecture §9 (FEAT-AWR-001, FEAT-FCOL-001..003, FEAT-FCOL-005) and §
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Management Analytics module using Dapper real-time queries and `AnalyticsSnapshotJob` as an ASP.NET Core `BackgroundService` (Architecture §19.7), deliver management dashboard screens as Vue 3 SFCs, perform final cross-cutting validation, and produce the authoritative IIS on Windows Server production deployment package. M5 is achieved when this phase is complete.
+Objective: Implement the Management Analytics module using Dapper real-time queries and `AnalyticsSnapshotJob` as an ASP.NET Core `BackgroundService` (Architecture §19.7), deliver management dashboard screens as Vue 3 SFCs, perform final cross-cutting validation, and produce the authoritative IIS on Windows Server production deployment package. M5 is achieved when this phase is complete. Analytics slices (P7-S34 through P7-S37) depend only on Request module and can execute in parallel with P5 (Work Package) and P6 (Post & Feed).
 
 Source: Architecture §22 — Boundary: **Management Analytics** (`Cakra.Modules.Analytics`, Depends On: `Cakra.Core`, `Request`, `Organization`, `Customer`). Architecture §13 (Analytics Architecture). Architecture §18, §19.7, §19.10.
 
 ---
 
-### P7-S27
+### P7-S34
 
 Title: Analytics Module — Snapshot Tables & Snapshot Job
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the Analytics DbUp SQL migration scripts for `analytics.*` tables and the `AnalyticsSnapshotJob` as an ASP.NET Core `BackgroundService` (`IHostedService`) per Architecture §19.7 (daily workload snapshot and monthly customer performance snapshot). All data reads use Dapper parameterized queries against `request.*`, `organization.*`, and `customer.*` schemas via published query services.
+Objective: Implement the Analytics DbUp SQL migration scripts for `analytics.*` tables and the `AnalyticsSnapshotJob` as an ASP.NET Core `BackgroundService` (`IHostedService`) per Architecture §19.7 (daily workload snapshot and monthly customer performance snapshot). All data reads use Dapper parameterized queries against `request.*`, `organization.*`, and `customer.*` schemas via published query services. Implements scheduling using a `System.Threading.Timer`-based approach within the `BackgroundService`.
 
-Depends On: P1-S06, P1-S07, P4-S17
+Depends On: P1-S06, P1-S07, P4-S19
 
 Repository: `Cakra.Modules.Analytics`
 
 Completion Criteria:
 - DbUp SQL migration scripts create `analytics.*` schema tables: `DailyWorkloadSnapshots`, `MonthlyCustomerPerformanceSnapshots` — Architecture §13 (Snapshot Storage Tables).
-- `AnalyticsSnapshotJob` is implemented as ASP.NET Core `BackgroundService` — Architecture §19.7:
+- `AnalyticsSnapshotJob` is implemented as ASP.NET Core `BackgroundService` using `System.Threading.Timer` for scheduling — Architecture §19.7:
   - Daily snapshot (23:59:59): computes end-of-day workload per active `Person` from `Requests` using Dapper parameterized SQL and inserts into `DailyWorkloadSnapshots`.
   - Monthly snapshot (1st of month, 00:05:00): aggregates preceding calendar month metrics per `Customer` using Dapper and inserts into `MonthlyCustomerPerformanceSnapshots`.
   - Unique constraints `UNIQUE(SnapshotDate, PersonId)` and `UNIQUE(YearMonth, CustomerId)` enforced — Architecture §13.
@@ -929,11 +1125,11 @@ Completion Criteria:
 - All reads are via Dapper parameterized SQL; no EF Core — Architecture §19.3, §20.
 - Integration test (xUnit + WebApplicationFactory): trigger daily snapshot job; verify `DailyWorkloadSnapshots` row inserted with correct metric counts.
 
-Notes: Architecture §13 and §19.7 (ASP.NET Core Hosted Services) are authoritative. Depends on P4-S17 because snapshot queries aggregate from `Requests` and resolve `PersonId`/`CustomerId` via Organization and Customer query services (transitively covered since P4-S17 depends on P3-S12 and P3-S13).
+Notes: Architecture §13 and §19.7 (ASP.NET Core Hosted Services) are authoritative. **Early Start**: Depends on P4-S19 (Request Queries) but NOT on P5 (Work Package) or P6 (Post & Feed). Can execute concurrently with P5 and P6 slices.
 
 ---
 
-### P7-S28
+### P7-S35
 
 Title: Analytics Module — Real-Time Workload & Customer Portfolio Queries
 
@@ -942,7 +1138,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Implement `ManagementAnalyticsService` real-time dynamic query methods using Dapper: `GetProgrammerActiveWorkload` (per-person active request aggregation for `SCR-MGT-003`) and `GetCustomerRequestPortfolio` (active requests, open blockers, recent completions for `SCR-MGT-001`).
 
-Depends On: P7-S27
+Depends On: P7-S34
 
 Repository: `Cakra.Modules.Analytics`
 
@@ -958,60 +1154,84 @@ Notes: Architecture §13 (Real-Time Operational Projections) and §19.3 (Dapper,
 
 ---
 
-### P7-S29
+### P7-S36
 
-Title: Management Analytics Screens — SCR-MGT-001..003
+Title: Management Analytics API Controller
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Implement the three Management Analytics screens as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/` and their corresponding ASP.NET Core REST API controllers (`/api/v1/analytics/*`) in `Cakra.Api`. All management screens are RBAC-protected to the Management role via `[Authorize(Roles = "Management")]`.
+Objective: Implement the ASP.NET Core REST API controller for the Management Analytics module at `/api/v1/analytics/*` in `Cakra.Api`. All endpoints are RBAC-protected to the Management role. Separated from Vue SFC screen slice to reduce per-slice scope.
 
-Depends On: P7-S28, P2-S10, P1-S08
+Depends On: P7-S35
 
-Repository: `Cakra.Api`, `src/frontend/Cakra.Web`
+Repository: `Cakra.Api`
 
 Completion Criteria:
-- Vue 3 SFCs (`<script setup lang="ts">`, Bootstrap 5) implemented for `SCR-MGT-001`, `SCR-MGT-002`, `SCR-MGT-003` — Architecture §19.4, §20.
-- `SCR-MGT-001` (Customer Portfolio) controller: `ManagementAnalyticsService.GetCustomerRequestPortfolio(customerId)`; Customer selector from `CustomerQueryService.ListActiveCustomers`.
-- `SCR-MGT-002` (Programmer Performance History) controller: Dapper queries over `MonthlyCustomerPerformanceSnapshots` and `DailyWorkloadSnapshots` for historical trends per programmer.
-- `SCR-MGT-003` (Programmer Workload) controller: `ManagementAnalyticsService.GetProgrammerActiveWorkload(personId?)`.
-- All three API endpoints at `/api/v1/analytics/*` are RBAC-protected: `[Authorize(Roles = "Management")]` — Architecture §14 (RBAC), §19.5.
-- Axios HTTP client in Vue components calls analytics endpoints with authentication interceptors.
+- ASP.NET Core Controller at `/api/v1/analytics` exposes REST endpoints:
+  - `GET /api/v1/analytics/customer-portfolio?customerId={id}` → `ManagementAnalyticsService.GetCustomerRequestPortfolio`.
+  - `GET /api/v1/analytics/programmer-performance?personId={id}&startMonth={ym}&endMonth={ym}` → Dapper query over `MonthlyCustomerPerformanceSnapshots` and `DailyWorkloadSnapshots`.
+  - `GET /api/v1/analytics/programmer-workload?personId={id}` → `ManagementAnalyticsService.GetProgrammerActiveWorkload`.
+- All three API endpoints are RBAC-protected: `[Authorize(Roles = "Management")]` — Architecture §14 (RBAC), §19.5.
 - Integration tests (xUnit + WebApplicationFactory): authorized Management user (200), unauthorized non-Management user (403) pass.
 
-Notes: Architecture §9 (FEAT-MGT-002..004) and §8 (UC-MGT-002..004) are authoritative.
+Notes: Controller-only slice. Vue SFCs are implemented in P7-S37. Architecture §19.6, §14 (RBAC), and §8 (UC-MGT-002..004) are authoritative.
 
 ---
 
-### P7-S30
+### P7-S37
+
+Title: Management Analytics Screens — SCR-MGT-001, SCR-MGT-002, SCR-MGT-003
+
+Implementation Status: NOT-STARTED
+Review Status: NOT-REVIEWED
+
+Objective: Implement the three Management Analytics screens as Vue 3 SFCs with Bootstrap 5 styling in `src/frontend/Cakra.Web/`. All screens are read-only dashboards displaying tabular data. No charts or visualization libraries required — Bootstrap 5 tables and cards are sufficient.
+
+Depends On: P7-S36, P1-S08
+
+Repository: `src/frontend/Cakra.Web`
+
+Completion Criteria:
+- Vue 3 SFC `CustomerPortfolioView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders `SCR-MGT-001`: Customer selector dropdown (from `GET /api/v1/customers/active`), Bootstrap 5 table displaying active requests, open blockers, and recent completions for selected customer. Calls `GET /api/v1/analytics/customer-portfolio?customerId={id}` — Architecture §19.4, §20.
+- Vue 3 SFC `ProgrammerPerformanceView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders `SCR-MGT-002`: Person selector dropdown (from `GET /api/v1/organization/persons/active`), month range inputs (start/end), Bootstrap 5 table displaying monthly performance snapshot data (rows = months, columns = metric values). Calls `GET /api/v1/analytics/programmer-performance` — Architecture §19.4.
+- Vue 3 SFC `ProgrammerWorkloadView.vue` (`<script setup lang="ts">`, Bootstrap 5) renders `SCR-MGT-003`: Optional Person filter dropdown, Bootstrap 5 table or card layout displaying active workload per person (rows = persons, columns = request count by status). Calls `GET /api/v1/analytics/programmer-workload` — Architecture §19.4.
+- Vue Router 4 routes: `/analytics/customer-portfolio` → `CustomerPortfolioView.vue`, `/analytics/programmer-performance` → `ProgrammerPerformanceView.vue`, `/analytics/programmer-workload` → `ProgrammerWorkloadView.vue`.
+- Axios HTTP client calls analytics API endpoints with authentication interceptors.
+
+Notes: Frontend-only slice. All three screens are read-only dashboards with identical pattern (selector + data table). Architecture §9 (FEAT-MGT-002..004) and §8 (UC-MGT-002..004) are authoritative.
+
+---
+
+### P7-S38
 
 Title: Cross-Cutting Finalization & System Integration Validation
 
 Implementation Status: NOT-STARTED
 Review Status: NOT-REVIEWED
 
-Objective: Verify that all cross-cutting concerns established in P1-S06 are correctly wired through the complete system. Confirm Serilog audit logging, RFC 7807 exception handling, RBAC, cookie session validation, MediatR domain event dispatch, and feed projection consistency across all modules end-to-end. Perform system-wide smoke tests covering all screens and primary user flows.
+Objective: Write and execute system-wide integration tests that verify all cross-cutting concerns are correctly wired across the complete assembled system. This slice produces no new business functionality — only validation tests with specific pass/fail criteria.
 
-Depends On: P7-S29, P6-S26
+Depends On: P2-S11, P3-S16, P4-S22, P4-S23, P5-S27, P6-S32, P6-S33, P7-S37
 
-Repository: `Cakra.Api` (validation suite)
+Repository: `Cakra.Api` (validation suite in `tests/backend/Cakra.Tests.Integration`)
 
 Completion Criteria:
-- Serilog structured JSON log entries confirmed present for Request, WorkPackage, and Post state changes (actor `PersonId`, timestamp, previous state, `TraceId`) across all modules — Architecture §18, §19.9.
-- Centralized exception handling returns consistent RFC 7807 `ProblemDetails` JSON (via `System.Text.Json` camelCase) for validation failures, domain rule violations, and authentication errors across all endpoints — Architecture §19.6.
-- MediatR domain event dispatch confirmed: creating a post creates a `FeedItem`; escalating a request sets `IsException = TRUE` on its `FeedItem`.
-- RBAC enforcement verified: `/api/v1/analytics/*` endpoints reject non-Management users (HTTP 403); all other authenticated endpoints accept valid sessions.
-- Cookie session lifecycle verified end-to-end: Login → secure `HttpOnly` `SameSite=Strict` cookie set → `ValidateSession` succeeds → Logout → `ValidateSession` fails — Architecture §19.5.
-- Smoke tests pass for all screen API endpoints: SCR-AUTH-001, SCR-FEED-001, SCR-POST-001, SCR-REQ-001..005, SCR-WP-001, SCR-PRD-001, SCR-MGT-001..003.
-- `FeedProjectionRebuilder.RebuildAll()` via `System.Threading.Channels` background queue executes without error and produces consistent `FeedItems` set — Architecture §19.7.
-- Health checks `/health/live` and `/health/ready` respond correctly — Architecture §19.9.
+- Integration test: `POST /api/v1/requests` with valid payload returns HTTP 201; assert Serilog structured log output contains JSON entry with fields `PersonId`, `TraceId`, `Timestamp`, and `SourceContext` — Architecture §18, §19.9.
+- Integration test: `POST /api/v1/requests` with missing required fields returns HTTP 400; response body deserializes as RFC 7807 `ProblemDetails` with `Content-Type: application/problem+json` and `errors` dictionary containing field validation messages — Architecture §19.6.
+- Integration test: `POST /api/v1/posts` with valid `RequestId` reference → query `post.FeedItems` table → assert row exists with correct `CustomerId`, `ProductId`, and `PostId` — Architecture §12, §18.
+- Integration test: Escalate a request via `POST /api/v1/requests/{id}/escalate` → query `post.FeedItems` → assert `IsException = TRUE` and `ExceptionType = 'ESCALATION'` — Architecture §12.
+- Integration test: `GET /api/v1/analytics/programmer-workload` with non-Management role → HTTP 403; with Management role → HTTP 200 — Architecture §14 (RBAC).
+- Integration test: Full cookie session lifecycle: `POST /api/v1/auth/login` → assert `Set-Cookie` header with `HttpOnly`, `SameSite=Strict` → `GET /api/v1/requests` with cookie → HTTP 200 → `POST /api/v1/auth/logout` → `GET /api/v1/requests` with same cookie → HTTP 401 — Architecture §19.5.
+- Integration test: `GET /health/live` → HTTP 200; `GET /health/ready` → HTTP 200 (with SQL Server connectivity) — Architecture §19.9.
+- Integration test: Invoke `FeedProjectionRebuilder.RebuildAll()` → assert `post.FeedItems` row count equals `post.Posts` row count (where `Status = 'ACTIVE'`) — Architecture §19.7.
+- All smoke tests pass for API endpoints backing: SCR-AUTH-001, SCR-FEED-001, SCR-POST-001, SCR-REQ-001..005, SCR-WP-001, SCR-PRD-001, SCR-MGT-001..003.
 
-Notes: Architecture §18 (Cross-Cutting Concerns), §19.5, §19.6, §19.7, §19.9, and §20 are authoritative. This slice produces no new business functionality; it validates the complete assembled system.
+Notes: Architecture §18 (Cross-Cutting Concerns), §19.5, §19.6, §19.7, §19.9, and §20 are authoritative. Each completion criterion is a specific integration test with defined inputs and expected outputs. No subjective verification language.
 
 ---
 
-### P7-S31
+### P7-S39
 
 Title: IIS Production Deployment Packaging & Configuration
 
@@ -1020,7 +1240,7 @@ Review Status: NOT-REVIEWED
 
 Objective: Produce the production build and deployment configuration that packages the complete CAKRA - ICS Operational System for the authoritative production target: **IIS (Internet Information Services) on Windows Server** per Architecture §19.10. Configure Vite frontend compilation in `src/frontend/Cakra.Web/` emitting production static assets into `src/frontend/Cakra.Web/dist/` (which are ingested into `src/backend/Cakra.Api/wwwroot/`), `dotnet publish` Release packaging of `src/backend/Cakra.Api/Cakra.Api.csproj`, IIS `web.config` with ASP.NET Core Module (`AspNetCoreHostingModel = InProcess`), dedicated AppPool provisioning script (`deploy/setup-iis.ps1`), deployment automation script (`deploy/publish.ps1`), and automated DbUp migration execution on deploy. M5 is achieved when this slice is complete.
 
-Depends On: P7-S30
+Depends On: P7-S38
 
 Repository: `deploy/`, `Cakra.Api`, `src/frontend/Cakra.Web`
 
@@ -1039,7 +1259,7 @@ Completion Criteria:
 - Application starts under IIS / `w3wp.exe`, serves the Vue 3 SPA at `/`, and `/health/ready` returns HTTP 200 when SQL Server 2019 is available.
 - All non-IIS alternatives (systemd, Linux Nginx, Windows Service) and Docker/container references are completely excluded from the project repository.
 
-Notes: Architecture §19.10 (Deployment & Runtime Strategy) is authoritative. This is the terminal implementation slice of the plan. Depends on P7-S30 to ensure the system passes all integration validation before the deployment artifact is produced. Achieving this slice marks completion of Milestone M5.
+Notes: Architecture §19.10 (Deployment & Runtime Strategy) is authoritative. This is the terminal implementation slice of the plan. Depends on P7-S38 to ensure the system passes all integration validation before the deployment artifact is produced. Achieving this slice marks completion of Milestone M5.
 
 ---
 
@@ -1089,3 +1309,14 @@ Result: 7 phases (P1–P7), 31 slices (S01–S31). Milestones M0–M6. Fully det
 (5) Deployment & build alignment: Corrected frontend build output flow (`src/frontend/Cakra.Web/dist/` → `src/backend/Cakra.Api/wwwroot/`), `dotnet publish` path (`src/backend/Cakra.Api/Cakra.Api.csproj`), CLI migration switch (`dotnet Cakra.Api.dll --migrate`), and IIS AppPool name (`CakraAppPool`) per Architecture §19.10.
 (6) Planning scope & slice repositories: Updated Section 2 to include Backend Host (`Cakra.Api`) and Frontend Web (`Cakra.Web`) per Architecture §22, and aligned all slice `Repository:` declarations to reference `Cakra.Api` and `src/frontend/Cakra.Web`.
 Result: 7 phases (P1–P7), 31 slices (S01–S31). Milestones M0–M6. Complete verbatim synchronization with target architecture.
+
+2026-09-28 — v4.0 — Agent execution optimization pass. Restructured the implementation plan for budget-agent execution (Gemini 3.8 Flash class models). Eight targeted goals:
+(1) **Organization Module split** (H1): Split v3.3 P3-S12 (7 entities, 7 tables, services, role resolution) into P3-S12 (Domain Entities & Persistence — entities, DbUp, repos) and P3-S13 (Application Services & Role Resolution — MediatR handlers, query service, role wiring). Reduces LARGE → 2 × SMALL. Organization Persistence (P3-S12) drops the P2-S10 dependency — persistence and migrations do not require authentication middleware — enabling P3-S12 to start in parallel with P2-S09.
+(2) **Request Services split** (H2): Split v3.3 P4-S17 (8 commands, 4 queries, 3 tables) into P4-S18 (Persistence & Core Commands — DbUp, repos, RecordRequest, AssignRequestOwner, EvaluateRequest, audit pattern) and P4-S19 (Lifecycle Completion & Queries — AcceptRequest, RejectRequest, CompleteRequest, all query methods). Reduces LARGE → 2 × MEDIUM. Escalation (P4-S20) now depends on P4-S18 only, enabling P4-S19 and P4-S20 to execute concurrently.
+(3) **Request Screens split** (H3): Split v3.3 P4-S19 (5 screens) into P4-S21 (Request API Controller — all endpoints), P4-S22 (SCR-REQ-001 + SCR-REQ-002 — List + Create), P4-S23 (SCR-REQ-003 + SCR-REQ-004 + SCR-REQ-005 — Detail + My Requests + History). Reduces LARGE → 1 SMALL + 2 SMALL. P4-S22 and P4-S23 execute concurrently after P4-S21.
+(4) **Feed & Post Screens split** (H4): Split v3.3 P6-S26 (2 screens + modal) into P6-S31 (Feed & Post API Controller), P6-S32 (SCR-FEED-001 — Feed Screen), P6-S33 (SCR-POST-001 — Post Detail Modal). Reduces LARGE → 1 SMALL + 2 SMALL. P6-S32 and P6-S33 execute concurrently after P6-S31.
+(5) **Work Package BE/FE split**: Split v3.3 P5-S22 (10+ endpoints + Vue SFC) into P5-S26 (Work Package API Controller) and P5-S27 (Work Package Screen — Vue SFC only). Applies backend/frontend separation for the largest remaining combined screen slice.
+(6) **Analytics BE/FE split**: Split v3.3 P7-S29 (3 endpoints + 3 Vue SFCs) into P7-S36 (Management Analytics API Controller) and P7-S37 (Analytics Screens — 3 Vue SFCs). Applies backend/frontend separation consistently.
+(7) **Cross-phase parallelism unlocked** (H5, H6): Documented that P4-S17 (Request Domain) and P5-S24 (Work Package Domain) can start immediately after P1-S06 — they have zero dependency on P2 or P3. P3-S12 (Organization Persistence) can start after P1-S06 + P1-S07 without waiting for P2-S10. P7-S34 (Analytics Snapshot) can start after P4-S19 — it has zero dependency on P5 or P6. Updated §4 Parallel Execution Opportunities comprehensively.
+(8) **Determinism improvements** (M1, M3): P1-S06 now specifies exact middleware registration order (7-step sequence). P7-S38 (Cross-Cutting Finalization) rewritten with 8 specific integration test cases replacing vague "verify" and "confirm" language. All screen slices specify Bootstrap 5 component patterns (table, card, form, modal) and exact UI element lists. P7-S34 specifies `System.Threading.Timer`-based scheduling for BackgroundService. P3-S12 specifies column-level schema for all 7 Organization tables.
+Result: 7 phases (P1–P7), 39 slices (S01–S39). Milestones M0–M6. Critical path reduced from ~22 waves to ~18 waves. Average agent utilization improved from ~14% to ~28% with 10 agents. No architectural decisions created or reinterpreted.
