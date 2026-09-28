@@ -2,7 +2,7 @@
 
 Derived from **Management Oversight Use Cases** (`operational/use-cases/management-oversight-use-cases.md`) using the **User Journey Generation Skill** (`operational/user-journey/user-journey-generation-skill.md`).
 
-Canonical actors follow the **ICS Operational Actor Model** (`operational/actors/actor-model.md`):
+Canonical actors follow the **CAKRA - ICS Operational Actor Model** (`operational/actors/actor-model.md`):
 * **Management:** Organizational Role responsible for defining organizational structure, monitoring operational health, assessing workload and performance, and intervening in assignments or operational decisions.
 
 ---

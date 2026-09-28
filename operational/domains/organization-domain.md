@@ -8,7 +8,7 @@ LastUpdated: 2026-09-26
 
 # 1. Business Overview
 
-The Organization domain defines the authoritative organizational knowledge required by the ICS Operational System.
+The Organization domain defines the authoritative organizational knowledge required by CAKRA - ICS Operational System (Cakra).
 
 The domain identifies:
 

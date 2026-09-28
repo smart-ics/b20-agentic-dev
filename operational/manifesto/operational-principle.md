@@ -1,5 +1,5 @@
 ---
-name: ICS Operational Principle
+name: CAKRA - ICS Operational Principle
 version: 3
 last-update: 2026-09-23
 updated by: Drury Yudis Lumenta
@@ -9,7 +9,7 @@ updated by: Drury Yudis Lumenta
 
 ## 1. Purpose
 
-The purpose of the Operational System is to provide sufficient visibility, analysis, and control for company leadership to make timely and informed decisions.
+The purpose of the CAKRA - ICS Operational System (Cakra) is to provide sufficient visibility, analysis, and control for company leadership to make timely and informed decisions.
 
 The system exists to answer:
 

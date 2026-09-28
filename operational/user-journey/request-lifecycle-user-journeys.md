@@ -2,7 +2,7 @@
 
 Derived from **Request Lifecycle Use Cases** (`operational/use-cases/request-lifecycle-use-cases.md`) using the **User Journey Generation Skill** (`operational/user-journey/user-journey-generation-skill.md`).
 
-Canonical actors follow the **ICS Operational Actor Model** (`operational/actors/actor-model.md`):
+Canonical actors follow the **CAKRA - ICS Operational Actor Model** (`operational/actors/actor-model.md`):
 * **Implementator:** Organizational Role responsible for capturing requests, assigning ownership, and reviewing completion.
 * **Request Owner:** Operational Assignment responsible for evaluating, accepting or declining, managing, and resolving a specific Request.
 

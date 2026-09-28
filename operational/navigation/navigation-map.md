@@ -1,4 +1,4 @@
-# ICS Operational Navigation Map
+# CAKRA - ICS Operational Navigation Map
 
 Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios**, **Actor Model**, and **Domain Models** using the **Navigation Creation Skill** (`operational/navigation/navigation-creation-skill.md`).
 
@@ -19,7 +19,7 @@ Navigation defines the destinations available to actors and the paths used to mo
 ## 2. Navigation Hierarchy Tree
 
 ```text
-ICS Operational System
+CAKRA - ICS Operational System
 │
 ├── Operational Feed Area
 │   ├── Operational Feed (SCR-FEED-001)

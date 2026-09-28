@@ -1,11 +1,11 @@
 ---
-Title: ICS Operational Actor Model
+Title: CAKRA - ICS Operational Actor Model
 Artifact: ACTOR_MODEL
 Version: 1.0
 ---
 ## Purpose
 
-Defines the operational actors, responsibilities, and assignment model used by the ICS Operational System.
+Defines the operational actors, responsibilities, and assignment model used by CAKRA - ICS Operational System (Cakra).
 
 This artifact exists to ensure consistent interpretation across:
 

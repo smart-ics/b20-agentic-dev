@@ -1,6 +1,6 @@
 ---
-Title: ICS Operational System Target Architecture
-Code: ICS
+Title: CAKRA - ICS Operational System Target Architecture
+Code: CAKRA
 Artifact: ARCHITECTURE
 Version: 1.2
 LastUpdated: 2026-09-27
@@ -8,7 +8,7 @@ LastUpdated: 2026-09-27
 
 # 1. Overview
 
-Target architecture for the greenfield ICS Operational System.
+Target architecture for the greenfield CAKRA - ICS Operational System (Cakra).
 This architecture realizes the complete product definition encompassing the Customer, Organization, Product, Work Package, Request, and Post domains, cross-cutting Identity and Access Management, and all operational features and use cases.
 
 # 2. Architectural Basis
@@ -541,13 +541,13 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 ## 19.10 Deployment & Runtime Strategy
 - **Deployment Model**: Modular Monolith hosted as a single ASP.NET Core executable process serving both REST API endpoints and static SPA frontend assets from `wwwroot/`.
 - **Authoritative Production Target**: **IIS (Internet Information Services) on Windows Server** using In-Process hosting via the ASP.NET Core Module (`AspNetCoreHostingModel = InProcess` in `web.config`).
-- **IIS Process Lifecycle & Supervision**: The dedicated IIS Application Pool (`ICSAppPool`) manages worker process execution (`w3wp.exe`), automatic process recycling, idle timeout management, and automatic crash restarts.
+- **IIS Process Lifecycle & Supervision**: The dedicated IIS Application Pool (`CakraAppPool`) manages worker process execution (`w3wp.exe`), automatic process recycling, idle timeout management, and automatic crash restarts.
 - **Unified Build & Packaging Process**:
-  1. **Frontend Compilation**: Vue 3 SPA is compiled via Vite (`npm run build`) in `src/ICS.Web/client/`, emitting production static assets directly into `src/ICS.Web/wwwroot/`.
-  2. **Backend Publication**: .NET 8 CLI executes `dotnet publish src/ICS.Web/ICS.Web.csproj -c Release -o ./publish` producing the release package containing compiled binaries, dependencies, static web assets, and the IIS `web.config`.
+  1. **Frontend Compilation**: Vue 3 SPA is compiled via Vite (`npm run build`) in `src/Cakra.Web/client/`, emitting production static assets directly into `src/Cakra.Web/wwwroot/`.
+  2. **Backend Publication**: .NET 8 CLI executes `dotnet publish src/Cakra.Web/Cakra.Web.csproj -c Release -o ./publish` producing the release package containing compiled binaries, dependencies, static web assets, and the IIS `web.config`.
   3. **Release Packaging**: Automated PowerShell deployment script (`deploy/publish.ps1`) packages the publication directory into a versioned deployment artifact ready for extraction into the IIS website physical directory.
 - **Database Migrations on Deployment**:
-  DbUp-SqlServer automated migration runner executes at application startup within `Program.cs` or via a standalone CLI migration switch (`dotnet ICS.Web.dll --migrate`) to apply idempotent SQL migrations in strict dependency order against SQL Server 2019 before HTTP traffic is served.
+  DbUp-SqlServer automated migration runner executes at application startup within `Program.cs` or via a standalone CLI migration switch (`dotnet Cakra.Web.dll --migrate`) to apply idempotent SQL migrations in strict dependency order against SQL Server 2019 before HTTP traffic is served.
 - **Runtime Assumptions & Configuration**:
   - Configuration supplied via `appsettings.Production.json` or Windows environment variables (`ConnectionStrings__DefaultConnection`, `ASPNETCORE_ENVIRONMENT=Production`).
   - Stateless application tier (session state maintained in SQL Server `identity.UserSessions`).
@@ -557,23 +557,23 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 The repository structure and project breakdown are strictly standardized as follows to ensure unambiguous implementation planning:
 
 ```text
-ics-operational-system/
-├── ICS.sln
+cakra/
+├── Cakra.sln
 ├── src/
-│   ├── ICS.Core/                       # Common domain abstractions, MediatR pipeline behaviors, Dapper helpers
-│   ├── ICS.Modules.Identity/           # IAM vertical slices, UserAccount & UserSession commands/queries
-│   ├── ICS.Modules.Organization/       # Organization slices: Persons, Teams, Roles, Responsibilities
-│   ├── ICS.Modules.Customer/           # Customer slices: Customers, Contacts
-│   ├── ICS.Modules.Product/            # Product slices: Products, Catalog queries
-│   ├── ICS.Modules.WorkPackage/        # Work Package slices: WorkPackages, Scope management
-│   ├── ICS.Modules.Request/            # Request slices: Lifecycle state machine, assignments, resolutions
-│   ├── ICS.Modules.Post/               # Post & Feed slices: Posts, Comments, Reactions, Feed projection
-│   ├── ICS.Modules.Analytics/          # Analytics queries and AnalyticsSnapshotJob hosted service
-│   ├── ICS.Web/                        # ASP.NET Core Host, API Controllers, Middleware, DbUp migrations
-│   │   └── client/                     # Vue 3 + Bootstrap 5 + Vite Single Page Application
+│   ├── Cakra.Core/                       # Common domain abstractions, MediatR pipeline behaviors, Dapper helpers
+│   ├── Cakra.Modules.Identity/           # IAM vertical slices, UserAccount & UserSession commands/queries
+│   ├── Cakra.Modules.Organization/       # Organization slices: Persons, Teams, Roles, Responsibilities
+│   ├── Cakra.Modules.Customer/           # Customer slices: Customers, Contacts
+│   ├── Cakra.Modules.Product/            # Product slices: Products, Catalog queries
+│   ├── Cakra.Modules.WorkPackage/        # Work Package slices: WorkPackages, Scope management
+│   ├── Cakra.Modules.Request/            # Request slices: Lifecycle state machine, assignments, resolutions
+│   ├── Cakra.Modules.Post/               # Post & Feed slices: Posts, Comments, Reactions, Feed projection
+│   ├── Cakra.Modules.Analytics/          # Analytics queries and AnalyticsSnapshotJob hosted service
+│   ├── Cakra.Web/                        # ASP.NET Core Host, API Controllers, Middleware, DbUp migrations
+│   │   └── client/                       # Vue 3 + Bootstrap 5 + Vite Single Page Application
 ├── tests/
-│   ├── ICS.Tests.Unit/                 # Unit tests for domain logic, rules, and state machines
-│   └── ICS.Tests.Integration/          # Integration tests using WebApplicationFactory and SQL Server
+│   ├── Cakra.Tests.Unit/                 # Unit tests for domain logic, rules, and state machines
+│   └── Cakra.Tests.Integration/          # Integration tests using WebApplicationFactory and SQL Server
 ```
 
 ### Core Package Dependencies:
@@ -609,15 +609,15 @@ ics-operational-system/
 
 | Boundary | Responsibility | Repository / Assembly | Depends On | Implementation Notes |
 |---|---|---|---|---|
-| **Foundation** | Core interfaces, base entities, domain event dispatchers, clock | `ICS.Core` | None | Shared technical contracts |
-| **Identity & Access** | Authentication, credentials, sessions, security tokens | `ICS.Modules.Identity` | `ICS.Core`, `Organization` (Read) | Owns `UserAccounts`, `UserSessions` |
-| **Organization** | Person, team, role, and responsibility master data | `ICS.Modules.Organization` | `ICS.Core` | Foundational organizational master |
-| **Customer** | Customer and contact master data | `ICS.Modules.Customer` | `ICS.Core` | Foundational customer master |
-| **Product** | Product catalog master data and product ownership | `ICS.Modules.Product` | `ICS.Core`, `Organization` (Read) | Foundational product master |
-| **Work Package** | Work package lifecycle and request grouping | `ICS.Modules.WorkPackage` | `ICS.Core`, `Organization`, `Customer`, `Product`, `Request` | Operational grouping container |
-| **Request** | Request lifecycle, evaluation, assignment, resolution | `ICS.Modules.Request` | `ICS.Core`, `Organization`, `Customer`, `Product` | Core operational transactional engine |
-| **Post & Feed** | Communication, comments, reactions, and feed read model | `ICS.Modules.Post` | `ICS.Core`, Domain Events from all modules | Feed materialized projection tier |
-| **Management Analytics** | Workload capacity queries and historical snapshot batch jobs | `ICS.Modules.Analytics` | `ICS.Core`, `Request`, `Organization`, `Customer` | Management oversight read tier |
+| **Foundation** | Core interfaces, base entities, domain event dispatchers, clock | `Cakra.Core` | None | Shared technical contracts |
+| **Identity & Access** | Authentication, credentials, sessions, security tokens | `Cakra.Modules.Identity` | `Cakra.Core`, `Organization` (Read) | Owns `UserAccounts`, `UserSessions` |
+| **Organization** | Person, team, role, and responsibility master data | `Cakra.Modules.Organization` | `Cakra.Core` | Foundational organizational master |
+| **Customer** | Customer and contact master data | `Cakra.Modules.Customer` | `Cakra.Core` | Foundational customer master |
+| **Product** | Product catalog master data and product ownership | `Cakra.Modules.Product` | `Cakra.Core`, `Organization` (Read) | Foundational product master |
+| **Work Package** | Work package lifecycle and request grouping | `Cakra.Modules.WorkPackage` | `Cakra.Core`, `Organization`, `Customer`, `Product`, `Request` | Operational grouping container |
+| **Request** | Request lifecycle, evaluation, assignment, resolution | `Cakra.Modules.Request` | `Cakra.Core`, `Organization`, `Customer`, `Product` | Core operational transactional engine |
+| **Post & Feed** | Communication, comments, reactions, and feed read model | `Cakra.Modules.Post` | `Cakra.Core`, Domain Events from all modules | Feed materialized projection tier |
+| **Management Analytics** | Workload capacity queries and historical snapshot batch jobs | `Cakra.Modules.Analytics` | `Cakra.Core`, `Request`, `Organization`, `Customer` | Management oversight read tier |
 
 # 23. Implementation Dependency Graph
 

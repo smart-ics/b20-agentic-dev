@@ -2,7 +2,7 @@
 
 Derived from **Operational Awareness Use Cases** (`operational/use-cases/operational-awareness-use-cases.md`) using the **User Journey Generation Skill** (`operational/user-journey/user-journey-generation-skill.md`).
 
-Canonical actors follow the **ICS Operational Actor Model** (`operational/actors/actor-model.md`):
+Canonical actors follow the **CAKRA - ICS Operational Actor Model** (`operational/actors/actor-model.md`):
 * **Implementator:** Organizational Role responsible for handling operational demands, documenting progress, collaborating on requests, and managing requests for which they are responsible.
 * **Management:** Organizational Role responsible for defining organizational structure, monitoring operational health, assessing workload and performance, and intervening in assignments or operational decisions.
 

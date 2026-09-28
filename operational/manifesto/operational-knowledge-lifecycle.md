@@ -1,6 +1,6 @@
 ---
 
-name: ICS Operational Knowledge Lifecycle
+name: CAKRA - ICS Operational Knowledge Lifecycle
 version: 3
 last-update: 2026-09-23
 updated by: Drury Yudis Lumenta
@@ -825,7 +825,7 @@ Operational lifecycle design should follow these rules:
 
 # 20. Lifecycle Summary
 
-The ICS Operational Knowledge Lifecycle is:
+The CAKRA - ICS Operational Knowledge Lifecycle is:
 
 ```text
                  ┌──────────────┐
