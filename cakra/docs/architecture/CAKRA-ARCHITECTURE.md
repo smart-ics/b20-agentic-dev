@@ -2,8 +2,8 @@
 Title: CAKRA - ICS Operational System Target Architecture
 Code: CAKRA
 Artifact: ARCHITECTURE
-Version: 1.2
-LastUpdated: 2026-09-27
+Version: 1.3
+LastUpdated: 2026-09-28
 ---
 
 # 1. Overview
@@ -539,42 +539,62 @@ Greenfield system. Initial schema migration scripts will execute in dependency o
 - **Diagnostics**: Built-in .NET 8 `System.Diagnostics.Activity` and OpenTelemetry-compatible tracing identifiers.
 
 ## 19.10 Deployment & Runtime Strategy
-- **Deployment Model**: Modular Monolith hosted as a single ASP.NET Core executable process serving both REST API endpoints and static SPA frontend assets from `wwwroot/`.
+- **Deployment Model**: Modular Monolith hosted as a single ASP.NET Core executable process (`Cakra.Api`) serving both REST API endpoints and static SPA frontend assets from `wwwroot/`.
 - **Authoritative Production Target**: **IIS (Internet Information Services) on Windows Server** using In-Process hosting via the ASP.NET Core Module (`AspNetCoreHostingModel = InProcess` in `web.config`).
 - **IIS Process Lifecycle & Supervision**: The dedicated IIS Application Pool (`CakraAppPool`) manages worker process execution (`w3wp.exe`), automatic process recycling, idle timeout management, and automatic crash restarts.
 - **Unified Build & Packaging Process**:
-  1. **Frontend Compilation**: Vue 3 SPA is compiled via Vite (`npm run build`) in `src/Cakra.Web/client/`, emitting production static assets directly into `src/Cakra.Web/wwwroot/`.
-  2. **Backend Publication**: .NET 8 CLI executes `dotnet publish src/Cakra.Web/Cakra.Web.csproj -c Release -o ./publish` producing the release package containing compiled binaries, dependencies, static web assets, and the IIS `web.config`.
+  1. **Frontend Compilation**: Vue 3 SPA is compiled via Vite (`npm run build`) in `src/frontend/Cakra.Web/`, emitting production static assets into `src/frontend/Cakra.Web/dist/` (which are ingested into `src/backend/Cakra.Api/wwwroot/` during release packaging).
+  2. **Backend Publication**: .NET 8 CLI executes `dotnet publish src/backend/Cakra.Api/Cakra.Api.csproj -c Release -o ./publish` producing the release package containing compiled binaries, dependencies, static web assets (in `./publish/wwwroot/`), and the IIS `web.config`.
   3. **Release Packaging**: Automated PowerShell deployment script (`deploy/publish.ps1`) packages the publication directory into a versioned deployment artifact ready for extraction into the IIS website physical directory.
+- **Frontend Asset Flow & Ingestion**:
+  ```text
+  Frontend (src/frontend/Cakra.Web)
+      ↓
+  Vite Build (npm run build)
+      ↓
+  Static Assets (dist/)
+      ↓
+  Consumed by Backend Host (src/backend/Cakra.Api/wwwroot/ → publish/wwwroot/)
+  ```
 - **Database Migrations on Deployment**:
-  DbUp-SqlServer automated migration runner executes at application startup within `Program.cs` or via a standalone CLI migration switch (`dotnet Cakra.Web.dll --migrate`) to apply idempotent SQL migrations in strict dependency order against SQL Server 2019 before HTTP traffic is served.
+  DbUp-SqlServer automated migration runner executes at application startup within `Program.cs` or via a standalone CLI migration switch (`dotnet Cakra.Api.dll --migrate`) to apply idempotent SQL migrations in strict dependency order against SQL Server 2019 before HTTP traffic is served.
 - **Runtime Assumptions & Configuration**:
   - Configuration supplied via `appsettings.Production.json` or Windows environment variables (`ConnectionStrings__DefaultConnection`, `ASPNETCORE_ENVIRONMENT=Production`).
   - Stateless application tier (session state maintained in SQL Server `identity.UserSessions`).
-  - IIS HTTPS site binding terminates TLS/HTTPS (port 443) and routes traffic directly in-process to the ASP.NET Core application pipeline, monitoring health via `/health/live` and `/health/ready`.
+  - IIS HTTPS site binding terminates TLS/HTTPS (port 443) and routes traffic directly in-process to the ASP.NET Core application pipeline (`Cakra.Api`), monitoring health via `/health/live` and `/health/ready`.
 
 ## 19.11 Solution & Project Layout (Planning Compatibility)
-The repository structure and project breakdown are strictly standardized as follows to ensure unambiguous implementation planning:
+The repository structure and project breakdown are strictly standardized with repository-level separation between backend and frontend to ensure unambiguous implementation planning, independent build tooling, clearer ownership, and easier onboarding:
 
 ```text
 cakra/
-├── Cakra.sln
 ├── src/
-│   ├── Cakra.Core/                       # Common domain abstractions, MediatR pipeline behaviors, Dapper helpers
-│   ├── Cakra.Modules.Identity/           # IAM vertical slices, UserAccount & UserSession commands/queries
-│   ├── Cakra.Modules.Organization/       # Organization slices: Persons, Teams, Roles, Responsibilities
-│   ├── Cakra.Modules.Customer/           # Customer slices: Customers, Contacts
-│   ├── Cakra.Modules.Product/            # Product slices: Products, Catalog queries
-│   ├── Cakra.Modules.WorkPackage/        # Work Package slices: WorkPackages, Scope management
-│   ├── Cakra.Modules.Request/            # Request slices: Lifecycle state machine, assignments, resolutions
-│   ├── Cakra.Modules.Post/               # Post & Feed slices: Posts, Comments, Reactions, Feed projection
-│   ├── Cakra.Modules.Analytics/          # Analytics queries and AnalyticsSnapshotJob hosted service
-│   ├── Cakra.Web/                        # ASP.NET Core Host, API Controllers, Middleware, DbUp migrations
-│   │   └── client/                       # Vue 3 + Bootstrap 5 + Vite Single Page Application
+│   ├── backend/
+│   │   ├── Cakra.sln
+│   │   ├── Cakra.Core/                       # Common domain abstractions, MediatR pipeline behaviors, Dapper helpers
+│   │   ├── Cakra.Modules.Identity/           # IAM vertical slices, UserAccount & UserSession commands/queries
+│   │   ├── Cakra.Modules.Organization/       # Organization slices: Persons, Teams, Roles, Responsibilities
+│   │   ├── Cakra.Modules.Customer/           # Customer slices: Customers, Contacts
+│   │   ├── Cakra.Modules.Product/            # Product slices: Products, Catalog queries
+│   │   ├── Cakra.Modules.WorkPackage/        # Work Package slices: WorkPackages, Scope management
+│   │   ├── Cakra.Modules.Request/            # Request slices: Lifecycle state machine, assignments, resolutions
+│   │   ├── Cakra.Modules.Post/               # Post & Feed slices: Posts, Comments, Reactions, Feed projection
+│   │   ├── Cakra.Modules.Analytics/          # Analytics queries and AnalyticsSnapshotJob hosted service
+│   │   └── Cakra.Api/                        # ASP.NET Core Host, API Controllers, Middleware, DbUp migrations, Static Asset Host
+│   │
+│   └── frontend/
+│       └── Cakra.Web/                        # Vue 3 + TypeScript + Bootstrap 5 + Vite Single Page Application
+│
 ├── tests/
-│   ├── Cakra.Tests.Unit/                 # Unit tests for domain logic, rules, and state machines
-│   └── Cakra.Tests.Integration/          # Integration tests using WebApplicationFactory and SQL Server
+│   └── backend/
+│       ├── Cakra.Tests.Unit/                 # Unit tests for domain logic, rules, and state machines
+│       └── Cakra.Tests.Integration/          # Integration tests using WebApplicationFactory and SQL Server
+│
+└── docs/
 ```
+
+### Testing Structure & Rationale
+Backend test projects reside strictly within `tests/backend/` (`Cakra.Tests.Unit` and `Cakra.Tests.Integration`). Placing .NET test suites under `tests/backend/` mirrors the repository-level `src/backend/` separation and ensures future frontend automated testing suites (e.g. `tests/frontend/` using Vitest, Cypress, or Playwright) can be introduced cleanly without mixing .NET test runners and Node.js testing tooling.
 
 ### Core Package Dependencies:
 - `MediatR`
@@ -618,6 +638,8 @@ cakra/
 | **Request** | Request lifecycle, evaluation, assignment, resolution | `Cakra.Modules.Request` | `Cakra.Core`, `Organization`, `Customer`, `Product` | Core operational transactional engine |
 | **Post & Feed** | Communication, comments, reactions, and feed read model | `Cakra.Modules.Post` | `Cakra.Core`, Domain Events from all modules | Feed materialized projection tier |
 | **Management Analytics** | Workload capacity queries and historical snapshot batch jobs | `Cakra.Modules.Analytics` | `Cakra.Core`, `Request`, `Organization`, `Customer` | Management oversight read tier |
+| **Backend Host** | ASP.NET Core process host, API endpoints, middleware, DbUp migrations | `Cakra.Api` | All Backend Modules | In-process composition root & static asset server |
+| **Frontend Web** | Vue 3 Single Page Application (UI screens `SCR-*`, navigation, Pinia stores) | `Cakra.Web` | Backend REST API (`/api/v1/*`) | Client-side SPA built with Vite |
 
 # 23. Implementation Dependency Graph
 
