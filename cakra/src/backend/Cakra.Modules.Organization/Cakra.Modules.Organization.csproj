@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- Architecture §22: Organization depends on Cakra.Core -->
+  <ItemGroup>
+    <ProjectReference Include="..\Cakra.Core\Cakra.Core.csproj" />
+  </ItemGroup>
+
+</Project>

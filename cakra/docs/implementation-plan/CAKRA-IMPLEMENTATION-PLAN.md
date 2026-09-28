@@ -142,8 +142,8 @@ Source: Architecture §22 — Boundary: **Foundation** (`Cakra.Core`, Depends On
 
 Title: Solution Structure & Project Scaffolding
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective: Create the solution file, project references, and exact directory structure for the modular monolith as specified in Architecture §19.11. Establish `src/backend/Cakra.Core`, all `src/backend/Cakra.Modules.*` project skeletons (empty, buildable), the `src/backend/Cakra.Api` backend host application project, the `src/frontend/Cakra.Web` Single Page Application project, and the `deploy/` directory. All backend projects target .NET 8. Define inter-project reference graph matching Architecture §22 dependency table.
 
@@ -187,14 +187,33 @@ Completion Criteria:
 
 Notes: Produces no business logic. Its output is the compilable project structure that all subsequent slices build into. The `tests/backend/` test suites and `deploy/` packaging scripts are created by P1-S07 and P7-S39 respectively; only the `deploy/` placeholder directory is created here.
 
+Implementation Notes (2026-09-28): All completion criteria satisfied. `Cakra.sln` written as a standard VS2022 solution file (Format Version 12.00) since .NET 10 SDK defaults to `.slnx` format. All 10 backend projects created with `dotnet new classlib` (modules) and `dotnet new webapi --use-controllers` (Cakra.Api), all targeting `net8.0`, `LangVersion=12`, `Nullable=enable`, `ImplicitUsings=enable`. Project reference graph matches Architecture §22 exactly: Organization/Customer depend on Core only; Product/Identity depend on Core + Organization; Request depends on Core + Organization + Customer + Product; WorkPackage depends on Core + Organization + Customer + Product + Request; Post depends on Core + all domain modules; Analytics depends on Core + Organization + Customer + Request; Cakra.Api references all modules. `dotnet build Cakra.sln` produced 0 errors, 0 warnings. All 16 required directory paths verified present.
+
+Changed Files:
+- `Cakra.sln` (created)
+- `deploy/.gitkeep` (created)
+- `src/backend/Cakra.Core/Cakra.Core.csproj` (created)
+- `src/backend/Cakra.Modules.Identity/Cakra.Modules.Identity.csproj` (created)
+- `src/backend/Cakra.Modules.Organization/Cakra.Modules.Organization.csproj` (created)
+- `src/backend/Cakra.Modules.Customer/Cakra.Modules.Customer.csproj` (created)
+- `src/backend/Cakra.Modules.Product/Cakra.Modules.Product.csproj` (created)
+- `src/backend/Cakra.Modules.WorkPackage/Cakra.Modules.WorkPackage.csproj` (created)
+- `src/backend/Cakra.Modules.Request/Cakra.Modules.Request.csproj` (created)
+- `src/backend/Cakra.Modules.Post/Cakra.Modules.Post.csproj` (created)
+- `src/backend/Cakra.Modules.Analytics/Cakra.Modules.Analytics.csproj` (created)
+- `src/backend/Cakra.Api/Cakra.Api.csproj` (created — webapi template with project references to all modules)
+- `src/frontend/Cakra.Web/.gitkeep` (created — placeholder for P1-S08)
+- `tests/backend/Cakra.Tests.Unit/.gitkeep` (created — placeholder for P1-S07)
+- `tests/backend/Cakra.Tests.Integration/.gitkeep` (created — placeholder for P1-S07)
+
 ---
 
 ### P1-S02
 
 Title: Core Contracts & Base Types
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective: Define all shared technical contracts and base types in `Cakra.Core`: base entity type, value object base, domain event interface, domain event dispatcher interface, repository interface contract, system clock abstraction, audit context interface, and the `ICurrentContextProvider` interface. Add `MediatR` and `FluentValidation.AspNetCore` NuGet package references to `Cakra.Core` and `Cakra.Api`. Interfaces only — no concrete implementations in this slice.
 
@@ -219,14 +238,29 @@ Completion Criteria:
 
 Notes: Keeps contracts decoupled from implementation. Concrete domain event dispatcher is implemented in P1-S05. Architecture §7 (`CurrentContextProvider`), §14 (IAM), and §18 (Cross-Cutting Concerns) are authoritative for required interfaces.
 
+Implementation Notes (2026-09-28): All completion criteria satisfied. Package references added: `MediatR` 12.5.0 and `FluentValidation.AspNetCore` 11.3.1 in both `Cakra.Core` and `Cakra.Api` (Architecture §19.2); `Dapper` 2.1.66 and `Microsoft.Data.SqlClient` 5.2.3 in `Cakra.Core` (Architecture §19.3). EF Core is not referenced by any project (verified). All contracts and base types are defined in the single `Cakra.Core` namespace so they are accessible to every module: `EntityBase` (abstract, `Id`/`CreatedAt`/`UpdatedAt`), `ValueObject` (abstract, equality by `GetEqualityComponents()`), `IDomainEvent : MediatR.INotification` (`EventId`, `OccurredAtUtc`), `IDomainEventDispatcher` (single `DispatchAsync(IDomainEvent, CancellationToken)` publish method), `IRepository<TEntity,TId>` plus `IRepository<TEntity>` convenience contract, `ISystemClock` (`UtcNow`), `IAuditContext` (`ActorUserId`, `ActorPersonId`, `RecordedAtUtc`), `ICurrentContextProvider` (`CurrentUserId`, `CurrentPersonId`, `CurrentRoles` — Architecture §7/§14), and `IModule` (`Name`, `RegisterServices(IServiceCollection)`). No concrete implementations exist in this slice; no EF Core packages appear in any `.csproj`. `dotnet build Cakra.sln` succeeds with 0 errors, 0 warnings.
+
+Changed Files:
+- `src/backend/Cakra.Core/Cakra.Core.csproj` (modified — added MediatR, FluentValidation.AspNetCore, Dapper, Microsoft.Data.SqlClient package references)
+- `src/backend/Cakra.Core/Entities/EntityBase.cs` (created)
+- `src/backend/Cakra.Core/Entities/ValueObject.cs` (created)
+- `src/backend/Cakra.Core/Events/IDomainEvent.cs` (created)
+- `src/backend/Cakra.Core/Events/IDomainEventDispatcher.cs` (created)
+- `src/backend/Cakra.Core/Persistence/IRepository.cs` (created)
+- `src/backend/Cakra.Core/Time/ISystemClock.cs` (created)
+- `src/backend/Cakra.Core/Auditing/IAuditContext.cs` (created)
+- `src/backend/Cakra.Core/Security/ICurrentContextProvider.cs` (created)
+- `src/backend/Cakra.Core/Modules/IModule.cs` (created)
+- `src/backend/Cakra.Api/Cakra.Api.csproj` (modified — added MediatR and FluentValidation.AspNetCore package references)
+
 ---
 
 ### P1-S03
 
 Title: Database Infrastructure & Migration Framework
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective: Configure DbUp-SqlServer migration framework, database connection management (Dapper + `Microsoft.Data.SqlClient`), and schema-per-module naming conventions. Establish the technical foundation that all module schema migrations will build on. Implement database connection factory, DbUp migration runner wired into application startup, and schema-segregation naming conventions (`identity.*`, `organization.*`, `customer.*`, `product.*`, `workpackage.*`, `request.*`, `post.*`, `analytics.*`) per Architecture §17 and §19.3.
 
@@ -246,13 +280,27 @@ Completion Criteria:
 
 Notes: P1-S03 depends only on P1-S01 and can execute in parallel with P1-S02. Architecture §17 (Schema Segregation) and §19.3 (Persistence & Data Access) are authoritative for all persistence decisions. EF Core packages (`Microsoft.EntityFrameworkCore*`) must not appear in any `.csproj` file.
 
+Implementation Notes (2026-09-28): All completion criteria satisfied. `DbUp-SqlServer` 7.2.0 referenced in `Cakra.Api`. `DatabaseMigrationRunner` discovers embedded `.sql` scripts under `Cakra.Api/Migrations/Scripts`, applies them in strict ascending (dependency) order with `WithTransactionPerScript()`, and journals applied scripts in `dbo.SchemaVersions` for idempotent reruns. `0001_baseline.sql` idempotently creates the eight module schemas (`identity`, `organization`, `customer`, `product`, `workpackage`, `request`, `post`, `analytics`) and creates no business tables. `IDbConnectionFactory` (Cakra.Core) with `SqlConnectionFactory` (Cakra.Api, `Microsoft.Data.SqlClient` `SqlConnection`) provides connection management; the connection string is read from `ConnectionStrings:DefaultConnection` / the `ConnectionStrings__DefaultConnection` environment variable. Migrations execute at startup when configured and via the standalone CLI switch `dotnet Cakra.Api.dll --migrate`. `DatabaseHealthCheck` opens a connection and executes `SELECT 1`, and is registered against `/health/ready`. Verified against SQL Server 2022: migration CLI created a scratch database, applied the baseline, a second run reported "No new scripts need to be executed - completing", the eight schemas were present with zero business tables, and `/health/ready` returned HTTP 200 "Healthy"; scratch databases were dropped. `dotnet build Cakra.sln` succeeds with 0 errors and 0 warnings. No EF Core packages are referenced in any `.csproj` (verified). Schema naming convention documented in `docs/persistence/database-schema-conventions.md`. Note: `Program.cs`, `Cakra.Core.csproj`, and the test projects were concurrently modified by other slices (P1-S02/P1-S07/P1-S08); the integrated solution build passes with `Microsoft.Data.SqlClient` unified at 6.1.4.
+
+Changed Files:
+- `src/backend/Cakra.Core/Infrastructure/Persistence/IDbConnectionFactory.cs` (created)
+- `src/backend/Cakra.Core/Infrastructure/Persistence/DatabaseSchemas.cs` (created)
+- `src/backend/Cakra.Api/Infrastructure/Persistence/SqlConnectionFactory.cs` (created)
+- `src/backend/Cakra.Api/Infrastructure/Migrations/DatabaseMigrationRunner.cs` (created)
+- `src/backend/Cakra.Api/Infrastructure/HealthChecks/DatabaseHealthCheck.cs` (created)
+- `src/backend/Cakra.Api/Migrations/Scripts/0001_baseline.sql` (created — embedded baseline migration)
+- `src/backend/Cakra.Api/Cakra.Api.csproj` (modified — added DbUp-SqlServer 7.2.0, Microsoft.Data.SqlClient 6.1.4, embedded SQL resources)
+- `src/backend/Cakra.Api/Program.cs` (modified — connection factory/migration runner DI, startup migration, `--migrate` CLI switch, `/health/ready`)
+- `src/backend/Cakra.Api/appsettings.json` (modified — added `ConnectionStrings:DefaultConnection`)
+- `docs/persistence/database-schema-conventions.md` (created — schema naming conventions documented)
+
 ---
 
 ### P1-S04
 
 Title: Dependency Injection & Module Registration
 
-Implementation Status: NOT-STARTED
+Implementation Status: IMPLEMENTED
 Review Status: NOT-REVIEWED
 
 Objective: Implement the module registration pattern and DI container configuration. Each `Cakra.Modules.*` project will implement `IModule` to self-register its services, repositories, MediatR handlers, and FluentValidation validators. The host application (`Cakra.Api`) discovers and invokes all `IModule` implementations at startup. Register MediatR with pipeline behaviors (validation behavior invoking FluentValidation before handler execution). Establish service lifetime conventions (Singleton, Scoped, Transient) per architectural pattern.
@@ -272,13 +320,32 @@ Completion Criteria:
 
 Notes: Depends on P1-S02 for `IModule` interface and P1-S03 for database connection registration.
 
+Implementation Notes (2026-09-28): All completion criteria satisfied. `Cakra.Core.ModuleLoader` discovers concrete `IModule` implementations in supplied assemblies (ordered by `Name`, resilient to `ReflectionTypeLoadException`) and invokes `RegisterServices`; `Cakra.Api.Extensions.ModuleRegistrationExtensions.DiscoverModuleAssemblies()` locates every deployed `Cakra.Modules.*.dll` from the application base directory (avoids the compiler dropping unused assembly references) and `AddCakraModules` registers them. `Cakra.Api.Extensions.CoreServicesExtensions.AddCakraCore` wires the composition root: `ISystemClock`→`SystemClock` (Singleton), `ICurrentContextProvider`→`CurrentContextProvider` (Scoped), `IAuditContext`→`AuditContext` (Scoped, derives actor from the ambient context and timestamp from the clock); MediatR via `RegisterServicesFromAssemblies` over the host + `Cakra.Core` + every module assembly with `AddOpenBehavior(typeof(ValidationBehaviour<,>))`; and `AddValidatorsFromAssemblies` for auto-discovery of validators per module. `Cakra.Core.ValidationBehaviour<TRequest,TResponse>` executes all `IValidator<TRequest>` implementations before the handler and throws `ValidationException` on failure (Architecture §19.2). The `IModule` pattern is demonstrated end to end by `IdentityModule` in `Cakra.Modules.Identity`, which registers a `StubRegistrationProbe` and whose `StubModulePingHandler`/`StubModulePingRequestValidator` prove per-module handler/validator auto-discovery. Service lifetime conventions (Singleton = stateless infrastructure; Scoped = per-request ambient state; Transient = stateless handlers) are documented in `docs/architecture/dependency-injection-conventions.md`. `Program.cs` calls `AddCakraCore` + `AddCakraModules` after `AddControllers`. Verification: `dotnet build Cakra.sln` succeeds with 0 warnings / 0 errors; `dotnet test Cakra.sln` passes with 0 failures, including 8 new P1-S04 tests in `Cakra.Tests.Integration` (container builds with `ValidateOnBuild`/`ValidateScopes`; core interfaces resolve; MediatR + `ValidationBehaviour` resolve; module service self-registration; validator auto-discovery; handler dispatch; invalid request rejected by the validation behavior; and an in-process host startup smoke check that resolves the core graph with migrations bypassed). The event-bus registration is owned by P1-S05 and was intentionally not wired here.
+
+Changed Files:
+- `src/backend/Cakra.Core/Behaviors/ValidationBehaviour.cs` (created — MediatR FluentValidation pipeline behavior)
+- `src/backend/Cakra.Core/Modules/ModuleLoader.cs` (created — IModule discovery/registration)
+- `src/backend/Cakra.Api/Extensions/CoreServicesExtensions.cs` (created — core services + MediatR/validation registration)
+- `src/backend/Cakra.Api/Extensions/ModuleRegistrationExtensions.cs` (created — module assembly discovery + registration)
+- `src/backend/Cakra.Api/Infrastructure/Context/SystemClock.cs` (created)
+- `src/backend/Cakra.Api/Infrastructure/Context/CurrentContextProvider.cs` (created)
+- `src/backend/Cakra.Api/Infrastructure/Context/AuditContext.cs` (created)
+- `src/backend/Cakra.Api/Program.cs` (modified — calls AddCakraCore/AddCakraModules)
+- `src/backend/Cakra.Modules.Identity/IdentityModule.cs` (created — stub module demonstrating the pattern)
+- `src/backend/Cakra.Modules.Identity/Registration/StubRegistrationProbe.cs` (created)
+- `src/backend/Cakra.Modules.Identity/Registration/StubModulePingRequest.cs` (created)
+- `src/backend/Cakra.Modules.Identity/Registration/StubModulePingHandler.cs` (created)
+- `src/backend/Cakra.Modules.Identity/Registration/StubModulePingRequestValidator.cs` (created)
+- `tests/backend/Cakra.Tests.Integration/Modules/ModuleRegistrationTests.cs` (created — DI verification + startup smoke tests)
+- `docs/architecture/dependency-injection-conventions.md` (created — service lifetime & registration conventions)
+
 ---
 
 ### P1-S05
 
 Title: Domain Event Bus Implementation
 
-Implementation Status: NOT-STARTED
+Implementation Status: IMPLEMENTED
 Review Status: NOT-REVIEWED
 
 Objective: Implement the concrete in-process domain event bus: `DomainEventDispatcher` implementing `IDomainEventDispatcher`. The dispatcher must support synchronous in-process event publishing using MediatR `IPublisher` within the same database transaction scope as the originating command — per Architecture §18 and §12 (Synchronization Guarantee). Event handlers are implemented as MediatR `INotificationHandler<T>` and discovered through the DI container.
@@ -295,6 +362,15 @@ Completion Criteria:
 - Unit tests (xUnit): publishing an event invokes all registered handlers; missing handler does not throw; handler exception propagates correctly.
 
 Notes: Depends on P1-S02 for the `IDomainEvent` and `IDomainEventDispatcher` interfaces. Can execute in parallel with P1-S03 after P1-S02 is implemented. Architecture §18 (Domain Event Bus) and §19.2 (MediatR) are authoritative.
+
+Implementation Notes (2026-09-28): All completion criteria satisfied. `DomainEventDispatcher` (sealed, `Cakra.Core`) implements `IDomainEventDispatcher` by injecting `MediatR.IPublisher` and delegating `DispatchAsync` to `IPublisher.Publish(domainEvent, cancellationToken)`; because `IDomainEvent : INotification`, MediatR resolves and invokes every registered `INotificationHandler<T>` for the concrete event type. Dispatch is synchronous in-process: MediatR's default `ForeachAwaitPublisher` awaits each handler before `Publish` returns, and any handler exception propagates to the caller, so dispatch runs within — and rolls back — the same transaction scope as the originating command (Architecture §18; §12 Synchronization Guarantee). Handlers are discovered through the DI container via MediatR assembly scanning. DI registration is provided by a self-contained extension `DomainEventBusServiceCollectionExtensions.AddDomainEventBus(IServiceCollection)` in `Cakra.Core`: it registers `IDomainEventDispatcher → DomainEventDispatcher` as **Scoped** (shared with the command scope) via `TryAddScoped`, and registers MediatR from the `Cakra.Core` assembly only when the host has not already registered it (guarded on `IMediator`), leaving the module registration pattern (P1-S04) free to register module assemblies, handlers, and the FluentValidation pipeline behavior — no P1-S04 work was duplicated and no `IModule` implementation was created. The P1-S02 `IModule` interface was present but the P1-S04 registration pattern had not started; the self-contained helper is therefore callable from `IModule.RegisterServices` once P1-S04 lands. Unit tests added in `Cakra.Tests.Unit/Events/DomainEventDispatcherTests.cs` (xUnit + FluentAssertions) cover all three required behaviours: (1) two `INotificationHandler<TestDomainEvent>` implementations are both invoked; (2) dispatching an event with no handler completes without throwing; (3) an `InvalidOperationException` raised by a handler propagates out of `DispatchAsync`. The unit test project gained a `Cakra.Core` project reference plus `MediatR` 12.5.0 and `Microsoft.Extensions.DependencyInjection` 8.0.1 package references (test seam only). `dotnet build Cakra.sln` succeeded with 0 errors, 0 warnings; `dotnet test Cakra.sln` completed with exit code 0 (11 passed / 0 failed / 0 skipped), including the three P1-S05 unit tests in `Cakra.Tests.Unit` and the concurrently-added integration tests. No EF Core packages introduced.
+
+Changed Files:
+- `src/backend/Cakra.Core/Events/DomainEventDispatcher.cs` (created)
+- `src/backend/Cakra.Core/Events/DomainEventBusServiceCollectionExtensions.cs` (created)
+- `tests/backend/Cakra.Tests.Unit/Events/DomainEventDispatcherTests.cs` (created)
+- `tests/backend/Cakra.Tests.Unit/Cakra.Tests.Unit.csproj` (modified — added `Cakra.Core` project reference; added `MediatR` 12.5.0 and `Microsoft.Extensions.DependencyInjection` 8.0.1 package references)
+- `docs/implementation-plan/CAKRA-IMPLEMENTATION-PLAN.md` (modified — P1-S05 implementation status and notes)
 
 ---
 
@@ -337,8 +413,8 @@ Notes: Terminal application-pipeline slice of P1. All subsequent phases producin
 
 Title: Test Project Infrastructure
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective: Create and configure the test projects (`Cakra.Tests.Unit` and `Cakra.Tests.Integration`) under `tests/backend/` per Architecture §19.8 and §19.11. Establish all required test NuGet packages, integration test infrastructure using `WebApplicationFactory<Program>`, and the Respawn-based database reset utility for test isolation. This slice produces no business tests — only the scaffolding that all subsequent test slices build into.
 
@@ -357,14 +433,27 @@ Completion Criteria:
 
 Notes: Can execute in parallel with P1-S02 through P1-S05 (depends only on P1-S01 for project structure). Test infrastructure is a prerequisite for all integration test completion criteria in slices P2-S09 onwards. Architecture §19.8 (Testing Strategy) is authoritative.
 
+Implementation Notes (2026-09-28): All completion criteria satisfied. Created `tests/backend/Cakra.Tests.Unit` and `tests/backend/Cakra.Tests.Integration` both targeting `net8.0` (`LangVersion=12`, nullable + implicit usings enabled) and added both to `Cakra.sln`. Both projects reference `xunit` 2.9.3, `xunit.runner.visualstudio` 2.8.2, `FluentAssertions` 6.12.2, and `Microsoft.NET.Test.Sdk` 17.11.1; `Cakra.Tests.Integration` additionally references `Microsoft.AspNetCore.Mvc.Testing` 8.0.11, `Respawn` 7.0.0, `Microsoft.Data.SqlClient` 6.1.4 (version aligned with the host's transitive reference to avoid NU1605), and project-references `Cakra.Api`. Integration scaffolding: `IntegrationTestBase` exposes an in-process `WebApplicationFactory<Program>` `Client` plus a `DatabaseResetHelper`; `CakraWebApplicationFactory` redirects `ConnectionStrings:DefaultConnection` to the test database only when configured; `DatabaseResetHelper` resolves the isolated test connection string from the `CAKRA_TEST_DB_CONNECTION` environment variable (fallback `ConnectionStrings__TestConnection`), ignores the `dbo.__SchemaVersions` DbUp journal, and creates the Respawner lazily so no live database is required for build or test discovery. Added `public partial class Program { }` to `Program.cs` so `WebApplicationFactory<Program>` can reference the entry point; this is the only Program.cs change made by this slice (the concurrent P1-S06 owner had appended `return 0;` after the partial declaration, which would not compile — the top-level `return 0;` was moved ahead of the type declaration without altering any P1-S06 pipeline logic). `dotnet build Cakra.sln` succeeded with 0 warnings / 0 errors. `dotnet test Cakra.sln` completed with exit code 0 and zero failures: both test assemblies were discovered by the xUnit adapter and reported no test methods, as expected for infrastructure-only scaffolding. No business tests were added.
+
+Changed Files:
+- `tests/backend/Cakra.Tests.Unit/Cakra.Tests.Unit.csproj` (created)
+- `tests/backend/Cakra.Tests.Integration/Cakra.Tests.Integration.csproj` (created)
+- `tests/backend/Cakra.Tests.Integration/IntegrationTestBase.cs` (created)
+- `tests/backend/Cakra.Tests.Integration/Infrastructure/CakraWebApplicationFactory.cs` (created)
+- `tests/backend/Cakra.Tests.Integration/DatabaseResetHelper.cs` (created)
+- `tests/backend/Cakra.Tests.Unit/.gitkeep` (deleted — placeholder superseded by project)
+- `tests/backend/Cakra.Tests.Integration/.gitkeep` (deleted — placeholder superseded by project)
+- `Cakra.sln` (modified — both test projects added)
+- `src/backend/Cakra.Api/Program.cs` (modified — `public partial class Program { }` added for `WebApplicationFactory<Program>`)
+
 ---
 
 ### P1-S08
 
 Title: Vue 3 Frontend Project Scaffolding
 
-Implementation Status: NOT-STARTED
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 Objective: Scaffold the Vue 3 Single Page Application project inside `src/frontend/Cakra.Web/` per Architecture §19.4 and §19.11. Establish the Vite build configuration, TypeScript setup, Bootstrap 5 integration, Vue Router 4 for client-side navigation, and Pinia for shared state management. Configure the ASP.NET Core host (`Cakra.Api`) to serve the built Vue SPA assets from `wwwroot/`. No UI screens are implemented in this slice — only the project structure, tooling configuration, and a placeholder root component.
 
@@ -384,6 +473,29 @@ Completion Criteria:
 - Placeholder root component renders "CAKRA - ICS Operational System" confirmation message; the application loads in browser without console errors.
 
 Notes: Can execute in parallel with P1-S02 through P1-S06 (depends only on P1-S01 for project structure). The `src/frontend/Cakra.Web/` SPA is built via Vite (`npm run build`) into `dist/` and ingested into `src/backend/Cakra.Api/wwwroot/` during the production publish process defined in Architecture §19.10 and P7-S39. Each screen implementation (P2-S11, P3-S16, P4-S22, P4-S23, P5-S27, P6-S32, P6-S33, P7-S37) adds Vue SFC components to this scaffold. Architecture §19.4 (Frontend Stack), §19.5 (Authentication), §19.10 (Deployment & Runtime Strategy), and §20 ("Frontend Component Architecture") are authoritative.
+
+Implementation Notes (2026-09-28): All completion criteria satisfied. Scaffolded the Vue 3 SPA in `src/frontend/Cakra.Web/` with Composition API (`<script setup lang="ts">`), Bootstrap 5 + Bootstrap Icons, Vue Router **4** (pinned to v4 per Architecture §19.4), Pinia, and Axios. Axios client (`src/api/http.ts`) is configured with `baseURL: '/api/v1'`, `withCredentials: true` (cookie-based session, Architecture §19.5), a request interceptor, and a response interceptor that dispatches a `cakra:unauthorized` event on HTTP 401 (consumed in `main.ts` to clear the auth store). `vite.config.ts` sets `build.outDir: 'dist'` (consumed by Cakra.Api `wwwroot/` during release packaging per Architecture §19.10) and a dev proxy to the local API host. Root `App.vue` renders "CAKRA - ICS Operational System" with a Bootstrap 5 layout and `<router-view/>`; `HomeView.vue` and a catch-all redirect provide placeholder routes. ASP.NET Core SPA hosting is wired via a self-contained extension `SpaStaticFilesExtensions.UseCakraSpa()` (`UseDefaultFiles()` + `UseStaticFiles()` + `MapFallbackToFile("index.html")`), invoked from a clearly-marked block in `Program.cs` so P1-S06 can position it at its canonical `UseStaticFiles()` step 3 without duplicate registration; the fallback endpoint has lowest precedence and does not shadow API controller routes. `src/backend/Cakra.Api/wwwroot/.gitkeep` was created as the static asset root. No business screens were implemented. Verification: `npm install` (91 packages, 0 vulnerabilities); `npm run build` (vue-tsc + vite v8.3.1, 41 modules transformed, emitted `dist/index.html` + `dist/assets/*.js|*.css|*.woff*` with no errors); `dotnet build Cakra.sln` succeeded with 0 warnings / 0 errors. The `Program.cs` file also contains concurrent database-infrastructure wiring from another slice; this slice only added the `using Cakra.Api.Extensions;` import and the single `app.UseCakraSpa();` call.
+
+Changed Files:
+- `src/frontend/Cakra.Web/package.json` (created)
+- `src/frontend/Cakra.Web/package-lock.json` (created — npm install lockfile)
+- `src/frontend/Cakra.Web/vite.config.ts` (created)
+- `src/frontend/Cakra.Web/tsconfig.json` (created)
+- `src/frontend/Cakra.Web/tsconfig.node.json` (created)
+- `src/frontend/Cakra.Web/env.d.ts` (created)
+- `src/frontend/Cakra.Web/index.html` (created)
+- `src/frontend/Cakra.Web/.gitignore` (created)
+- `src/frontend/Cakra.Web/src/main.ts` (created)
+- `src/frontend/Cakra.Web/src/App.vue` (created — placeholder root component)
+- `src/frontend/Cakra.Web/src/views/HomeView.vue` (created — placeholder route)
+- `src/frontend/Cakra.Web/src/router/index.ts` (created — Vue Router 4 placeholder routes)
+- `src/frontend/Cakra.Web/src/stores/auth.ts` (created — Pinia store scaffold)
+- `src/frontend/Cakra.Web/src/api/http.ts` (created — Axios client + auth interceptors)
+- `src/frontend/Cakra.Web/src/assets/main.css` (created)
+- `src/frontend/Cakra.Web/.gitkeep` (deleted — replaced by scaffolded project)
+- `src/backend/Cakra.Api/Extensions/SpaStaticFilesExtensions.cs` (created)
+- `src/backend/Cakra.Api/wwwroot/.gitkeep` (created — SPA static asset root)
+- `src/backend/Cakra.Api/Program.cs` (modified — added `using Cakra.Api.Extensions;` and marked `app.UseCakraSpa()` wiring; concurrently edited by another slice)
 
 ---
 

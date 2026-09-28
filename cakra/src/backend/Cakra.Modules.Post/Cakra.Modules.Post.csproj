@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- Architecture §22: Post depends on Cakra.Core, Domain Events from all modules -->
+  <ItemGroup>
+    <ProjectReference Include="..\Cakra.Core\Cakra.Core.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Organization\Cakra.Modules.Organization.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Customer\Cakra.Modules.Customer.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Product\Cakra.Modules.Product.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.Request\Cakra.Modules.Request.csproj" />
+    <ProjectReference Include="..\Cakra.Modules.WorkPackage\Cakra.Modules.WorkPackage.csproj" />
+  </ItemGroup>
+
+</Project>

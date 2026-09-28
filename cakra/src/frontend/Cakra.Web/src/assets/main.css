@@ -1,0 +1,12 @@
+/* Global application styles for CAKRA - ICS Operational System.
+   Bootstrap 5 and Bootstrap Icons are imported in `src/main.ts`. */
+
+.cakra-header {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+
+.cakra-footer {
+  background-color: var(--bs-tertiary-bg);
+}
