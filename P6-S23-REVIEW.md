@@ -1,0 +1,18 @@
+# P6-S23 Review Artifact
+
+## Review Iteration 0
+
+### Findings
+
+| ID | Severity | Description | Evidence | Required Correction |
+|----|----------|-------------|----------|---------------------|
+| F-001 | BLOCKER | Build fails with 27 compile errors | `dotnet build ICS.sln --no-incremental` shows 27 errors including: <br> - `PostDomainExceptions.cs(18,45): error CS0509: 'PostNotFoundException': cannot derive from sealed type 'PostDomainException'` <br> - Multiple `CS0234` errors for namespace mismatches (e.g., `ICS.modules.Customer` vs `ICS.Modules.Customer`) <br> - `IPostService.cs(3,36): error CS0234: The type or namespace name 'DTOs' does not exist in the namespace 'ICS.modules.Post.Application'` <br> - `PostCommands.cs(11,31): error CS0234: The type or namespace name 'Exceptions' does not exist in the namespace 'ICS.modules.Post.Domain'` <br> - `PostQueryService.cs(20,22): error CS0246: The type or namespace name 'IPostRepository' could not be found` | 1. Remove `sealed` modifier from `PostDomainException` class or change derived classes to not inherit from it <br> 2. Fix namespace casing: Post module files use `ICS.modules.*` but other modules use `ICS.Modules.*`; either standardize Post module to `ICS.Modules.*` or fix all using directives to use lowercase <br> 3. Remove `.DTOs` from `using ICS.modules.Post.Application DTOs;` in IPostService.cs (DTOs are in `ICS.modules.Post.Application` directly) <br> 4. Add missing `using` directives: `IOrganizationQueryService`, `ICustomerQueryService`, `IProductQueryService`, `ICS.modules.Request.IRequestQueryService`, `ICS.modules.WorkPackage.IWorkPackageQueryService`, `ICS.modules.Post.Persistence` |
+| F-002 | BLOCKER | Required test files missing | Completion criteria requires: <br> - "Unit tests in `tests/ICS.Tests.Unit/PostDomainTests.cs`" <br> - "Integration tests in `tests/ICS.Tests.Integration/PostIntegrationTests.cs`" <br> Neither file exists on disk. `tests/ICS.Tests.Unit/PostDomainTests.cs` and `tests/ICS.Tests.Integration/PostIntegrationTests.cs` are missing. | Create the missing test files as specified in the implementation plan: <br> - `tests/ICS.Tests.Unit/PostDomainTests.cs` covering domain entities, business rules, and state machine <br> - `tests/ICS.Tests.Integration/PostIntegrationTests.cs` covering end-to-end flows via WebApplicationFactory against SQL Server |
+| F-003 | MAJOR | Physical purge of reactions violates permanent retention policy | `PostRepository.RemoveReactionAsync()` performs a physical `DELETE` on `[post].[Reactions]` table (line 280-286). Completion criteria and Architecture §20 require "Soft-delete/archive only; no physical purge of posts, comments, or reactions". | Implement soft-delete for reactions (e.g., add `Status` or `IsDeleted` column to `[post].[Reactions]` table and update `RemoveReactionAsync` to set the flag instead of deleting the row). Ensure `GetReactionListAsync` filters out deleted reactions. |
+| F-004 | MAJOR | Incorrect constructor argument count in PostRepository.MapToAggregate | `PostRepository.MapToAggregate` calls `Post` constructor with 11 arguments but the constructor only accepts 10 parameters (duplicate `row.AuthorPersonId` passed as 8th argument where `DateTime createdAt` is expected). This would cause a compile error if the file were fully analyzed. | Fix the `MapToAggregate` method to pass the correct arguments: `new Post(row.PostId, row.Title, row.Content, row.Source, row.AuthorPersonId, row.Status, row.Visibility, row.CreatedAt, row.UpdatedAt, row.ArchivedAt)` |
+
+### Resolution Status
+NOT_RESOLVED
+
+### Remediation History
+- Initial review: Findings F-001 through F-004 identified.
