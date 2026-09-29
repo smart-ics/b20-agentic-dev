@@ -139,16 +139,16 @@ Assess the feasibility, dependencies, architectural impacts, and gap-closure dec
 ## GAP-001
 
 ### Decision
-Option A is adopted: Completely decommission and remove the `POST /api/v1/posts` endpoint from `PostsController.cs` and decommission `CreateOperationalPostCommand` and `CreateOperationalPostCommandValidator` in `Cakra.Modules.Post`.
+Remove `POST /api/v1/posts` and decommission `CreateOperationalPostCommand` and its validator. Direct creation of operational posts is no longer a valid business capability. Operational posts become derived artifacts generated from operational domain events such as `RequestRecorded`, `RequestEscalated`, `RequestRejected`, and `RequestStalled`. No replacement command for post creation shall be introduced. The Post module shall react to domain events and generate system posts automatically.
 
 ### Rationale
-In accordance with PO directive in CR-001, users must have no mechanism to author or submit operational posts directly. Removing the endpoint eliminates unnecessary dead code and prevents accidental invocation.
+Direct creation of operational posts is revoked per Product Owner directive in CR-001. Operational posts serve exclusively as derived communications and visibility read models anchored to authoritative operational domain events.
 
 ### Impact
-Callers cannot initiate direct operational post creation. Unit and integration tests targeting `CreateOperationalPost` will be updated or replaced.
+Direct post creation is permanently removed from the system. No replacement command or API endpoint for manual post creation will be introduced. All post creation is purely event-driven, reacting to domain events.
 
 ### Architecture Impact
-Decommissions command and endpoint in Post module API boundary; updates API surface.
+Decommissions `POST /api/v1/posts` endpoint, `CreateOperationalPostCommand`, and validator in `Cakra.Modules.Post`. The Post module write model for posts becomes strictly event-driven.
 
 ### Resolved By
 ica-analyst (Gap Closure stage)
