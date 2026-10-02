@@ -4,40 +4,6 @@ using MediatR;
 
 namespace Cakra.Modules.Post.Services;
 
-/// <summary>
-/// MediatR command to author a new human-authored operational Post (Architecture §7, §8 — UC-FCOL-003, UC-COL-001).
-/// </summary>
-public sealed record CreateOperationalPostCommand(
-    string Title,
-    string Content,
-    Guid? AuthorPersonId = null,
-    Guid? CustomerId = null,
-    Guid? ProductId = null,
-    Guid? RequestId = null,
-    Guid? WorkPackageId = null,
-    bool IsException = false,
-    string? ExceptionType = null,
-    IReadOnlyList<PostReferenceInput>? References = null) : IRequest<PostThreadDetailsDto>;
-
-/// <summary>
-/// FluentValidation validator for <see cref="CreateOperationalPostCommand"/> (Architecture §19.2).
-/// </summary>
-public sealed class CreateOperationalPostCommandValidator : AbstractValidator<CreateOperationalPostCommand>
-{
-    public CreateOperationalPostCommandValidator()
-    {
-        RuleFor(x => x.Title)
-            .NotEmpty().WithMessage("Post title is required.")
-            .MaximumLength(255).WithMessage("Post title cannot exceed 255 characters.");
-
-        RuleFor(x => x.Content)
-            .NotEmpty().WithMessage("Post content is required.");
-
-        RuleFor(x => x.ExceptionType)
-            .Must(type => string.IsNullOrWhiteSpace(type) || PostExceptionTypes.All.Contains(type.Trim(), StringComparer.OrdinalIgnoreCase))
-            .WithMessage($"ExceptionType must be one of: {string.Join(", ", PostExceptionTypes.All)}.");
-    }
-}
 
 /// <summary>
 /// MediatR command to record a system-generated operational Post (Architecture §7, §12; Post Domain §5, §7).

@@ -19,8 +19,7 @@ import PostDetailModal from '@/views/PostDetailModal.vue'
  *   displaying `exceptionType` (`ESCALATION`, `REJECTION`, `STALLED`).
  * - Provides filter controls for Customer (`GET /api/v1/customers/active`),
  *   Product (`GET /api/v1/products/active`), and Exception-only toggle (`isException`).
- * - Provides a "New Post" button and inline authoring form (`POST /api/v1/posts`) for human-authored
- *   operational posts (UC-FCOL-003).
+ * - Operational posts are derived from request lifecycle events (CR-001 / SCR-POST-002 decommissioned).
  * - Feed item cards are clickable to open `PostDetailModal.vue` (`SCR-POST-001`) and provide
  *   direct navigation links to Request Detail (`/requests/${requestId}`) when a request reference
  *   is present (UC-FCOL-004).
@@ -96,22 +95,6 @@ export interface ActiveProductOption {
   status?: string
 }
 
-export interface RequestLookupItem {
-  id: string
-  requestId?: string
-  title: string
-  status?: string
-  customerId?: string | null
-  customerName?: string | null
-  productId?: string | null
-  productName?: string | null
-}
-
-interface PagedRequestLookupPayload {
-  items?: RequestLookupItem[]
-  requests?: RequestLookupItem[]
-}
-
 interface ProblemDetailsPayload {
   title?: string
   detail?: string
@@ -126,14 +109,11 @@ const router = useRouter()
 const feedItems = ref<FeedItem[]>([])
 const activeCustomers = ref<ActiveCustomerOption[]>([])
 const activeProducts = ref<ActiveProductOption[]>([])
-const availableRequests = ref<RequestLookupItem[]>([])
 
 const isLoadingFeed = ref<boolean>(false)
 const isLoadingLookups = ref<boolean>(false)
-const isSubmittingPost = ref<boolean>(false)
 
 const errorMessage = ref<string | null>(null)
-const feedbackMessage = ref<string | null>(null)
 
 // Filter state for GET /api/v1/feed
 const filters = reactive({
@@ -149,18 +129,6 @@ const filters = reactive({
 const totalCount = ref<number>(0)
 const totalPages = ref<number>(0)
 const hasMore = ref<boolean>(false)
-
-// New Post inline form state (POST /api/v1/posts — UC-FCOL-003)
-const showCreatePostForm = ref<boolean>(false)
-const createPostForm = reactive({
-  title: '',
-  content: '',
-  customerId: '',
-  productId: '',
-  requestId: '',
-  isException: false,
-  exceptionType: '',
-})
 
 // Post Detail Modal state (SCR-POST-001)
 const selectedPostId = ref<string | null>(null)
@@ -234,13 +202,6 @@ const showingRangeStart = computed<number>(() =>
 )
 
 const showingRangeEnd = computed<number>(() => filters.offset + feedItems.value.length)
-
-const isCreatePostDisabled = computed<boolean>(
-  () =>
-    isSubmittingPost.value ||
-    createPostForm.title.trim().length === 0 ||
-    createPostForm.content.trim().length === 0,
-)
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
@@ -413,18 +374,15 @@ function resolveWorkPackageId(item: FeedItem): string | null {
 }
 
 /**
- * Loads active customers (`GET /api/v1/customers/active`), active products (`GET /api/v1/products/active`),
- * and recent requests (`GET /api/v1/requests`) for filter and post authoring selectors.
+ * Loads active customers (`GET /api/v1/customers/active`) and active products (`GET /api/v1/products/active`)
+ * for filter selectors.
  */
 async function loadReferenceLookups(): Promise<void> {
   isLoadingLookups.value = true
   try {
-    const [customersResult, productsResult, requestsResult] = await Promise.allSettled([
+    const [customersResult, productsResult] = await Promise.allSettled([
       httpClient.get<ActiveCustomerOption[]>('/customers/active'),
       httpClient.get<ActiveProductOption[]>('/products/active'),
-      httpClient.get<PagedRequestLookupPayload | RequestLookupItem[]>('/requests', {
-        params: { pageSize: 50, page: 1 },
-      }),
     ])
 
     if (customersResult.status === 'fulfilled' && Array.isArray(customersResult.value.data)) {
@@ -433,17 +391,6 @@ async function loadReferenceLookups(): Promise<void> {
 
     if (productsResult.status === 'fulfilled' && Array.isArray(productsResult.value.data)) {
       activeProducts.value = productsResult.value.data
-    }
-
-    if (requestsResult.status === 'fulfilled') {
-      const data = requestsResult.value.data
-      if (Array.isArray(data)) {
-        availableRequests.value = data
-      } else if (data && Array.isArray(data.items)) {
-        availableRequests.value = data.items
-      } else if (data && Array.isArray(data.requests)) {
-        availableRequests.value = data.requests
-      }
     }
   } finally {
     isLoadingLookups.value = false
@@ -560,94 +507,6 @@ function goToNextPage(): void {
   void loadFeed()
 }
 
-function toggleCreatePostForm(): void {
-  showCreatePostForm.value = !showCreatePostForm.value
-  errorMessage.value = null
-  feedbackMessage.value = null
-}
-
-function resetCreatePostForm(): void {
-  createPostForm.title = ''
-  createPostForm.content = ''
-  createPostForm.customerId = ''
-  createPostForm.productId = ''
-  createPostForm.requestId = ''
-  createPostForm.isException = false
-  createPostForm.exceptionType = ''
-}
-
-function handleLinkedRequestSelect(): void {
-  const selectedId = createPostForm.requestId.trim()
-  if (!selectedId) {
-    return
-  }
-  const matched = availableRequests.value.find(
-    (r) => (r.id || r.requestId) === selectedId,
-  )
-  if (matched) {
-    if (!createPostForm.customerId && matched.customerId) {
-      createPostForm.customerId = matched.customerId
-    }
-    if (!createPostForm.productId && matched.productId) {
-      createPostForm.productId = matched.productId
-    }
-  }
-}
-
-/**
- * Submits a new human-authored operational Post (`POST /api/v1/posts` — UC-FCOL-003)
- * and reloads the feed.
- */
-async function handleCreateOperationalPost(): Promise<void> {
-  if (isCreatePostDisabled.value) {
-    return
-  }
-
-  isSubmittingPost.value = true
-  errorMessage.value = null
-  feedbackMessage.value = null
-
-  try {
-    const payload: Record<string, unknown> = {
-      title: createPostForm.title.trim(),
-      content: createPostForm.content.trim(),
-      body: createPostForm.content.trim(),
-      isException: createPostForm.isException,
-    }
-
-    if (createPostForm.customerId.trim().length > 0) {
-      payload.customerId = createPostForm.customerId.trim()
-    }
-
-    if (createPostForm.productId.trim().length > 0) {
-      payload.productId = createPostForm.productId.trim()
-    }
-
-    if (createPostForm.requestId.trim().length > 0) {
-      payload.requestId = createPostForm.requestId.trim()
-    }
-
-    if (createPostForm.isException && createPostForm.exceptionType.trim().length > 0) {
-      payload.exceptionType = createPostForm.exceptionType.trim()
-    }
-
-    await httpClient.post('/posts', payload)
-
-    resetCreatePostForm()
-    showCreatePostForm.value = false
-    filters.offset = 0
-    feedbackMessage.value = 'Operational post published to the feed.'
-    await loadFeed()
-  } catch (err: unknown) {
-    errorMessage.value = extractErrorMessage(
-      err,
-      'Failed to publish operational post. Please verify your inputs and try again.',
-    )
-  } finally {
-    isSubmittingPost.value = false
-  }
-}
-
 /**
  * Opens the Post Detail Modal (`SCR-POST-001`) when clicking a feed item card.
  */
@@ -711,24 +570,10 @@ onMounted(async () => {
           <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
           Refresh
         </button>
-
-        <button
-          type="button"
-          class="btn btn-primary"
-          data-testid="toggle-create-post-btn"
-          @click="toggleCreatePostForm"
-        >
-          <i
-            class="bi me-1"
-            :class="showCreatePostForm ? 'bi-x-lg' : 'bi-plus-circle'"
-            aria-hidden="true"
-          ></i>
-          {{ showCreatePostForm ? 'Cancel Post' : 'New Operational Post' }}
-        </button>
       </div>
     </div>
 
-    <!-- Error & Feedback Alerts -->
+    <!-- Error Alert -->
     <div
       v-if="errorMessage"
       class="alert alert-danger alert-dismissible fade show d-flex align-items-center justify-content-between"
@@ -745,213 +590,6 @@ onMounted(async () => {
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
-    </div>
-
-    <div
-      v-if="feedbackMessage"
-      class="alert alert-success alert-dismissible fade show d-flex align-items-center justify-content-between"
-      role="alert"
-      data-testid="feed-feedback-alert"
-    >
-      <div>
-        <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
-        <span>{{ feedbackMessage }}</span>
-      </div>
-      <button
-        type="button"
-        class="btn-close"
-        aria-label="Close"
-        @click="feedbackMessage = null"
-      ></button>
-    </div>
-
-    <!-- Create Operational Post Form Card (POST /api/v1/posts — UC-FCOL-003) -->
-    <div
-      v-if="showCreatePostForm"
-      class="card shadow-sm border-primary-subtle mb-4"
-      data-testid="create-post-card"
-    >
-      <div class="card-header bg-primary-subtle text-primary-emphasis d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">
-          <i class="bi bi-megaphone-fill me-2" aria-hidden="true"></i>
-          Author New Operational Post
-        </span>
-        <button
-          type="button"
-          class="btn-close"
-          aria-label="Close form"
-          @click="showCreatePostForm = false"
-        ></button>
-      </div>
-      <div class="card-body">
-        <form @submit.prevent="handleCreateOperationalPost">
-          <div class="row g-3">
-            <div class="col-12">
-              <label for="createPostTitle" class="form-label fw-semibold">
-                Post Title <span class="text-danger">*</span>
-              </label>
-              <input
-                id="createPostTitle"
-                v-model="createPostForm.title"
-                type="text"
-                class="form-control"
-                maxlength="255"
-                placeholder="Summarize the operational update, finding, or blocker..."
-                required
-                data-testid="create-post-title-input"
-              />
-            </div>
-
-            <div class="col-12">
-              <label for="createPostContent" class="form-label fw-semibold">
-                Operational Details <span class="text-danger">*</span>
-              </label>
-              <textarea
-                id="createPostContent"
-                v-model="createPostForm.content"
-                class="form-control"
-                rows="3"
-                placeholder="Provide context, investigation notes, or questions for the team..."
-                required
-                data-testid="create-post-content-input"
-              ></textarea>
-            </div>
-
-            <div class="col-12 col-md-4">
-              <label for="createPostCustomer" class="form-label fw-semibold">
-                Customer (Optional)
-              </label>
-              <select
-                id="createPostCustomer"
-                v-model="createPostForm.customerId"
-                class="form-select"
-                data-testid="create-post-customer-select"
-              >
-                <option value="">— None / General —</option>
-                <option
-                  v-for="customer in activeCustomers"
-                  :key="customer.id || customer.customerId"
-                  :value="customer.id || customer.customerId"
-                >
-                  {{ customer.customerName || customer.name }}
-                  {{
-                    customer.customerCode || customer.code
-                      ? `(${customer.customerCode || customer.code})`
-                      : ''
-                  }}
-                </option>
-              </select>
-            </div>
-
-            <div class="col-12 col-md-4">
-              <label for="createPostProduct" class="form-label fw-semibold">
-                Product (Optional)
-              </label>
-              <select
-                id="createPostProduct"
-                v-model="createPostForm.productId"
-                class="form-select"
-                data-testid="create-post-product-select"
-              >
-                <option value="">— None / General —</option>
-                <option
-                  v-for="product in activeProducts"
-                  :key="product.id || product.productId"
-                  :value="product.id || product.productId"
-                >
-                  {{ product.name || product.productName }}
-                  {{
-                    product.code || product.productCode
-                      ? `(${product.code || product.productCode})`
-                      : ''
-                  }}
-                </option>
-              </select>
-            </div>
-
-            <div class="col-12 col-md-4">
-              <label for="createPostRequest" class="form-label fw-semibold">
-                Referenced Request (Optional)
-              </label>
-              <select
-                id="createPostRequest"
-                v-model="createPostForm.requestId"
-                class="form-select"
-                data-testid="create-post-request-select"
-                @change="handleLinkedRequestSelect"
-              >
-                <option value="">— No Linked Request —</option>
-                <option
-                  v-for="req in availableRequests"
-                  :key="req.id || req.requestId"
-                  :value="req.id || req.requestId"
-                >
-                  {{ req.title }} ({{ req.status || 'ACTIVE' }})
-                </option>
-              </select>
-            </div>
-
-            <div class="col-12 col-md-6 d-flex align-items-center pt-2">
-              <div class="form-check form-switch">
-                <input
-                  id="createPostIsException"
-                  v-model="createPostForm.isException"
-                  class="form-check-input"
-                  type="checkbox"
-                  role="switch"
-                  data-testid="create-post-exception-toggle"
-                />
-                <label class="form-check-label fw-semibold" for="createPostIsException">
-                  Flag as Operational Exception
-                </label>
-              </div>
-            </div>
-
-            <div v-if="createPostForm.isException" class="col-12 col-md-6">
-              <label for="createPostExceptionType" class="form-label fw-semibold">
-                Exception Type
-              </label>
-              <select
-                id="createPostExceptionType"
-                v-model="createPostForm.exceptionType"
-                class="form-select"
-                data-testid="create-post-exception-type-select"
-              >
-                <option value="">ESCALATION (Default)</option>
-                <option v-for="exType in EXCEPTION_TYPES" :key="exType" :value="exType">
-                  {{ exType }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-end gap-2 mt-3">
-            <button
-              type="button"
-              class="btn btn-outline-secondary"
-              :disabled="isSubmittingPost"
-              @click="showCreatePostForm = false"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="isCreatePostDisabled"
-              data-testid="submit-create-post-btn"
-            >
-              <span
-                v-if="isSubmittingPost"
-                class="spinner-border spinner-border-sm me-1"
-                role="status"
-                aria-hidden="true"
-              ></span>
-              <i v-else class="bi bi-send-fill me-1" aria-hidden="true"></i>
-              Publish Post
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
 
     <!-- Filter Bar (UC-FCOL-005, FEAT-FCOL-005) -->
@@ -1109,22 +747,13 @@ onMounted(async () => {
             No operational posts or system events have been recorded in the feed yet.
           </template>
         </p>
-        <div class="d-flex justify-content-center gap-2">
+        <div v-if="hasActiveFilters" class="d-flex justify-content-center gap-2">
           <button
-            v-if="hasActiveFilters"
             type="button"
             class="btn btn-outline-secondary btn-sm"
             @click="clearFilters"
           >
             Clear Filters
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary btn-sm"
-            @click="showCreatePostForm = true"
-          >
-            <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
-            Create First Post
           </button>
         </div>
       </div>

@@ -175,7 +175,7 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
             author.Id));
 
         // Create 3 visible active posts with distinct CreatedAt timestamps + 1 hidden post + 1 archived post
-        var post1 = await mediator.Send(new CreateOperationalPostCommand(
+        var post1 = await mediator.Send(new RecordSystemPostCommand(
             Title: "Deployed INA-CBGs tariff update v5.4 for RSUD Tarakan",
             Content: "Updated inpatient grouping table for BPJS claims.",
             AuthorPersonId: author.Id,
@@ -184,7 +184,7 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
 
         await Task.Delay(15);
 
-        var post2 = await mediator.Send(new CreateOperationalPostCommand(
+        var post2 = await mediator.Send(new RecordSystemPostCommand(
             Title: "Configured DICOM Modality Worklist for CT-Scan room 2",
             Content: "Modality AE Title mapped to PenaEl RIS broker.",
             AuthorPersonId: author.Id,
@@ -193,7 +193,7 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
 
         await Task.Delay(15);
 
-        var post3 = await mediator.Send(new CreateOperationalPostCommand(
+        var post3 = await mediator.Send(new RecordSystemPostCommand(
             Title: "Optimized discharge billing invoice summary query at RSUP Sardjito",
             Content: "Reduced invoice calculation latency from 950ms to 35ms.",
             AuthorPersonId: author.Id,
@@ -202,7 +202,7 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
 
         await Task.Delay(15);
 
-        var hiddenPost = await mediator.Send(new CreateOperationalPostCommand(
+        var hiddenPost = await mediator.Send(new RecordSystemPostCommand(
             Title: "Draft internal note (hidden)",
             Content: "Hidden operational note that must not appear in GetFeed.",
             AuthorPersonId: author.Id,
@@ -210,7 +210,7 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
             ProductId: productX.Id));
         await mediator.Send(new TogglePostVisibilityCommand(hiddenPost.Id, PostVisibilityNames.Hidden, author.Id));
 
-        var archivedPost = await mediator.Send(new CreateOperationalPostCommand(
+        var archivedPost = await mediator.Send(new RecordSystemPostCommand(
             Title: "Superseded operational notice (archived)",
             Content: "Archived post that must not appear in GetFeed.",
             AuthorPersonId: author.Id,
@@ -278,7 +278,7 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
             actor.Id));
 
         // 1. Normal operational post (not an exception)
-        var normalPost = await mediator.Send(new CreateOperationalPostCommand(
+        var normalPost = await mediator.Send(new RecordSystemPostCommand(
             Title: "Routine triage dashboard responsiveness check",
             Content: "All ED workstations responding under 40ms.",
             AuthorPersonId: actor.Id,
@@ -297,11 +297,15 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
             Priority: "URGENT",
             ActorPersonId: actor.Id));
 
-        var postForEscalatedRequest = await mediator.Send(new CreateOperationalPostCommand(
-            Title: "Investigating ED STAT order bridge queue contention",
-            Content: "Found connection pool exhaustion on LIS adapter.",
-            AuthorPersonId: actor.Id,
-            RequestId: requestWithPost.Id));
+        // In CR-001, recording a request automatically creates the operational post in post.Posts and post.FeedItems
+        Guid postForEscalatedRequestId;
+        await using (var conn = new SqlConnection(_connectionString))
+        {
+            await conn.OpenAsync();
+            postForEscalatedRequestId = await conn.QuerySingleAsync<Guid>(
+                "SELECT [PostId] FROM [post].[FeedItems] WHERE [RequestId] = @RequestId;",
+                new { RequestId = requestWithPost.Id });
+        }
 
         await mediator.Send(new AssignRequestOwnerCommand(requestWithPost.Id, actor.Id, ActorPersonId: actor.Id));
         await mediator.Send(new EscalateRequestCommand(
@@ -309,7 +313,7 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
             "Requires database administrator approval to increase connection pool limit on production cluster.",
             actor.Id));
 
-        var escalatedPostFeedItem = await feedQueryService.GetFeedItemByPostIdAsync(postForEscalatedRequest.Id);
+        var escalatedPostFeedItem = await feedQueryService.GetFeedItemByPostIdAsync(postForEscalatedRequestId);
         escalatedPostFeedItem.Should().NotBeNull();
         escalatedPostFeedItem!.IsException.Should().BeTrue();
         escalatedPostFeedItem.ExceptionType.Should().Be(PostExceptionTypes.Escalation);
@@ -428,7 +432,7 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
         var createdPostIdsInAscendingOrder = new List<Guid>();
         for (var i = 1; i <= 5; i++)
         {
-            var post = await mediator.Send(new CreateOperationalPostCommand(
+            var post = await mediator.Send(new RecordSystemPostCommand(
                 Title: $"Operational Feed Item #{i}",
                 Content: $"Pagination test payload item #{i}.",
                 AuthorPersonId: author.Id));

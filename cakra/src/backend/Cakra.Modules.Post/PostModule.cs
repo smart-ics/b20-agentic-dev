@@ -65,6 +65,11 @@ public sealed class PostModule : IModule
             sp.GetService<ISystemClock>(),
             sp.GetService<ILogger<FeedProjectionHandler>>()));
 
+        // Request Recorded Post Handler (CR-001 / P1-S01 - MediatR INotificationHandler<RequestRecorded> auto-discovered by AddCakraCore)
+        services.AddScoped<RequestRecordedPostHandler>(sp => new RequestRecordedPostHandler(
+            sp.GetRequiredService<IPostService>(),
+            sp.GetService<ILogger<RequestRecordedPostHandler>>()));
+
         // Feed Query Service (Architecture §7, §8, §12, §20 - single-table indexed Dapper queries over post.FeedItems)
         services.AddScoped<FeedQueryService>(sp => new FeedQueryService(
             sp.GetRequiredService<IDbConnectionFactory>(),

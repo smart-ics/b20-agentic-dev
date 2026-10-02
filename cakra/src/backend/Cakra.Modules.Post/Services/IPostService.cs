@@ -7,52 +7,6 @@ namespace Cakra.Modules.Post.Services;
 /// </summary>
 public interface IPostService
 {
-    /// <summary>
-    /// Creates a human-authored operational Post, validating the author via <c>IOrganizationQueryService</c>
-    /// and any optional contextual references (<c>CustomerId</c>, <c>ProductId</c>, <c>RequestId</c>,
-    /// <c>WorkPackageId</c>, or <c>References</c>) via their respective published query services
-    /// (UC-FCOL-003, UC-COL-001, FEAT-FCOL-003).
-    /// </summary>
-    Task<PostThreadDetailsDto> CreateOperationalPostAsync(
-        string title,
-        string content,
-        Guid? authorPersonId = null,
-        Guid? customerId = null,
-        Guid? productId = null,
-        Guid? requestId = null,
-        Guid? workPackageId = null,
-        bool isException = false,
-        string? exceptionType = null,
-        IReadOnlyList<PostReferenceInput>? references = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Convenience alias for <see cref="CreateOperationalPostAsync"/> (Architecture §7).
-    /// </summary>
-    Task<PostThreadDetailsDto> CreateOperationalPost(
-        string title,
-        string content,
-        Guid? authorPersonId = null,
-        Guid? customerId = null,
-        Guid? productId = null,
-        Guid? requestId = null,
-        Guid? workPackageId = null,
-        bool isException = false,
-        string? exceptionType = null,
-        IReadOnlyList<PostReferenceInput>? references = null,
-        CancellationToken cancellationToken = default)
-        => CreateOperationalPostAsync(
-            title,
-            content,
-            authorPersonId,
-            customerId,
-            productId,
-            requestId,
-            workPackageId,
-            isException,
-            exceptionType,
-            references,
-            cancellationToken);
 
     /// <summary>
     /// Records a system-generated operational Post (e.g. triggered by an operational event or state transition)

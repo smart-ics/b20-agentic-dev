@@ -222,8 +222,8 @@ public sealed class PostModuleIntegrationTests : IAsyncLifetime
             CustomerId: customer.Id,
             ProductId: product.Id));
 
-        // 2. Create human-authored Operational Post referencing Request and WorkPackage
-        var createdPost = await mediator.Send(new CreateOperationalPostCommand(
+        // 2. Record system post referencing Request and WorkPackage
+        var createdPost = await mediator.Send(new RecordSystemPostCommand(
             Title: "Root cause identified for 50x30mm thermal label cut-off",
             Content: "ZPL driver DPI setting defaulted to 300 DPI instead of 203 DPI on Windows print server.",
             AuthorPersonId: author.Id,
@@ -232,8 +232,8 @@ public sealed class PostModuleIntegrationTests : IAsyncLifetime
 
         createdPost.Should().NotBeNull();
         createdPost.Id.Should().NotBeEmpty();
-        createdPost.Source.Should().Be(PostSourceNames.HumanAuthored);
-        createdPost.PostType.Should().Be(PostSourceNames.HumanAuthored);
+        createdPost.Source.Should().Be(PostSourceNames.SystemGenerated);
+        createdPost.PostType.Should().Be(PostSourceNames.SystemGenerated);
         createdPost.Status.Should().Be(PostStatusNames.Active);
         createdPost.Visibility.Should().Be(PostVisibilityNames.Visible);
         createdPost.AuthorPersonId.Should().Be(author.Id);
@@ -416,54 +416,40 @@ public sealed class PostModuleIntegrationTests : IAsyncLifetime
             $"doni.{Guid.NewGuid():N}@cakra.id"));
         await mediator.Send(new DeactivatePersonCommand(inactiveAuthor.Id));
 
-        // 1. Non-existent author PersonId -> KeyNotFoundException
-        var missingAuthorAct = () => mediator.Send(new CreateOperationalPostCommand(
-            Title: "Post with unknown author",
-            Content: "Content",
-            AuthorPersonId: Guid.NewGuid()));
-        await missingAuthorAct.Should().ThrowAsync<KeyNotFoundException>();
-
-        // 2. Inactive author PersonId -> InvalidOperationException
-        var inactiveAuthorAct = () => mediator.Send(new CreateOperationalPostCommand(
-            Title: "Post with inactive author",
-            Content: "Content",
-            AuthorPersonId: inactiveAuthor.Id));
-        await inactiveAuthorAct.Should().ThrowAsync<InvalidOperationException>();
-
-        // 3. Non-existent CustomerId -> KeyNotFoundException
-        var missingCustomerAct = () => mediator.Send(new CreateOperationalPostCommand(
+        // 1. Non-existent CustomerId -> KeyNotFoundException
+        var missingCustomerAct = () => mediator.Send(new RecordSystemPostCommand(
             Title: "Post with unknown customer",
             Content: "Content",
             AuthorPersonId: activeAuthor.Id,
             CustomerId: Guid.NewGuid()));
         await missingCustomerAct.Should().ThrowAsync<KeyNotFoundException>();
 
-        // 4. Non-existent ProductId -> KeyNotFoundException
-        var missingProductAct = () => mediator.Send(new CreateOperationalPostCommand(
+        // 2. Non-existent ProductId -> KeyNotFoundException
+        var missingProductAct = () => mediator.Send(new RecordSystemPostCommand(
             Title: "Post with unknown product",
             Content: "Content",
             AuthorPersonId: activeAuthor.Id,
             ProductId: Guid.NewGuid()));
         await missingProductAct.Should().ThrowAsync<KeyNotFoundException>();
 
-        // 5. Non-existent RequestId -> KeyNotFoundException
-        var missingRequestAct = () => mediator.Send(new CreateOperationalPostCommand(
+        // 3. Non-existent RequestId -> KeyNotFoundException
+        var missingRequestAct = () => mediator.Send(new RecordSystemPostCommand(
             Title: "Post with unknown request",
             Content: "Content",
             AuthorPersonId: activeAuthor.Id,
             RequestId: Guid.NewGuid()));
         await missingRequestAct.Should().ThrowAsync<KeyNotFoundException>();
 
-        // 6. Non-existent WorkPackageId -> KeyNotFoundException
-        var missingWorkPackageAct = () => mediator.Send(new CreateOperationalPostCommand(
+        // 4. Non-existent WorkPackageId -> KeyNotFoundException
+        var missingWorkPackageAct = () => mediator.Send(new RecordSystemPostCommand(
             Title: "Post with unknown work package",
             Content: "Content",
             AuthorPersonId: activeAuthor.Id,
             WorkPackageId: Guid.NewGuid()));
         await missingWorkPackageAct.Should().ThrowAsync<KeyNotFoundException>();
 
-        // 7. Create valid post and verify unsupported social-media reaction ("LIKE") is rejected by FluentValidation
-        var validPost = await mediator.Send(new CreateOperationalPostCommand(
+        // 5. Create valid system post and verify unsupported social-media reaction ("LIKE") is rejected by FluentValidation
+        var validPost = await mediator.Send(new RecordSystemPostCommand(
             Title: "Valid operational update",
             Content: "Deployment completed cleanly.",
             AuthorPersonId: activeAuthor.Id));
@@ -485,7 +471,7 @@ public sealed class PostModuleIntegrationTests : IAsyncLifetime
         var workPackageId = Guid.NewGuid();
         var now = new DateTime(2026, 9, 28, 7, 30, 0, DateTimeKind.Utc);
 
-        var post = Cakra.Modules.Post.Domain.Post.CreateOperationalPost(
+        var post = Cakra.Modules.Post.Domain.Post.RecordSystemPost(
             title: "Database index tuning for inpatient billing",
             content: "Added composite index on BillingTransactions(CustomerId, TransactionDate).",
             authorPersonId: authorId,
@@ -507,7 +493,7 @@ public sealed class PostModuleIntegrationTests : IAsyncLifetime
                 e.PostId == post.Id &&
                 e.AuthorPersonId == authorId &&
                 e.AuthorName == "Rendra Wijaya" &&
-                e.PostType == PostSourceNames.HumanAuthored &&
+                e.PostType == PostSourceNames.SystemGenerated &&
                 e.CustomerId == customerId &&
                 e.CustomerName == "RSUDSleman" &&
                 e.ProductId == productId &&
@@ -572,6 +558,77 @@ public sealed class PostModuleIntegrationTests : IAsyncLifetime
                 e.PostId == post.Id &&
                 e.PreviousStatus == PostStatusNames.Active &&
                 e.NewStatus == PostStatusNames.Archived);
+    }
+
+    [Fact]
+    public async Task Historical_human_authored_posts_remain_readable_and_support_comments_and_reactions()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        using var scope = _factory!.Services.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var postQueryService = scope.ServiceProvider.GetRequiredService<IPostQueryService>();
+
+        var author = await mediator.Send(new CreatePersonCommand(
+            "Historical",
+            "Author",
+            $"hist.{Guid.NewGuid():N}@cakra.id"));
+
+        var historicalPostId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        // Directly insert a HUMAN_AUTHORED post row representing legacy data created prior to CR-001
+        await using (var conn = new SqlConnection(_connectionString))
+        {
+            await conn.OpenAsync();
+            await conn.ExecuteAsync("""
+                INSERT INTO [post].[Posts] (
+                    [Id], [Title], [Content], [Source], [AuthorPersonId], [Visibility], [Status], [IsException], [CreatedAt]
+                ) VALUES (
+                    @PostId, @Title, @Content, @Source, @AuthorPersonId, 'VISIBLE', 'ACTIVE', 0, @CreatedAt
+                );
+                INSERT INTO [post].[FeedItems] (
+                    [FeedItemId], [PostId], [Title], [ContentExcerpt], [Summary], [AuthorPersonId], [AuthorName],
+                    [PostType], [Source], [Visibility], [Status], [IsException], [CreatedAt], [CommentCount], [ReactionCountsJson], [UpdatedAt], [LastActivityAt]
+                ) VALUES (
+                    NEWID(), @PostId, @Title, @Content, @Content, @AuthorPersonId, 'Historical Author',
+                    @Source, @Source, 'VISIBLE', 'ACTIVE', 0, @CreatedAt, 0, '{}', @CreatedAt, @CreatedAt
+                );
+                """,
+                new
+                {
+                    PostId = historicalPostId,
+                    Title = "Legacy Human Authored Post",
+                    Content = "Historical operational note recorded before CR-001.",
+                    Source = PostSourceNames.HumanAuthored,
+                    AuthorPersonId = author.Id,
+                    CreatedAt = now.AddDays(-30)
+                });
+        }
+
+        // 1. Verify read returns HUMAN_AUTHORED source
+        var post = await postQueryService.GetPostThreadDetailsAsync(historicalPostId);
+        post.Should().NotBeNull();
+        post!.Source.Should().Be(PostSourceNames.HumanAuthored);
+        post.Title.Should().Be("Legacy Human Authored Post");
+
+        // 2. Add comment to historical post
+        var comment = await mediator.Send(new PostCommentCommand(
+            PostId: historicalPostId,
+            Content: "Adding comment to historical human-authored post",
+            AuthorPersonId: author.Id));
+        comment.Should().NotBeNull();
+        comment.Content.Should().Be("Adding comment to historical human-authored post");
+
+        // 3. Add reaction to historical post
+        var reaction = await mediator.Send(new AddReactionCommand(
+            PostId: historicalPostId,
+            ReactionType: PostReactionTypes.Seen,
+            PersonId: author.Id));
+        reaction.Should().NotBeNull();
+        reaction.ReactionType.Should().Be(PostReactionTypes.Seen);
+        reaction.IsActive.Should().BeTrue();
     }
 
     private sealed class ForeignKeyInfo

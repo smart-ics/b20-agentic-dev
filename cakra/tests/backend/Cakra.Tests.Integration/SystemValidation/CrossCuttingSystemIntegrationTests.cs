@@ -245,11 +245,12 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Criterion 3: <c>POST /api/v1/posts</c> with valid <c>RequestId</c> reference -&gt; query <c>post.FeedItems</c>
-    /// table -&gt; assert row exists with correct <c>CustomerId</c>, <c>ProductId</c>, and <c>PostId</c> (Architecture §12, §18).
+    /// Criterion 3: Record a request via <c>POST /api/v1/requests</c> -&gt; query <c>post.FeedItems</c>
+    /// table -&gt; assert row automatically created with correct <c>CustomerId</c>, <c>ProductId</c>, and <c>RequestId</c> (Architecture CR-001).
+    /// Also asserts direct <c>POST /api/v1/posts</c> is decommissioned (404/405).
     /// </summary>
     [Fact]
-    public async Task Post_posts_with_valid_RequestId_reference_inserts_FeedItems_row_with_correct_CustomerId_ProductId_and_PostId()
+    public async Task Post_requests_automatically_inserts_FeedItems_row_and_POST_posts_returns_not_found()
     {
         _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
         _factory.Should().NotBeNull();
@@ -270,18 +271,16 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
         createReqResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var requestId = (await createReqResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        // Create an operational post referencing RequestId
-        var createPostResponse = await client.PostAsJsonAsync("/api/v1/posts", new
+        // Direct POST /api/v1/posts is decommissioned -> 404/405
+        var directPostResp = await client.PostAsJsonAsync("/api/v1/posts", new
         {
-            title = "Verified Q4 tariff mapping against 50 inpatient test claims",
-            content = "All 50 sample claims grouped cleanly with zero tariff discrepancies.",
+            title = "Direct post should fail",
+            content = "Decommissioned endpoint",
             requestId
         });
-        createPostResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var postId = (await createPostResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
-        postId.Should().NotBeEmpty();
+        directPostResp.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
 
-        // Query post.FeedItems directly in SQL Server
+        // Query post.FeedItems directly in SQL Server: recording request automatically inserted row!
         await using var conn = new SqlConnection(_connectionString);
         await conn.OpenAsync();
 
@@ -289,12 +288,12 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
             """
             SELECT [PostId], [CustomerId], [ProductId], [RequestId]
             FROM [post].[FeedItems]
-            WHERE [PostId] = @PostId;
+            WHERE [RequestId] = @RequestId;
             """,
-            new { PostId = postId });
+            new { RequestId = requestId });
 
         feedItem.Should().NotBe(default);
-        feedItem.PostId.Should().Be(postId);
+        feedItem.PostId.Should().NotBeEmpty();
         feedItem.CustomerId.Should().Be(ctx.CustomerId);
         feedItem.ProductId.Should().Be(ctx.ProductId);
         feedItem.RequestId.Should().Be(requestId);
@@ -507,22 +506,17 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
         reqResp.StatusCode.Should().Be(HttpStatusCode.Created);
         var requestId = (await reqResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        var post1Resp = await client.PostAsJsonAsync("/api/v1/posts", new
+        // Post 1 was automatically recorded when Request was created above.
+        // Post 2 is recorded via RecordSystemPostCommand.
+        using (var scope = _factory!.Services.CreateScope())
         {
-            title = "Deployed DICOM worklist query patch to RSUP Dr. Sardjito staging",
-            content = "Verified CT and MR modality tag filtering with radiology technicians.",
-            requestId
-        });
-        post1Resp.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var post2Resp = await client.PostAsJsonAsync("/api/v1/posts", new
-        {
-            title = "Weekly MyHospital Core release notes published",
-            content = "Includes billing rounding adjustments and pharmacy batch stock checks.",
-            customerId = ctx.CustomerId,
-            productId = ctx.ProductId
-        });
-        post2Resp.StatusCode.Should().Be(HttpStatusCode.Created);
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            await mediator.Send(new RecordSystemPostCommand(
+                Title: "Weekly MyHospital Core release notes published",
+                Content: "Includes billing rounding adjustments and pharmacy batch stock checks.",
+                CustomerId: ctx.CustomerId,
+                ProductId: ctx.ProductId));
+        }
 
         // Truncate post.FeedItems to simulate projection rebuild from scratch
         await using (var conn = new SqlConnection(_connectionString))
@@ -688,17 +682,26 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
         (await getWpScopeResp.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength().Should().Be(1);
 
         // =====================================================================
-        // 5. SCR-POST-001 & SCR-FEED-001: POST /api/v1/posts, GET /api/v1/feed,
+        // 5. SCR-FEED-001: Assert POST /api/v1/posts decommissioned, GET /api/v1/feed,
         //    GET /api/v1/posts/{id}, POST/GET comments, POST/GET reactions
         // =====================================================================
-        var createPostResp = await client.PostAsJsonAsync("/api/v1/posts", new
+        var directPostResp = await client.PostAsJsonAsync("/api/v1/posts", new
         {
             title = "Clinical safety rule engine prototype ready for review",
             content = "Completed anticoagulant interaction rule table verification.",
             requestId
         });
-        createPostResp.StatusCode.Should().Be(HttpStatusCode.Created);
-        var postId = (await createPostResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        directPostResp.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
+
+        // Post was automatically created when Request was recorded earlier
+        Guid postId;
+        await using (var conn = new SqlConnection(_connectionString))
+        {
+            await conn.OpenAsync();
+            postId = await conn.QuerySingleAsync<Guid>(
+                "SELECT [PostId] FROM [post].[FeedItems] WHERE [RequestId] = @RequestId;",
+                new { RequestId = requestId });
+        }
 
         var feedResp = await client.GetAsync("/api/v1/feed?pageSize=10&offset=0");
         feedResp.StatusCode.Should().Be(HttpStatusCode.OK);

@@ -24,7 +24,6 @@ namespace Cakra.Modules.Post.Services;
 /// </summary>
 public sealed class PostService :
     IPostService,
-    IRequestHandler<CreateOperationalPostCommand, PostThreadDetailsDto>,
     IRequestHandler<RecordSystemPostCommand, PostThreadDetailsDto>,
     IRequestHandler<PostCommentCommand, CommentDto>,
     IRequestHandler<AddReactionCommand, ReactionDto>,
@@ -98,80 +97,6 @@ public sealed class PostService :
 
     private DateTime UtcNow => _clock?.UtcNow ?? DateTime.UtcNow;
 
-    /// <inheritdoc />
-    public async Task<PostThreadDetailsDto> CreateOperationalPostAsync(
-        string title,
-        string content,
-        Guid? authorPersonId = null,
-        Guid? customerId = null,
-        Guid? productId = null,
-        Guid? requestId = null,
-        Guid? workPackageId = null,
-        bool isException = false,
-        string? exceptionType = null,
-        IReadOnlyList<PostReferenceInput>? references = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            throw new PostDomainValidationException("Post title cannot be null or whitespace.", nameof(title));
-        }
-
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new PostDomainValidationException("Post content cannot be null or whitespace.", nameof(content));
-        }
-
-        var resolvedAuthorId = ResolveRequiredActorPersonId(authorPersonId, nameof(authorPersonId));
-        var authorName = await ValidateAndResolvePersonNameAsync(resolvedAuthorId, cancellationToken);
-
-        var resolvedReferences = await ValidateAndResolveReferencesAsync(
-            customerId,
-            productId,
-            requestId,
-            workPackageId,
-            references,
-            requireActiveMasterData: true,
-            cancellationToken);
-
-        var now = UtcNow;
-        var post = Domain.Post.CreateOperationalPost(
-            title: title,
-            content: content,
-            authorPersonId: resolvedAuthorId,
-            customerId: resolvedReferences.EffectiveCustomerId,
-            productId: resolvedReferences.EffectiveProductId,
-            requestId: resolvedReferences.EffectiveRequestId,
-            workPackageId: resolvedReferences.EffectiveWorkPackageId,
-            isException: isException,
-            exceptionType: exceptionType,
-            authorName: authorName,
-            customerName: resolvedReferences.CustomerName,
-            productName: resolvedReferences.ProductName,
-            primaryReferenceDisplay: resolvedReferences.PrimaryReferenceDisplay,
-            additionalReferences: resolvedReferences.AdditionalReferences,
-            createdAtUtc: now);
-
-        await _postRepository.AddAsync(post, cancellationToken);
-        await DispatchDomainEventsAsync(post, cancellationToken);
-
-        _logger.LogInformation(
-            "Operational Post {PostId} created by AuthorPersonId {AuthorPersonId} (RequestId={RequestId}, WorkPackageId={WorkPackageId}, CustomerId={CustomerId}, ProductId={ProductId})",
-            post.Id,
-            resolvedAuthorId,
-            post.RequestId,
-            post.WorkPackageId,
-            post.CustomerId,
-            post.ProductId);
-
-        return PostDto.FromDomain(
-            post,
-            authorName: authorName,
-            customerName: resolvedReferences.CustomerName,
-            productName: resolvedReferences.ProductName,
-            requestTitle: resolvedReferences.RequestTitle,
-            workPackageName: resolvedReferences.WorkPackageName);
-    }
 
     /// <inheritdoc />
     public async Task<PostThreadDetailsDto> RecordSystemPostAsync(
@@ -456,24 +381,6 @@ public sealed class PostService :
     }
 
     // MediatR command handler entry points
-    public Task<PostThreadDetailsDto> Handle(
-        CreateOperationalPostCommand request,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return CreateOperationalPostAsync(
-            request.Title,
-            request.Content,
-            request.AuthorPersonId,
-            request.CustomerId,
-            request.ProductId,
-            request.RequestId,
-            request.WorkPackageId,
-            request.IsException,
-            request.ExceptionType,
-            request.References,
-            cancellationToken);
-    }
 
     public Task<PostThreadDetailsDto> Handle(
         RecordSystemPostCommand request,

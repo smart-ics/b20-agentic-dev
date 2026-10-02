@@ -2,8 +2,8 @@
 Title: CAKRA - ICS Operational System Target Architecture
 Code: CAKRA
 Artifact: ARCHITECTURE
-Version: 1.3
-LastUpdated: 2026-09-28
+Version: 1.4
+LastUpdated: 2026-10-02
 ---
 
 # 1. Overview
@@ -121,7 +121,7 @@ The system is architected as a **Modular Monolith** organized into distinct, dec
 | `WorkPackageQueryService` | Application | Queries work package details, scope listings, and request-to-work-package associations |
 | `RequestService` | Application | Executes request state transitions: Record, Assign, Evaluate, Accept, Reject, Escalate, Request Decision, Complete |
 | `RequestQueryService` | Application | Queries request details, state history, my assigned requests, and filtered request grids |
-| `PostService` | Application | Authoring human operational posts, recording system posts, posting comments, adding reactions, toggling visibility, archiving |
+| `PostService` | Application | Recording system posts (event-driven via `RequestRecorded` etc.), posting comments, adding reactions, toggling visibility, archiving |
 | `PostQueryService` | Application | Queries post thread details, full comments, and reaction lists for post modal |
 | `FeedProjectionHandler` | Application | Listens to domain events (`PostCreated`, `CommentAdded`, `ReactionAdded`, etc.) and synchronously/asynchronously updates `FeedItems` |
 | `FeedQueryService` | Application | Executes high-performance indexed queries over `FeedItems` with filtering by Customer, Product, Team, or Exception |
@@ -147,7 +147,7 @@ The system is architected as a **Modular Monolith** organized into distinct, dec
 | **UC-COL-004** | Review Assigned Requests | `RequestQueryService` | Request, Organization |
 | **UC-FCOL-001** | Comment on Post | `PostService` | Post |
 | **UC-FCOL-002** | React to Post | `PostService` | Post |
-| **UC-FCOL-003** | Create Operational Post | `PostService` | Post, Request, Customer, Product, Work Package |
+| **UC-FCOL-003** | Create Operational Post *(DECOMMISSIONED - CR-001)* | *(Decommissioned)* | Post |
 | **UC-FCOL-004** | Navigate from Post to Request | `FeedQueryService`, `RequestQueryService` | Post, Request |
 | **UC-FCOL-005** | Filter Operational Feed | `FeedQueryService` | Post, Customer, Product, Organization |
 | **UC-AWR-001** | Observe Operational Feed | `FeedQueryService` | Post |

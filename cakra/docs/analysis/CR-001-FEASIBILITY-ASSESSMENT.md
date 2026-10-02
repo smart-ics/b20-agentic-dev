@@ -4,7 +4,7 @@ Code: CR-001
 Artifact: FEASIBILITY-ASSESSMENT
 Version: 1.0
 LastUpdated: 2026-09-29
-Status: NOT-READY
+Status: READY-FOR-PLANNING
 ---
 
 # 1. Request Summary
@@ -349,7 +349,7 @@ This change requires formal technical target-state definition by the Architect, 
 
 ## Status
 
-NOT-READY
+READY-FOR-PLANNING
 
 ## Notes
 

@@ -9,6 +9,7 @@ using Cakra.Modules.Customer.Services;
 using Cakra.Modules.Identity.Domain;
 using Cakra.Modules.Organization.Commands;
 using Cakra.Modules.Post.Domain;
+using Cakra.Modules.Post.Services;
 using Cakra.Modules.Product.Services;
 using Cakra.Modules.Request.Services;
 using Dapper;
@@ -144,12 +145,6 @@ public sealed class FeedAndPostsControllerTests : IAsyncLifetime
         (await client.GetAsync($"/api/v1/posts/{postId}/reactions"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
-        (await client.PostAsJsonAsync("/api/v1/posts", new
-        {
-            title = "Post Title",
-            content = "Post Content"
-        })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-
         (await client.PostAsJsonAsync($"/api/v1/posts/{postId}/comments", new
         {
             content = "Comment Content"
@@ -181,24 +176,42 @@ public sealed class FeedAndPostsControllerTests : IAsyncLifetime
         var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
         using var client = seeded.Client;
 
-        // 1. POST /api/v1/posts with ONLY title, body, and requestId (no explicit customerId, productId, or authorPersonId)
-        //    Must return 201 Created, resolve authorPersonId from authenticated session, and automatically inherit
-        //    CustomerId and ProductId from the referenced Request into post.Posts and post.FeedItems!
-        var createPost1Response = await client.PostAsJsonAsync("/api/v1/posts", new
+        // 1. Assert decommissioned POST /api/v1/posts returns 404 Not Found or 405 Method Not Allowed
+        var directPostResponse = await client.PostAsJsonAsync("/api/v1/posts", new
         {
             title = "Root cause identified for INA-CBGs tariff grouping mismatch",
             body = "Verified ICD-10 secondary diagnosis mapping table for inpatient claims at RSUP Sardjito.",
             requestId = seeded.Request1Id
         });
-        createPost1Response.StatusCode.Should().Be(HttpStatusCode.Created);
-        createPost1Response.Headers.Location.Should().NotBeNull();
+        directPostResponse.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
 
-        var post1Json = await createPost1Response.Content.ReadFromJsonAsync<JsonElement>();
-        var post1Id = post1Json.GetProperty("id").GetGuid();
-        post1Id.Should().NotBeEmpty();
-        post1Json.GetProperty("title").GetString().Should().Be("Root cause identified for INA-CBGs tariff grouping mismatch");
-        post1Json.GetProperty("content").GetString().Should().Be("Verified ICD-10 secondary diagnosis mapping table for inpatient claims at RSUP Sardjito.");
-        post1Json.GetProperty("body").GetString().Should().Be("Verified ICD-10 secondary diagnosis mapping table for inpatient claims at RSUP Sardjito.");
+        // Verify post automatically created when Request1 was recorded during seeding
+        Guid post1Id;
+        await using (var conn = new SqlConnection(_connectionString))
+        {
+            await conn.OpenAsync();
+            var feedRow = await conn.QuerySingleAsync<(Guid PostId, Guid? CustomerId, Guid? ProductId, Guid? RequestId, string? CustomerName, string? ProductName)>(
+                """
+                SELECT [PostId], [CustomerId], [ProductId], [RequestId], [CustomerName], [ProductName]
+                FROM [post].[FeedItems]
+                WHERE [RequestId] = @RequestId;
+                """,
+                new { RequestId = seeded.Request1Id });
+
+            feedRow.CustomerId.Should().Be(seeded.Customer1Id);
+            feedRow.ProductId.Should().Be(seeded.Product1Id);
+            feedRow.RequestId.Should().Be(seeded.Request1Id);
+            feedRow.CustomerName.Should().Be("RSUP Dr. Sardjito");
+            feedRow.ProductName.Should().Be("MyHospital Billing");
+            post1Id = feedRow.PostId;
+        }
+
+        var post1DetailsResp = await client.GetAsync($"/api/v1/posts/{post1Id}");
+        post1DetailsResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var post1Json = await post1DetailsResp.Content.ReadFromJsonAsync<JsonElement>();
+        post1Json.GetProperty("id").GetGuid().Should().Be(post1Id);
+        post1Json.GetProperty("title").GetString().Should().Be("Request: INA-CBGs tariff grouping validation fix");
+        post1Json.GetProperty("content").GetString().Should().Be("Ensure inpatient procedure codes map to updated tariff table.");
         post1Json.GetProperty("authorPersonId").GetGuid().Should().Be(seeded.Author1Id);
         post1Json.GetProperty("authorName").GetString().Should().Be("Rina Kartika");
         post1Json.GetProperty("requestId").GetGuid().Should().Be(seeded.Request1Id);
@@ -207,43 +220,23 @@ public sealed class FeedAndPostsControllerTests : IAsyncLifetime
         post1Json.GetProperty("productId").GetGuid().Should().Be(seeded.Product1Id);
         post1Json.GetProperty("productName").GetString().Should().Be("MyHospital Billing");
 
-        // Verify post.FeedItems row directly in SQL Server has CustomerId, ProductId, RequestId, and PostId populated
-        await using (var conn = new SqlConnection(_connectionString))
-        {
-            await conn.OpenAsync();
-            var feedRow = await conn.QuerySingleAsync<(Guid PostId, Guid? CustomerId, Guid? ProductId, Guid? RequestId, string? CustomerName, string? ProductName)>(
-                """
-                SELECT [PostId], [CustomerId], [ProductId], [RequestId], [CustomerName], [ProductName]
-                FROM [post].[FeedItems]
-                WHERE [PostId] = @PostId;
-                """,
-                new { PostId = post1Id });
-
-            feedRow.PostId.Should().Be(post1Id);
-            feedRow.CustomerId.Should().Be(seeded.Customer1Id);
-            feedRow.ProductId.Should().Be(seeded.Product1Id);
-            feedRow.RequestId.Should().Be(seeded.Request1Id);
-            feedRow.CustomerName.Should().Be("RSUP Dr. Sardjito");
-            feedRow.ProductName.Should().Be("MyHospital Billing");
-        }
-
         await Task.Delay(15);
 
-        // 2. POST /api/v1/posts with explicit customerId, productId, content, and exception badge
-        var createPost2Response = await client.PostAsJsonAsync("/api/v1/posts", new
+        // 2. Record system post with explicit customerId, productId, content, and exception badge
+        Guid post2Id;
+        using (var scope = _factory!.Services.CreateScope())
         {
-            title = "Escalation alert: Pharmacy stock synchronization timeout at RSUD Jogja",
-            content = "Nightly batch synchronization exceeded 30s threshold during peak dispensing window.",
-            customerId = seeded.Customer2Id,
-            productId = seeded.Product2Id,
-            isException = true,
-            exceptionType = PostExceptionTypes.Escalation
-        });
-        createPost2Response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var post2Json = await createPost2Response.Content.ReadFromJsonAsync<JsonElement>();
-        var post2Id = post2Json.GetProperty("id").GetGuid();
-        post2Json.GetProperty("isException").GetBoolean().Should().BeTrue();
-        post2Json.GetProperty("exceptionType").GetString().Should().Be(PostExceptionTypes.Escalation);
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var post2 = await mediator.Send(new RecordSystemPostCommand(
+                Title: "Escalation alert: Pharmacy stock synchronization timeout at RSUD Jogja",
+                Content: "Nightly batch synchronization exceeded 30s threshold during peak dispensing window.",
+                AuthorPersonId: seeded.Author1Id,
+                CustomerId: seeded.Customer2Id,
+                ProductId: seeded.Product2Id,
+                IsException: true,
+                ExceptionType: PostExceptionTypes.Escalation));
+            post2Id = post2.Id;
+        }
 
         // 3. POST /api/v1/posts/{id}/comments -> 201 Created
         var createComment1Response = await client.PostAsJsonAsync($"/api/v1/posts/{post1Id}/comments", new
@@ -402,23 +395,23 @@ public sealed class FeedAndPostsControllerTests : IAsyncLifetime
         notFoundReactions.StatusCode.Should().Be(HttpStatusCode.NotFound);
         notFoundReactions.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
 
-        // 400 BadRequest when creating a post with empty title/content
+        // 404/405 when calling decommissioned POST /api/v1/posts
         var badCreatePost = await client.PostAsJsonAsync("/api/v1/posts", new
         {
             title = "",
             content = ""
         });
-        badCreatePost.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        badCreatePost.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        badCreatePost.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
 
-        // Create a valid post to test invalid comment/reaction payloads
-        var validCreate = await client.PostAsJsonAsync("/api/v1/posts", new
+        // Resolve valid post from seeded request to test invalid comment/reaction payloads
+        Guid validPostId;
+        await using (var conn = new SqlConnection(_connectionString))
         {
-            title = "Valid Operational Post",
-            content = "Operational post body for validation testing."
-        });
-        validCreate.StatusCode.Should().Be(HttpStatusCode.Created);
-        var validPostId = (await validCreate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+            await conn.OpenAsync();
+            validPostId = await conn.QuerySingleAsync<Guid>(
+                "SELECT [PostId] FROM [post].[FeedItems] WHERE [RequestId] = @RequestId;",
+                new { RequestId = seeded.Request1Id });
+        }
 
         // 400 BadRequest when adding an empty comment
         var badComment = await client.PostAsJsonAsync($"/api/v1/posts/{validPostId}/comments", new
@@ -440,6 +433,154 @@ public sealed class FeedAndPostsControllerTests : IAsyncLifetime
         var badFeedFilter = await client.GetAsync("/api/v1/feed?exceptionType=NOT_AN_EXCEPTION");
         badFeedFilter.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         badFeedFilter.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+    }
+
+    [Fact]
+    public async Task Recording_a_request_via_api_automatically_creates_system_post_and_feed_item()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
+        using var client = seeded.Client;
+
+        // 1. Record a Request via POST /api/v1/requests
+        var reqPayload = new
+        {
+            title = "Laboratory Interface Result Parsing Failure",
+            description = "LIS analyzer interface drops packets during high throughput morning batch.",
+            customerId = seeded.Customer1Id,
+            productId = seeded.Product1Id,
+            requestType = "Bug",
+            priority = "URGENT"
+        };
+
+        var reqResponse = await client.PostAsJsonAsync("/api/v1/requests", reqPayload);
+        reqResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var reqJson = await reqResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var requestId = reqJson.GetProperty("id").GetGuid();
+        requestId.Should().NotBeEmpty();
+
+        // 2. Verify system post created in [post].[Posts]
+        await using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync();
+
+        var postRow = await conn.QuerySingleOrDefaultAsync<(Guid PostId, string Title, string Content, string Source, Guid? CustomerId, Guid? ProductId, Guid? RequestId)>(
+            """
+            SELECT [Id] AS [PostId], [Title], [Content], [Source], [CustomerId], [ProductId], [RequestId]
+            FROM [post].[Posts]
+            WHERE [RequestId] = @RequestId;
+            """,
+            new { RequestId = requestId });
+
+        postRow.Should().NotBe(default);
+        postRow.Title.Should().Be($"Request: {reqPayload.title}");
+        postRow.Content.Should().Be(reqPayload.description);
+        postRow.Source.Should().Be(PostSourceNames.SystemGenerated);
+        postRow.CustomerId.Should().Be(seeded.Customer1Id);
+        postRow.ProductId.Should().Be(seeded.Product1Id);
+        postRow.RequestId.Should().Be(requestId);
+
+        // 3. Verify corresponding feed item created in [post].[FeedItems]
+        var feedRow = await conn.QuerySingleOrDefaultAsync<(Guid FeedItemId, Guid PostId, string Title, string ContentExcerpt, string PostType, string Source, Guid? CustomerId, Guid? ProductId, Guid? RequestId)>(
+            """
+            SELECT [FeedItemId], [PostId], [Title], [ContentExcerpt], [PostType], [Source], [CustomerId], [ProductId], [RequestId]
+            FROM [post].[FeedItems]
+            WHERE [PostId] = @PostId;
+            """,
+            new { PostId = postRow.PostId });
+
+        feedRow.Should().NotBe(default);
+        feedRow.FeedItemId.Should().NotBeEmpty();
+        feedRow.PostId.Should().Be(postRow.PostId);
+        feedRow.Title.Should().Be($"Request: {reqPayload.title}");
+        feedRow.ContentExcerpt.Should().Be(reqPayload.description);
+        feedRow.PostType.Should().Be(PostSourceNames.SystemGenerated);
+        feedRow.Source.Should().Be(PostSourceNames.SystemGenerated);
+        feedRow.CustomerId.Should().Be(seeded.Customer1Id);
+        feedRow.ProductId.Should().Be(seeded.Product1Id);
+        feedRow.RequestId.Should().Be(requestId);
+
+        // 4. Verify feed query returns the item
+        var feedResponse = await client.GetAsync($"/api/v1/feed?customerId={seeded.Customer1Id}");
+        feedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var feedJson = await feedResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var items = feedJson.GetProperty("items");
+        items.EnumerateArray().Any(item => item.GetProperty("postId").GetGuid() == postRow.PostId).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Historical_human_authored_posts_remain_readable_and_support_comments_and_reactions_via_api()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
+        using var client = seeded.Client;
+
+        var historicalPostId = Guid.NewGuid();
+        var now = DateTime.UtcNow.AddDays(-10);
+
+        // Seed a historical HUMAN_AUTHORED post and feed item directly in database
+        await using (var conn = new SqlConnection(_connectionString))
+        {
+            await conn.OpenAsync();
+            await conn.ExecuteAsync("""
+                INSERT INTO [post].[Posts] (
+                    [Id], [Title], [Content], [Source], [AuthorPersonId], [Visibility], [Status], [IsException], [CreatedAt]
+                ) VALUES (
+                    @PostId, @Title, @Content, 'HUMAN_AUTHORED', @AuthorPersonId, 'VISIBLE', 'ACTIVE', 0, @CreatedAt
+                );
+                INSERT INTO [post].[FeedItems] (
+                    [FeedItemId], [PostId], [Title], [ContentExcerpt], [Summary], [AuthorPersonId], [AuthorName],
+                    [PostType], [Source], [Visibility], [Status], [IsException], [CreatedAt], [CommentCount], [ReactionCountsJson], [UpdatedAt], [LastActivityAt]
+                ) VALUES (
+                    NEWID(), @PostId, @Title, @Content, @Content, @AuthorPersonId, 'Rina Kartika',
+                    'HUMAN_AUTHORED', 'HUMAN_AUTHORED', 'VISIBLE', 'ACTIVE', 0, @CreatedAt, 0, '{}', @CreatedAt, @CreatedAt
+                );
+                """,
+                new
+                {
+                    PostId = historicalPostId,
+                    Title = "Historical Human-Authored Release Note",
+                    Content = "Legacy post created before CR-001 direct creation deprecation.",
+                    AuthorPersonId = seeded.Author1Id,
+                    CreatedAt = now
+                });
+        }
+
+        // 1. GET /api/v1/posts/{id} -> 200 OK and asserts Source == HUMAN_AUTHORED
+        var getPostResponse = await client.GetAsync($"/api/v1/posts/{historicalPostId}");
+        getPostResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var postJson = await getPostResponse.Content.ReadFromJsonAsync<JsonElement>();
+        postJson.GetProperty("id").GetGuid().Should().Be(historicalPostId);
+        postJson.GetProperty("title").GetString().Should().Be("Historical Human-Authored Release Note");
+        postJson.GetProperty("source").GetString().Should().Be(PostSourceNames.HumanAuthored);
+
+        // 2. POST /api/v1/posts/{id}/comments -> 201 Created
+        var commentResponse = await client.PostAsJsonAsync($"/api/v1/posts/{historicalPostId}/comments", new
+        {
+            content = "Comment on historical post"
+        });
+        commentResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // 3. POST /api/v1/posts/{id}/reactions -> 200 OK
+        var reactionResponse = await client.PostAsJsonAsync($"/api/v1/posts/{historicalPostId}/reactions", new
+        {
+            reactionType = PostReactionTypes.Seen
+        });
+        reactionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 4. Verify comments and reactions can be retrieved
+        var getCommentsResponse = await client.GetAsync($"/api/v1/posts/{historicalPostId}/comments");
+        getCommentsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var commentsJson = await getCommentsResponse.Content.ReadFromJsonAsync<JsonElement>();
+        commentsJson.GetArrayLength().Should().Be(1);
+
+        var getReactionsResponse = await client.GetAsync($"/api/v1/posts/{historicalPostId}/reactions");
+        getReactionsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reactionsJson = await getReactionsResponse.Content.ReadFromJsonAsync<JsonElement>();
+        reactionsJson.GetArrayLength().Should().Be(1);
     }
 
     private async Task<SeededFeedAndPostTestContext> CreateAuthenticatedClientAndSeedContextAsync()

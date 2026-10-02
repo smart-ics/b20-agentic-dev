@@ -284,8 +284,8 @@ public sealed class FeedProjectionIntegrationTests : IAsyncLifetime
             CustomerId: customer.Id,
             ProductId: product.Id));
 
-        // 2. Create Operational Post -> verify FeedItem is synchronously inserted
-        var post = await mediator.Send(new CreateOperationalPostCommand(
+        // 2. Record System Post -> verify FeedItem is synchronously inserted
+        var post = await mediator.Send(new RecordSystemPostCommand(
             Title: "Increased SOAP autosave timeout and added local sessionStorage draft buffer",
             Content: "Autosave timeout increased from 3s to 15s with exponential backoff and local draft recovery.",
             AuthorPersonId: author.Id,
@@ -301,8 +301,8 @@ public sealed class FeedProjectionIntegrationTests : IAsyncLifetime
         feedItemAfterCreate.Summary.Should().Be(post.Content);
         feedItemAfterCreate.AuthorPersonId.Should().Be(author.Id);
         feedItemAfterCreate.AuthorName.Should().Be("Dian Purnama");
-        feedItemAfterCreate.PostType.Should().Be(PostSourceNames.HumanAuthored);
-        feedItemAfterCreate.Source.Should().Be(PostSourceNames.HumanAuthored);
+        feedItemAfterCreate.PostType.Should().Be(PostSourceNames.SystemGenerated);
+        feedItemAfterCreate.Source.Should().Be(PostSourceNames.SystemGenerated);
         feedItemAfterCreate.CustomerId.Should().Be(customer.Id);
         feedItemAfterCreate.CustomerName.Should().Be("RSUD Pasar Minggu");
         feedItemAfterCreate.ProductId.Should().Be(product.Id);
@@ -445,8 +445,8 @@ public sealed class FeedProjectionIntegrationTests : IAsyncLifetime
             Priority: "HIGH",
             ActorPersonId: author.Id));
 
-        // Create Post 1 (human-authored, with comment + reactions)
-        var post1 = await mediator.Send(new CreateOperationalPostCommand(
+        // Create Post 1 (system-generated, with comment + reactions)
+        var post1 = await mediator.Send(new RecordSystemPostCommand(
             Title: "Patched ASTM E1381 ETB/ETX frame accumulator for Sysmex XN-1000",
             Content: "Updated frame accumulator to strip intermediate STX/ETB checksum bytes before assembling OBX segments.",
             AuthorPersonId: author.Id,
@@ -485,7 +485,7 @@ public sealed class FeedProjectionIntegrationTests : IAsyncLifetime
 
         // 1. Rebuild synchronously via RebuildAll()
         var rebuiltCount = rebuilder.RebuildAll();
-        rebuiltCount.Should().Be(2);
+        rebuiltCount.Should().Be(3);
 
         var rebuiltItem1 = await GetFeedItemByPostIdAsync(post1.Id);
         rebuiltItem1.Should().NotBeNull();
@@ -519,7 +519,7 @@ public sealed class FeedProjectionIntegrationTests : IAsyncLifetime
 
         var completionTask = await rebuilder.EnqueueRebuildAsync();
         var channelRebuiltCount = await completionTask.WaitAsync(TimeSpan.FromSeconds(10));
-        channelRebuiltCount.Should().Be(2);
+        channelRebuiltCount.Should().Be(3);
 
         var channelRebuiltItem1 = await GetFeedItemByPostIdAsync(post1.Id);
         channelRebuiltItem1.Should().NotBeNull();
