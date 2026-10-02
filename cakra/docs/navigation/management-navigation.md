@@ -20,6 +20,12 @@ Management Oversight Area
 ├── SCR-MGT-003: Programmer Workload Review
 │   └── Request Selection ──────────► SCR-REQ-003: Request Detail
 │
+├── SCR-CUST-001: Create Customer Modal
+│   └── On Save / Cancel ───────────► Customer Portfolio View
+│
+├── SCR-CUST-002: Edit Customer Modal
+│   └── On Save / Cancel ───────────► Customer Portfolio View
+│
 └── SCR-REQ-003: Request Detail
     └── Back / Return ──────────────► Originating Screen (SCR-MGT-001 / SCR-MGT-002 / SCR-MGT-003)
 ```
@@ -66,3 +72,17 @@ Management Oversight Area
   1. Actor navigates to `SCR-MGT-003: Programmer Workload Review` via Global Navigation.
   2. Actor selects an active Request, navigating to `SCR-REQ-003: Request Detail`.
   3. From `SCR-REQ-003`, actor returns to `SCR-MGT-003`.
+
+### UJ-CUST-001: Customer Master Maintenance
+* **Primary Actor:** Administrator, Management
+* **Entry Point:** Customer Portfolio View (`CustomerPortfolioView.vue`)
+* **Destinations:**
+  * `SCR-CUST-001: Create Customer Modal` (via "Add Customer" button)
+  * `SCR-CUST-002: Edit Customer Modal` (via customer card "Edit Customer" button)
+* **Exit / Destination:** Customer Portfolio View (`CustomerPortfolioView.vue`)
+* **Movement Path:**
+  1. Actor navigates to Customer Portfolio View.
+  2. Actor selects "Add Customer", triggering modal dialog `SCR-CUST-001` to record a new customer master record.
+  3. Alternatively, actor selects "Edit Customer" on an existing customer card, triggering modal dialog `SCR-CUST-002` to update attributes or manage customer contacts.
+  4. Upon saving or canceling, actor returns to Customer Portfolio View with refreshed data.
+

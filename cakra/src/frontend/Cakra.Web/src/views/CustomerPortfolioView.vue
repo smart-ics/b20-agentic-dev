@@ -4,6 +4,9 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { httpClient } from '@/api/http'
+import CreateCustomerModal from '@/components/CreateCustomerModal.vue'
+import EditCustomerModal from '@/components/EditCustomerModal.vue'
+import type { CustomerDto } from '@/api/customers'
 
 /**
  * SCR-MGT-001: Customer Progress Review / Customer Portfolio Screen
@@ -98,6 +101,10 @@ const portfolio = ref<CustomerRequestPortfolioDto | null>(null)
 const isLoadingCustomers = ref(false)
 const isLoadingPortfolio = ref(false)
 const errorMessage = ref<string | null>(null)
+
+const isCreateModalOpen = ref(false)
+const isEditModalOpen = ref(false)
+const editingCustomerId = ref<string | null>(null)
 
 const activeRequestsList = computed<CustomerPortfolioRequestItemDto[]>(
   () => portfolio.value?.activeRequests ?? [],
@@ -254,6 +261,23 @@ async function handleCustomerChange(): Promise<void> {
   await loadCustomerPortfolio()
 }
 
+function openCreateModal(): void {
+  isCreateModalOpen.value = true
+}
+
+function openEditModal(id?: string): void {
+  editingCustomerId.value = id || selectedCustomerId.value || null
+  isEditModalOpen.value = true
+}
+
+async function handleCustomerSaved(savedCustomer?: CustomerDto): Promise<void> {
+  await loadActiveCustomers()
+  if (savedCustomer?.id || savedCustomer?.customerId) {
+    selectedCustomerId.value = savedCustomer.id || savedCustomer.customerId || selectedCustomerId.value
+  }
+  await loadCustomerPortfolio()
+}
+
 onMounted(async () => {
   await loadActiveCustomers()
 })
@@ -269,6 +293,15 @@ onMounted(async () => {
         </p>
       </div>
       <div class="d-flex align-items-center gap-2">
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          data-testid="add-customer-button"
+          @click="openCreateModal"
+        >
+          <i class="bi bi-building-add me-1" aria-hidden="true"></i>
+          Add Customer
+        </button>
         <router-link to="/analytics/programmer-workload" class="btn btn-outline-secondary btn-sm">
           <i class="bi bi-people me-1" aria-hidden="true"></i>
           Programmer Workload
@@ -378,6 +411,15 @@ onMounted(async () => {
           </div>
 
           <div class="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-primary btn-sm me-2"
+              data-testid="edit-customer-button"
+              @click="openEditModal(portfolio.customerId)"
+            >
+              <i class="bi bi-pencil me-1" aria-hidden="true"></i>
+              Edit Customer
+            </button>
             <span class="text-body-secondary small fw-semibold">Maintenance Contract:</span>
             <span
               class="badge fs-6"
@@ -701,5 +743,18 @@ onMounted(async () => {
         Select an active customer above to inspect their real-time request portfolio, open blockers, and recent completions.
       </div>
     </div>
+
+    <!-- Modals (SCR-CUST-001 & SCR-CUST-002) -->
+    <CreateCustomerModal
+      :show="isCreateModalOpen"
+      @close="isCreateModalOpen = false"
+      @saved="handleCustomerSaved"
+    />
+    <EditCustomerModal
+      :show="isEditModalOpen"
+      :customer-id="editingCustomerId"
+      @close="isEditModalOpen = false; editingCustomerId = null"
+      @saved="handleCustomerSaved"
+    />
   </section>
 </template>

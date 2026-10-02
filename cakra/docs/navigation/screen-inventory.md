@@ -19,6 +19,8 @@ Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios*
 | `SCR-FEED-001` | Operational Feed | Operational Feed | Implementator, Management, Request Owner | UJ-AWR-001, UJ-AWR-002, UJ-AWR-003, UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-005 | UC-AWR-001, UC-AWR-002, UC-AWR-003, UC-FCOL-001, UC-FCOL-002, UC-FCOL-005 |
 | `SCR-POST-001` | Post Detail | Operational Feed | Implementator, Management, Request Owner | UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-004 | UC-FCOL-001, UC-FCOL-002, UC-FCOL-004 |
 | `SCR-POST-002` | Create Post | Operational Feed | Implementator | UJ-FCOL-003 | UC-FCOL-003 |
+| `SCR-CUST-001` | Create Customer Modal | Customer Master | Administrator, Management | UJ-CUST-001 | UC-CUST-001 |
+| `SCR-CUST-002` | Edit Customer Modal | Customer Master | Administrator, Management | UJ-CUST-001 | UC-CUST-001 |
 
 ---
 
@@ -354,3 +356,56 @@ View active Request assignments for a Programmer.
 **Exit / Destination:**
 * `SCR-FEED-001: Operational Feed`
 * `SCR-POST-001: Post Detail`
+
+---
+
+### SCR-CUST-001
+
+**Screen Name:**
+Create Customer Modal
+
+**Purpose:**
+Modal dialog interface for recording a new Customer Master record and setting initial maintenance contract status.
+
+**Primary Actors:**
+* Administrator
+* Management
+
+**Supported Use Cases:**
+* UC-CUST-001: Maintain Customer Master Data
+
+**Supported User Journeys:**
+* UJ-CUST-001: Customer Master Maintenance
+
+**Entry Points:**
+* Customer Portfolio View (`CustomerPortfolioView.vue`) — "Add Customer" header button action
+
+**Exit / Destination:**
+* Customer Portfolio View (`CustomerPortfolioView.vue`) — closes modal and reloads portfolio list upon successful save or cancellation
+
+---
+
+### SCR-CUST-002
+
+**Screen Name:**
+Edit Customer Modal
+
+**Purpose:**
+Modal dialog interface for updating customer attributes, toggling active status, and managing associated customer contacts.
+
+**Primary Actors:**
+* Administrator
+* Management
+
+**Supported Use Cases:**
+* UC-CUST-001: Maintain Customer Master Data
+
+**Supported User Journeys:**
+* UJ-CUST-001: Customer Master Maintenance
+
+**Entry Points:**
+* Customer Portfolio View (`CustomerPortfolioView.vue`) — Customer summary card "Edit Customer" button action
+
+**Exit / Destination:**
+* Customer Portfolio View (`CustomerPortfolioView.vue`) — closes modal and reloads portfolio list upon successful save or cancellation
+
