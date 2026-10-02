@@ -17,6 +17,7 @@ Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios*
 | `SCR-MGT-002` | Programmer Performance Review | Management Oversight | Management | UJ-MGT-003 | UC-MGT-003 |
 | `SCR-MGT-003` | Programmer Workload Review | Management Oversight | Management | UJ-MGT-004 | UC-MGT-004 |
 | `SCR-FEED-001` | Operational Feed | Operational Feed | Implementator, Management, Request Owner | UJ-AWR-001, UJ-AWR-002, UJ-AWR-003, UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-005 | UC-AWR-001, UC-AWR-002, UC-AWR-003, UC-FCOL-001, UC-FCOL-002, UC-FCOL-005 |
+| `CreateRequestModal` | Create Request Modal | Operational Feed / Requests | Implementator, Management, Request Owner | UJ-REQ-001, UJ-AWR-001 | UC-REQ-001, UC-AWR-001 |
 | `SCR-POST-001` | Post Detail | Operational Feed | Implementator, Management, Request Owner | UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-004 | UC-FCOL-001, UC-FCOL-002, UC-FCOL-004 |
 | `SCR-POST-002` | Create Post | Operational Feed | Implementator | UJ-FCOL-003 | UC-FCOL-003 |
 | `SCR-CUST-001` | Create Customer Modal | Customer Master | Administrator, Management | UJ-CUST-001 | UC-CUST-001 |
@@ -299,7 +300,38 @@ View active Request assignments for a Programmer.
 **Exit / Destination:**
 * `SCR-POST-001: Post Detail`
 * `SCR-POST-002: Create Post`
-* `SCR-REQ-003: Request Detail` (via Post Reference)
+* `SCR-REQ-003: Request Detail` (via Post Reference or Success Banner link)
+* `CreateRequestModal: Create Request Modal` (Modal Affordance)
+
+---
+
+### CreateRequestModal
+
+**Screen Name:**
+Create Request Modal
+
+**Purpose:**
+Modal dialog interface launched from the Operational Feed (`SCR-FEED-001`) header for recording a new Request directly into the system without leaving the feed.
+
+**Primary Actors:**
+* Implementator
+* Management
+* Request Owner
+
+**Supported Use Cases:**
+* UC-REQ-001: Record Customer Request
+* UC-AWR-001: Observe Operational Feed
+
+**Supported User Journeys:**
+* UJ-REQ-001: Record Customer Request
+* UJ-AWR-001: Observe Operational Feed
+
+**Entry Points:**
+* Operational Feed (`SCR-FEED-001`) — "+ Create Request" header action button
+
+**Exit / Destination:**
+* `SCR-FEED-001: Operational Feed` — closes modal, triggers immediate feed stream reload to render newly generated system post at index 0, and displays dismissible success alert banner
+* `SCR-REQ-003: Request Detail` — navigable directly via link within post-creation success alert banner
 
 ---
 

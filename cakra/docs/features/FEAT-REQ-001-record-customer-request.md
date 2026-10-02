@@ -31,6 +31,7 @@ The operational demand is formally recorded in the system in `CAPTURED` state, a
 
 ### Screens
 - SCR-REQ-002
+- SCR-FEED-001 (Modal affordance: CreateRequestModal)
 
 ## Preconditions
 
@@ -39,7 +40,7 @@ The operational demand is formally recorded in the system in `CAPTURED` state, a
 
 ## Capability
 
-The system provides a structured request creation form on `SCR-REQ-002: Create Request` capturing Title, Detailed Description, Request Type (e.g., Bug, Feature, Support), Customer selection, Product selection, and optional Work Package. Upon submission, the system validates the input, generates a unique Request ID, sets initial status to `CAPTURED`, creates an associated system post in the Operational Feed, and navigates to `SCR-REQ-003: Request Detail` or returns to `SCR-REQ-001: Request List`.
+The system provides a structured request creation form on `SCR-REQ-002: Create Request` as well as a direct modal dialog (`CreateRequestModal`) accessible on `SCR-FEED-001: Operational Feed` capturing Title, Detailed Description, Request Type (e.g., Bug, Feature, Support), Customer selection, Product selection, and optional Work Package. Upon submission, the system validates the input, generates a unique Request ID, sets initial status to `CAPTURED`, creates an associated system post in the Operational Feed, and navigates to `SCR-REQ-003: Request Detail` (or immediately refreshes the feed stream on `SCR-FEED-001` with a direct link in a success alert banner).
 
 ## Business Rules
 
@@ -49,7 +50,7 @@ The system provides a structured request creation form on `SCR-REQ-002: Create R
 - A Request may exist without a Customer, without a Product, and without a Work Package (Request Domain Rules 5, 6, 7).
 - A Request is an operational demand and does not constitute a commitment or guarantee that ICS will execute the work (Request Domain Rules 10, 11; Manifesto Principle 9).
 - Submitting the form emits a `RequestCreated` event and automatically generates a system post visible in `SCR-FEED-001: Operational Feed` (Post Domain Rule 7, 594; UI Layout 14-scr-req-002 line 48).
-- Screen mapping is strictly `SCR-REQ-002: Create Request` (UI Layout 14-scr-req-002; Navigation req-nav).
+- Screen mapping includes `SCR-REQ-002: Create Request` (dedicated form) and `SCR-FEED-001: Operational Feed` via `CreateRequestModal` (UI Layout 14-scr-req-002, 10-scr-feed-001; Navigation req-nav, feed-nav; CR-003).
 
 ## Success Result
 
@@ -64,12 +65,13 @@ A new Request aggregate is created with status `CAPTURED`, a unique Request ID, 
 ## Acceptance Criteria
 
 - [ ] Creation form is accessible on `SCR-REQ-002: Create Request` via `SCR-REQ-001` or Global Quick Action.
+- [ ] Creation modal is accessible on `SCR-FEED-001: Operational Feed` via header '+ Create Request' action.
 - [ ] Form enforces validation on required fields (Title, Description, Type).
 - [ ] Actor can associate active Customer and Product entities from dropdowns.
 - [ ] Internal requests can be recorded without selecting a Customer.
 - [ ] Successful submission creates a Request with lifecycle status `CAPTURED`.
 - [ ] Submission generates a system-generated post on `SCR-FEED-001: Operational Feed`.
-- [ ] Successful submission navigates to `SCR-REQ-003: Request Detail`.
+- [ ] Successful submission navigates to `SCR-REQ-003: Request Detail` or provides a direct link in the feed success banner.
 
 ## Implementation Notes
 

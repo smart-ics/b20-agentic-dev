@@ -14,7 +14,14 @@ Operational Feed Area
 ├── SCR-FEED-001: Operational Feed
 │   ├── Post Selection ──────────────► SCR-POST-001: Post Detail
 │   ├── Create Post Action ──────────► SCR-POST-002: Create Post
-│   └── Post Reference Link ────────► SCR-REQ-003: Request Detail
+│   ├── Post Reference Link ────────► SCR-REQ-003: Request Detail
+│   ├── Create Request Action ───────► CreateRequestModal (Modal Overlay)
+│   └── Success Banner Link ────────► SCR-REQ-003: Request Detail
+│
+├── CreateRequestModal (Modal Overlay on SCR-FEED-001)
+│   ├── After Submission (Success) ──► SCR-FEED-001: Operational Feed (Refreshed)
+│   │                                  └── Success Banner Link ──► SCR-REQ-003: Request Detail
+│   └── Cancel / Close ──────────────► SCR-FEED-001: Operational Feed
 │
 ├── SCR-POST-001: Post Detail
 │   ├── Post Reference Link ────────► SCR-REQ-003: Request Detail
@@ -108,3 +115,15 @@ Operational Feed Area
   1. Actor arrives at `SCR-FEED-001: Operational Feed`.
   2. Actor applies filters to the feed.
   3. Actor remains on `SCR-FEED-001: Operational Feed`.
+
+### Create Request via Operational Feed (CR-003)
+* **Primary Actor:** Implementator, Management, Request Owner
+* **Entry Point:** `SCR-FEED-001: Operational Feed`
+* **Destination:** `CreateRequestModal` (Modal Overlay on `SCR-FEED-001`)
+* **Exit / Destination:** `SCR-FEED-001: Operational Feed` (Refreshed stream) / `SCR-REQ-003: Request Detail`
+* **Movement Path:**
+  1. Actor clicks `+ Create Request` in the `SCR-FEED-001` header.
+  2. `CreateRequestModal` opens as a modal dialog over `SCR-FEED-001`.
+  3. Actor enters request details and submits the form.
+  4. On successful submission, the modal closes, `SCR-FEED-001` immediately refreshes displaying the new request's post at the top of the feed stream, and a dismissible success banner is displayed.
+  5. Actor can click the link in the success banner to navigate directly to `SCR-REQ-003: Request Detail`.

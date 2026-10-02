@@ -4,6 +4,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
+import CreateRequestModal, { type CreatedRequestResponse } from '@/components/CreateRequestModal.vue'
 import PostDetailModal from '@/views/PostDetailModal.vue'
 
 /**
@@ -129,6 +130,10 @@ const filters = reactive({
 const totalCount = ref<number>(0)
 const totalPages = ref<number>(0)
 const hasMore = ref<boolean>(false)
+
+// Create Request Modal state (CR-003, SCR-FEED-001 / SCR-REQ-002)
+const showCreateRequestModal = ref<boolean>(false)
+const createdRequestAlert = ref<{ id: string; title: string } | null>(null)
 
 // Post Detail Modal state (SCR-POST-001)
 const selectedPostId = ref<string | null>(null)
@@ -528,6 +533,23 @@ function closePostDetailModal(): void {
   selectedWorkPackageId.value = null
 }
 
+/**
+ * Handles successful Request creation from `CreateRequestModal.vue` (CR-003, TD-003, TD-004).
+ * Closes modal, immediately refreshes operational feed to display newly projected post at top,
+ * and sets success alert banner.
+ */
+function handleRequestSaved(createdRequest: CreatedRequestResponse): void {
+  showCreateRequestModal.value = false
+  const reqId = createdRequest.id || createdRequest.requestId || ''
+  const reqTitle = createdRequest.title || ''
+  createdRequestAlert.value = {
+    id: reqId,
+    title: reqTitle,
+  }
+  errorMessage.value = null
+  void loadFeed()
+}
+
 function handlePostUpdated(): void {
   void loadFeed()
 }
@@ -559,6 +581,15 @@ onMounted(async () => {
       <div class="d-flex align-items-center gap-2">
         <button
           type="button"
+          class="btn btn-primary btn-sm"
+          data-testid="create-request-btn"
+          @click="showCreateRequestModal = true"
+        >
+          <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+          + Create Request
+        </button>
+        <button
+          type="button"
           class="btn btn-outline-secondary btn-sm"
           :disabled="isLoadingFeed"
           data-testid="refresh-feed-btn"
@@ -587,6 +618,19 @@ onMounted(async () => {
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
+    </div>
+
+    <!-- Request Created Success Alert (TD-004) -->
+    <div
+      v-if="createdRequestAlert"
+      class="alert alert-success alert-dismissible fade show"
+      role="alert"
+      data-testid="request-created-success-alert"
+    >
+      <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
+      Request <strong>{{ createdRequestAlert.id }}</strong> recorded successfully. Post published to feed.
+      <router-link :to="`/requests/${createdRequestAlert.id}`" class="alert-link ms-2">View Request Detail &rarr;</router-link>
+      <button type="button" class="btn-close" aria-label="Close" @click="createdRequestAlert = null"></button>
     </div>
 
     <!-- Compact Inline Filter Toolbar (UC-FCOL-005, FEAT-FCOL-005) -->
@@ -958,6 +1002,13 @@ onMounted(async () => {
         </button>
       </div>
     </nav>
+
+    <!-- Create Request Modal (SCR-FEED-001 / SCR-REQ-002) -->
+    <CreateRequestModal
+      :show="showCreateRequestModal"
+      @close="showCreateRequestModal = false"
+      @saved="handleRequestSaved"
+    />
 
     <!-- Post Detail Modal (SCR-POST-001) -->
     <PostDetailModal

@@ -48,8 +48,21 @@ Displays:
 * Recent Comments preview
 * Reaction summary (counts and types)
 
+### Section: Create Request Modal (Affordance)
+
+Purpose: Modal dialog interface launched directly from the feed header to capture and record a new Request without navigating away from the operational stream.
+
+Displays:
+* Modal Title and Close Button
+* Input fields: Title (text, required), Description (textarea, required), Customer dropdown (active lookups), Product dropdown (active lookups), Request Type (select, default GENERAL), Priority (select, default NORMAL)
+* Validation error summary / alert feedback
+* Action buttons: Cancel (`btn-outline-secondary`) and Submit Request (`btn-primary`)
+
 ## Available Actions
 
+* **Create Request**
+  * Actor: All Actors (Implementator, Request Owner, Management)
+  * Outcome: Opens `CreateRequestModal`. Upon valid submission, creates a new Request record via backend API, immediately refreshes the feed stream to display the new system post at index 0, and displays a dismissible success banner with a link to the created Request.
 * **Filter Feed**
   * Actor: All Actors
   * Outcome: Updates Feed Stream to show only matching feed items.
@@ -62,30 +75,44 @@ Displays:
 
 ## Navigation Destinations
 
-* `SCR-REQ-003: Request Detail` (via clicking a referenced Request)
+* `SCR-REQ-003: Request Detail` (via clicking a referenced Request in a feed card or via the post-creation success alert banner link)
 
 ## Layout Sketch
 
-+--------------------------------------------------+
-| Global Header / Navigation                       |
-+--------------------------------------------------+
-| Feed Filters: [Customer] [Product] [Team]        |
-+--------------------------------------------------+
-| Feed Stream                                      |
-|                                                  |
-| +----------------------------------------------+ |
-| | [System] - [Time]                            | |
-| | System Event: Request #123 Escalated         | |
-| | Reference: [Request #123] [Customer A]       | |
-| | [Reaction: Alert 2]  [Comment]               | |
-| +----------------------------------------------+ |
-|                                                  |
-| +----------------------------------------------+ |
-| | [Implementator] - [Time]                     | |
-| | Updated Design Document for Authentication   | |
-| | Reference: [Request #124]                    | |
-| |                                              | |
-| |   [User B]: Looks good!                      | |
-| | [Reaction: Thumbs Up 4]  [Reply]             | |
-| +----------------------------------------------+ |
-+--------------------------------------------------+
++------------------------------------------------------------------------+
+| Global Header / Navigation                                             |
++------------------------------------------------------------------------+
+| Operational Feed Header: [Operational Feed Title]   [Refresh] [+ Create]|
++------------------------------------------------------------------------+
+| [Success Alert: Request #REQ-XXX recorded. View Request Detail ->] [X] |
++------------------------------------------------------------------------+
+| Feed Filters: [Customer] [Product] [Team]                              |
++------------------------------------------------------------------------+
+| Feed Stream                                                            |
+|                                                                        |
+| +--------------------------------------------------------------------+ |
+| | [System] - [Just now]                                              | |
+| | System Event: Request #125 Recorded                                | |
+| | Reference: [Request #125] [Customer A]                             | |
+| | [Reaction: Alert 0]  [Comment]                                     | |
+| +--------------------------------------------------------------------+ |
+|                                                                        |
+| +--------------------------------------------------------------------+ |
+| | [Implementator] - [Time]                                           | |
+| | Updated Design Document for Authentication                         | |
+| | Reference: [Request #124]                                          | |
+| |                                                                    | |
+| |   [User B]: Looks good!                                            | |
+| | [Reaction: Thumbs Up 4]  [Reply]                                   | |
+| +--------------------------------------------------------------------+ |
++------------------------------------------------------------------------+
+| Modal Overlay: Create Request Dialog (CreateRequestModal)              |
+| +--------------------------------------------------------------------+ |
+| | Header: Create New Request                                     [X] | |
+| | Title: [__________________________________]                        | |
+| | Description: [__________________________________]                  | |
+| | Customer: [Select Customer v]   Product: [Select Product v]        | |
+| | Type: [GENERAL v]               Priority: [NORMAL v]               | |
+| |                                     [Cancel]  [Create Request]     | |
+| +--------------------------------------------------------------------+ |
++------------------------------------------------------------------------+
