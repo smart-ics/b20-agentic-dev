@@ -307,17 +307,18 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="container-fluid py-2" data-screen-id="SCR-REQ-001">
-    <!-- Screen Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <div class="d-flex align-items-center gap-2">
-          <h1 class="h3 mb-0 fw-bold">Operational Requests</h1>
-          <span class="badge text-bg-light border text-secondary">SCR-REQ-001</span>
-        </div>
-        <p class="text-body-secondary small mb-0 mt-1">
-          View, filter, and track customer and operational requests across their lifecycle.
-        </p>
+  <section data-screen-id="SCR-REQ-001">
+    <!-- Compact Screen Header -->
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="op-screen-title">
+          <i class="bi bi-card-checklist text-primary" aria-hidden="true"></i>
+          Operational Requests
+        </h1>
+        <span class="badge text-bg-light border text-secondary font-monospace">SCR-REQ-001</span>
+        <span class="text-body-secondary small ms-1">
+          &bull; {{ totalCount }} total
+        </span>
       </div>
 
       <div class="d-flex align-items-center gap-2">
@@ -334,7 +335,7 @@ onMounted(async () => {
 
         <router-link
           to="/requests/create"
-          class="btn btn-primary"
+          class="btn btn-primary btn-sm"
           data-testid="create-request-button"
           @click.prevent="navigateToCreate"
         >
@@ -348,212 +349,216 @@ onMounted(async () => {
     <div
       v-if="errorMessage"
       role="alert"
-      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-4"
+      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 py-1 px-2 mb-2"
       data-testid="request-list-error-alert"
     >
       <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ errorMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
     </div>
 
-    <!-- Filter Controls Above Table -->
-    <div class="card shadow-sm border-0 mb-3">
-      <div class="card-body py-3">
-        <div class="row g-3 align-items-end">
-          <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-            <label for="statusFilterSelect" class="form-label small fw-medium mb-1">
-              Status
-            </label>
-            <select
-              id="statusFilterSelect"
-              v-model="filters.status"
-              class="form-select form-select-sm"
-              :disabled="isLoading"
-              data-testid="status-filter-select"
-              @change="handleFilterChange"
-            >
-              <option value="">All Statuses</option>
-              <option v-for="status in REQUEST_STATUSES" :key="status" :value="status">
-                {{ status }}
-              </option>
-            </select>
-          </div>
+    <!-- Compact Inline Filter Toolbar -->
+    <div class="op-toolbar">
+      <div class="d-flex flex-wrap align-items-center gap-2 w-100">
+        <!-- Status Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="statusFilterSelect" class="form-label mb-0 fs-11 text-nowrap">Status:</label>
+          <select
+            id="statusFilterSelect"
+            v-model="filters.status"
+            class="form-select form-select-sm"
+            style="min-width: 130px; max-width: 170px;"
+            :disabled="isLoading"
+            data-testid="status-filter-select"
+            @change="handleFilterChange"
+          >
+            <option value="">All Statuses</option>
+            <option v-for="status in REQUEST_STATUSES" :key="status" :value="status">
+              {{ status }}
+            </option>
+          </select>
+        </div>
 
-          <div class="col-12 col-sm-6 col-md-5 col-lg-4">
-            <label for="assigneeFilterSelect" class="form-label small fw-medium mb-1">
-              Assignee
-            </label>
-            <select
-              id="assigneeFilterSelect"
-              v-model="filters.assigneeId"
-              class="form-select form-select-sm"
-              :disabled="isLoading"
-              data-testid="assignee-filter-select"
-              @change="handleFilterChange"
+        <!-- Assignee Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="assigneeFilterSelect" class="form-label mb-0 fs-11 text-nowrap">Assignee:</label>
+          <select
+            id="assigneeFilterSelect"
+            v-model="filters.assigneeId"
+            class="form-select form-select-sm"
+            style="min-width: 160px; max-width: 240px;"
+            :disabled="isLoading"
+            data-testid="assignee-filter-select"
+            @change="handleFilterChange"
+          >
+            <option value="">All Assignees</option>
+            <option
+              v-for="person in activePersons"
+              :key="person.id"
+              :value="person.id"
             >
-              <option value="">All Assignees</option>
-              <option
-                v-for="person in activePersons"
-                :key="person.id"
-                :value="person.id"
-              >
-                {{ person.fullName }} ({{ person.email }})
-              </option>
-            </select>
-          </div>
+              {{ person.fullName }} ({{ person.email }})
+            </option>
+          </select>
+        </div>
 
-          <div class="col-12 col-md-3 col-lg-5 d-flex justify-content-md-end align-items-center gap-2">
-            <button
-              v-if="hasActiveFilters"
-              type="button"
-              class="btn btn-outline-secondary btn-sm"
-              :disabled="isLoading"
-              data-testid="clear-filters-button"
-              @click="handleResetFilters"
-            >
-              <i class="bi bi-x-circle me-1" aria-hidden="true"></i>
-              Clear Filters
-            </button>
-          </div>
+        <!-- Clear Button -->
+        <div class="ms-auto">
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            :disabled="isLoading"
+            data-testid="clear-filters-button"
+            @click="handleResetFilters"
+          >
+            <i class="bi bi-x-circle me-1" aria-hidden="true"></i>
+            Clear Filters
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Requests Table -->
-    <div class="card shadow-sm border-0">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table
-            class="table table-hover align-middle mb-0"
-            data-testid="requests-table"
-          >
-            <thead class="table-light">
-              <tr>
-                <th scope="col" class="ps-4">ID</th>
-                <th scope="col">Title</th>
-                <th scope="col">Customer</th>
-                <th scope="col">Product</th>
-                <th scope="col">Status</th>
-                <th scope="col">Assignee</th>
-                <th scope="col" class="pe-4">CreatedAt</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="isLoading">
-                <td colspan="7" class="text-center py-5 text-body-secondary">
-                  <span
-                    class="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  Loading requests...
-                </td>
-              </tr>
+    <!-- High-Density Requests Table -->
+    <div class="card border">
+      <div class="table-responsive">
+        <table
+          class="table table-hover align-middle mb-0"
+          data-testid="requests-table"
+        >
+          <thead>
+            <tr>
+              <th scope="col" style="width: 110px;">ID</th>
+              <th scope="col">Title</th>
+              <th scope="col" style="width: 150px;">Customer</th>
+              <th scope="col" style="width: 140px;">Product</th>
+              <th scope="col" style="width: 110px;">Status</th>
+              <th scope="col" style="width: 150px;">Assignee</th>
+              <th scope="col" style="width: 130px;">CreatedAt</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="isLoading">
+              <td colspan="7" class="text-center py-4 text-body-secondary">
+                <span
+                  class="spinner-border spinner-border-sm me-2"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                Loading requests...
+              </td>
+            </tr>
 
-              <tr v-else-if="requests.length === 0">
-                <td
-                  colspan="7"
-                  class="text-center py-5 text-body-secondary"
-                  data-testid="empty-requests-row"
-                >
-                  No operational requests found matching the current filters.
-                </td>
-              </tr>
-
-              <tr
-                v-for="req in requests"
-                v-else
-                :key="req.id"
-                :data-request-id="req.id"
-                class="cursor-pointer"
-                style="cursor: pointer"
-                data-testid="request-row"
-                @click="navigateToDetail(req.id)"
+            <tr v-else-if="requests.length === 0">
+              <td
+                colspan="7"
+                class="text-center py-4 text-body-secondary"
+                data-testid="empty-requests-row"
               >
-                <!-- ID Column -->
-                <td class="ps-4">
+                No operational requests found matching the current filters.
+              </td>
+            </tr>
+
+            <tr
+              v-for="req in requests"
+              v-else
+              :key="req.id"
+              :data-request-id="req.id"
+              class="cursor-pointer"
+              style="cursor: pointer"
+              data-testid="request-row"
+              @click="navigateToDetail(req.id)"
+            >
+              <!-- ID Column -->
+              <td>
+                <router-link
+                  :to="`/requests/${req.id}`"
+                  class="font-monospace text-decoration-none fw-semibold"
+                  style="font-size: 11.5px;"
+                  data-testid="request-id-link"
+                  @click.stop
+                >
+                  {{ req.id }}
+                </router-link>
+              </td>
+
+              <!-- Title Column -->
+              <td>
+                <div class="d-flex align-items-center gap-1.5 flex-nowrap">
                   <router-link
                     :to="`/requests/${req.id}`"
-                    class="font-monospace small text-decoration-none"
-                    data-testid="request-id-link"
+                    class="fw-semibold text-decoration-none text-dark text-truncate"
+                    style="max-width: 380px;"
+                    data-testid="request-title-link"
+                    :title="req.title"
                     @click.stop
                   >
-                    {{ req.id }}
+                    {{ req.title }}
                   </router-link>
-                </td>
-
-                <!-- Title Column -->
-                <td>
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <router-link
-                      :to="`/requests/${req.id}`"
-                      class="fw-semibold text-decoration-none text-body"
-                      data-testid="request-title-link"
-                      @click.stop
-                    >
-                      {{ req.title }}
-                    </router-link>
-                    <span
-                      v-if="req.priority"
-                      class="badge"
-                      :class="priorityBadgeClass(req.priority)"
-                    >
-                      {{ req.priority }}
-                    </span>
-                  </div>
-                </td>
-
-                <!-- Customer Column -->
-                <td>
-                  {{ resolveCustomerDisplay(req) }}
-                </td>
-
-                <!-- Product Column -->
-                <td>
-                  {{ resolveProductDisplay(req) }}
-                </td>
-
-                <!-- Status Column -->
-                <td>
                   <span
-                    class="badge"
-                    :class="statusBadgeClass(req.status)"
-                    data-testid="request-status-badge"
+                    v-if="req.priority"
+                    class="badge flex-shrink-0"
+                    :class="priorityBadgeClass(req.priority)"
                   >
-                    {{ req.status }}
+                    {{ req.priority }}
                   </span>
-                </td>
+                </div>
+              </td>
 
-                <!-- Assignee Column -->
-                <td>
-                  <span :class="req.ownerPersonId ? '' : 'text-body-secondary fst-italic'">
-                    <i class="bi bi-person me-1 text-secondary" aria-hidden="true"></i>
-                    {{ resolveAssigneeDisplay(req) }}
-                  </span>
-                </td>
+              <!-- Customer Column -->
+              <td>
+                <span class="text-truncate d-inline-block" style="max-width: 145px;" :title="resolveCustomerDisplay(req)">
+                  {{ resolveCustomerDisplay(req) }}
+                </span>
+              </td>
 
-                <!-- CreatedAt Column -->
-                <td class="pe-4 text-body-secondary small">
-                  {{ formatTimestamp(req.createdAt) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              <!-- Product Column -->
+              <td>
+                <span class="text-truncate d-inline-block" style="max-width: 135px;" :title="resolveProductDisplay(req)">
+                  {{ resolveProductDisplay(req) }}
+                </span>
+              </td>
+
+              <!-- Status Column -->
+              <td>
+                <span
+                  class="badge"
+                  :class="statusBadgeClass(req.status)"
+                  data-testid="request-status-badge"
+                >
+                  {{ req.status }}
+                </span>
+              </td>
+
+              <!-- Assignee Column -->
+              <td>
+                <span :class="req.ownerPersonId ? 'text-dark' : 'text-body-secondary fst-italic'" class="text-truncate d-inline-block" style="max-width: 145px;">
+                  <i class="bi bi-person me-0.5 text-secondary" aria-hidden="true"></i>
+                  {{ resolveAssigneeDisplay(req) }}
+                </span>
+              </td>
+
+              <!-- CreatedAt Column -->
+              <td class="text-body-secondary fs-11">
+                {{ formatTimestamp(req.createdAt) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <!-- Pagination Controls Below Table -->
+      <!-- Compact Pagination Controls Below Table -->
       <div
-        class="card-footer bg-white border-top d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 py-3"
+        class="card-footer bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-1 px-3"
         data-testid="requests-pagination"
       >
-        <div class="small text-body-secondary" data-testid="pagination-summary">
-          Showing page <strong>{{ filters.page }}</strong> of
+        <div class="small text-body-secondary fs-11" data-testid="pagination-summary">
+          Page <strong>{{ filters.page }}</strong> of
           <strong>{{ Math.max(totalPages, 1) }}</strong>
           ({{ totalCount }} total {{ totalCount === 1 ? 'request' : 'requests' }})
         </div>
@@ -563,18 +568,18 @@ onMounted(async () => {
             <li class="page-item" :class="{ disabled: !canGoPrevious }">
               <button
                 type="button"
-                class="page-link"
+                class="page-link py-0.5 px-2"
                 :disabled="!canGoPrevious"
                 data-testid="pagination-prev-button"
                 @click="goToPage(filters.page - 1)"
               >
-                <i class="bi bi-chevron-left me-1" aria-hidden="true"></i>
-                Previous
+                <i class="bi bi-chevron-left me-0.5" aria-hidden="true"></i>
+                Prev
               </button>
             </li>
 
             <li class="page-item active" aria-current="page">
-              <span class="page-link" data-testid="pagination-current-page">
+              <span class="page-link py-0.5 px-2" data-testid="pagination-current-page">
                 {{ filters.page }}
               </span>
             </li>
@@ -582,13 +587,13 @@ onMounted(async () => {
             <li class="page-item" :class="{ disabled: !canGoNext }">
               <button
                 type="button"
-                class="page-link"
+                class="page-link py-0.5 px-2"
                 :disabled="!canGoNext"
                 data-testid="pagination-next-button"
                 @click="goToPage(filters.page + 1)"
               >
                 Next
-                <i class="bi bi-chevron-right ms-1" aria-hidden="true"></i>
+                <i class="bi bi-chevron-right ms-0.5" aria-hidden="true"></i>
               </button>
             </li>
           </ul>

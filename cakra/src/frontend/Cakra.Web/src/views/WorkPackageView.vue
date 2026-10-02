@@ -789,39 +789,35 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="container-fluid py-2" data-screen-id="SCR-WP-001">
+  <section class="work-package-view" data-screen-id="SCR-WP-001">
     <!-- Screen Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <div class="d-flex align-items-center gap-2">
-          <h1 class="h3 mb-0 fw-bold">Work Packages</h1>
-          <span class="badge text-bg-light border text-secondary">SCR-WP-001</span>
-        </div>
-        <p class="text-body-secondary small mb-0 mt-1">
-          Create and manage work packages, coordinate ownership and lifecycle status, and review grouped operational request scope.
-        </p>
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="h6 mb-0 fw-bold">Work Packages</h1>
+        <span class="badge text-bg-secondary font-monospace" style="font-size: 11px">SCR-WP-001</span>
+        <span class="text-body-secondary small d-none d-md-inline">| Grouped operational demand &amp; lifecycle orchestration</span>
       </div>
 
-      <div class="d-flex align-items-center gap-2">
+      <div class="d-flex align-items-center gap-1">
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-outline-secondary btn-sm py-0 px-2"
+          style="font-size: 12px; height: 26px; line-height: 24px"
           :disabled="isLoadingList"
           data-testid="refresh-work-packages-button"
           @click="loadWorkPackages"
         >
-          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
-          Refresh
+          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh
         </button>
 
         <button
           type="button"
-          class="btn btn-primary"
+          class="btn btn-primary btn-sm py-0 px-2"
+          style="font-size: 12px; height: 26px; line-height: 24px"
           data-testid="create-work-package-button"
           @click="openCreateModal"
         >
-          <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
-          Create Work Package
+          <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>New Package
         </button>
       </div>
     </div>
@@ -830,14 +826,14 @@ onMounted(async () => {
     <div
       v-if="errorMessage"
       role="alert"
-      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-4"
+      class="alert alert-danger alert-dismissible py-1 px-2 mb-2 small d-flex align-items-center gap-2"
       data-testid="work-package-error-alert"
     >
       <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ errorMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
@@ -846,74 +842,73 @@ onMounted(async () => {
     <div
       v-if="successMessage"
       role="status"
-      class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 mb-4"
+      class="alert alert-success alert-dismissible py-1 px-2 mb-2 small d-flex align-items-center gap-2"
       data-testid="work-package-success-alert"
     >
       <i class="bi bi-check-circle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ successMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="successMessage = null"
       ></button>
     </div>
 
-    <!-- Create Work Package Form / Modal Card -->
+    <!-- Create Work Package Form Card (Collapsible) -->
     <div
       v-if="showCreateForm"
-      class="card shadow-sm border-primary mb-4"
+      class="card shadow-none border border-primary mb-2"
       data-testid="create-work-package-modal"
     >
-      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">
-          <i class="bi bi-kanban me-2" aria-hidden="true"></i>
-          Create New Work Package
+      <div class="card-header py-1 px-2 bg-primary text-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold small">
+          <i class="bi bi-kanban me-1" aria-hidden="true"></i>Create New Work Package
         </span>
         <button
           type="button"
-          class="btn-close btn-close-white"
+          class="btn-close btn-close-white py-1 px-2"
           aria-label="Close"
           @click="closeCreateModal"
         ></button>
       </div>
 
-      <div class="card-body">
+      <div class="card-body p-2">
         <form
           novalidate
           data-testid="create-work-package-form"
           @submit.prevent="handleCreateWorkPackage"
         >
-          <div class="row g-3">
+          <div class="row g-2">
             <!-- Objective (Required) -->
             <div class="col-12 col-md-8">
-              <label for="createWorkPackageObjective" class="form-label fw-medium">
+              <label for="createWorkPackageObjective" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Objective <span class="text-danger">*</span>
               </label>
-              <textarea
+              <input
                 id="createWorkPackageObjective"
                 v-model="createForm.objective"
-                class="form-control"
-                rows="2"
-                placeholder="Describe the shared operational objective for this work package"
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="Describe shared operational objective..."
                 required
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-objective-input"
-              ></textarea>
+              />
             </div>
 
             <!-- Optional Short Name / Title -->
             <div class="col-12 col-md-4">
-              <label for="createWorkPackageName" class="form-label fw-medium">
+              <label for="createWorkPackageName" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Package Name / Title
               </label>
               <input
                 id="createWorkPackageName"
                 v-model="createForm.name"
                 type="text"
-                class="form-control"
+                class="form-control form-control-sm"
                 maxlength="255"
-                placeholder="Optional short title (defaults to objective)"
+                placeholder="Optional short title"
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-name-input"
               />
@@ -921,18 +916,18 @@ onMounted(async () => {
 
             <!-- Owner Select (Required) -->
             <div class="col-12 col-md-4">
-              <label for="createWorkPackageOwner" class="form-label fw-medium">
+              <label for="createWorkPackageOwner" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Owner <span class="text-danger">*</span>
               </label>
               <select
                 id="createWorkPackageOwner"
                 v-model="createForm.ownerPersonId"
-                class="form-select"
+                class="form-select form-select-sm"
                 required
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-owner-select"
               >
-                <option value="" disabled>Select an active person...</option>
+                <option value="" disabled>Select active person...</option>
                 <option
                   v-for="person in activePersons"
                   :key="person.id"
@@ -945,17 +940,17 @@ onMounted(async () => {
 
             <!-- Customer Select (Optional) -->
             <div class="col-12 col-md-4">
-              <label for="createWorkPackageCustomer" class="form-label fw-medium">
-                Customer
+              <label for="createWorkPackageCustomer" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Customer (Optional)
               </label>
               <select
                 id="createWorkPackageCustomer"
                 v-model="createForm.customerId"
-                class="form-select"
+                class="form-select form-select-sm"
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-customer-select"
               >
-                <option value="">All / No specific customer (optional)</option>
+                <option value="">All / No specific customer</option>
                 <option
                   v-for="customer in activeCustomers"
                   :key="customer.id"
@@ -968,17 +963,17 @@ onMounted(async () => {
 
             <!-- Product Select (Optional) -->
             <div class="col-12 col-md-4">
-              <label for="createWorkPackageProduct" class="form-label fw-medium">
-                Product
+              <label for="createWorkPackageProduct" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Product (Optional)
               </label>
               <select
                 id="createWorkPackageProduct"
                 v-model="createForm.productId"
-                class="form-select"
+                class="form-select form-select-sm"
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-product-select"
               >
-                <option value="">All / No specific product (optional)</option>
+                <option value="">All / No specific product</option>
                 <option
                   v-for="product in activeProducts"
                   :key="product.id"
@@ -990,10 +985,10 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="d-flex justify-content-end gap-2 mt-3">
+          <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
             <button
               type="button"
-              class="btn btn-outline-secondary"
+              class="btn btn-outline-secondary btn-sm"
               :disabled="isSubmittingCreate"
               @click="closeCreateModal"
             >
@@ -1001,160 +996,152 @@ onMounted(async () => {
             </button>
             <button
               type="submit"
-              class="btn btn-primary"
+              class="btn btn-primary btn-sm"
               :disabled="isCreateDisabled"
               data-testid="create-work-package-submit-button"
             >
               <span
                 v-if="isSubmittingCreate"
-                class="spinner-border spinner-border-sm me-2"
+                class="spinner-border spinner-border-sm me-1"
                 role="status"
                 aria-hidden="true"
               ></span>
-              Save Work Package
+              Save Package
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- Filter Controls Row -->
-    <div class="card shadow-sm border-0 mb-3">
-      <div class="card-body py-3">
-        <div class="row g-3 align-items-end">
-          <!-- Status Filter -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <label for="wpStatusFilter" class="form-label small fw-medium mb-1">
-              Status
-            </label>
-            <select
-              id="wpStatusFilter"
-              v-model="filters.status"
-              class="form-select form-select-sm"
-              :disabled="isLoadingList"
-              data-testid="status-filter-select"
-              @change="handleFilterChange"
-            >
-              <option value="">All Statuses</option>
-              <option v-for="status in WORK_PACKAGE_STATUSES" :key="status" :value="status">
-                {{ status }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Owner Filter -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <label for="wpOwnerFilter" class="form-label small fw-medium mb-1">
-              Owner
-            </label>
-            <select
-              id="wpOwnerFilter"
-              v-model="filters.ownerPersonId"
-              class="form-select form-select-sm"
-              :disabled="isLoadingList"
-              data-testid="owner-filter-select"
-              @change="handleFilterChange"
-            >
-              <option value="">All Owners</option>
-              <option
-                v-for="person in activePersons"
-                :key="person.id"
-                :value="person.id"
-              >
-                {{ person.fullName }} ({{ person.email }})
-              </option>
-            </select>
-          </div>
-
-          <!-- Customer Filter -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <label for="wpCustomerFilter" class="form-label small fw-medium mb-1">
-              Customer
-            </label>
-            <select
-              id="wpCustomerFilter"
-              v-model="filters.customerId"
-              class="form-select form-select-sm"
-              :disabled="isLoadingList"
-              data-testid="customer-filter-select"
-              @change="handleFilterChange"
-            >
-              <option value="">All Customers</option>
-              <option
-                v-for="customer in activeCustomers"
-                :key="customer.id"
-                :value="customer.id"
-              >
-                {{ resolveCustomerOptionLabel(customer) }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Product Filter -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <label for="wpProductFilter" class="form-label small fw-medium mb-1">
-              Product
-            </label>
-            <div class="d-flex align-items-center gap-2">
-              <select
-                id="wpProductFilter"
-                v-model="filters.productId"
-                class="form-select form-select-sm"
-                :disabled="isLoadingList"
-                data-testid="product-filter-select"
-                @change="handleFilterChange"
-              >
-                <option value="">All Products</option>
-                <option
-                  v-for="product in activeProducts"
-                  :key="product.id"
-                  :value="product.id"
-                >
-                  {{ resolveProductOptionLabel(product) }}
-                </option>
-              </select>
-
-              <button
-                v-if="hasActiveFilters"
-                type="button"
-                class="btn btn-outline-secondary btn-sm text-nowrap"
-                :disabled="isLoadingList"
-                data-testid="clear-filters-button"
-                @click="handleResetFilters"
-              >
-                <i class="bi bi-x-circle me-1" aria-hidden="true"></i>
-                Clear
-              </button>
-            </div>
-          </div>
+    <!-- Filter Controls Toolbar -->
+    <div class="op-toolbar mb-2">
+      <div class="d-flex flex-wrap align-items-center gap-1 w-100">
+        <!-- Status Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="wpStatusFilter" class="small text-body-secondary mb-0 fw-medium text-nowrap" style="font-size: 11px">Status:</label>
+          <select
+            id="wpStatusFilter"
+            v-model="filters.status"
+            class="form-select form-select-sm py-0"
+            style="width: 110px; font-size: 12px; height: 26px"
+            :disabled="isLoadingList"
+            data-testid="status-filter-select"
+            @change="handleFilterChange"
+          >
+            <option value="">All</option>
+            <option v-for="status in WORK_PACKAGE_STATUSES" :key="status" :value="status">
+              {{ status }}
+            </option>
+          </select>
         </div>
+
+        <!-- Owner Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="wpOwnerFilter" class="small text-body-secondary mb-0 fw-medium text-nowrap" style="font-size: 11px">Owner:</label>
+          <select
+            id="wpOwnerFilter"
+            v-model="filters.ownerPersonId"
+            class="form-select form-select-sm py-0"
+            style="max-width: 180px; font-size: 12px; height: 26px"
+            :disabled="isLoadingList"
+            data-testid="owner-filter-select"
+            @change="handleFilterChange"
+          >
+            <option value="">All Owners</option>
+            <option
+              v-for="person in activePersons"
+              :key="person.id"
+              :value="person.id"
+            >
+              {{ person.fullName }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Customer Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="wpCustomerFilter" class="small text-body-secondary mb-0 fw-medium text-nowrap" style="font-size: 11px">Customer:</label>
+          <select
+            id="wpCustomerFilter"
+            v-model="filters.customerId"
+            class="form-select form-select-sm py-0"
+            style="max-width: 180px; font-size: 12px; height: 26px"
+            :disabled="isLoadingList"
+            data-testid="customer-filter-select"
+            @change="handleFilterChange"
+          >
+            <option value="">All Customers</option>
+            <option
+              v-for="customer in activeCustomers"
+              :key="customer.id"
+              :value="customer.id"
+            >
+              {{ resolveCustomerOptionLabel(customer) }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Product Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="wpProductFilter" class="small text-body-secondary mb-0 fw-medium text-nowrap" style="font-size: 11px">Product:</label>
+          <select
+            id="wpProductFilter"
+            v-model="filters.productId"
+            class="form-select form-select-sm py-0"
+            style="max-width: 170px; font-size: 12px; height: 26px"
+            :disabled="isLoadingList"
+            data-testid="product-filter-select"
+            @change="handleFilterChange"
+          >
+            <option value="">All Products</option>
+            <option
+              v-for="product in activeProducts"
+              :key="product.id"
+              :value="product.id"
+            >
+              {{ resolveProductOptionLabel(product) }}
+            </option>
+          </select>
+        </div>
+
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          class="btn btn-outline-secondary btn-sm py-0 px-2 ms-auto"
+          style="font-size: 11px; height: 26px; line-height: 24px"
+          :disabled="isLoadingList"
+          data-testid="clear-filters-button"
+          @click="handleResetFilters"
+        >
+          <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Reset
+        </button>
       </div>
     </div>
 
     <!-- Main Layout: Work Packages Table + Detail Panel -->
-    <div class="row g-4">
+    <div class="row g-2">
       <!-- Work Packages Table Column -->
       <div :class="selectedWorkPackage || isLoadingDetail ? 'col-12 col-xl-7' : 'col-12'">
-        <div class="card shadow-sm border-0">
+        <div class="card card-table shadow-none border mb-2">
           <div class="card-body p-0">
             <div class="table-responsive">
               <table
-                class="table table-hover align-middle mb-0"
+                class="table table-hover align-middle mb-0 text-nowrap"
                 data-testid="work-packages-table"
               >
                 <thead class="table-light">
                   <tr>
-                    <th scope="col" class="ps-4">ID</th>
-                    <th scope="col">Objective</th>
+                    <th scope="col" style="width: 100px">ID</th>
+                    <th scope="col" style="min-width: 200px">Objective</th>
                     <th scope="col">Owner</th>
                     <th scope="col">Customer</th>
                     <th scope="col">Product</th>
-                    <th scope="col" class="pe-4">Status</th>
+                    <th scope="col" class="text-center" style="width: 80px">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="isLoadingList">
-                    <td colspan="6" class="text-center py-5 text-body-secondary">
+                    <td colspan="6" class="text-center py-4 text-body-secondary small">
                       <span
                         class="spinner-border spinner-border-sm me-2"
                         role="status"
@@ -1167,7 +1154,7 @@ onMounted(async () => {
                   <tr v-else-if="workPackages.length === 0">
                     <td
                       colspan="6"
-                      class="text-center py-5 text-body-secondary"
+                      class="text-center py-4 text-body-secondary small"
                       data-testid="empty-work-packages-row"
                     >
                       No work packages found matching the current filters.
@@ -1185,25 +1172,27 @@ onMounted(async () => {
                     @click="selectWorkPackage(wp.id)"
                   >
                     <!-- ID Column -->
-                    <td class="ps-4">
+                    <td>
                       <router-link
                         :to="`/work-packages/${wp.id}`"
-                        class="font-monospace small text-decoration-none"
+                        class="font-monospace text-decoration-none small"
+                        style="font-size: 11px"
                         data-testid="work-package-id-link"
                         @click.stop="selectWorkPackage(wp.id)"
                       >
-                        {{ wp.id }}
+                        {{ wp.id.slice(0, 8) }}
                       </router-link>
                     </td>
 
                     <!-- Objective Column -->
                     <td>
-                      <div class="fw-semibold" data-testid="work-package-objective-cell">
+                      <div class="fw-medium text-truncate d-inline-block" style="max-width: 260px" data-testid="work-package-objective-cell">
                         {{ wp.objective || wp.name }}
                       </div>
                       <div
                         v-if="wp.name && wp.name !== wp.objective"
-                        class="text-body-secondary small"
+                        class="text-body-secondary font-monospace"
+                        style="font-size: 10.5px"
                       >
                         {{ wp.name }}
                       </div>
@@ -1211,24 +1200,24 @@ onMounted(async () => {
 
                     <!-- Owner Column -->
                     <td>
-                      <i class="bi bi-person-badge text-secondary me-1" aria-hidden="true"></i>
-                      {{ resolveOwnerDisplay(wp) }}
+                      <span class="small">{{ resolveOwnerDisplay(wp) }}</span>
                     </td>
 
                     <!-- Customer Column -->
                     <td>
-                      {{ resolveCustomerDisplay(wp) }}
+                      <span class="small">{{ resolveCustomerDisplay(wp) }}</span>
                     </td>
 
                     <!-- Product Column -->
                     <td>
-                      {{ resolveProductDisplay(wp) }}
+                      <span class="small">{{ resolveProductDisplay(wp) }}</span>
                     </td>
 
                     <!-- Status Column -->
-                    <td class="pe-4">
+                    <td class="text-center">
                       <span
                         class="badge"
+                        style="font-size: 10px; padding: 2px 6px"
                         :class="statusBadgeClass(wp.status)"
                         data-testid="work-package-status-badge"
                       >
@@ -1249,14 +1238,15 @@ onMounted(async () => {
         class="col-12 col-xl-5"
         data-testid="work-package-detail-panel"
       >
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center py-3">
-            <div class="d-flex align-items-center gap-2">
+        <div class="card shadow-none border mb-2">
+          <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center py-1 px-2">
+            <div class="d-flex align-items-center gap-1">
               <i class="bi bi-kanban text-primary" aria-hidden="true"></i>
-              <span class="fw-bold">Work Package Detail</span>
+              <span class="fw-bold small">Work Package Detail</span>
               <span
                 v-if="selectedWorkPackage"
-                class="badge"
+                class="badge ms-1"
+                style="font-size: 10px; padding: 2px 6px"
                 :class="statusBadgeClass(selectedWorkPackage.status)"
                 data-testid="detail-status-badge"
               >
@@ -1266,39 +1256,42 @@ onMounted(async () => {
 
             <button
               type="button"
-              class="btn-close"
+              class="btn-close py-1 px-2"
               aria-label="Close detail panel"
               data-testid="close-detail-panel-button"
               @click="closeDetailPanel"
             ></button>
           </div>
 
-          <div v-if="isLoadingDetail" class="card-body py-5 text-center text-body-secondary">
+          <div v-if="isLoadingDetail" class="card-body py-4 text-center text-body-secondary small">
             <span
-              class="spinner-border spinner-border-sm me-2"
+              class="spinner-border spinner-border-sm me-1"
               role="status"
               aria-hidden="true"
             ></span>
-            Loading work package details...
+            Loading details...
           </div>
 
-          <div v-else-if="selectedWorkPackage" class="card-body">
+          <div v-else-if="selectedWorkPackage" class="card-body p-2">
             <!-- Summary Metadata -->
-            <div class="mb-3 pb-3 border-bottom">
-              <div class="small text-body-secondary font-monospace mb-1" data-testid="detail-work-package-id">
-                ID: {{ selectedWorkPackage.id }}
+            <div class="mb-2 pb-2 border-bottom">
+              <div class="d-flex justify-content-between align-items-start gap-1">
+                <h2 class="h6 fw-bold mb-1" data-testid="detail-objective-display">
+                  {{ selectedWorkPackage.objective }}
+                </h2>
+                <span class="font-monospace text-body-secondary small flex-shrink-0" style="font-size: 10.5px" data-testid="detail-work-package-id">
+                  {{ selectedWorkPackage.id }}
+                </span>
               </div>
-              <h2 class="h5 fw-bold mb-1" data-testid="detail-objective-display">
-                {{ selectedWorkPackage.objective }}
-              </h2>
               <div
                 v-if="selectedWorkPackage.name && selectedWorkPackage.name !== selectedWorkPackage.objective"
-                class="text-body-secondary small mb-2"
+                class="text-body-secondary small mb-1"
+                style="font-size: 11.5px"
               >
                 Title: {{ selectedWorkPackage.name }}
               </div>
 
-              <div class="row g-2 small mt-2">
+              <div class="row g-1 small" style="font-size: 11.5px">
                 <div class="col-6">
                   <span class="text-body-secondary">Owner:</span>
                   <strong class="ms-1" data-testid="detail-owner-display">
@@ -1321,7 +1314,8 @@ onMounted(async () => {
 
               <div
                 v-if="isSelectedClosed && selectedWorkPackage.closedReason"
-                class="alert alert-secondary py-2 px-3 small mt-3 mb-0"
+                class="alert alert-secondary py-1 px-2 small mt-1 mb-0"
+                style="font-size: 11px"
                 data-testid="detail-closed-reason"
               >
                 <strong>Closed Reason:</strong> {{ selectedWorkPackage.closedReason }}
@@ -1332,55 +1326,49 @@ onMounted(async () => {
             </div>
 
             <!-- Objective Edit Section (PUT /api/v1/work-packages/${id}/objective) -->
-            <div class="mb-4 pb-3 border-bottom" data-testid="detail-objective-section">
-              <h3 class="h6 fw-semibold mb-2">
-                <i class="bi bi-bullseye me-1 text-primary" aria-hidden="true"></i>
-                Objective
-              </h3>
+            <div class="mb-2 pb-2 border-bottom" data-testid="detail-objective-section">
               <form novalidate data-testid="update-objective-form" @submit.prevent="handleUpdateObjective">
-                <div class="mb-2">
-                  <label for="detailObjectiveInput" class="form-label small fw-medium mb-1">
-                    Objective Statement
+                <div class="d-flex align-items-center gap-1 mb-1">
+                  <label for="detailObjectiveInput" class="small fw-semibold text-body-secondary mb-0" style="font-size: 11px">
+                    <i class="bi bi-bullseye me-1 text-primary"></i>Objective:
                   </label>
-                  <textarea
-                    id="detailObjectiveInput"
-                    v-model="objectiveForm.objective"
-                    class="form-control form-control-sm"
-                    rows="2"
-                    :disabled="!canModifyPackage || isSubmittingAction"
-                    data-testid="detail-objective-input"
-                  ></textarea>
-                </div>
-                <div class="d-flex justify-content-end">
                   <button
                     type="submit"
-                    class="btn btn-sm btn-outline-primary"
+                    class="btn btn-xs btn-outline-primary ms-auto py-0 px-2"
+                    style="font-size: 11px; height: 22px; line-height: 20px"
                     :disabled="!canModifyPackage || isSubmittingAction || !objectiveForm.objective.trim()"
                     data-testid="save-objective-button"
                   >
-                    <i class="bi bi-check2 me-1" aria-hidden="true"></i>
-                    Update Objective
+                    Update
                   </button>
                 </div>
+                <textarea
+                  id="detailObjectiveInput"
+                  v-model="objectiveForm.objective"
+                  class="form-control form-control-sm"
+                  rows="2"
+                  :disabled="!canModifyPackage || isSubmittingAction"
+                  data-testid="detail-objective-input"
+                ></textarea>
               </form>
             </div>
 
             <!-- Owner Assignment Section (POST /api/v1/work-packages/${id}/assign-owner) -->
-            <div class="mb-4 pb-3 border-bottom" data-testid="detail-owner-section">
-              <h3 class="h6 fw-semibold mb-2">
-                <i class="bi bi-person-check me-1 text-primary" aria-hidden="true"></i>
-                Work Package Owner
-              </h3>
+            <div class="mb-2 pb-2 border-bottom" data-testid="detail-owner-section">
               <form
                 novalidate
-                class="d-flex align-items-center gap-2"
+                class="d-flex align-items-center gap-1"
                 data-testid="assign-owner-form"
                 @submit.prevent="handleAssignOwner"
               >
+                <label for="detailOwnerSelect" class="small fw-semibold text-body-secondary mb-0 text-nowrap" style="font-size: 11px">
+                  <i class="bi bi-person-check me-1 text-primary"></i>Owner:
+                </label>
                 <select
                   id="detailOwnerSelect"
                   v-model="assignOwnerForm.newOwnerPersonId"
                   class="form-select form-select-sm"
+                  style="font-size: 12px; height: 26px"
                   :disabled="!canModifyPackage || isSubmittingAction"
                   data-testid="detail-owner-select"
                 >
@@ -1390,91 +1378,86 @@ onMounted(async () => {
                     :key="person.id"
                     :value="person.id"
                   >
-                    {{ person.fullName }} ({{ person.email }})
+                    {{ person.fullName }}
                   </option>
                 </select>
                 <button
                   type="submit"
-                  class="btn btn-sm btn-outline-primary text-nowrap"
+                  class="btn btn-sm btn-outline-primary text-nowrap py-0 px-2"
+                  style="font-size: 11px; height: 26px; line-height: 24px"
                   :disabled="!canModifyPackage || isSubmittingAction || !assignOwnerForm.newOwnerPersonId"
                   data-testid="assign-owner-submit-button"
                 >
-                  Assign Owner
+                  Reassign
                 </button>
               </form>
             </div>
 
             <!-- Lifecycle Action Buttons (Activate in DRAFT, Close in DRAFT/ACTIVE) -->
-            <div class="mb-4 pb-3 border-bottom" data-testid="detail-lifecycle-section">
-              <h3 class="h6 fw-semibold mb-2">
-                <i class="bi bi-arrow-repeat me-1 text-primary" aria-hidden="true"></i>
-                Lifecycle Actions
-              </h3>
-
-              <div v-if="isSelectedClosed" class="small text-body-secondary">
-                This work package is <strong>CLOSED</strong> and cannot transition to another state.
+            <div class="mb-2 pb-2 border-bottom" data-testid="detail-lifecycle-section">
+              <div v-if="isSelectedClosed" class="small text-body-secondary" style="font-size: 11px">
+                Work package is <strong>CLOSED</strong> (terminal state).
               </div>
 
-              <div v-else class="d-flex flex-column gap-3">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                  <!-- Activate button: visible only in DRAFT -->
-                  <button
-                    v-if="canActivate"
-                    type="button"
-                    class="btn btn-success btn-sm"
-                    :disabled="isSubmittingAction"
-                    data-testid="activate-work-package-button"
-                    @click="handleActivateWorkPackage"
-                  >
-                    <i class="bi bi-play-fill me-1" aria-hidden="true"></i>
-                    Activate
-                  </button>
+              <div v-else class="d-flex flex-wrap align-items-center gap-1">
+                <!-- Activate button: visible only in DRAFT -->
+                <button
+                  v-if="canActivate"
+                  type="button"
+                  class="btn btn-success btn-sm py-0 px-2"
+                  style="font-size: 11px; height: 26px; line-height: 24px"
+                  :disabled="isSubmittingAction"
+                  data-testid="activate-work-package-button"
+                  @click="handleActivateWorkPackage"
+                >
+                  <i class="bi bi-play-fill me-1" aria-hidden="true"></i>Activate
+                </button>
 
-                  <!-- Close button: visible in DRAFT and ACTIVE -->
-                  <div v-if="canClose" class="d-flex flex-grow-1 align-items-center gap-2">
-                    <input
-                      v-model="closePackageForm.reason"
-                      type="text"
-                      class="form-control form-control-sm"
-                      placeholder="Close reason (optional)"
-                      :disabled="isSubmittingAction"
-                      data-testid="close-work-package-reason-input"
-                    />
-                    <button
-                      type="button"
-                      class="btn btn-outline-danger btn-sm text-nowrap"
-                      :disabled="isSubmittingAction"
-                      data-testid="close-work-package-button"
-                      @click="handleCloseWorkPackage"
-                    >
-                      <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>
-                      Close
-                    </button>
-                  </div>
+                <!-- Close button: visible in DRAFT and ACTIVE -->
+                <div v-if="canClose" class="d-flex flex-grow-1 align-items-center gap-1">
+                  <input
+                    v-model="closePackageForm.reason"
+                    type="text"
+                    class="form-control form-control-sm"
+                    style="font-size: 12px; height: 26px"
+                    placeholder="Close reason (optional)"
+                    :disabled="isSubmittingAction"
+                    data-testid="close-work-package-reason-input"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm text-nowrap py-0 px-2"
+                    style="font-size: 11px; height: 26px; line-height: 24px"
+                    :disabled="isSubmittingAction"
+                    data-testid="close-work-package-button"
+                    @click="handleCloseWorkPackage"
+                  >
+                    <i class="bi bi-lock-fill me-1" aria-hidden="true"></i>Close
+                  </button>
                 </div>
               </div>
             </div>
 
             <!-- Scope Management Section (GET /scope, POST /requests, DELETE /requests/{requestId}) -->
             <div data-testid="detail-scope-section">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h3 class="h6 fw-semibold mb-0">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small fw-semibold text-body-secondary" style="font-size: 11px">
                   <i class="bi bi-list-check me-1 text-primary" aria-hidden="true"></i>
-                  Scope — Linked Requests
-                  <span class="badge text-bg-secondary ms-1" data-testid="active-scope-count">
+                  Scope (Linked Requests)
+                  <span class="badge text-bg-secondary ms-1" style="font-size: 10px" data-testid="active-scope-count">
                     {{ activeScopeItems.length }}
                   </span>
-                </h3>
+                </span>
 
                 <button
                   type="button"
-                  class="btn btn-link btn-sm p-0 text-decoration-none"
+                  class="btn btn-link btn-sm p-0 text-decoration-none small"
+                  style="font-size: 11px"
                   :disabled="isLoadingScope"
                   data-testid="refresh-scope-button"
                   @click="loadWorkPackageScope(selectedWorkPackage.id)"
                 >
-                  <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-                  Refresh Scope
+                  <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh
                 </button>
               </div>
 
@@ -1482,18 +1465,16 @@ onMounted(async () => {
               <form
                 v-if="canModifyPackage"
                 novalidate
-                class="card bg-body-tertiary border-0 p-2 mb-3"
+                class="p-1 mb-1 rounded bg-body-tertiary border"
                 data-testid="add-request-form"
                 @submit.prevent="handleAddRequestToScope"
               >
-                <label for="addRequestSelect" class="form-label small fw-medium mb-1">
-                  Add Request to Scope
-                </label>
-                <div class="d-flex flex-column gap-2">
+                <div class="d-flex flex-column gap-1">
                   <select
                     id="addRequestSelect"
                     v-model="addRequestForm.selectedRequestId"
                     class="form-select form-select-sm"
+                    style="font-size: 11.5px; height: 26px"
                     :disabled="isSubmittingAction"
                     data-testid="add-request-select"
                   >
@@ -1512,27 +1493,28 @@ onMounted(async () => {
                       v-model="addRequestForm.manualRequestId"
                       type="text"
                       class="form-control"
+                      style="font-size: 11.5px; height: 26px"
                       placeholder="Or enter Request ID (UUID)..."
                       :disabled="isSubmittingAction"
                       data-testid="add-request-id-input"
                     />
                     <button
                       type="submit"
-                      class="btn btn-primary"
+                      class="btn btn-primary btn-sm py-0 px-2"
+                      style="font-size: 11px; height: 26px; line-height: 24px"
                       :disabled="isSubmittingAction || !resolvedRequestIdToAdd"
                       data-testid="add-request-button"
                     >
-                      <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
-                      Add Request
+                      <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Add
                     </button>
                   </div>
                 </div>
               </form>
 
               <!-- Linked Requests List -->
-              <div v-if="isLoadingScope" class="text-center py-3 text-body-secondary small">
+              <div v-if="isLoadingScope" class="text-center py-2 text-body-secondary small">
                 <span
-                  class="spinner-border spinner-border-sm me-2"
+                  class="spinner-border spinner-border-sm me-1"
                   role="status"
                   aria-hidden="true"
                 ></span>
@@ -1541,29 +1523,31 @@ onMounted(async () => {
 
               <div
                 v-else-if="activeScopeItems.length === 0"
-                class="text-center py-3 text-body-secondary small border rounded"
+                class="text-center py-2 text-body-secondary small border rounded"
+                style="font-size: 11.5px"
                 data-testid="empty-scope-message"
               >
-                No active requests are currently linked to this work package.
+                No active requests currently linked to this package.
               </div>
 
               <ul
                 v-else
-                class="list-group list-group-flush border rounded mb-3"
+                class="list-group list-group-flush border rounded mb-2"
                 data-testid="scope-requests-list"
               >
                 <li
                   v-for="item in activeScopeItems"
                   :key="item.id || item.requestId"
-                  class="list-group-item d-flex justify-content-between align-items-start gap-2"
+                  class="list-group-item d-flex justify-content-between align-items-center gap-1 px-2 py-1"
                   :data-request-id="item.requestId"
                   data-testid="scope-request-item"
                 >
-                  <div class="me-auto">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <div class="me-auto text-truncate" style="max-width: 78%">
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
                       <router-link
                         :to="`/requests/${item.requestId}`"
-                        class="fw-semibold text-decoration-none"
+                        class="fw-medium text-decoration-none small text-truncate"
+                        style="font-size: 12px; max-width: 220px"
                         data-testid="scope-request-link"
                       >
                         {{ item.title || item.requestTitle || item.requestId }}
@@ -1571,45 +1555,42 @@ onMounted(async () => {
                       <span
                         v-if="item.status || item.requestStatus"
                         class="badge"
+                        style="font-size: 9.5px; padding: 2px 4px"
                         :class="requestStatusBadgeClass(item.status || item.requestStatus)"
                       >
                         {{ item.status || item.requestStatus }}
                       </span>
                     </div>
-                    <div class="small text-body-secondary font-monospace">
+                    <div class="text-body-secondary font-monospace" style="font-size: 10px">
                       {{ item.requestId }}
-                    </div>
-                    <div v-if="item.ownerName || item.customerName || item.productName" class="small text-body-secondary">
-                      <span v-if="item.ownerName">Owner: {{ item.ownerName }}</span>
-                      <span v-if="item.customerName" class="ms-2">Customer: {{ item.customerName }}</span>
-                      <span v-if="item.productName" class="ms-2">Product: {{ item.productName }}</span>
                     </div>
                   </div>
 
                   <button
                     v-if="canModifyPackage"
                     type="button"
-                    class="btn btn-outline-danger btn-sm"
+                    class="btn btn-outline-danger btn-xs py-0 px-1"
+                    style="font-size: 10px; height: 22px; line-height: 20px"
                     :disabled="removingRequestId === item.requestId || isSubmittingAction"
                     data-testid="remove-request-button"
                     @click="handleRemoveRequestFromScope(item.requestId)"
                   >
-                    <i class="bi bi-x-lg me-1" aria-hidden="true"></i>
-                    Remove
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
                   </button>
                 </li>
               </ul>
 
               <!-- Historical / Removed Scope Items -->
-              <div v-if="historicalScopeItems.length > 0" class="mt-3">
-                <div class="small fw-semibold text-body-secondary mb-1">
-                  Historical (Removed) Scope Memberships
+              <div v-if="historicalScopeItems.length > 0">
+                <div class="small fw-semibold text-body-secondary mb-1" style="font-size: 10.5px">
+                  Historical Removed Scope Memberships
                 </div>
                 <ul class="list-group list-group-flush border rounded small" data-testid="historical-scope-list">
                   <li
                     v-for="hist in historicalScopeItems"
                     :key="hist.id || `${hist.requestId}-${hist.removedAt}`"
-                    class="list-group-item text-body-secondary d-flex justify-content-between align-items-center"
+                    class="list-group-item text-body-secondary d-flex justify-content-between align-items-center px-2 py-1"
+                    style="font-size: 11px"
                   >
                     <div>
                       <router-link
@@ -1618,9 +1599,9 @@ onMounted(async () => {
                       >
                         {{ hist.title || hist.requestTitle || hist.requestId }}
                       </router-link>
-                      <span class="ms-2 badge text-bg-light border text-secondary">Removed</span>
+                      <span class="ms-1 badge text-bg-light border text-secondary" style="font-size: 9px">Removed</span>
                     </div>
-                    <span class="small">{{ formatTimestamp(hist.removedAt) }}</span>
+                    <span class="font-monospace" style="font-size: 10px">{{ formatTimestamp(hist.removedAt) }}</span>
                   </li>
                 </ul>
               </div>

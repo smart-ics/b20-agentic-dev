@@ -244,13 +244,16 @@ onMounted(async () => {
 
 <template>
   <section data-screen-id="SCR-MGT-002" class="programmer-performance-view">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <h1 class="h3 mb-1">Programmer Performance Analytics</h1>
-        <p class="text-body-secondary mb-0">
-          Historical monthly throughput, resolution turnaround time, and daily workload snapshots (SCR-MGT-002).
-        </p>
+    <!-- Compact Screen Header -->
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="op-screen-title">
+          <i class="bi bi-graph-up text-primary" aria-hidden="true"></i>
+          Programmer Performance Analytics
+        </h1>
+        <span class="badge text-bg-light border text-secondary font-monospace">SCR-MGT-002</span>
       </div>
+
       <div class="d-flex align-items-center gap-2">
         <router-link to="/analytics/customer-portfolio" class="btn btn-outline-secondary btn-sm">
           <i class="bi bi-building me-1" aria-hidden="true"></i>
@@ -266,201 +269,162 @@ onMounted(async () => {
     <!-- Error Alert -->
     <div
       v-if="errorMessage"
-      class="alert alert-danger alert-dismissible fade show"
+      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 py-1 px-2 mb-2"
       role="alert"
       data-testid="performance-error-alert"
     >
-      <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
-      {{ errorMessage }}
+      <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
+      <div>{{ errorMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
     </div>
 
-    <!-- Filter Form Card -->
-    <div class="card shadow-sm mb-4">
-      <div class="card-body">
-        <form class="row g-3 align-items-end" @submit.prevent="loadPerformanceReport">
-          <div class="col-12 col-md-4">
-            <label for="performancePersonSelect" class="form-label fw-semibold">
-              Programmer / Person
-            </label>
-            <select
-              id="performancePersonSelect"
-              v-model="filters.personId"
-              class="form-select"
-              :disabled="isLoadingPersons || isLoadingReport"
-              data-testid="person-selector"
+    <!-- Compact Filter Toolbar -->
+    <div class="op-toolbar">
+      <form class="d-flex flex-wrap align-items-center gap-2 w-100" @submit.prevent="loadPerformanceReport">
+        <div class="d-flex align-items-center gap-1">
+          <label for="performancePersonSelect" class="form-label mb-0 fs-11 text-nowrap">Programmer:</label>
+          <select
+            id="performancePersonSelect"
+            v-model="filters.personId"
+            class="form-select form-select-sm"
+            style="min-width: 170px; max-width: 250px;"
+            :disabled="isLoadingPersons || isLoadingReport"
+            data-testid="person-selector"
+          >
+            <option value="">All Programmers / Persons</option>
+            <option
+              v-for="person in activePersons"
+              :key="resolvePersonId(person)"
+              :value="resolvePersonId(person)"
             >
-              <option value="">All Programmers / Persons</option>
-              <option
-                v-for="person in activePersons"
-                :key="resolvePersonId(person)"
-                :value="resolvePersonId(person)"
-              >
-                {{ resolvePersonLabel(person) }}
-              </option>
-            </select>
-          </div>
+              {{ resolvePersonLabel(person) }}
+            </option>
+          </select>
+        </div>
 
-          <div class="col-12 col-sm-6 col-md-3">
-            <label for="startMonthInput" class="form-label fw-semibold">
-              Start Month (YYYY-MM)
-            </label>
-            <input
-              id="startMonthInput"
-              v-model="filters.startMonth"
-              type="month"
-              class="form-control"
-              placeholder="YYYY-MM"
-              :disabled="isLoadingReport"
-              data-testid="start-month-input"
-            />
-          </div>
+        <div class="d-flex align-items-center gap-1">
+          <label for="startMonthInput" class="form-label mb-0 fs-11 text-nowrap">Start:</label>
+          <input
+            id="startMonthInput"
+            v-model="filters.startMonth"
+            type="month"
+            class="form-control form-control-sm"
+            style="width: 130px;"
+            placeholder="YYYY-MM"
+            :disabled="isLoadingReport"
+            data-testid="start-month-input"
+          />
+        </div>
 
-          <div class="col-12 col-sm-6 col-md-3">
-            <label for="endMonthInput" class="form-label fw-semibold">
-              End Month (YYYY-MM)
-            </label>
-            <input
-              id="endMonthInput"
-              v-model="filters.endMonth"
-              type="month"
-              class="form-control"
-              placeholder="YYYY-MM"
-              :disabled="isLoadingReport"
-              data-testid="end-month-input"
-            />
-          </div>
+        <div class="d-flex align-items-center gap-1">
+          <label for="endMonthInput" class="form-label mb-0 fs-11 text-nowrap">End:</label>
+          <input
+            id="endMonthInput"
+            v-model="filters.endMonth"
+            type="month"
+            class="form-control form-control-sm"
+            style="width: 130px;"
+            placeholder="YYYY-MM"
+            :disabled="isLoadingReport"
+            data-testid="end-month-input"
+          />
+        </div>
 
-          <div class="col-12 col-md-2 d-flex gap-2">
-            <button
-              type="submit"
-              class="btn btn-primary flex-grow-1"
-              :disabled="isLoadingReport"
-              data-testid="load-performance-button"
-            >
-              <span
-                v-if="isLoadingReport"
-                class="spinner-border spinner-border-sm me-1"
-                role="status"
-                aria-hidden="true"
-              ></span>
-              <i v-else class="bi bi-funnel me-1" aria-hidden="true"></i>
-              Filter
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary"
-              :disabled="isLoadingReport"
-              data-testid="reset-performance-button"
-              @click="handleResetFilters"
-            >
-              Reset
-            </button>
-          </div>
-        </form>
-      </div>
+        <div class="d-flex align-items-center gap-1 ms-auto">
+          <button
+            type="submit"
+            class="btn btn-primary btn-sm"
+            :disabled="isLoadingReport"
+            data-testid="load-performance-button"
+          >
+            <span
+              v-if="isLoadingReport"
+              class="spinner-border spinner-border-sm me-1"
+              role="status"
+              aria-hidden="true"
+            ></span>
+            <i v-else class="bi bi-funnel me-1" aria-hidden="true"></i>
+            Filter
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            :disabled="isLoadingReport"
+            data-testid="reset-performance-button"
+            @click="handleResetFilters"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
     </div>
 
     <!-- Loading Indicator -->
-    <div v-if="isLoadingReport" class="text-center py-5" data-testid="performance-loading">
-      <div class="spinner-border text-primary" role="status">
+    <div v-if="isLoadingReport" class="text-center py-4" data-testid="performance-loading">
+      <div class="spinner-border spinner-border-sm text-primary" role="status">
         <span class="visually-hidden">Loading programmer performance report...</span>
       </div>
-      <p class="text-body-secondary mt-2 mb-0">Loading historical performance snapshots...</p>
+      <p class="text-body-secondary small mt-1 mb-0">Loading historical performance snapshots...</p>
     </div>
 
     <template v-else-if="report">
-      <!-- Summary KPI Cards -->
-      <div class="row g-3 mb-4">
-        <div class="col-12 col-sm-6 col-lg-3">
-          <div class="card shadow-sm h-100 border-success">
-            <div class="card-body">
-              <div class="text-body-secondary small text-uppercase fw-semibold">
-                Total Completed Requests
-              </div>
-              <div
-                class="display-6 fw-bold text-success mt-1"
-                data-testid="kpi-total-completed"
-              >
-                {{ report.totalCompletedRequests }}
-              </div>
-              <div class="small text-body-secondary mt-1">
-                {{ report.personName || 'All Programmers' }}
-              </div>
-            </div>
-          </div>
+      <!-- Compact Operational Metric Ribbon -->
+      <div class="op-metric-ribbon">
+        <div class="op-stat-item">
+          <span class="op-stat-label text-success">Completed:</span>
+          <span
+            class="op-stat-val text-success"
+            data-testid="kpi-total-completed"
+          >
+            {{ report.totalCompletedRequests }}
+          </span>
+          <span class="text-muted fs-11 ms-1">({{ report.personName || 'All Programmers' }})</span>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-          <div class="card shadow-sm h-100 border-secondary">
-            <div class="card-body">
-              <div class="text-body-secondary small text-uppercase fw-semibold">
-                Total Rejected Requests
-              </div>
-              <div class="display-6 fw-bold mt-1" data-testid="kpi-total-rejected">
-                {{ report.totalRejectedRequests }}
-              </div>
-              <div class="small text-body-secondary mt-1">
-                Closed with REJECTED outcome
-              </div>
-            </div>
-          </div>
+        <div class="op-stat-item">
+          <span class="op-stat-label">Rejected:</span>
+          <span class="op-stat-val text-secondary" data-testid="kpi-total-rejected">
+            {{ report.totalRejectedRequests }}
+          </span>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-          <div class="card shadow-sm h-100 border-primary">
-            <div class="card-body">
-              <div class="text-body-secondary small text-uppercase fw-semibold">
-                Avg Resolution Turnaround
-              </div>
-              <div
-                class="display-6 fw-bold text-primary mt-1"
-                data-testid="kpi-avg-resolution-hours"
-              >
-                {{ formatDecimal(report.avgResolutionHours) }} <span class="fs-5">hrs</span>
-              </div>
-              <div class="small text-body-secondary mt-1">
-                Across selected period
-              </div>
-            </div>
-          </div>
+        <div class="op-stat-item">
+          <span class="op-stat-label">Avg Turnaround:</span>
+          <span
+            class="op-stat-val text-primary"
+            data-testid="kpi-avg-resolution-hours"
+          >
+            {{ formatDecimal(report.avgResolutionHours) }} <span class="fs-11 fw-normal text-muted">hrs</span>
+          </span>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
-              <div class="text-body-secondary small text-uppercase fw-semibold">
-                Daily Snapshot Records
-              </div>
-              <div class="display-6 fw-bold mt-1" data-testid="kpi-daily-snapshots-count">
-                {{ dailyWorkloadSnapshots.length }}
-              </div>
-              <div class="small text-body-secondary mt-1">
-                Monthly series rows: {{ monthlyPerformance.length }}
-              </div>
-            </div>
-          </div>
+        <div class="op-stat-item">
+          <span class="op-stat-label">Daily Snapshots:</span>
+          <span class="op-stat-val" data-testid="kpi-daily-snapshots-count">
+            {{ dailyWorkloadSnapshots.length }}
+          </span>
+          <span class="text-muted fs-11 ms-1">({{ monthlyPerformance.length }} monthly series)</span>
         </div>
       </div>
 
       <!-- Monthly Performance Series Table -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="h5 mb-0">
-            <i class="bi bi-calendar3 me-2 text-primary" aria-hidden="true"></i>
+      <div class="card border mb-2">
+        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">
+            <i class="bi bi-calendar3 me-1 text-primary" aria-hidden="true"></i>
             Monthly Performance Summary
-          </h2>
+          </span>
           <span class="badge text-bg-primary">{{ monthlyPerformance.length }} rows</span>
         </div>
         <div class="card-body p-0">
           <div
             v-if="monthlyPerformance.length === 0"
-            class="p-4 text-center text-body-secondary"
+            class="p-3 text-center text-body-secondary small"
           >
             No monthly performance records found for the selected filter criteria.
           </div>
@@ -469,15 +433,15 @@ onMounted(async () => {
               class="table table-hover align-middle mb-0"
               data-testid="monthly-performance-table"
             >
-              <thead class="table-light">
+              <thead>
                 <tr>
-                  <th scope="col">Month (YYYY-MM)</th>
+                  <th scope="col" style="width: 120px;">Month</th>
                   <th scope="col">Programmer</th>
-                  <th scope="col" class="text-end">Completed Requests</th>
-                  <th scope="col" class="text-end">Rejected Requests</th>
-                  <th scope="col" class="text-end">Peak Active Requests</th>
-                  <th scope="col" class="text-end">Escalated Observations</th>
-                  <th scope="col" class="text-end">Avg Resolution (Hours)</th>
+                  <th scope="col" class="text-end" style="width: 110px;">Completed</th>
+                  <th scope="col" class="text-end" style="width: 100px;">Rejected</th>
+                  <th scope="col" class="text-end" style="width: 120px;">Peak Active</th>
+                  <th scope="col" class="text-end" style="width: 110px;">Escalated</th>
+                  <th scope="col" class="text-end" style="width: 130px;">Avg Turnaround</th>
                 </tr>
               </thead>
               <tbody>
@@ -486,7 +450,7 @@ onMounted(async () => {
                   :key="`${item.yearMonth}-${item.personId}`"
                 >
                   <td>
-                    <span class="badge text-bg-light border font-monospace fs-6">
+                    <span class="badge text-bg-light border font-monospace">
                       {{ item.yearMonth }}
                     </span>
                   </td>
@@ -508,7 +472,7 @@ onMounted(async () => {
                       {{ item.escalatedRequestsCount }}
                     </span>
                   </td>
-                  <td class="text-end font-monospace">
+                  <td class="text-end font-monospace fs-11">
                     {{ formatDecimal(item.avgResolutionHours) }} hrs
                   </td>
                 </tr>
@@ -519,18 +483,18 @@ onMounted(async () => {
       </div>
 
       <!-- Daily Workload Snapshots Table -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="h5 mb-0">
-            <i class="bi bi-clock-history me-2 text-secondary" aria-hidden="true"></i>
-            Daily Workload Snapshots (`analytics.DailyWorkloadSnapshots`)
-          </h2>
+      <div class="card border mb-2">
+        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">
+            <i class="bi bi-clock-history me-1 text-secondary" aria-hidden="true"></i>
+            Daily Workload Snapshots
+          </span>
           <span class="badge text-bg-secondary">{{ dailyWorkloadSnapshots.length }} snapshots</span>
         </div>
         <div class="card-body p-0">
           <div
             v-if="dailyWorkloadSnapshots.length === 0"
-            class="p-4 text-center text-body-secondary"
+            class="p-3 text-center text-body-secondary small"
           >
             No daily workload snapshots recorded for the selected filter criteria.
           </div>
@@ -539,16 +503,16 @@ onMounted(async () => {
               class="table table-hover align-middle mb-0"
               data-testid="daily-snapshots-table"
             >
-              <thead class="table-light">
+              <thead>
                 <tr>
-                  <th scope="col">Snapshot Date</th>
+                  <th scope="col" style="width: 105px;">Date</th>
                   <th scope="col">Programmer</th>
-                  <th scope="col" class="text-end">Active Requests</th>
-                  <th scope="col" class="text-end">Escalated</th>
-                  <th scope="col" class="text-end">Stalled (72h+)</th>
-                  <th scope="col" class="text-end">Completed Today</th>
-                  <th scope="col" class="text-end">Avg Age (Hours)</th>
-                  <th scope="col">Captured At</th>
+                  <th scope="col" class="text-end" style="width: 110px;">Active</th>
+                  <th scope="col" class="text-end" style="width: 100px;">Escalated</th>
+                  <th scope="col" class="text-end" style="width: 110px;">Stalled (72h+)</th>
+                  <th scope="col" class="text-end" style="width: 120px;">Completed Today</th>
+                  <th scope="col" class="text-end" style="width: 110px;">Avg Age</th>
+                  <th scope="col" style="width: 130px;">Captured At</th>
                 </tr>
               </thead>
               <tbody>
@@ -556,7 +520,7 @@ onMounted(async () => {
                   v-for="snap in dailyWorkloadSnapshots"
                   :key="snap.snapshotId || snap.id"
                 >
-                  <td class="font-monospace">{{ formatDate(snap.snapshotDate) }}</td>
+                  <td class="font-monospace fs-11">{{ formatDate(snap.snapshotDate) }}</td>
                   <td class="fw-semibold">{{ snap.personName || snap.personId }}</td>
                   <td class="text-end">{{ snap.activeRequestsCount }}</td>
                   <td class="text-end">
@@ -582,8 +546,8 @@ onMounted(async () => {
                   <td class="text-end">
                     <span class="badge text-bg-success">{{ snap.completedRequestsToday }}</span>
                   </td>
-                  <td class="text-end font-monospace">{{ formatDecimal(snap.avgAgeHours) }} hrs</td>
-                  <td class="small text-body-secondary">{{ formatDateTime(snap.capturedAt) }}</td>
+                  <td class="text-end font-monospace fs-11">{{ formatDecimal(snap.avgAgeHours) }} hrs</td>
+                  <td class="text-body-secondary fs-11">{{ formatDateTime(snap.capturedAt) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -592,12 +556,12 @@ onMounted(async () => {
       </div>
 
       <!-- Monthly Customer Performance Snapshots Table (if present) -->
-      <div v-if="monthlyCustomerSnapshots.length > 0" class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="h5 mb-0">
-            <i class="bi bi-building-check me-2 text-info" aria-hidden="true"></i>
-            Monthly Customer Performance Snapshots (`analytics.MonthlyCustomerPerformanceSnapshots`)
-          </h2>
+      <div v-if="monthlyCustomerSnapshots.length > 0" class="card border">
+        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">
+            <i class="bi bi-building-check me-1 text-info" aria-hidden="true"></i>
+            Monthly Customer Performance Snapshots
+          </span>
           <span class="badge text-bg-info">{{ monthlyCustomerSnapshots.length }} snapshots</span>
         </div>
         <div class="card-body p-0">
@@ -606,16 +570,16 @@ onMounted(async () => {
               class="table table-hover align-middle mb-0"
               data-testid="monthly-customer-snapshots-table"
             >
-              <thead class="table-light">
+              <thead>
                 <tr>
-                  <th scope="col">Month</th>
+                  <th scope="col" style="width: 90px;">Month</th>
                   <th scope="col">Customer</th>
-                  <th scope="col" class="text-end">Total Requests</th>
-                  <th scope="col" class="text-end">Resolved</th>
-                  <th scope="col" class="text-end">Rejected</th>
-                  <th scope="col" class="text-end">Avg Resolution (Hours)</th>
-                  <th scope="col" class="text-end">SLA Met</th>
-                  <th scope="col" class="text-end">SLA Breached</th>
+                  <th scope="col" class="text-end" style="width: 110px;">Total</th>
+                  <th scope="col" class="text-end" style="width: 90px;">Resolved</th>
+                  <th scope="col" class="text-end" style="width: 90px;">Rejected</th>
+                  <th scope="col" class="text-end" style="width: 120px;">Avg Turnaround</th>
+                  <th scope="col" class="text-end" style="width: 90px;">SLA Met</th>
+                  <th scope="col" class="text-end" style="width: 100px;">SLA Breached</th>
                 </tr>
               </thead>
               <tbody>
@@ -623,12 +587,12 @@ onMounted(async () => {
                   v-for="custSnap in monthlyCustomerSnapshots"
                   :key="custSnap.snapshotId || custSnap.id"
                 >
-                  <td class="font-monospace">{{ custSnap.yearMonth }}</td>
+                  <td class="font-monospace fs-11">{{ custSnap.yearMonth }}</td>
                   <td class="fw-semibold">{{ custSnap.customerName || custSnap.customerId }}</td>
                   <td class="text-end">{{ custSnap.totalRequests }}</td>
                   <td class="text-end">{{ custSnap.resolvedRequestsCount }}</td>
                   <td class="text-end">{{ custSnap.rejectedRequestsCount }}</td>
-                  <td class="text-end font-monospace">
+                  <td class="text-end font-monospace fs-11">
                     {{ formatDecimal(custSnap.avgResolutionHours) }} hrs
                   </td>
                   <td class="text-end">

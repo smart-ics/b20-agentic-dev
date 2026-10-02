@@ -26,3 +26,9 @@
 .DS_Store
 Thumbs.db
 [Dd]esktop.ini
+
+# Logs
+logs/
+publish/logs/
+*.log
+

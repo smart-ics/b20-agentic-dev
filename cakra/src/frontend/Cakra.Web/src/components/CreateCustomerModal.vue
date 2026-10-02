@@ -151,15 +151,15 @@ onBeforeUnmount(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow">
-          <div class="modal-header">
-            <h5 id="createCustomerModalTitle" class="modal-title">
-              <i class="bi bi-building-add me-2 text-primary" aria-hidden="true"></i>
+        <div class="modal-content shadow border">
+          <div class="modal-header py-1 px-3 bg-body-tertiary">
+            <h2 id="createCustomerModalTitle" class="modal-title h6 fw-bold mb-0">
+              <i class="bi bi-building-add me-1 text-primary" aria-hidden="true"></i>
               Add New Customer
-            </h5>
+            </h2>
             <button
               type="button"
-              class="btn-close"
+              class="btn-close py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting"
               @click="handleClose"
@@ -167,66 +167,66 @@ onBeforeUnmount(() => {
           </div>
 
           <form @submit.prevent="handleSubmit">
-            <div class="modal-body">
+            <div class="modal-body p-2 p-md-3">
               <!-- Error Alert -->
               <div
                 v-if="errorMessage"
-                class="alert alert-danger alert-dismissible fade show"
+                class="alert alert-danger alert-dismissible fade show py-1 px-2 mb-2 small"
                 role="alert"
                 data-testid="create-customer-error-alert"
               >
-                <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+                <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
                 {{ errorMessage }}
                 <button
                   type="button"
-                  class="btn-close"
+                  class="btn-close py-1 px-2"
                   aria-label="Close"
                   @click="errorMessage = null"
                 ></button>
               </div>
 
               <!-- Customer Code -->
-              <div class="mb-3">
-                <label for="createCustomerCode" class="form-label fw-semibold">
+              <div class="mb-2">
+                <label for="createCustomerCode" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                   Customer Code <span class="text-danger">*</span>
                 </label>
                 <input
                   id="createCustomerCode"
                   v-model="customerCode"
                   type="text"
-                  class="form-select-sm form-control"
+                  class="form-control form-control-sm font-monospace"
                   :class="{ 'is-invalid': validationErrors.customerCode }"
                   placeholder="e.g. CUST-001"
                   :disabled="isSubmitting"
                   data-testid="input-customer-code"
                 />
-                <div v-if="validationErrors.customerCode" class="invalid-feedback">
+                <div v-if="validationErrors.customerCode" class="invalid-feedback small" style="font-size: 11px">
                   {{ validationErrors.customerCode }}
                 </div>
               </div>
 
               <!-- Customer Name -->
-              <div class="mb-3">
-                <label for="createCustomerName" class="form-label fw-semibold">
+              <div class="mb-2">
+                <label for="createCustomerName" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                   Customer Name <span class="text-danger">*</span>
                 </label>
                 <input
                   id="createCustomerName"
                   v-model="customerName"
                   type="text"
-                  class="form-control"
+                  class="form-control form-control-sm"
                   :class="{ 'is-invalid': validationErrors.customerName }"
                   placeholder="e.g. PT Acme Corporation"
                   :disabled="isSubmitting"
                   data-testid="input-customer-name"
                 />
-                <div v-if="validationErrors.customerName" class="invalid-feedback">
+                <div v-if="validationErrors.customerName" class="invalid-feedback small" style="font-size: 11px">
                   {{ validationErrors.customerName }}
                 </div>
               </div>
 
               <!-- Maintenance Contract Toggle -->
-              <div class="form-check form-switch mb-3">
+              <div class="form-check form-switch mb-1">
                 <input
                   id="createHasMaintenanceContract"
                   v-model="hasActiveMaintenanceContract"
@@ -237,21 +237,20 @@ onBeforeUnmount(() => {
                   data-testid="toggle-maintenance-contract"
                 />
                 <label
-                  class="form-check-label fw-semibold"
+                  class="form-check-label small fw-semibold"
                   for="createHasMaintenanceContract"
+                  style="font-size: 11.5px"
                 >
-                  Active Maintenance Contract
+                  Active Maintenance Contract (SLA)
                 </label>
-                <div class="form-text">
-                  Indicates whether this customer has an active SLA maintenance agreement.
-                </div>
               </div>
             </div>
 
-            <div class="modal-footer">
+            <div class="modal-footer py-1 px-3 bg-body-tertiary">
               <button
                 type="button"
-                class="btn btn-secondary"
+                class="btn btn-outline-secondary btn-sm py-0 px-2"
+                style="font-size: 11px; height: 24px; line-height: 22px"
                 :disabled="isSubmitting"
                 data-testid="cancel-create-customer"
                 @click="handleClose"
@@ -260,7 +259,8 @@ onBeforeUnmount(() => {
               </button>
               <button
                 type="submit"
-                class="btn btn-primary"
+                class="btn btn-primary btn-sm py-0 px-2"
+                style="font-size: 11px; height: 24px; line-height: 22px"
                 :disabled="isSubmitting"
                 data-testid="submit-create-customer"
               >

@@ -365,20 +365,20 @@ onBeforeUnmount(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow">
-          <div class="modal-header">
-            <div>
-              <h5 id="editCustomerModalTitle" class="modal-title mb-1">
-                <i class="bi bi-pencil-square me-2 text-primary" aria-hidden="true"></i>
-                Edit Customer Master
-              </h5>
-              <div v-if="customer" class="small text-body-secondary">
+        <div class="modal-content shadow border">
+          <div class="modal-header py-1 px-3 bg-body-tertiary">
+            <div class="d-flex align-items-center gap-2">
+              <h2 id="editCustomerModalTitle" class="modal-title h6 fw-bold mb-0">
+                <i class="bi bi-pencil-square me-1 text-primary" aria-hidden="true"></i>
+                Edit Customer
+              </h2>
+              <span v-if="customer" class="text-body-secondary small font-monospace" style="font-size: 11px">
                 {{ customer.customerName }} ({{ customer.customerCode }})
-              </div>
+              </span>
             </div>
             <button
               type="button"
-              class="btn-close"
+              class="btn-close py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting || isTogglingStatus || isSubmittingContact"
               @click="handleClose"
@@ -386,10 +386,10 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Modal Body -->
-          <div class="modal-body">
+          <div class="modal-body p-2 p-md-3">
             <!-- Loading Spinner -->
-            <div v-if="isLoading" class="text-center py-4">
-              <div class="spinner-border text-primary" role="status">
+            <div v-if="isLoading" class="text-center py-3">
+              <div class="spinner-border spinner-border-sm text-primary" role="status">
                 <span class="visually-hidden">Loading customer details...</span>
               </div>
             </div>
@@ -398,15 +398,15 @@ onBeforeUnmount(() => {
               <!-- Error Alert -->
               <div
                 v-if="errorMessage"
-                class="alert alert-danger alert-dismissible fade show"
+                class="alert alert-danger alert-dismissible fade show py-1 px-2 mb-2 small"
                 role="alert"
                 data-testid="edit-customer-error-alert"
               >
-                <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+                <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
                 {{ errorMessage }}
                 <button
                   type="button"
-                  class="btn-close"
+                  class="btn-close py-1 px-2"
                   aria-label="Close"
                   @click="errorMessage = null"
                 ></button>
@@ -415,44 +415,44 @@ onBeforeUnmount(() => {
               <!-- Success Feedback Alert -->
               <div
                 v-if="successMessage"
-                class="alert alert-success alert-dismissible fade show"
+                class="alert alert-success alert-dismissible fade show py-1 px-2 mb-2 small"
                 role="alert"
                 data-testid="edit-customer-success-alert"
               >
-                <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
+                <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>
                 {{ successMessage }}
                 <button
                   type="button"
-                  class="btn-close"
+                  class="btn-close py-1 px-2"
                   aria-label="Close"
                   @click="successMessage = null"
                 ></button>
               </div>
 
               <!-- Nav Tabs -->
-              <ul class="nav nav-tabs mb-3" role="tablist">
+              <ul class="nav nav-tabs mb-2" role="tablist" style="font-size: 12px">
                 <li class="nav-item" role="presentation">
                   <button
-                    class="nav-link"
+                    class="nav-link py-1 px-2.5"
                     :class="{ active: activeTab === 'attributes' }"
                     type="button"
                     role="tab"
                     @click="activeTab = 'attributes'"
                   >
                     <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
-                    Customer Attributes
+                    Attributes
                   </button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button
-                    class="nav-link"
+                    class="nav-link py-1 px-2.5"
                     :class="{ active: activeTab === 'contacts' }"
                     type="button"
                     role="tab"
                     @click="activeTab = 'contacts'"
                   >
                     <i class="bi bi-person-lines-fill me-1" aria-hidden="true"></i>
-                    Customer Contacts ({{ contacts.length }})
+                    Contacts ({{ contacts.length }})
                   </button>
                 </li>
               </ul>
@@ -460,12 +460,13 @@ onBeforeUnmount(() => {
               <!-- TAB 1: Customer Attributes -->
               <div v-if="activeTab === 'attributes'">
                 <!-- Status & Lifecycle Summary -->
-                <div class="card bg-light mb-3">
-                  <div class="card-body d-flex align-items-center justify-content-between">
-                    <div>
-                      <span class="fw-semibold me-2">Customer Status:</span>
+                <div class="card bg-body-tertiary border mb-2 shadow-none">
+                  <div class="card-body p-2 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="fw-semibold small text-body-secondary" style="font-size: 11px">Status:</span>
                       <span
                         class="badge"
+                        style="font-size: 10px; padding: 2px 6px"
                         :class="customer.isActive ? 'text-bg-success' : 'text-bg-secondary'"
                         data-testid="customer-status-badge"
                       >
@@ -477,7 +478,8 @@ onBeforeUnmount(() => {
                       <button
                         v-if="customer.isActive"
                         type="button"
-                        class="btn btn-outline-danger btn-sm"
+                        class="btn btn-outline-danger btn-xs py-0 px-2"
+                        style="font-size: 11px; height: 24px; line-height: 22px"
                         :disabled="isTogglingStatus || isSubmitting"
                         data-testid="deactivate-customer-button"
                         @click="handleToggleStatus"
@@ -493,7 +495,8 @@ onBeforeUnmount(() => {
                       <button
                         v-else
                         type="button"
-                        class="btn btn-outline-success btn-sm"
+                        class="btn btn-outline-success btn-xs py-0 px-2"
+                        style="font-size: 11px; height: 24px; line-height: 22px"
                         :disabled="isTogglingStatus || isSubmitting"
                         data-testid="activate-customer-button"
                         @click="handleToggleStatus"
@@ -512,64 +515,70 @@ onBeforeUnmount(() => {
 
                 <!-- Attributes Form -->
                 <form @submit.prevent="handleSaveAttributes">
-                  <div class="mb-3">
-                    <label for="editCustomerCode" class="form-label fw-semibold">
-                      Customer Code <span class="text-danger">*</span>
-                    </label>
-                    <input
-                      id="editCustomerCode"
-                      v-model="customerCode"
-                      type="text"
-                      class="form-control"
-                      :class="{ 'is-invalid': validationErrors.customerCode }"
-                      :disabled="isSubmitting"
-                      data-testid="input-edit-customer-code"
-                    />
-                    <div v-if="validationErrors.customerCode" class="invalid-feedback">
-                      {{ validationErrors.customerCode }}
+                  <div class="row g-2">
+                    <div class="col-12 col-md-4">
+                      <label for="editCustomerCode" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                        Customer Code <span class="text-danger">*</span>
+                      </label>
+                      <input
+                        id="editCustomerCode"
+                        v-model="customerCode"
+                        type="text"
+                        class="form-control form-control-sm font-monospace"
+                        :class="{ 'is-invalid': validationErrors.customerCode }"
+                        :disabled="isSubmitting"
+                        data-testid="input-edit-customer-code"
+                      />
+                      <div v-if="validationErrors.customerCode" class="invalid-feedback small" style="font-size: 11px">
+                        {{ validationErrors.customerCode }}
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-8">
+                      <label for="editCustomerName" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                        Customer Name <span class="text-danger">*</span>
+                      </label>
+                      <input
+                        id="editCustomerName"
+                        v-model="customerName"
+                        type="text"
+                        class="form-control form-control-sm"
+                        :class="{ 'is-invalid': validationErrors.customerName }"
+                        :disabled="isSubmitting"
+                        data-testid="input-edit-customer-name"
+                      />
+                      <div v-if="validationErrors.customerName" class="invalid-feedback small" style="font-size: 11px">
+                        {{ validationErrors.customerName }}
+                      </div>
+                    </div>
+
+                    <div class="col-12">
+                      <div class="form-check form-switch mb-1">
+                        <input
+                          id="editHasMaintenanceContract"
+                          v-model="hasActiveMaintenanceContract"
+                          class="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          :disabled="isSubmitting"
+                          data-testid="toggle-edit-maintenance-contract"
+                        />
+                        <label
+                          class="form-check-label small fw-semibold"
+                          for="editHasMaintenanceContract"
+                          style="font-size: 11.5px"
+                        >
+                          Active Maintenance Contract (SLA)
+                        </label>
+                      </div>
                     </div>
                   </div>
 
-                  <div class="mb-3">
-                    <label for="editCustomerName" class="form-label fw-semibold">
-                      Customer Name <span class="text-danger">*</span>
-                    </label>
-                    <input
-                      id="editCustomerName"
-                      v-model="customerName"
-                      type="text"
-                      class="form-control"
-                      :class="{ 'is-invalid': validationErrors.customerName }"
-                      :disabled="isSubmitting"
-                      data-testid="input-edit-customer-name"
-                    />
-                    <div v-if="validationErrors.customerName" class="invalid-feedback">
-                      {{ validationErrors.customerName }}
-                    </div>
-                  </div>
-
-                  <div class="form-check form-switch mb-3">
-                    <input
-                      id="editHasMaintenanceContract"
-                      v-model="hasActiveMaintenanceContract"
-                      class="form-check-input"
-                      type="checkbox"
-                      role="switch"
-                      :disabled="isSubmitting"
-                      data-testid="toggle-edit-maintenance-contract"
-                    />
-                    <label
-                      class="form-check-label fw-semibold"
-                      for="editHasMaintenanceContract"
-                    >
-                      Active Maintenance Contract
-                    </label>
-                  </div>
-
-                  <div class="d-flex justify-content-end">
+                  <div class="d-flex justify-content-end mt-2">
                     <button
                       type="submit"
-                      class="btn btn-primary"
+                      class="btn btn-primary btn-sm py-0 px-2"
+                      style="font-size: 11px; height: 24px; line-height: 22px"
                       :disabled="isSubmitting"
                       data-testid="submit-edit-customer"
                     >
@@ -588,12 +597,13 @@ onBeforeUnmount(() => {
 
               <!-- TAB 2: Customer Contacts -->
               <div v-else-if="activeTab === 'contacts'">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h6 class="mb-0 fw-semibold">Customer Contact Directory</h6>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-semibold text-body-secondary" style="font-size: 11px">Contact Directory</span>
                   <button
                     v-if="!isAddingContact && !editingContactId"
                     type="button"
-                    class="btn btn-outline-primary btn-sm"
+                    class="btn btn-outline-primary btn-xs py-0 px-2"
+                    style="font-size: 11px; height: 22px; line-height: 20px"
                     data-testid="show-add-contact-form"
                     @click="isAddingContact = true; clearMessages()"
                   >
@@ -603,9 +613,9 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Add Contact Form -->
-                <div v-if="isAddingContact" class="card card-body bg-light mb-3">
-                  <h6 class="fw-bold mb-2">New Customer Contact</h6>
-                  <div class="row g-2">
+                <div v-if="isAddingContact" class="card bg-body-tertiary border rounded p-2 mb-2 shadow-none">
+                  <div class="small fw-bold mb-1" style="font-size: 11.5px">New Contact</div>
+                  <div class="row g-1">
                     <div class="col-12 col-md-6">
                       <input
                         v-model="newContactName"
@@ -644,10 +654,11 @@ onBeforeUnmount(() => {
                       />
                     </div>
                   </div>
-                  <div class="d-flex justify-content-end gap-2 mt-2">
+                  <div class="d-flex justify-content-end gap-1 mt-1">
                     <button
                       type="button"
-                      class="btn btn-secondary btn-sm"
+                      class="btn btn-outline-secondary btn-xs py-0 px-2"
+                      style="font-size: 11px; height: 22px; line-height: 20px"
                       :disabled="isSubmittingContact"
                       @click="isAddingContact = false"
                     >
@@ -655,7 +666,8 @@ onBeforeUnmount(() => {
                     </button>
                     <button
                       type="button"
-                      class="btn btn-primary btn-sm"
+                      class="btn btn-primary btn-xs py-0 px-2"
+                      style="font-size: 11px; height: 22px; line-height: 20px"
                       :disabled="isSubmittingContact"
                       data-testid="add-contact-button"
                       @click="handleAddContact"
@@ -671,51 +683,52 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Edit Contact Form -->
-                <div v-if="editingContactId" class="card card-body bg-light mb-3">
-                  <h6 class="fw-bold mb-2">Edit Customer Contact</h6>
-                  <div class="row g-2">
+                <div v-if="editingContactId" class="card bg-body-tertiary border rounded p-2 mb-2 shadow-none">
+                  <div class="small fw-bold mb-1" style="font-size: 11.5px">Edit Contact</div>
+                  <div class="row g-1">
                     <div class="col-12 col-md-6">
-                      <label class="form-label small mb-1">Name *</label>
                       <input
                         v-model="editContactName"
                         type="text"
                         class="form-control form-control-sm"
                         :class="{ 'is-invalid': validationErrors.contactName }"
+                        placeholder="Contact Name *"
                         data-testid="input-edit-contact-name"
                       />
                     </div>
                     <div class="col-12 col-md-6">
-                      <label class="form-label small mb-1">Position</label>
                       <input
                         v-model="editContactPosition"
                         type="text"
                         class="form-control form-control-sm"
+                        placeholder="Position"
                         data-testid="input-edit-contact-position"
                       />
                     </div>
                     <div class="col-12 col-md-6">
-                      <label class="form-label small mb-1">Phone Number</label>
                       <input
                         v-model="editContactPhone"
                         type="text"
                         class="form-control form-control-sm"
+                        placeholder="Phone"
                         data-testid="input-edit-contact-phone"
                       />
                     </div>
                     <div class="col-12 col-md-6">
-                      <label class="form-label small mb-1">Email</label>
                       <input
                         v-model="editContactEmail"
                         type="email"
                         class="form-control form-control-sm"
+                        placeholder="Email"
                         data-testid="input-edit-contact-email"
                       />
                     </div>
                   </div>
-                  <div class="d-flex justify-content-end gap-2 mt-2">
+                  <div class="d-flex justify-content-end gap-1 mt-1">
                     <button
                       type="button"
-                      class="btn btn-secondary btn-sm"
+                      class="btn btn-outline-secondary btn-xs py-0 px-2"
+                      style="font-size: 11px; height: 22px; line-height: 20px"
                       :disabled="isSubmittingContact"
                       @click="cancelEditContact"
                     >
@@ -723,7 +736,8 @@ onBeforeUnmount(() => {
                     </button>
                     <button
                       type="button"
-                      class="btn btn-primary btn-sm"
+                      class="btn btn-primary btn-xs py-0 px-2"
+                      style="font-size: 11px; height: 22px; line-height: 20px"
                       :disabled="isSubmittingContact"
                       data-testid="save-edit-contact-button"
                       @click="handleSaveContact"
@@ -739,40 +753,42 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Contacts Table -->
-                <div v-if="contacts.length === 0" class="text-center py-4 text-body-secondary">
+                <div v-if="contacts.length === 0" class="text-center py-3 text-body-secondary small">
                   No contacts found for this customer organization.
                 </div>
                 <div v-else class="table-responsive">
-                  <table class="table table-hover align-middle mb-0" data-testid="customer-contacts-table">
+                  <table class="table table-hover align-middle mb-0 text-nowrap" data-testid="customer-contacts-table">
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Name</th>
                         <th scope="col">Position</th>
                         <th scope="col">Phone</th>
                         <th scope="col">Email</th>
-                        <th scope="col">Status</th>
+                        <th scope="col" class="text-center">Status</th>
                         <th scope="col" class="text-end">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="contact in contacts" :key="contact.id || contact.contactId">
-                        <td class="fw-semibold">{{ contact.name }}</td>
-                        <td>{{ contact.position || '—' }}</td>
-                        <td>{{ contact.phoneNumber || '—' }}</td>
-                        <td>{{ contact.email || '—' }}</td>
-                        <td>
+                        <td class="fw-semibold small">{{ contact.name }}</td>
+                        <td class="small">{{ contact.position || '—' }}</td>
+                        <td class="small font-monospace" style="font-size: 11px">{{ contact.phoneNumber || '—' }}</td>
+                        <td class="small font-monospace" style="font-size: 11px">{{ contact.email || '—' }}</td>
+                        <td class="text-center">
                           <span
                             class="badge"
+                            style="font-size: 10px; padding: 2px 5px"
                             :class="contact.isActive ? 'text-bg-success' : 'text-bg-secondary'"
                           >
                             {{ contact.status }}
                           </span>
                         </td>
                         <td class="text-end">
-                          <div class="btn-group btn-group-sm">
+                          <div class="d-inline-flex align-items-center gap-1">
                             <button
                               type="button"
-                              class="btn btn-outline-secondary"
+                              class="btn btn-outline-secondary btn-xs py-0 px-1"
+                              style="font-size: 10px; height: 22px; line-height: 20px"
                               title="Edit Contact"
                               data-testid="edit-contact-action"
                               @click="startEditContact(contact)"
@@ -781,7 +797,8 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                               type="button"
-                              class="btn"
+                              class="btn btn-xs py-0 px-1"
+                              style="font-size: 10px; height: 22px; line-height: 20px"
                               :class="contact.isActive ? 'btn-outline-warning' : 'btn-outline-success'"
                               :title="contact.isActive ? 'Deactivate Contact' : 'Activate Contact'"
                               data-testid="toggle-contact-status-action"
@@ -803,10 +820,11 @@ onBeforeUnmount(() => {
             </template>
           </div>
 
-          <div class="modal-footer">
+          <div class="modal-footer py-1 px-3 bg-body-tertiary">
             <button
               type="button"
-              class="btn btn-secondary"
+              class="btn btn-secondary btn-sm py-0 px-2"
+              style="font-size: 11px; height: 24px; line-height: 22px"
               :disabled="isSubmitting || isTogglingStatus || isSubmittingContact"
               data-testid="close-edit-customer"
               @click="handleClose"

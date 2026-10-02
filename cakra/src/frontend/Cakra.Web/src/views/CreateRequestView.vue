@@ -182,218 +182,208 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="container py-3" data-screen-id="SCR-REQ-002">
-    <div class="row justify-content-center">
-      <div class="col-12 col-lg-9 col-xl-8">
-        <!-- Screen Header -->
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-          <div>
-            <div class="d-flex align-items-center gap-2">
-              <h1 class="h3 mb-0 fw-bold">Create Request</h1>
-              <span class="badge text-bg-light border text-secondary">SCR-REQ-002</span>
-            </div>
-            <p class="text-body-secondary small mb-0 mt-1">
-              Record a new customer or operational demand in <code>CAPTURED</code> status.
-            </p>
-          </div>
+  <section class="create-request-view" data-screen-id="SCR-REQ-002">
+    <!-- Screen Header -->
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="h6 mb-0 fw-bold">Create Request</h1>
+        <span class="badge text-bg-secondary font-monospace" style="font-size: 11px">SCR-REQ-002</span>
+        <span class="text-body-secondary small d-none d-md-inline">| Record new demand in CAPTURED state</span>
+      </div>
 
-          <router-link
-            to="/requests"
-            class="btn btn-outline-secondary btn-sm"
-            data-testid="back-to-requests-button"
-          >
-            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
-            Back to Requests
-          </router-link>
-        </div>
+      <router-link
+        to="/requests"
+        class="btn btn-outline-secondary btn-sm py-0 px-2"
+        style="font-size: 12px; height: 26px; line-height: 24px"
+        data-testid="back-to-requests-button"
+      >
+        <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back to Requests
+      </router-link>
+    </div>
 
-        <!-- Error Alert -->
-        <div
-          v-if="errorMessage"
-          role="alert"
-          class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-4"
-          data-testid="create-request-error-alert"
+    <!-- Error Alert -->
+    <div
+      v-if="errorMessage"
+      role="alert"
+      class="alert alert-danger alert-dismissible py-1 px-2 mb-2 small d-flex align-items-center gap-2"
+      data-testid="create-request-error-alert"
+    >
+      <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
+      <div>{{ errorMessage }}</div>
+      <button
+        type="button"
+        class="btn-close py-1 px-2"
+        aria-label="Close"
+        @click="errorMessage = null"
+      ></button>
+    </div>
+
+    <!-- Create Request Form Card -->
+    <div class="card shadow-none border mb-2">
+      <div class="card-header py-1 px-2 bg-body-tertiary fw-semibold small">
+        <i class="bi bi-file-earmark-plus me-1 text-primary" aria-hidden="true"></i>
+        New Request Specifications
+      </div>
+
+      <div class="card-body p-2 p-md-3">
+        <form
+          novalidate
+          data-testid="create-request-form"
+          @submit.prevent="handleSubmit"
         >
-          <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
-          <div>{{ errorMessage }}</div>
-          <button
-            type="button"
-            class="btn-close"
-            aria-label="Close"
-            @click="errorMessage = null"
-          ></button>
-        </div>
+          <div class="row g-2">
+            <!-- Title -->
+            <div class="col-12 col-md-8">
+              <label for="requestTitle" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Title <span class="text-danger">*</span>
+              </label>
+              <input
+                id="requestTitle"
+                v-model="form.title"
+                type="text"
+                name="title"
+                class="form-control form-control-sm"
+                placeholder="Brief summary or subject of the request"
+                maxlength="255"
+                required
+                :disabled="isSubmitting"
+                data-testid="request-title-input"
+              />
+            </div>
 
-        <!-- Create Request Form Card -->
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-body-tertiary py-3">
-            <span class="fw-semibold">
-              <i class="bi bi-file-earmark-plus me-2 text-primary" aria-hidden="true"></i>
-              Request Details
-            </span>
+            <!-- Request Type -->
+            <div class="col-6 col-md-2">
+              <label for="requestType" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Type
+              </label>
+              <select
+                id="requestType"
+                v-model="form.requestType"
+                name="requestType"
+                class="form-select form-select-sm"
+                :disabled="isSubmitting"
+                data-testid="request-type-select"
+              >
+                <option v-for="type in REQUEST_TYPES" :key="type" :value="type">
+                  {{ type }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Priority -->
+            <div class="col-6 col-md-2">
+              <label for="requestPriority" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Priority
+              </label>
+              <select
+                id="requestPriority"
+                v-model="form.priority"
+                name="priority"
+                class="form-select form-select-sm"
+                :disabled="isSubmitting"
+                data-testid="request-priority-select"
+              >
+                <option v-for="priority in PRIORITIES" :key="priority" :value="priority">
+                  {{ priority }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Customer Select -->
+            <div class="col-12 col-md-6">
+              <label for="requestCustomer" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Customer (Optional)
+              </label>
+              <select
+                id="requestCustomer"
+                v-model="form.customerId"
+                name="customerId"
+                class="form-select form-select-sm"
+                :disabled="isSubmitting || isLoadingLookups"
+                data-testid="request-customer-select"
+              >
+                <option value="">Select customer...</option>
+                <option
+                  v-for="customer in activeCustomers"
+                  :key="customer.id"
+                  :value="customer.id"
+                >
+                  {{ resolveCustomerLabel(customer) }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Product Select -->
+            <div class="col-12 col-md-6">
+              <label for="requestProduct" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Product (Optional)
+              </label>
+              <select
+                id="requestProduct"
+                v-model="form.productId"
+                name="productId"
+                class="form-select form-select-sm"
+                :disabled="isSubmitting || isLoadingLookups"
+                data-testid="request-product-select"
+              >
+                <option value="">Select product...</option>
+                <option
+                  v-for="product in activeProducts"
+                  :key="product.id"
+                  :value="product.id"
+                >
+                  {{ resolveProductLabel(product) }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Description -->
+            <div class="col-12">
+              <label for="requestDescription" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Description <span class="text-danger">*</span>
+              </label>
+              <textarea
+                id="requestDescription"
+                v-model="form.description"
+                name="description"
+                class="form-control form-control-sm"
+                rows="4"
+                placeholder="Detailed description and operational context of the request"
+                required
+                :disabled="isSubmitting"
+                data-testid="request-description-input"
+              ></textarea>
+            </div>
           </div>
 
-          <div class="card-body p-4">
-            <form
-              novalidate
-              data-testid="create-request-form"
-              @submit.prevent="handleSubmit"
+          <!-- Form Actions -->
+          <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm"
+              :disabled="isSubmitting"
+              data-testid="cancel-request-button"
+              @click="handleCancel"
             >
-              <div class="row g-3">
-                <!-- Title -->
-                <div class="col-12">
-                  <label for="requestTitle" class="form-label fw-medium">
-                    Title <span class="text-danger">*</span>
-                  </label>
-                  <input
-                    id="requestTitle"
-                    v-model="form.title"
-                    type="text"
-                    name="title"
-                    class="form-control"
-                    placeholder="Brief summary or subject of the request"
-                    maxlength="255"
-                    required
-                    :disabled="isSubmitting"
-                    data-testid="request-title-input"
-                  />
-                </div>
-
-                <!-- Customer Select -->
-                <div class="col-12 col-md-6">
-                  <label for="requestCustomer" class="form-label fw-medium">
-                    Customer
-                  </label>
-                  <select
-                    id="requestCustomer"
-                    v-model="form.customerId"
-                    name="customerId"
-                    class="form-select"
-                    :disabled="isSubmitting || isLoadingLookups"
-                    data-testid="request-customer-select"
-                  >
-                    <option value="">Select a customer (optional)...</option>
-                    <option
-                      v-for="customer in activeCustomers"
-                      :key="customer.id"
-                      :value="customer.id"
-                    >
-                      {{ resolveCustomerLabel(customer) }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Product Select -->
-                <div class="col-12 col-md-6">
-                  <label for="requestProduct" class="form-label fw-medium">
-                    Product
-                  </label>
-                  <select
-                    id="requestProduct"
-                    v-model="form.productId"
-                    name="productId"
-                    class="form-select"
-                    :disabled="isSubmitting || isLoadingLookups"
-                    data-testid="request-product-select"
-                  >
-                    <option value="">Select a product (optional)...</option>
-                    <option
-                      v-for="product in activeProducts"
-                      :key="product.id"
-                      :value="product.id"
-                    >
-                      {{ resolveProductLabel(product) }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Request Type -->
-                <div class="col-12 col-md-6">
-                  <label for="requestType" class="form-label fw-medium">
-                    Request Type
-                  </label>
-                  <select
-                    id="requestType"
-                    v-model="form.requestType"
-                    name="requestType"
-                    class="form-select"
-                    :disabled="isSubmitting"
-                    data-testid="request-type-select"
-                  >
-                    <option v-for="type in REQUEST_TYPES" :key="type" :value="type">
-                      {{ type }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Priority -->
-                <div class="col-12 col-md-6">
-                  <label for="requestPriority" class="form-label fw-medium">
-                    Priority
-                  </label>
-                  <select
-                    id="requestPriority"
-                    v-model="form.priority"
-                    name="priority"
-                    class="form-select"
-                    :disabled="isSubmitting"
-                    data-testid="request-priority-select"
-                  >
-                    <option v-for="priority in PRIORITIES" :key="priority" :value="priority">
-                      {{ priority }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Description -->
-                <div class="col-12">
-                  <label for="requestDescription" class="form-label fw-medium">
-                    Description <span class="text-danger">*</span>
-                  </label>
-                  <textarea
-                    id="requestDescription"
-                    v-model="form.description"
-                    name="description"
-                    class="form-control"
-                    rows="5"
-                    placeholder="Detailed description and operational context of the request"
-                    required
-                    :disabled="isSubmitting"
-                    data-testid="request-description-input"
-                  ></textarea>
-                </div>
-              </div>
-
-              <!-- Form Actions -->
-              <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                <button
-                  type="button"
-                  class="btn btn-outline-secondary"
-                  :disabled="isSubmitting"
-                  data-testid="cancel-request-button"
-                  @click="handleCancel"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  class="btn btn-primary"
-                  :disabled="isSubmitDisabled"
-                  data-testid="submit-request-button"
-                >
-                  <span
-                    v-if="isSubmitting"
-                    class="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  <i v-else class="bi bi-check-lg me-1" aria-hidden="true"></i>
-                  {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
-                </button>
-              </div>
-            </form>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="btn btn-primary btn-sm"
+              :disabled="isSubmitDisabled"
+              data-testid="submit-request-button"
+            >
+              <span
+                v-if="isSubmitting"
+                class="spinner-border spinner-border-sm me-1"
+                role="status"
+                aria-hidden="true"
+              ></span>
+              <i v-else class="bi bi-check-lg me-1" aria-hidden="true"></i>
+              {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
+            </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   </section>

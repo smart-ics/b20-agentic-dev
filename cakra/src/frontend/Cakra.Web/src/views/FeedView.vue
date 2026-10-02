@@ -542,27 +542,24 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="container-fluid py-2" data-screen-id="SCR-FEED-001">
-    <!-- Screen Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <div class="d-flex align-items-center gap-2 mb-1">
-          <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace">
-            SCR-FEED-001
-          </span>
-          <span class="text-body-secondary small">Operational Awareness &amp; Collaboration</span>
-        </div>
-        <h1 class="h3 mb-1 fw-bold">Operational Feed</h1>
-        <p class="text-body-secondary mb-0">
-          Real-time stream of operational updates, request discussions, and exception alerts across
-          customers and products.
-        </p>
+  <section data-screen-id="SCR-FEED-001">
+    <!-- Compact Screen Header -->
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="op-screen-title">
+          <i class="bi bi-activity text-primary" aria-hidden="true"></i>
+          Operational Feed
+        </h1>
+        <span class="badge text-bg-light border text-secondary font-monospace">SCR-FEED-001</span>
+        <span class="text-body-secondary small ms-1">
+          &bull; {{ totalCount }} events
+        </span>
       </div>
 
-      <div class="d-flex flex-wrap align-items-center gap-2">
+      <div class="d-flex align-items-center gap-2">
         <button
           type="button"
-          class="btn btn-outline-secondary"
+          class="btn btn-outline-secondary btn-sm"
           :disabled="isLoadingFeed"
           data-testid="refresh-feed-btn"
           @click="loadFeed"
@@ -576,170 +573,163 @@ onMounted(async () => {
     <!-- Error Alert -->
     <div
       v-if="errorMessage"
-      class="alert alert-danger alert-dismissible fade show d-flex align-items-center justify-content-between"
+      class="alert alert-danger alert-dismissible fade show d-flex align-items-center justify-content-between py-1 px-2 mb-2"
       role="alert"
       data-testid="feed-error-alert"
     >
       <div>
-        <i class="bi bi-exclamation-octagon-fill me-2" aria-hidden="true"></i>
+        <i class="bi bi-exclamation-octagon-fill me-1" aria-hidden="true"></i>
         <span>{{ errorMessage }}</span>
       </div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
     </div>
 
-    <!-- Filter Bar (UC-FCOL-005, FEAT-FCOL-005) -->
-    <div class="card shadow-sm border-0 bg-body-tertiary mb-4" data-testid="feed-filter-bar">
-      <div class="card-body">
-        <form class="row g-3 align-items-end" @submit.prevent="applyFilters">
-          <!-- Customer Filter -->
-          <div class="col-12 col-md-3">
-            <label for="feedFilterCustomer" class="form-label small fw-semibold text-uppercase text-body-secondary">
-              Customer
-            </label>
-            <select
-              id="feedFilterCustomer"
-              v-model="filters.customerId"
-              class="form-select"
-              data-testid="feed-filter-customer"
-              @change="applyFilters"
+    <!-- Compact Inline Filter Toolbar (UC-FCOL-005, FEAT-FCOL-005) -->
+    <div class="op-toolbar" data-testid="feed-filter-bar">
+      <form class="d-flex flex-wrap align-items-center gap-2 w-100" @submit.prevent="applyFilters">
+        <!-- Customer Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="feedFilterCustomer" class="form-label text-nowrap mb-0 fs-11">Customer:</label>
+          <select
+            id="feedFilterCustomer"
+            v-model="filters.customerId"
+            class="form-select form-select-sm"
+            style="min-width: 140px; max-width: 200px;"
+            data-testid="feed-filter-customer"
+            @change="applyFilters"
+          >
+            <option value="">All Customers</option>
+            <option
+              v-for="customer in activeCustomers"
+              :key="customer.id || customer.customerId"
+              :value="customer.id || customer.customerId"
             >
-              <option value="">All Customers</option>
-              <option
-                v-for="customer in activeCustomers"
-                :key="customer.id || customer.customerId"
-                :value="customer.id || customer.customerId"
-              >
-                {{ customer.customerName || customer.name }}
-                {{
-                  customer.customerCode || customer.code
-                    ? `(${customer.customerCode || customer.code})`
-                    : ''
-                }}
-              </option>
-            </select>
-          </div>
+              {{ customer.customerName || customer.name }}
+              {{
+                customer.customerCode || customer.code
+                  ? `(${customer.customerCode || customer.code})`
+                  : ''
+              }}
+            </option>
+          </select>
+        </div>
 
-          <!-- Product Filter -->
-          <div class="col-12 col-md-3">
-            <label for="feedFilterProduct" class="form-label small fw-semibold text-uppercase text-body-secondary">
-              Product
-            </label>
-            <select
-              id="feedFilterProduct"
-              v-model="filters.productId"
-              class="form-select"
-              data-testid="feed-filter-product"
-              @change="applyFilters"
+        <!-- Product Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="feedFilterProduct" class="form-label text-nowrap mb-0 fs-11">Product:</label>
+          <select
+            id="feedFilterProduct"
+            v-model="filters.productId"
+            class="form-select form-select-sm"
+            style="min-width: 130px; max-width: 180px;"
+            data-testid="feed-filter-product"
+            @change="applyFilters"
+          >
+            <option value="">All Products</option>
+            <option
+              v-for="product in activeProducts"
+              :key="product.id || product.productId"
+              :value="product.id || product.productId"
             >
-              <option value="">All Products</option>
-              <option
-                v-for="product in activeProducts"
-                :key="product.id || product.productId"
-                :value="product.id || product.productId"
-              >
-                {{ product.name || product.productName }}
-                {{
-                  product.code || product.productCode
-                    ? `(${product.code || product.productCode})`
-                    : ''
-                }}
-              </option>
-            </select>
-          </div>
+              {{ product.name || product.productName }}
+              {{
+                product.code || product.productCode
+                  ? `(${product.code || product.productCode})`
+                  : ''
+              }}
+            </option>
+          </select>
+        </div>
 
-          <!-- Exception Type Filter -->
-          <div class="col-12 col-md-2">
-            <label for="feedFilterExceptionType" class="form-label small fw-semibold text-uppercase text-body-secondary">
-              Exception Type
-            </label>
-            <select
-              id="feedFilterExceptionType"
-              v-model="filters.exceptionType"
-              class="form-select"
-              data-testid="feed-filter-exception-type"
-              @change="handleExceptionTypeChange"
-            >
-              <option value="">Any Type</option>
-              <option v-for="exType in EXCEPTION_TYPES" :key="exType" :value="exType">
-                {{ exType }}
-              </option>
-            </select>
-          </div>
+        <!-- Exception Type Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="feedFilterExceptionType" class="form-label text-nowrap mb-0 fs-11">Exception:</label>
+          <select
+            id="feedFilterExceptionType"
+            v-model="filters.exceptionType"
+            class="form-select form-select-sm"
+            style="min-width: 105px;"
+            data-testid="feed-filter-exception-type"
+            @change="handleExceptionTypeChange"
+          >
+            <option value="">Any Type</option>
+            <option v-for="exType in EXCEPTION_TYPES" :key="exType" :value="exType">
+              {{ exType }}
+            </option>
+          </select>
+        </div>
 
-          <!-- Exceptions-Only Toggle -->
-          <div class="col-12 col-md-2">
-            <div class="form-check form-switch pb-1">
-              <input
-                id="feedFilterExceptionsOnly"
-                v-model="filters.isException"
-                class="form-check-input"
-                type="checkbox"
-                role="switch"
-                data-testid="feed-filter-exception"
-                @change="handleExceptionToggleChange"
-              />
-              <label class="form-check-label fw-semibold" for="feedFilterExceptionsOnly">
-                <span class="badge bg-danger me-1">!</span>
-                Exceptions Only
-              </label>
-            </div>
-          </div>
+        <!-- Exceptions-Only Toggle -->
+        <div class="form-check form-switch mb-0 d-flex align-items-center gap-1 ms-1">
+          <input
+            id="feedFilterExceptionsOnly"
+            v-model="filters.isException"
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
+            data-testid="feed-filter-exception"
+            @change="handleExceptionToggleChange"
+          />
+          <label class="form-check-label fw-semibold fs-11 text-nowrap" for="feedFilterExceptionsOnly">
+            <span class="badge bg-danger px-1 py-0 me-0.5" style="font-size: 9px;">!</span>
+            Exceptions Only
+          </label>
+        </div>
 
-          <!-- Filter Actions -->
-          <div class="col-12 col-md-2 d-flex gap-2 justify-content-md-end">
-            <button
-              type="submit"
-              class="btn btn-primary flex-grow-1 flex-md-grow-0"
-              :disabled="isLoadingFeed"
-              data-testid="apply-feed-filters-btn"
-            >
-              <i class="bi bi-funnel-fill me-1" aria-hidden="true"></i>
-              Filter
-            </button>
-            <button
-              v-if="hasActiveFilters"
-              type="button"
-              class="btn btn-outline-secondary"
-              :disabled="isLoadingFeed"
-              data-testid="clear-feed-filters-btn"
-              @click="clearFilters"
-            >
-              Reset
-            </button>
-          </div>
-        </form>
-      </div>
+        <!-- Filter Actions -->
+        <div class="d-flex align-items-center gap-1 ms-auto">
+          <button
+            type="submit"
+            class="btn btn-primary btn-sm"
+            :disabled="isLoadingFeed"
+            data-testid="apply-feed-filters-btn"
+          >
+            <i class="bi bi-funnel-fill me-1" aria-hidden="true"></i>
+            Filter
+          </button>
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            :disabled="isLoadingFeed"
+            data-testid="clear-feed-filters-btn"
+            @click="clearFilters"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
     </div>
 
     <!-- Loading State -->
     <div
       v-if="isLoadingFeed && feedItems.length === 0"
-      class="card border-0 shadow-sm my-4"
+      class="card border-0 shadow-xs my-2"
       data-testid="feed-loading-state"
     >
-      <div class="card-body py-5 text-center">
-        <div class="spinner-border text-primary mb-3" role="status">
+      <div class="card-body py-4 text-center">
+        <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
           <span class="visually-hidden">Loading operational feed...</span>
         </div>
-        <p class="text-body-secondary mb-0">Loading operational feed stream...</p>
+        <p class="text-body-secondary small mb-0">Loading operational feed stream...</p>
       </div>
     </div>
 
     <!-- Empty State -->
     <div
       v-else-if="!isLoadingFeed && feedItems.length === 0"
-      class="card border-0 shadow-sm my-4"
+      class="card border-0 shadow-xs my-2"
       data-testid="feed-empty-state"
     >
-      <div class="card-body py-5 text-center">
-        <i class="bi bi-inbox text-body-secondary display-5 d-block mb-3" aria-hidden="true"></i>
-        <h2 class="h5 fw-semibold">No Operational Feed Items Found</h2>
-        <p class="text-body-secondary mb-3">
+      <div class="card-body py-4 text-center">
+        <i class="bi bi-inbox text-body-secondary fs-4 d-block mb-1" aria-hidden="true"></i>
+        <h2 class="h6 fw-semibold mb-1">No Operational Feed Items Found</h2>
+        <p class="text-body-secondary small mb-2">
           <template v-if="hasActiveFilters">
             No visible feed items match your active Customer, Product, or Exception filter criteria.
           </template>
@@ -759,200 +749,185 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Operational Feed Cards Stream -->
-    <div v-else class="d-flex flex-column gap-3" data-testid="feed-card-list">
+    <!-- High-Density Operational Feed Stream -->
+    <div v-else class="d-flex flex-column gap-1.5" data-testid="feed-card-list">
       <article
         v-for="item in feedItems"
         :key="resolveFeedItemKey(item)"
-        class="card shadow-sm feed-item-card"
-        :class="item.isException ? 'border-danger border-start border-4' : 'border-0'"
+        class="op-feed-row"
+        :class="{ 'is-exception': item.isException }"
         role="button"
         tabindex="0"
         :data-testid="`feed-card-${resolvePostId(item)}`"
         @click="openPostDetailModal(item)"
         @keydown.enter="openPostDetailModal(item)"
       >
-        <div class="card-body">
-          <!-- Card Top Row: Badges + CreatedAt -->
-          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-            <div class="d-flex flex-wrap align-items-center gap-2">
-              <!-- Exception Badge (Architecture §12, P6-S32 Completion Criteria) -->
-              <span
-                v-if="item.isException"
-                class="badge bg-danger"
-                data-testid="feed-card-exception-badge"
-              >
-                <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
-                {{ item.exceptionType || 'EXCEPTION' }}
-              </span>
+        <!-- Row 1: Key Metadata Badges + Title + Author + Timestamp -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-1.5">
+          <div class="d-flex flex-wrap align-items-center gap-1.5 min-w-0">
+            <!-- Exception Badge -->
+            <span
+              v-if="item.isException"
+              class="badge bg-danger"
+              data-testid="feed-card-exception-badge"
+            >
+              <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+              {{ item.exceptionType || 'EXCEPTION' }}
+            </span>
 
-              <!-- Post Source Badge -->
-              <span
-                class="badge"
-                :class="
-                  isSystemGenerated(item)
-                    ? 'bg-info-subtle text-info-emphasis'
-                    : 'bg-primary-subtle text-primary-emphasis'
-                "
-              >
-                {{ isSystemGenerated(item) ? 'SYSTEM' : 'OPERATIONAL POST' }}
-              </span>
+            <!-- Post Source Badge -->
+            <span
+              class="badge"
+              :class="
+                isSystemGenerated(item)
+                  ? 'bg-info bg-opacity-10 text-info border border-info border-opacity-25'
+                  : 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25'
+              "
+            >
+              {{ isSystemGenerated(item) ? 'SYS' : 'POST' }}
+            </span>
 
-              <!-- Customer Badge -->
-              <span
-                v-if="item.customerId || item.customerName || item.customer"
-                class="badge bg-light text-dark border"
-                data-testid="feed-card-customer"
-              >
-                <i class="bi bi-building me-1 text-secondary" aria-hidden="true"></i>
-                {{ resolveCustomerDisplay(item) }}
-              </span>
+            <!-- Item Title -->
+            <span class="fw-semibold text-dark text-truncate" style="max-width: 420px;" data-testid="feed-card-title">
+              {{ item.title }}
+            </span>
 
-              <!-- Product Badge -->
-              <span
-                v-if="item.productId || item.productName || item.product"
-                class="badge bg-light text-dark border"
-                data-testid="feed-card-product"
-              >
-                <i class="bi bi-box-seam me-1 text-secondary" aria-hidden="true"></i>
-                {{ resolveProductDisplay(item) }}
-              </span>
-            </div>
+            <!-- Customer Badge -->
+            <span
+              v-if="item.customerId || item.customerName || item.customer"
+              class="badge bg-light text-dark border text-truncate"
+              style="max-width: 140px;"
+              data-testid="feed-card-customer"
+              :title="resolveCustomerDisplay(item)"
+            >
+              <i class="bi bi-building me-1 text-secondary" aria-hidden="true"></i>
+              {{ resolveCustomerDisplay(item) }}
+            </span>
 
-            <!-- CreatedAt Timestamp -->
-            <small class="text-body-secondary" data-testid="feed-card-created-at">
-              <i class="bi bi-clock me-1" aria-hidden="true"></i>
+            <!-- Product Badge -->
+            <span
+              v-if="item.productId || item.productName || item.product"
+              class="badge bg-light text-dark border text-truncate"
+              style="max-width: 130px;"
+              data-testid="feed-card-product"
+              :title="resolveProductDisplay(item)"
+            >
+              <i class="bi bi-box-seam me-1 text-secondary" aria-hidden="true"></i>
+              {{ resolveProductDisplay(item) }}
+            </span>
+          </div>
+
+          <!-- Author and CreatedAt Timestamp -->
+          <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+            <span class="text-body-secondary fs-11" data-testid="feed-card-author">
+              <i class="bi bi-person me-0.5" aria-hidden="true"></i>
+              {{ resolveAuthorDisplay(item) }}
+            </span>
+            <span class="text-body-secondary fs-11" data-testid="feed-card-created-at">
+              <i class="bi bi-clock me-0.5" aria-hidden="true"></i>
               {{ formatTimestamp(item.createdAt) }}
-            </small>
-          </div>
-
-          <!-- Card Title -->
-          <h2 class="h5 card-title fw-bold mb-2 text-body" data-testid="feed-card-title">
-            {{ item.title }}
-          </h2>
-
-          <!-- Content Excerpt / Summary -->
-          <p
-            v-if="resolveExcerpt(item)"
-            class="card-text text-body-secondary mb-3"
-            data-testid="feed-card-excerpt"
-          >
-            {{ resolveExcerpt(item) }}
-          </p>
-
-          <!-- Metadata Row: Author, Customer, Product -->
-          <div class="d-flex flex-wrap align-items-center gap-3 small text-body-secondary mb-3">
-            <span data-testid="feed-card-author">
-              <i class="bi bi-person-circle me-1" aria-hidden="true"></i>
-              <strong>Author:</strong> {{ resolveAuthorDisplay(item) }}
-            </span>
-
-            <span>
-              <i class="bi bi-building me-1" aria-hidden="true"></i>
-              <strong>Customer:</strong> {{ resolveCustomerDisplay(item) }}
-            </span>
-
-            <span>
-              <i class="bi bi-box-seam me-1" aria-hidden="true"></i>
-              <strong>Product:</strong> {{ resolveProductDisplay(item) }}
             </span>
           </div>
+        </div>
 
-          <!-- Latest Comment Excerpt Preview -->
-          <div
-            v-if="item.latestCommentExcerpt"
-            class="bg-body-tertiary rounded p-2 mb-3 small border-start border-3 border-secondary"
-            data-testid="feed-card-latest-comment"
-          >
-            <i class="bi bi-chat-quote-fill text-secondary me-1" aria-hidden="true"></i>
-            <span class="text-body-secondary fw-semibold me-1">Latest comment:</span>
-            <span class="text-body">{{ item.latestCommentExcerpt }}</span>
+        <!-- Row 2: Content Excerpt (if present) -->
+        <div
+          v-if="resolveExcerpt(item)"
+          class="text-body-secondary text-truncate fs-12 ps-0.5"
+          data-testid="feed-card-excerpt"
+        >
+          {{ resolveExcerpt(item) }}
+        </div>
+
+        <!-- Row 3: Latest Comment Preview (if present) -->
+        <div
+          v-if="item.latestCommentExcerpt"
+          class="bg-light rounded px-2 py-0.5 text-truncate fs-11 border-start border-2 border-primary text-secondary"
+          data-testid="feed-card-latest-comment"
+        >
+          <i class="bi bi-chat-quote me-1 text-secondary" aria-hidden="true"></i>
+          <span class="fw-semibold me-1">Latest:</span>
+          <span>{{ item.latestCommentExcerpt }}</span>
+        </div>
+
+        <!-- Row 4: Counts & Inline Actions -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-0.5">
+          <div class="d-flex flex-wrap align-items-center gap-1.5">
+            <!-- CommentCount -->
+            <span
+              class="badge text-bg-light border text-secondary"
+              data-testid="feed-card-comment-count"
+            >
+              <i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>
+              {{ item.commentCount ?? 0 }} {{ (item.commentCount ?? 0) === 1 ? 'Comment' : 'Comments' }}
+            </span>
+
+            <!-- ReactionCount -->
+            <span
+              class="badge text-bg-light border text-secondary"
+              data-testid="feed-card-reaction-count"
+            >
+              <i class="bi bi-hand-thumbs-up me-1" aria-hidden="true"></i>
+              {{ resolveReactionCount(item) }} {{ resolveReactionCount(item) === 1 ? 'Reaction' : 'Reactions' }}
+            </span>
+
+            <!-- Individual Reaction Type Pills -->
+            <span
+              v-for="(count, rType) in resolveReactionBreakdown(item)"
+              :key="rType"
+              class="badge text-bg-light border text-muted fs-11 d-none d-md-inline-block"
+            >
+              {{ rType }}: {{ count }}
+            </span>
           </div>
 
-          <!-- Card Footer Row: CommentCount, ReactionCount, and Contextual Navigation Links -->
-          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2 border-top">
-            <div class="d-flex flex-wrap align-items-center gap-3">
-              <!-- CommentCount -->
-              <span
-                class="badge bg-secondary-subtle text-secondary-emphasis d-inline-flex align-items-center gap-1 px-2 py-1"
-                data-testid="feed-card-comment-count"
-              >
-                <i class="bi bi-chat-left-text" aria-hidden="true"></i>
-                <span>{{ item.commentCount ?? 0 }}</span>
-                <span>{{ (item.commentCount ?? 0) === 1 ? 'Comment' : 'Comments' }}</span>
-              </span>
+          <!-- Quick Navigation Actions -->
+          <div class="d-flex align-items-center gap-1 ms-auto" @click.stop>
+            <RouterLink
+              v-if="resolveRequestId(item)"
+              :to="`/requests/${resolveRequestId(item)}`"
+              class="btn btn-sm btn-outline-primary py-0 px-1.5 fs-11"
+              data-testid="feed-card-request-link"
+              @click.stop="navigateToRequest(resolveRequestId(item)!)"
+            >
+              <i class="bi bi-box-arrow-up-right me-0.5" aria-hidden="true"></i>
+              {{ resolveRequestDisplay(item) }}
+            </RouterLink>
 
-              <!-- ReactionCount -->
-              <span
-                class="badge bg-secondary-subtle text-secondary-emphasis d-inline-flex align-items-center gap-1 px-2 py-1"
-                data-testid="feed-card-reaction-count"
-              >
-                <i class="bi bi-hand-thumbs-up" aria-hidden="true"></i>
-                <span>{{ resolveReactionCount(item) }}</span>
-                <span>{{ resolveReactionCount(item) === 1 ? 'Reaction' : 'Reactions' }}</span>
-              </span>
+            <RouterLink
+              v-if="resolveWorkPackageId(item)"
+              :to="`/work-packages/${resolveWorkPackageId(item)}`"
+              class="btn btn-sm btn-outline-secondary py-0 px-1.5 fs-11"
+              data-testid="feed-card-work-package-link"
+            >
+              <i class="bi bi-kanban me-0.5" aria-hidden="true"></i>
+              WP
+            </RouterLink>
 
-              <!-- Individual Reaction Type Pills -->
-              <span
-                v-for="(count, rType) in resolveReactionBreakdown(item)"
-                :key="rType"
-                class="badge rounded-pill text-bg-light border small"
-              >
-                {{ rType }}: {{ count }}
-              </span>
-            </div>
-
-            <!-- Action & Navigation Buttons (UC-FCOL-004) -->
-            <div class="d-flex flex-wrap align-items-center gap-2" @click.stop>
-              <!-- Direct Link to Request Detail when RequestId is present (UC-FCOL-004) -->
-              <RouterLink
-                v-if="resolveRequestId(item)"
-                :to="`/requests/${resolveRequestId(item)}`"
-                class="btn btn-sm btn-outline-primary"
-                data-testid="feed-card-request-link"
-                @click.stop="navigateToRequest(resolveRequestId(item)!)"
-              >
-                <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
-                {{ resolveRequestDisplay(item) }}
-              </RouterLink>
-
-              <!-- Direct Link to Work Package Detail when WorkPackageId is present -->
-              <RouterLink
-                v-if="resolveWorkPackageId(item)"
-                :to="`/work-packages/${resolveWorkPackageId(item)}`"
-                class="btn btn-sm btn-outline-secondary"
-                data-testid="feed-card-work-package-link"
-              >
-                <i class="bi bi-kanban me-1" aria-hidden="true"></i>
-                Work Package
-              </RouterLink>
-
-              <!-- Open Post Thread Modal Button (SCR-POST-001) -->
-              <button
-                type="button"
-                class="btn btn-sm btn-light border"
-                data-testid="feed-card-open-modal-btn"
-                @click.stop="openPostDetailModal(item)"
-              >
-                <i class="bi bi-chat-dots me-1" aria-hidden="true"></i>
-                View Thread
-              </button>
-            </div>
+            <button
+              type="button"
+              class="btn btn-sm btn-light border py-0 px-1.5 fs-11 text-secondary"
+              data-testid="feed-card-open-modal-btn"
+              @click.stop="openPostDetailModal(item)"
+            >
+              <i class="bi bi-chat-dots me-0.5" aria-hidden="true"></i>
+              View Thread
+            </button>
           </div>
         </div>
       </article>
     </div>
 
-    <!-- Pagination Controls -->
+    <!-- Compact Pagination Controls -->
     <nav
-      class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-4 pt-3 border-top"
+      class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 pt-1 border-top"
       aria-label="Operational feed pagination"
       data-testid="feed-pagination"
     >
-      <div class="small text-body-secondary">
+      <div class="small text-body-secondary fs-11">
         <template v-if="totalCount > 0">
           Showing <strong>{{ showingRangeStart }}</strong>–<strong>{{ showingRangeEnd }}</strong> of
-          <strong>{{ totalCount }}</strong> feed items (Page {{ currentPage }}
+          <strong>{{ totalCount }}</strong> items (Page {{ currentPage }}
           <template v-if="computedTotalPages > 0">of {{ computedTotalPages }}</template>)
         </template>
         <template v-else>
@@ -960,26 +935,26 @@ onMounted(async () => {
         </template>
       </div>
 
-      <div class="btn-group" role="group" aria-label="Pagination buttons">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Pagination buttons">
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-outline-secondary btn-sm py-0.5 px-2"
           :disabled="!canGoPrevious"
           data-testid="feed-pagination-prev"
           @click="goToPreviousPage"
         >
-          <i class="bi bi-chevron-left me-1" aria-hidden="true"></i>
-          Previous
+          <i class="bi bi-chevron-left me-0.5" aria-hidden="true"></i>
+          Prev
         </button>
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-outline-secondary btn-sm py-0.5 px-2"
           :disabled="!canGoNext"
           data-testid="feed-pagination-next"
           @click="goToNextPage"
         >
           Next
-          <i class="bi bi-chevron-right ms-1" aria-hidden="true"></i>
+          <i class="bi bi-chevron-right ms-0.5" aria-hidden="true"></i>
         </button>
       </div>
     </nav>
@@ -995,18 +970,3 @@ onMounted(async () => {
     />
   </section>
 </template>
-
-<style scoped>
-.feed-item-card {
-  cursor: pointer;
-  transition:
-    transform 0.12s ease-in-out,
-    box-shadow 0.12s ease-in-out;
-}
-
-.feed-item-card:hover,
-.feed-item-card:focus-visible {
-  transform: translateY(-1px);
-  box-shadow: 0 0.35rem 0.85rem rgba(0, 0, 0, 0.08) !important;
-}
-</style>

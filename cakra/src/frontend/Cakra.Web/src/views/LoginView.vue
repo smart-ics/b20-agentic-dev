@@ -51,18 +51,18 @@ async function handleSubmit(): Promise<void> {
 </script>
 
 <template>
-  <section class="container py-5" data-screen-id="SCR-AUTH-001">
-    <div class="row justify-content-center align-items-center min-vh-75">
-      <div class="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
-        <div class="card shadow-sm border-0">
-          <div class="card-body p-4 p-md-5">
-            <div class="text-center mb-4">
-              <div class="mb-2">
-                <i class="bi bi-shield-lock-fill text-primary fs-1" aria-hidden="true"></i>
+  <section class="container py-4" data-screen-id="SCR-AUTH-001">
+    <div class="row justify-content-center align-items-center" style="min-height: 60vh">
+      <div class="col-12 col-sm-9 col-md-6 col-lg-4">
+        <div class="card shadow-sm border rounded-3 overflow-hidden">
+          <div class="card-body p-3 p-md-4">
+            <div class="text-center mb-3">
+              <div class="mb-2 d-inline-flex p-2 rounded-2 bg-primary bg-opacity-10 text-primary">
+                <i class="bi bi-shield-lock-fill fs-4" aria-hidden="true"></i>
               </div>
-              <h1 class="h4 fw-bold mb-1">Sign In to CAKRA</h1>
-              <p class="text-body-secondary small mb-0">
-                ICS Operational System
+              <h1 class="h5 fw-bold mb-0">Sign In to CAKRA</h1>
+              <p class="text-body-secondary small mb-0" style="font-size: 11.5px">
+                ICS Operational System &bull; Architecture &sect;19.4
               </p>
             </div>
 
@@ -71,33 +71,33 @@ async function handleSubmit(): Promise<void> {
               v-if="errorMessage"
               role="alert"
               aria-live="assertive"
-              class="alert d-flex align-items-start gap-2 mb-4"
+              class="alert py-1 px-2 d-flex align-items-start gap-1 mb-2 small"
               :class="isAccountLocked ? 'alert-warning' : 'alert-danger'"
               data-testid="login-error-alert"
             >
               <i
-                class="bi flex-shrink-0 mt-1"
+                class="bi flex-shrink-0 mt-0.5"
                 :class="isAccountLocked ? 'bi-lock-fill' : 'bi-exclamation-triangle-fill'"
                 aria-hidden="true"
               ></i>
               <div>
-                <div class="fw-semibold">
+                <div class="fw-semibold" style="font-size: 11.5px">
                   {{ isAccountLocked ? 'Account Locked' : 'Sign In Failed' }}
                 </div>
-                <div class="small">{{ errorMessage }}</div>
+                <div style="font-size: 11px">{{ errorMessage }}</div>
               </div>
             </div>
 
             <form novalidate @submit.prevent="handleSubmit" data-testid="login-form">
-              <div class="mb-3">
-                <label for="username" class="form-label fw-medium">Username or Email</label>
+              <div class="mb-2">
+                <label for="username" class="form-label mb-0 small fw-medium" style="font-size: 11px">Username or Email</label>
                 <input
                   id="username"
                   v-model="username"
                   type="text"
                   name="username"
-                  class="form-control"
-                  placeholder="Enter your username or email"
+                  class="form-control form-control-sm"
+                  placeholder="Enter username or email"
                   autocomplete="username"
                   required
                   :disabled="authStore.isLoading"
@@ -105,15 +105,15 @@ async function handleSubmit(): Promise<void> {
                 />
               </div>
 
-              <div class="mb-4">
-                <label for="password" class="form-label fw-medium">Password</label>
+              <div class="mb-3">
+                <label for="password" class="form-label mb-0 small fw-medium" style="font-size: 11px">Password</label>
                 <input
                   id="password"
                   v-model="password"
                   type="password"
                   name="password"
-                  class="form-control"
-                  placeholder="Enter your password"
+                  class="form-control form-control-sm"
+                  placeholder="Enter password"
                   autocomplete="current-password"
                   required
                   :disabled="authStore.isLoading"
@@ -123,13 +123,14 @@ async function handleSubmit(): Promise<void> {
 
               <button
                 type="submit"
-                class="btn btn-primary w-100 py-2 fw-semibold"
+                class="btn btn-primary w-100 py-1 fw-semibold btn-sm"
+                style="height: 32px"
                 :disabled="isSubmitDisabled"
                 data-testid="login-submit-button"
               >
                 <span
                   v-if="authStore.isLoading"
-                  class="spinner-border spinner-border-sm me-2"
+                  class="spinner-border spinner-border-sm me-1"
                   role="status"
                   aria-hidden="true"
                 ></span>

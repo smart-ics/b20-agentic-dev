@@ -382,17 +382,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="container-fluid py-2" data-screen-id="SCR-REQ-005">
-    <!-- Screen Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <div class="d-flex align-items-center gap-2">
-          <h1 class="h3 mb-0 fw-bold">Request Search &amp; History</h1>
-          <span class="badge text-bg-light border text-secondary">SCR-REQ-005</span>
-        </div>
-        <p class="text-body-secondary small mb-0 mt-1">
-          Search operational requests by customer, product, status, or keyword, and inspect full state transition histories.
-        </p>
+  <section data-screen-id="SCR-REQ-005">
+    <!-- Compact Screen Header -->
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="op-screen-title">
+          <i class="bi bi-search text-primary" aria-hidden="true"></i>
+          Request Search &amp; History
+        </h1>
+        <span class="badge text-bg-light border text-secondary font-monospace">SCR-REQ-005</span>
+        <span class="text-body-secondary small ms-1">&bull; {{ totalCount }} results</span>
       </div>
 
       <div class="d-flex align-items-center gap-2">
@@ -420,298 +419,276 @@ onMounted(async () => {
     <div
       v-if="errorMessage"
       role="alert"
-      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-4"
+      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 py-1 px-2 mb-2"
       data-testid="request-search-error-alert"
     >
       <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ errorMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
     </div>
 
-    <!-- Search Form Card -->
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-header bg-body-tertiary py-3">
-        <span class="fw-semibold">
-          <i class="bi bi-search me-2 text-primary" aria-hidden="true"></i>
-          Search Filters
-        </span>
-      </div>
+    <!-- Compact Search Toolbar -->
+    <div class="op-toolbar">
+      <form
+        class="d-flex flex-wrap align-items-center gap-2 w-100"
+        data-testid="request-search-form"
+        @submit.prevent="handleSearchSubmit"
+      >
+        <!-- Customer Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="searchCustomerSelect" class="form-label mb-0 fs-11 text-nowrap">Customer:</label>
+          <select
+            id="searchCustomerSelect"
+            v-model="searchFilters.customerId"
+            class="form-select form-select-sm"
+            style="min-width: 130px; max-width: 180px;"
+            :disabled="isSearching || isLoadingLookups"
+            data-testid="search-customer-select"
+          >
+            <option value="">All Customers</option>
+            <option
+              v-for="customer in activeCustomers"
+              :key="customer.id"
+              :value="customer.id"
+            >
+              {{ resolveCustomerLabel(customer) }}
+            </option>
+          </select>
+        </div>
 
-      <div class="card-body p-4">
-        <form
-          data-testid="request-search-form"
-          @submit.prevent="handleSearchSubmit"
-        >
-          <div class="row g-3 align-items-end">
-            <!-- Customer Filter -->
-            <div class="col-12 col-md-6 col-lg-3">
-              <label for="searchCustomerSelect" class="form-label small fw-medium mb-1">
-                Customer
-              </label>
-              <select
-                id="searchCustomerSelect"
-                v-model="searchFilters.customerId"
-                class="form-select"
-                :disabled="isSearching || isLoadingLookups"
-                data-testid="search-customer-select"
-              >
-                <option value="">All Customers</option>
-                <option
-                  v-for="customer in activeCustomers"
-                  :key="customer.id"
-                  :value="customer.id"
-                >
-                  {{ resolveCustomerLabel(customer) }}
-                </option>
-              </select>
-            </div>
+        <!-- Product Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="searchProductSelect" class="form-label mb-0 fs-11 text-nowrap">Product:</label>
+          <select
+            id="searchProductSelect"
+            v-model="searchFilters.productId"
+            class="form-select form-select-sm"
+            style="min-width: 130px; max-width: 170px;"
+            :disabled="isSearching || isLoadingLookups"
+            data-testid="search-product-select"
+          >
+            <option value="">All Products</option>
+            <option
+              v-for="product in activeProducts"
+              :key="product.id"
+              :value="product.id"
+            >
+              {{ resolveProductLabel(product) }}
+            </option>
+          </select>
+        </div>
 
-            <!-- Product Filter -->
-            <div class="col-12 col-md-6 col-lg-3">
-              <label for="searchProductSelect" class="form-label small fw-medium mb-1">
-                Product
-              </label>
-              <select
-                id="searchProductSelect"
-                v-model="searchFilters.productId"
-                class="form-select"
-                :disabled="isSearching || isLoadingLookups"
-                data-testid="search-product-select"
-              >
-                <option value="">All Products</option>
-                <option
-                  v-for="product in activeProducts"
-                  :key="product.id"
-                  :value="product.id"
-                >
-                  {{ resolveProductLabel(product) }}
-                </option>
-              </select>
-            </div>
+        <!-- Status Filter -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="searchStatusSelect" class="form-label mb-0 fs-11 text-nowrap">Status:</label>
+          <select
+            id="searchStatusSelect"
+            v-model="searchFilters.status"
+            class="form-select form-select-sm"
+            style="min-width: 110px; max-width: 140px;"
+            :disabled="isSearching"
+            data-testid="search-status-select"
+          >
+            <option value="">All Statuses</option>
+            <option v-for="status in REQUEST_STATUSES" :key="status" :value="status">
+              {{ status }}
+            </option>
+          </select>
+        </div>
 
-            <!-- Status Filter -->
-            <div class="col-12 col-md-6 col-lg-2">
-              <label for="searchStatusSelect" class="form-label small fw-medium mb-1">
-                Status
-              </label>
-              <select
-                id="searchStatusSelect"
-                v-model="searchFilters.status"
-                class="form-select"
-                :disabled="isSearching"
-                data-testid="search-status-select"
-              >
-                <option value="">All Statuses</option>
-                <option v-for="status in REQUEST_STATUSES" :key="status" :value="status">
-                  {{ status }}
-                </option>
-              </select>
-            </div>
+        <!-- Keyword Search -->
+        <div class="d-flex align-items-center gap-1 flex-grow-1" style="min-width: 160px; max-width: 280px;">
+          <input
+            id="searchKeywordInput"
+            v-model="searchFilters.searchTerm"
+            type="search"
+            class="form-control form-control-sm"
+            placeholder="Search keywords..."
+            :disabled="isSearching"
+            data-testid="search-keyword-input"
+          />
+        </div>
 
-            <!-- Keyword Search -->
-            <div class="col-12 col-md-6 col-lg-2">
-              <label for="searchKeywordInput" class="form-label small fw-medium mb-1">
-                Keyword
-              </label>
-              <input
-                id="searchKeywordInput"
-                v-model="searchFilters.searchTerm"
-                type="search"
-                class="form-control"
-                placeholder="Title or description..."
-                :disabled="isSearching"
-                data-testid="search-keyword-input"
-              />
-            </div>
-
-            <!-- Submit & Clear Buttons -->
-            <div class="col-12 col-lg-2 d-flex gap-2">
-              <button
-                type="submit"
-                class="btn btn-primary flex-grow-1"
-                :disabled="isSearching"
-                data-testid="search-submit-button"
-              >
-                <i class="bi bi-search me-1" aria-hidden="true"></i>
-                Search
-              </button>
-              <button
-                v-if="hasActiveFilters"
-                type="button"
-                class="btn btn-outline-secondary"
-                :disabled="isSearching"
-                data-testid="search-reset-button"
-                @click="handleResetSearch"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
+        <!-- Submit & Clear Buttons -->
+        <div class="d-flex align-items-center gap-1 ms-auto">
+          <button
+            type="submit"
+            class="btn btn-primary btn-sm"
+            :disabled="isSearching"
+            data-testid="search-submit-button"
+          >
+            <i class="bi bi-search me-1" aria-hidden="true"></i>
+            Search
+          </button>
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            :disabled="isSearching"
+            data-testid="search-reset-button"
+            @click="handleResetSearch"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
     </div>
 
     <!-- Search Results Table Card -->
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">
-          <i class="bi bi-table me-2 text-primary" aria-hidden="true"></i>
-          Search Results
-        </span>
-        <span class="badge text-bg-secondary" data-testid="search-results-count">
-          {{ totalCount }}
-        </span>
-      </div>
+    <div class="card border mb-2">
+      <div class="table-responsive">
+        <table
+          class="table table-hover align-middle mb-0"
+          data-testid="search-results-table"
+        >
+          <thead>
+            <tr>
+              <th scope="col" style="width: 105px;">ID</th>
+              <th scope="col">Title</th>
+              <th scope="col" style="width: 150px;">Customer</th>
+              <th scope="col" style="width: 140px;">Product</th>
+              <th scope="col" style="width: 105px;">Status</th>
+              <th scope="col" style="width: 140px;">Assignee</th>
+              <th scope="col" style="width: 125px;">CreatedAt</th>
+              <th scope="col" style="width: 130px;" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="isSearching">
+              <td colspan="8" class="text-center py-4 text-body-secondary">
+                <span
+                  class="spinner-border spinner-border-sm me-2"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                Searching requests...
+              </td>
+            </tr>
 
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table
-            class="table table-hover align-middle mb-0"
-            data-testid="search-results-table"
-          >
-            <thead class="table-light">
-              <tr>
-                <th scope="col" class="ps-4">ID</th>
-                <th scope="col">Title</th>
-                <th scope="col">Customer</th>
-                <th scope="col">Product</th>
-                <th scope="col">Status</th>
-                <th scope="col">Assignee</th>
-                <th scope="col">CreatedAt</th>
-                <th scope="col" class="pe-4 text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="isSearching">
-                <td colspan="8" class="text-center py-5 text-body-secondary">
-                  <span
-                    class="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  Searching requests...
-                </td>
-              </tr>
-
-              <tr v-else-if="searchResults.length === 0">
-                <td
-                  colspan="8"
-                  class="text-center py-5 text-body-secondary"
-                  data-testid="empty-search-results-row"
-                >
-                  No requests matched your search criteria.
-                </td>
-              </tr>
-
-              <tr
-                v-for="req in searchResults"
-                v-else
-                :key="req.id"
-                :data-request-id="req.id"
-                :class="{ 'table-active': selectedRequest?.id === req.id }"
-                style="cursor: pointer"
-                data-testid="search-result-row"
-                @click="loadSelectedRequestHistory(req)"
+            <tr v-else-if="searchResults.length === 0">
+              <td
+                colspan="8"
+                class="text-center py-4 text-body-secondary"
+                data-testid="empty-search-results-row"
               >
-                <td class="ps-4">
+                No requests matched your search criteria.
+              </td>
+            </tr>
+
+            <tr
+              v-for="req in searchResults"
+              v-else
+              :key="req.id"
+              :data-request-id="req.id"
+              :class="{ 'table-active': selectedRequest?.id === req.id }"
+              style="cursor: pointer"
+              data-testid="search-result-row"
+              @click="loadSelectedRequestHistory(req)"
+            >
+              <td>
+                <router-link
+                  :to="`/requests/${req.id}`"
+                  class="font-monospace text-decoration-none fw-semibold"
+                  style="font-size: 11.5px;"
+                  data-testid="search-result-id-link"
+                  @click.stop
+                >
+                  {{ req.id }}
+                </router-link>
+              </td>
+
+              <td>
+                <div class="d-flex align-items-center gap-1.5 flex-nowrap">
                   <router-link
                     :to="`/requests/${req.id}`"
-                    class="font-monospace small text-decoration-none"
-                    data-testid="search-result-id-link"
+                    class="fw-semibold text-decoration-none text-dark text-truncate"
+                    style="max-width: 340px;"
+                    data-testid="search-result-title-link"
+                    :title="req.title"
                     @click.stop
                   >
-                    {{ req.id }}
+                    {{ req.title }}
                   </router-link>
-                </td>
-
-                <td>
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <router-link
-                      :to="`/requests/${req.id}`"
-                      class="fw-semibold text-decoration-none text-body"
-                      data-testid="search-result-title-link"
-                      @click.stop
-                    >
-                      {{ req.title }}
-                    </router-link>
-                    <span
-                      v-if="req.priority"
-                      class="badge"
-                      :class="priorityBadgeClass(req.priority)"
-                    >
-                      {{ req.priority }}
-                    </span>
-                  </div>
-                </td>
-
-                <td>
-                  {{ resolveCustomerDisplay(req) }}
-                </td>
-
-                <td>
-                  {{ resolveProductDisplay(req) }}
-                </td>
-
-                <td>
                   <span
-                    class="badge"
-                    :class="statusBadgeClass(req.status)"
-                    data-testid="search-result-status-badge"
+                    v-if="req.priority"
+                    class="badge flex-shrink-0"
+                    :class="priorityBadgeClass(req.priority)"
                   >
-                    {{ req.status }}
+                    {{ req.priority }}
                   </span>
-                </td>
+                </div>
+              </td>
 
-                <td>
-                  <span :class="req.ownerPersonId ? '' : 'text-body-secondary fst-italic'">
-                    <i class="bi bi-person me-1 text-secondary" aria-hidden="true"></i>
-                    {{ resolveAssigneeDisplay(req) }}
-                  </span>
-                </td>
+              <td>
+                <span class="text-truncate d-inline-block" style="max-width: 145px;" :title="resolveCustomerDisplay(req)">
+                  {{ resolveCustomerDisplay(req) }}
+                </span>
+              </td>
 
-                <td class="text-body-secondary small">
-                  {{ formatTimestamp(req.createdAt) }}
-                </td>
+              <td>
+                <span class="text-truncate d-inline-block" style="max-width: 135px;" :title="resolveProductDisplay(req)">
+                  {{ resolveProductDisplay(req) }}
+                </span>
+              </td>
 
-                <td class="pe-4 text-end">
-                  <div class="d-inline-flex gap-2">
-                    <button
-                      type="button"
-                      class="btn btn-outline-secondary btn-sm"
-                      data-testid="select-request-history-button"
-                      @click.stop="loadSelectedRequestHistory(req)"
-                    >
-                      <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
-                      History
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-outline-primary btn-sm"
-                      data-testid="open-request-detail-button"
-                      @click.stop="navigateToDetail(req.id)"
-                    >
-                      Detail
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              <td>
+                <span
+                  class="badge"
+                  :class="statusBadgeClass(req.status)"
+                  data-testid="search-result-status-badge"
+                >
+                  {{ req.status }}
+                </span>
+              </td>
+
+              <td>
+                <span :class="req.ownerPersonId ? 'text-dark' : 'text-body-secondary fst-italic'" class="text-truncate d-inline-block" style="max-width: 135px;">
+                  <i class="bi bi-person me-0.5 text-secondary" aria-hidden="true"></i>
+                  {{ resolveAssigneeDisplay(req) }}
+                </span>
+              </td>
+
+              <td class="text-body-secondary fs-11">
+                {{ formatTimestamp(req.createdAt) }}
+              </td>
+
+              <td class="text-end" @click.stop>
+                <div class="d-inline-flex gap-1">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm py-0 px-1.5 fs-11"
+                    data-testid="select-request-history-button"
+                    @click.stop="loadSelectedRequestHistory(req)"
+                  >
+                    <i class="bi bi-clock-history me-0.5"></i>History
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm py-0 px-1.5 fs-11"
+                    data-testid="open-request-detail-button"
+                    @click.stop="navigateToDetail(req.id)"
+                  >
+                    Detail
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <!-- Pagination Controls -->
+      <!-- Compact Pagination Controls -->
       <div
-        class="card-footer bg-white border-top d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 py-3"
+        class="card-footer bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-1 px-3"
         data-testid="search-pagination"
       >
-        <div class="small text-body-secondary">
-          Showing page <strong>{{ searchFilters.page }}</strong> of
+        <div class="small text-body-secondary fs-11">
+          Page <strong>{{ searchFilters.page }}</strong> of
           <strong>{{ Math.max(totalPages, 1) }}</strong>
           ({{ totalCount }} total {{ totalCount === 1 ? 'request' : 'requests' }})
         </div>
@@ -721,21 +698,21 @@ onMounted(async () => {
             <li class="page-item" :class="{ disabled: !canGoPrevious }">
               <button
                 type="button"
-                class="page-link"
+                class="page-link py-0.5 px-2"
                 :disabled="!canGoPrevious"
                 data-testid="search-pagination-prev-button"
                 @click="goToPage(searchFilters.page - 1)"
               >
-                Previous
+                Prev
               </button>
             </li>
             <li class="page-item active" aria-current="page">
-              <span class="page-link">{{ searchFilters.page }}</span>
+              <span class="page-link py-0.5 px-2">{{ searchFilters.page }}</span>
             </li>
             <li class="page-item" :class="{ disabled: !canGoNext }">
               <button
                 type="button"
-                class="page-link"
+                class="page-link py-0.5 px-2"
                 :disabled="!canGoNext"
                 data-testid="search-pagination-next-button"
                 @click="goToPage(searchFilters.page + 1)"
@@ -749,28 +726,28 @@ onMounted(async () => {
     </div>
 
     <!-- Selected Request State History Panel -->
-    <div class="card shadow-sm border-0" data-testid="selected-request-history-panel">
-      <div class="card-header bg-body-tertiary py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div class="d-flex align-items-center gap-2">
+    <div class="card border" data-testid="selected-request-history-panel">
+      <div class="card-header py-1.5 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-1.5">
           <i class="bi bi-clock-history text-primary" aria-hidden="true"></i>
-          <span class="fw-semibold">Selected Request State History</span>
+          <span class="fw-semibold">State History</span>
           <span v-if="selectedRequest" class="text-body-secondary small">
-            — {{ selectedRequest.title }} (<code>{{ selectedRequest.id }}</code>)
+            &bull; {{ selectedRequest.title }} (<code>{{ selectedRequest.id }}</code>)
           </span>
         </div>
 
         <router-link
           v-if="selectedRequest"
           :to="`/requests/${selectedRequest.id}`"
-          class="btn btn-outline-primary btn-sm"
+          class="btn btn-outline-primary btn-sm py-0 px-2 fs-11"
           data-testid="history-panel-detail-link"
         >
           Open Request Detail
         </router-link>
       </div>
 
-      <div class="card-body p-4">
-        <div v-if="isLoadingHistory" class="text-center py-4 text-body-secondary">
+      <div class="card-body py-2 px-3">
+        <div v-if="isLoadingHistory" class="text-center py-2 text-body-secondary small">
           <span
             class="spinner-border spinner-border-sm me-2"
             role="status"
@@ -781,7 +758,7 @@ onMounted(async () => {
 
         <div
           v-else-if="!selectedRequest"
-          class="text-center py-4 text-body-secondary"
+          class="text-center py-2 text-body-secondary small"
           data-testid="no-selected-request-message"
         >
           Select a request from the search results above to inspect its state transition history.
@@ -789,7 +766,7 @@ onMounted(async () => {
 
         <div
           v-else-if="selectedRequestHistory.length === 0"
-          class="text-center py-4 text-body-secondary"
+          class="text-center py-2 text-body-secondary small"
           data-testid="empty-selected-history-message"
         >
           No state history entries found for this request.
@@ -803,11 +780,11 @@ onMounted(async () => {
           <li
             v-for="entry in selectedRequestHistory"
             :key="entry.id"
-            class="list-group-item px-0 py-3"
+            class="list-group-item px-0 py-1.5"
             data-testid="selected-request-history-item"
           >
-            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-              <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div class="d-flex align-items-center gap-1.5 flex-wrap">
                 <span
                   v-if="entry.previousStatus"
                   class="badge"
@@ -831,15 +808,15 @@ onMounted(async () => {
                 </span>
               </div>
 
-              <span class="small text-body-secondary">
+              <span class="small text-body-secondary fs-11">
                 {{ formatTimestamp(entry.assignedAtUtc || entry.timestamp || entry.createdAt) }}
               </span>
             </div>
 
             <div
               v-if="entry.notes"
-              class="mt-2 small text-body-secondary"
-              style="white-space: pre-wrap"
+              class="mt-1 small text-body-secondary ps-2 border-start border-2 border-secondary"
+              style="white-space: pre-wrap;"
             >
               {{ entry.notes }}
             </div>

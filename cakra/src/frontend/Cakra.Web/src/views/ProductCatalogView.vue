@@ -324,54 +324,50 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="container-fluid py-2" data-screen-id="SCR-PRD-001">
+  <section class="product-catalog-view" data-screen-id="SCR-PRD-001">
     <!-- Screen Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <div class="d-flex align-items-center gap-2">
-          <h1 class="h3 mb-0 fw-bold">Product Catalog</h1>
-          <span class="badge text-bg-light border text-secondary">SCR-PRD-001</span>
-        </div>
-        <p class="text-body-secondary small mb-0 mt-1">
-          Maintain ICS product catalog master data, product ownership, and lifecycle status.
-        </p>
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="h6 mb-0 fw-bold">Product Catalog</h1>
+        <span class="badge text-bg-secondary font-monospace" style="font-size: 11px">SCR-PRD-001</span>
+        <span class="text-body-secondary small d-none d-md-inline">| Product master data &amp; lifecycle ownership</span>
       </div>
 
-      <div class="d-flex align-items-center gap-3">
-        <div class="form-check form-switch mb-0">
+      <div class="d-flex align-items-center gap-2">
+        <div class="form-check form-switch mb-0 d-flex align-items-center gap-1">
           <input
             id="activeOnlySwitch"
             v-model="showActiveOnly"
-            class="form-check-input"
+            class="form-check-input my-0"
             type="checkbox"
             role="switch"
             data-testid="active-only-switch"
             @change="handleFilterToggle"
           />
-          <label class="form-check-label small fw-medium" for="activeOnlySwitch">
+          <label class="form-check-label small fw-medium mb-0" for="activeOnlySwitch" style="font-size: 11.5px">
             Active Only
           </label>
         </div>
 
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-outline-secondary btn-sm py-0 px-2"
+          style="font-size: 12px; height: 26px; line-height: 24px"
           :disabled="isLoading"
           data-testid="refresh-catalog-button"
           @click="loadProducts"
         >
-          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
-          Refresh
+          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh
         </button>
 
         <button
           type="button"
-          class="btn btn-primary"
+          class="btn btn-primary btn-sm py-0 px-2"
+          style="font-size: 12px; height: 26px; line-height: 24px"
           data-testid="create-product-button"
           @click="openCreateForm"
         >
-          <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
-          Create Product
+          <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>New Product
         </button>
       </div>
     </div>
@@ -380,14 +376,14 @@ onMounted(async () => {
     <div
       v-if="errorMessage"
       role="alert"
-      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2"
+      class="alert alert-danger alert-dismissible py-1 px-2 mb-2 small d-flex align-items-center gap-2"
       data-testid="product-error-alert"
     >
       <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ errorMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
@@ -396,49 +392,48 @@ onMounted(async () => {
     <div
       v-if="successMessage"
       role="status"
-      class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2"
+      class="alert alert-success alert-dismissible py-1 px-2 mb-2 small d-flex align-items-center gap-2"
       data-testid="product-success-alert"
     >
       <i class="bi bi-check-circle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ successMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="successMessage = null"
       ></button>
     </div>
 
-    <!-- Create Product Inline Form / Modal Card -->
+    <!-- Create Product Inline Form Card -->
     <div
       v-if="showCreateForm"
-      class="card shadow-sm border-primary mb-4"
+      class="card shadow-none border border-primary mb-2"
       data-testid="create-product-modal"
     >
-      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">
-          <i class="bi bi-box-seam me-2" aria-hidden="true"></i>
-          Create New Product
+      <div class="card-header py-1 px-2 bg-primary text-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold small">
+          <i class="bi bi-box-seam me-1" aria-hidden="true"></i>Create New Product
         </span>
         <button
           type="button"
-          class="btn-close btn-close-white"
+          class="btn-close btn-close-white py-1 px-2"
           aria-label="Close"
           @click="closeCreateForm"
         ></button>
       </div>
-      <div class="card-body">
+      <div class="card-body p-2">
         <form novalidate data-testid="create-product-form" @submit.prevent="handleCreateProduct">
-          <div class="row g-3">
+          <div class="row g-2">
             <div class="col-12 col-md-3">
-              <label for="createProductCode" class="form-label fw-medium">
+              <label for="createProductCode" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Product Code <span class="text-danger">*</span>
               </label>
               <input
                 id="createProductCode"
                 v-model="createForm.code"
                 type="text"
-                class="form-control"
+                class="form-control form-control-sm"
                 placeholder="e.g. MYHOSPITAL"
                 maxlength="50"
                 required
@@ -448,14 +443,14 @@ onMounted(async () => {
             </div>
 
             <div class="col-12 col-md-4">
-              <label for="createProductName" class="form-label fw-medium">
+              <label for="createProductName" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Product Name <span class="text-danger">*</span>
               </label>
               <input
                 id="createProductName"
                 v-model="createForm.name"
                 type="text"
-                class="form-control"
+                class="form-control form-control-sm"
                 placeholder="e.g. MyHospital"
                 maxlength="200"
                 required
@@ -465,18 +460,18 @@ onMounted(async () => {
             </div>
 
             <div class="col-12 col-md-5">
-              <label for="createProductOwner" class="form-label fw-medium">
+              <label for="createProductOwner" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Product Owner <span class="text-danger">*</span>
               </label>
               <select
                 id="createProductOwner"
                 v-model="createForm.ownerPersonId"
-                class="form-select"
+                class="form-select form-select-sm"
                 required
                 :disabled="isSubmitting"
                 data-testid="create-product-owner-select"
               >
-                <option value="" disabled>Select an active person...</option>
+                <option value="" disabled>Select active person...</option>
                 <option
                   v-for="person in activePersons"
                   :key="person.id"
@@ -488,26 +483,26 @@ onMounted(async () => {
             </div>
 
             <div class="col-12">
-              <label for="createProductDescription" class="form-label fw-medium">
-                Description
+              <label for="createProductDescription" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Description (Optional)
               </label>
-              <textarea
+              <input
                 id="createProductDescription"
                 v-model="createForm.description"
-                class="form-control"
-                rows="2"
+                type="text"
+                class="form-control form-control-sm"
                 maxlength="1000"
-                placeholder="Brief summary of the product's business scope"
+                placeholder="Brief summary of product's business scope"
                 :disabled="isSubmitting"
                 data-testid="create-product-description-input"
-              ></textarea>
+              />
             </div>
           </div>
 
-          <div class="d-flex justify-content-end gap-2 mt-3">
+          <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
             <button
               type="button"
-              class="btn btn-outline-secondary"
+              class="btn btn-outline-secondary btn-sm"
               :disabled="isSubmitting"
               @click="closeCreateForm"
             >
@@ -515,13 +510,13 @@ onMounted(async () => {
             </button>
             <button
               type="submit"
-              class="btn btn-primary"
+              class="btn btn-primary btn-sm"
               :disabled="isCreateDisabled"
               data-testid="create-product-submit-button"
             >
               <span
                 v-if="isSubmitting"
-                class="spinner-border spinner-border-sm me-2"
+                class="spinner-border spinner-border-sm me-1"
                 role="status"
                 aria-hidden="true"
               ></span>
@@ -532,32 +527,32 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Edit Product Inline Form / Modal Card -->
+    <!-- Edit Product Inline Form Card -->
     <div
       v-if="editingProduct"
-      class="card shadow-sm border-secondary mb-4"
+      class="card shadow-none border border-secondary mb-2"
       data-testid="edit-product-modal"
     >
-      <div class="card-header bg-body-tertiary d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">
-          <i class="bi bi-pencil-square me-2" aria-hidden="true"></i>
-          Edit Product — <code>{{ editForm.code }}</code>
+      <div class="card-header py-1 px-2 bg-body-tertiary d-flex justify-content-between align-items-center">
+        <span class="fw-semibold small">
+          <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>
+          Edit Product: <code class="text-primary">{{ editForm.code }}</code>
         </span>
         <button
           type="button"
-          class="btn-close"
+          class="btn-close py-1 px-2"
           aria-label="Close"
           @click="closeEditProduct"
         ></button>
       </div>
-      <div class="card-body">
+      <div class="card-body p-2">
         <form novalidate data-testid="edit-product-form" @submit.prevent="handleUpdateProduct">
-          <div class="row g-3">
+          <div class="row g-2">
             <div class="col-12 col-md-3">
-              <label class="form-label fw-medium">Product Code</label>
+              <label class="form-label mb-0 small fw-medium" style="font-size: 11px">Product Code</label>
               <input
                 type="text"
-                class="form-control"
+                class="form-control form-control-sm"
                 :value="editForm.code"
                 disabled
                 readonly
@@ -565,14 +560,14 @@ onMounted(async () => {
             </div>
 
             <div class="col-12 col-md-4">
-              <label for="editProductName" class="form-label fw-medium">
+              <label for="editProductName" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Product Name <span class="text-danger">*</span>
               </label>
               <input
                 id="editProductName"
                 v-model="editForm.name"
                 type="text"
-                class="form-control"
+                class="form-control form-control-sm"
                 maxlength="200"
                 required
                 :disabled="isSubmitting"
@@ -581,13 +576,13 @@ onMounted(async () => {
             </div>
 
             <div class="col-12 col-md-5">
-              <label for="editProductOwner" class="form-label fw-medium">
+              <label for="editProductOwner" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Product Owner <span class="text-danger">*</span>
               </label>
               <select
                 id="editProductOwner"
                 v-model="editForm.ownerPersonId"
-                class="form-select"
+                class="form-select form-select-sm"
                 required
                 :disabled="isSubmitting"
                 data-testid="edit-product-owner-select"
@@ -603,25 +598,25 @@ onMounted(async () => {
             </div>
 
             <div class="col-12">
-              <label for="editProductDescription" class="form-label fw-medium">
+              <label for="editProductDescription" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Description
               </label>
-              <textarea
+              <input
                 id="editProductDescription"
                 v-model="editForm.description"
-                class="form-control"
-                rows="2"
+                type="text"
+                class="form-control form-control-sm"
                 maxlength="1000"
                 :disabled="isSubmitting"
                 data-testid="edit-product-description-input"
-              ></textarea>
+              />
             </div>
           </div>
 
-          <div class="d-flex justify-content-end gap-2 mt-3">
+          <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
             <button
               type="button"
-              class="btn btn-outline-secondary"
+              class="btn btn-outline-secondary btn-sm"
               :disabled="isSubmitting"
               @click="closeEditProduct"
             >
@@ -629,13 +624,13 @@ onMounted(async () => {
             </button>
             <button
               type="submit"
-              class="btn btn-primary"
+              class="btn btn-primary btn-sm"
               :disabled="isEditDisabled"
               data-testid="edit-product-submit-button"
             >
               <span
                 v-if="isSubmitting"
-                class="spinner-border spinner-border-sm me-2"
+                class="spinner-border spinner-border-sm me-1"
                 role="status"
                 aria-hidden="true"
               ></span>
@@ -647,25 +642,25 @@ onMounted(async () => {
     </div>
 
     <!-- Product Catalog Table -->
-    <div class="card shadow-sm border-0">
+    <div class="card card-table shadow-none border mb-2">
       <div class="card-body p-0">
         <div class="table-responsive">
           <table
-            class="table table-hover align-middle mb-0"
+            class="table table-hover align-middle mb-0 text-nowrap"
             data-testid="products-table"
           >
             <thead class="table-light">
               <tr>
-                <th scope="col" class="ps-4">Code</th>
-                <th scope="col">Name</th>
+                <th scope="col" style="width: 140px">Code</th>
+                <th scope="col" style="min-width: 200px">Name</th>
                 <th scope="col">Owner</th>
-                <th scope="col">Status</th>
-                <th scope="col" class="text-end pe-4">Actions</th>
+                <th scope="col" class="text-center" style="width: 90px">Status</th>
+                <th scope="col" class="text-end" style="width: 150px">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="isLoading">
-                <td colspan="5" class="text-center py-5 text-body-secondary">
+                <td colspan="5" class="text-center py-4 text-body-secondary small">
                   <span
                     class="spinner-border spinner-border-sm me-2"
                     role="status"
@@ -676,8 +671,8 @@ onMounted(async () => {
               </tr>
 
               <tr v-else-if="products.length === 0">
-                <td colspan="5" class="text-center py-5 text-body-secondary" data-testid="empty-catalog-row">
-                  No products found in the catalog. Click <strong>Create Product</strong> to add one.
+                <td colspan="5" class="text-center py-4 text-body-secondary small" data-testid="empty-catalog-row">
+                  No products found. Click <strong>New Product</strong> to create one.
                 </td>
               </tr>
 
@@ -689,28 +684,28 @@ onMounted(async () => {
                 data-testid="product-row"
               >
                 <!-- Code Column -->
-                <td class="ps-4 fw-semibold">
-                  <code class="text-primary">{{ product.code }}</code>
+                <td class="fw-semibold">
+                  <code class="text-primary font-monospace" style="font-size: 11.5px">{{ product.code }}</code>
                 </td>
 
                 <!-- Name Column -->
                 <td>
-                  <div class="fw-semibold">{{ product.name }}</div>
-                  <div v-if="product.description" class="text-body-secondary small">
+                  <span class="fw-medium">{{ product.name }}</span>
+                  <span v-if="product.description" class="text-body-secondary small ms-2 text-truncate d-inline-block" style="max-width: 260px">
                     {{ product.description }}
-                  </div>
+                  </span>
                 </td>
 
                 <!-- Owner Column -->
                 <td>
                   <div
                     v-if="reassigningProductId === product.id"
-                    class="d-flex align-items-center gap-2"
+                    class="d-flex align-items-center gap-1"
                   >
                     <select
                       v-model="selectedNewOwnerId"
-                      class="form-select form-select-sm"
-                      style="max-width: 240px"
+                      class="form-select form-select-sm py-0"
+                      style="max-width: 180px; font-size: 11.5px; height: 24px"
                       :disabled="assigningOwnerProductId === product.id"
                       data-testid="inline-owner-select"
                     >
@@ -724,7 +719,8 @@ onMounted(async () => {
                     </select>
                     <button
                       type="button"
-                      class="btn btn-sm btn-primary"
+                      class="btn btn-xs btn-primary py-0 px-1"
+                      style="font-size: 11px; height: 24px; line-height: 22px"
                       :disabled="assigningOwnerProductId === product.id"
                       data-testid="confirm-owner-button"
                       @click="handleAssignOwner(product)"
@@ -733,7 +729,8 @@ onMounted(async () => {
                     </button>
                     <button
                       type="button"
-                      class="btn btn-sm btn-outline-secondary"
+                      class="btn btn-xs btn-outline-secondary py-0 px-1"
+                      style="font-size: 11px; height: 24px; line-height: 22px"
                       :disabled="assigningOwnerProductId === product.id"
                       @click="cancelInlineOwnerAssign"
                     >
@@ -741,27 +738,25 @@ onMounted(async () => {
                     </button>
                   </div>
 
-                  <div v-else class="d-flex align-items-center gap-2">
-                    <span>
-                      <i class="bi bi-person-badge text-secondary me-1" aria-hidden="true"></i>
-                      {{ resolveOwnerDisplay(product) }}
-                    </span>
+                  <div v-else class="d-flex align-items-center gap-1">
+                    <span class="small">{{ resolveOwnerDisplay(product) }}</span>
                     <button
                       type="button"
-                      class="btn btn-link btn-sm p-0 text-decoration-none"
+                      class="btn btn-link btn-sm p-0 text-decoration-none text-body-secondary"
                       title="Assign Product Owner"
                       data-testid="assign-owner-button"
                       @click="startInlineOwnerAssign(product)"
                     >
-                      <i class="bi bi-pencil-fill small" aria-hidden="true"></i>
+                      <i class="bi bi-pencil-fill" style="font-size: 10px" aria-hidden="true"></i>
                     </button>
                   </div>
                 </td>
 
                 <!-- Status Column -->
-                <td>
+                <td class="text-center">
                   <span
                     class="badge"
+                    style="font-size: 10px; padding: 2px 6px"
                     :class="
                       product.status.toUpperCase() === 'ACTIVE'
                         ? 'text-bg-success'
@@ -774,21 +769,22 @@ onMounted(async () => {
                 </td>
 
                 <!-- Actions Column (Edit + Status Toggle Button per row) -->
-                <td class="text-end pe-4">
-                  <div class="d-inline-flex align-items-center gap-2">
+                <td class="text-end">
+                  <div class="d-inline-flex align-items-center gap-1">
                     <button
                       type="button"
-                      class="btn btn-outline-secondary btn-sm"
+                      class="btn btn-outline-secondary btn-sm py-0 px-2"
+                      style="font-size: 11px; height: 22px; line-height: 20px"
                       data-testid="edit-product-button"
                       @click="openEditProduct(product)"
                     >
-                      <i class="bi bi-pencil me-1" aria-hidden="true"></i>
-                      Edit
+                      <i class="bi bi-pencil me-1" aria-hidden="true"></i>Edit
                     </button>
 
                     <button
                       type="button"
-                      class="btn btn-sm"
+                      class="btn btn-sm py-0 px-2"
+                      style="font-size: 11px; height: 22px; line-height: 20px"
                       :class="
                         product.status.toUpperCase() === 'ACTIVE'
                           ? 'btn-outline-warning'

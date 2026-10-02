@@ -635,40 +635,63 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="container-fluid py-2" data-screen-id="SCR-REQ-003">
+  <section class="request-detail-view" data-screen-id="SCR-REQ-003">
     <!-- Screen Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <div class="d-flex align-items-center gap-2">
-          <h1 class="h3 mb-0 fw-bold">Request Detail</h1>
-          <span class="badge text-bg-light border text-secondary">SCR-REQ-003</span>
-        </div>
-        <p class="text-body-secondary small mb-0 mt-1">
-          Inspect request details, execute lifecycle state transitions, and review the audit history timeline.
-        </p>
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <router-link
+          to="/requests"
+          class="btn btn-outline-secondary btn-sm py-0 px-2"
+          style="font-size: 12px; height: 26px; line-height: 24px"
+          data-testid="back-to-requests-link"
+          @click.prevent="navigateBackToList"
+        >
+          <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back
+        </router-link>
+        <span class="font-monospace text-body-secondary small fw-medium" data-testid="request-detail-id">
+          {{ request?.id || requestId }}
+        </span>
+        <span class="badge text-bg-secondary font-monospace" style="font-size: 11px">SCR-REQ-003</span>
+        <template v-if="request">
+          <span
+            class="badge"
+            style="font-size: 11px"
+            :class="statusBadgeClass(request.status)"
+            data-testid="request-detail-status"
+          >
+            {{ request.status }}
+          </span>
+          <span
+            v-if="request.priority"
+            class="badge"
+            style="font-size: 11px"
+            :class="priorityBadgeClass(request.priority)"
+            data-testid="request-detail-priority"
+          >
+            {{ request.priority }}
+          </span>
+          <span
+            v-if="request.requestType"
+            class="badge text-bg-light border"
+            style="font-size: 11px"
+            data-testid="request-detail-type"
+          >
+            {{ request.requestType }}
+          </span>
+        </template>
       </div>
 
-      <div class="d-flex align-items-center gap-2">
+      <div class="d-flex align-items-center gap-1">
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-outline-secondary btn-sm py-0 px-2"
+          style="font-size: 12px; height: 26px; line-height: 24px"
           :disabled="isLoading || isHistoryLoading"
           data-testid="refresh-request-detail-button"
           @click="refreshAll"
         >
-          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
-          Refresh
+          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh
         </button>
-
-        <router-link
-          to="/requests"
-          class="btn btn-outline-secondary btn-sm"
-          data-testid="back-to-requests-link"
-          @click.prevent="navigateBackToList"
-        >
-          <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
-          Back to Requests
-        </router-link>
       </div>
     </div>
 
@@ -676,14 +699,14 @@ onMounted(async () => {
     <div
       v-if="errorMessage"
       role="alert"
-      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-4"
+      class="alert alert-danger alert-dismissible py-1 px-2 mb-2 small d-flex align-items-center gap-2"
       data-testid="request-detail-error-alert"
     >
       <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ errorMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
@@ -693,161 +716,83 @@ onMounted(async () => {
     <div
       v-if="actionSuccessMessage"
       role="status"
-      class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 mb-4"
+      class="alert alert-success alert-dismissible py-1 px-2 mb-2 small d-flex align-items-center gap-2"
       data-testid="request-detail-success-alert"
     >
       <i class="bi bi-check-circle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ actionSuccessMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="actionSuccessMessage = null"
       ></button>
     </div>
 
     <!-- Loading Indicator -->
-    <div v-if="isLoading && !request" class="card shadow-sm border-0 mb-4">
-      <div class="card-body py-5 text-center text-body-secondary">
-        <span
-          class="spinner-border spinner-border-sm me-2"
-          role="status"
-          aria-hidden="true"
-        ></span>
-        Loading request details...
+    <div v-if="isLoading && !request" class="text-center py-4">
+      <div class="spinner-border spinner-border-sm text-primary" role="status">
+        <span class="visually-hidden">Loading request details...</span>
       </div>
+      <span class="text-body-secondary small ms-2">Loading request details...</span>
     </div>
 
-    <!-- Request Details Card -->
-    <div v-if="request" class="card shadow-sm border-0 mb-4" data-testid="request-detail-card">
-      <div class="card-header bg-body-tertiary py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="fw-bold fs-5" data-testid="request-detail-title">{{ request.title }}</span>
-          <span
-            class="badge"
-            :class="statusBadgeClass(request.status)"
-            data-testid="request-detail-status"
-          >
-            {{ request.status }}
-          </span>
-          <span
-            v-if="request.priority"
-            class="badge"
-            :class="priorityBadgeClass(request.priority)"
-            data-testid="request-detail-priority"
-          >
-            {{ request.priority }}
-          </span>
-          <span
-            v-if="request.requestType"
-            class="badge text-bg-light border text-secondary"
-            data-testid="request-detail-type"
-          >
-            {{ request.requestType }}
-          </span>
-        </div>
-        <span class="font-monospace small text-body-secondary" data-testid="request-detail-id">
-          {{ request.id }}
-        </span>
-      </div>
-
-      <div class="card-body p-4">
-        <div class="row g-4">
-          <div class="col-12">
-            <h2 class="h6 text-uppercase text-body-secondary fw-semibold mb-2">Description</h2>
-            <p class="mb-0" style="white-space: pre-wrap" data-testid="request-detail-description">
+    <!-- 2-Column Operational Workspace -->
+    <div v-if="request" class="row g-2">
+      <!-- Main Content Column (Left) -->
+      <div class="col-12 col-lg-8">
+        <!-- Request Detail Card -->
+        <div class="card shadow-none border mb-2" data-testid="request-detail-card">
+          <div class="card-header py-1 px-2 bg-body-tertiary">
+            <h2 class="h6 mb-0 fw-bold" data-testid="request-detail-title">{{ request.title }}</h2>
+          </div>
+          <div class="card-body p-2">
+            <!-- Description -->
+            <div class="small fw-semibold text-body-secondary text-uppercase mb-1" style="font-size: 10.5px">
+              Description
+            </div>
+            <div
+              class="p-2 rounded bg-body-tertiary border mb-2 small"
+              style="white-space: pre-wrap; font-size: 12.5px; line-height: 1.4"
+              data-testid="request-detail-description"
+            >
               {{ request.description }}
-            </p>
-          </div>
-
-          <div class="col-12 col-sm-6 col-lg-3">
-            <div class="small text-body-secondary fw-medium">Customer</div>
-            <div class="fw-semibold mt-1" data-testid="request-detail-customer">
-              {{ resolveCustomerDisplay(request) }}
             </div>
-          </div>
 
-          <div class="col-12 col-sm-6 col-lg-3">
-            <div class="small text-body-secondary fw-medium">Product</div>
-            <div class="fw-semibold mt-1" data-testid="request-detail-product">
-              {{ resolveProductDisplay(request) }}
-            </div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-lg-3">
-            <div class="small text-body-secondary fw-medium">Status</div>
-            <div class="mt-1">
-              <span class="badge" :class="statusBadgeClass(request.status)">
-                {{ request.status }}
-              </span>
-            </div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-lg-3">
-            <div class="small text-body-secondary fw-medium">Assignee</div>
-            <div class="fw-semibold mt-1" data-testid="request-detail-assignee">
-              <i class="bi bi-person me-1 text-secondary" aria-hidden="true"></i>
-              {{ resolveAssigneeDisplay(request) }}
-            </div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-lg-3">
-            <div class="small text-body-secondary fw-medium">CreatedAt</div>
-            <div class="mt-1 small" data-testid="request-detail-created-at">
-              {{ formatTimestamp(request.createdAt) }}
-            </div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-lg-3">
-            <div class="small text-body-secondary fw-medium">UpdatedAt</div>
-            <div class="mt-1 small" data-testid="request-detail-updated-at">
-              {{ formatTimestamp(request.updatedAt) }}
-            </div>
-          </div>
-
-          <!-- Evaluation Notes if present -->
-          <div v-if="request.evaluationNotes" class="col-12">
-            <div class="p-3 rounded bg-info-subtle border border-info-subtle">
+            <!-- Evaluation Notes if present -->
+            <div v-if="request.evaluationNotes" class="p-2 rounded bg-info-subtle border border-info-subtle mb-2 small">
               <div class="small fw-semibold text-info-emphasis mb-1">
-                <i class="bi bi-journal-check me-1" aria-hidden="true"></i>
-                Evaluation Notes
+                <i class="bi bi-journal-check me-1" aria-hidden="true"></i>Evaluation Notes
               </div>
-              <div style="white-space: pre-wrap" data-testid="request-detail-evaluation-notes">
+              <div style="white-space: pre-wrap; font-size: 12px" data-testid="request-detail-evaluation-notes">
                 {{ request.evaluationNotes }}
               </div>
             </div>
-          </div>
 
-          <!-- Escalation Reason if present -->
-          <div v-if="request.escalationReason" class="col-12">
-            <div class="p-3 rounded bg-warning-subtle border border-warning-subtle">
+            <!-- Escalation Reason if present -->
+            <div v-if="request.escalationReason" class="p-2 rounded bg-warning-subtle border border-warning-subtle mb-2 small">
               <div class="small fw-semibold text-warning-emphasis mb-1">
-                <i class="bi bi-exclamation-octagon me-1" aria-hidden="true"></i>
-                Escalation Reason
+                <i class="bi bi-exclamation-octagon me-1" aria-hidden="true"></i>Escalation Reason
               </div>
-              <div style="white-space: pre-wrap" data-testid="request-detail-escalation-reason">
+              <div style="white-space: pre-wrap; font-size: 12px" data-testid="request-detail-escalation-reason">
                 {{ request.escalationReason }}
               </div>
             </div>
-          </div>
 
-          <!-- Management Decision Notes if present -->
-          <div v-if="request.managementDecisionNotes" class="col-12">
-            <div class="p-3 rounded bg-primary-subtle border border-primary-subtle">
+            <!-- Management Decision Notes if present -->
+            <div v-if="request.managementDecisionNotes" class="p-2 rounded bg-primary-subtle border border-primary-subtle mb-2 small">
               <div class="small fw-semibold text-primary-emphasis mb-1">
-                <i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>
-                Management Decision Notes
+                <i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>Management Decision Notes
               </div>
-              <div style="white-space: pre-wrap" data-testid="request-detail-management-decision-notes">
+              <div style="white-space: pre-wrap; font-size: 12px" data-testid="request-detail-management-decision-notes">
                 {{ request.managementDecisionNotes }}
               </div>
             </div>
-          </div>
 
-          <!-- Resolution Details if present -->
-          <div v-if="request.resolution" class="col-12">
+            <!-- Resolution Details if present -->
             <div
-              class="p-3 rounded border"
+              v-if="request.resolution"
+              class="p-2 rounded border mb-2 small"
               :class="
                 request.resolution.outcome === 'REJECTED'
                   ? 'bg-danger-subtle border-danger-subtle'
@@ -855,467 +800,469 @@ onMounted(async () => {
               "
               data-testid="request-detail-resolution"
             >
-              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mb-1">
                 <span class="small fw-semibold">
                   <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>
                   Resolution ({{ request.resolution.outcome }})
                 </span>
-                <span class="small text-body-secondary">
+                <span class="text-body-secondary" style="font-size: 11px">
                   Resolved by
                   {{ resolvePersonDisplay(request.resolution.resolvedBy, request.resolution.resolvedByName) }}
                   on {{ formatTimestamp(request.resolution.resolvedAt) }}
                 </span>
               </div>
-              <div style="white-space: pre-wrap" data-testid="request-detail-resolution-description">
+              <div style="white-space: pre-wrap; font-size: 12px" data-testid="request-detail-resolution-description">
                 {{ request.resolution.description }}
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Conditional Lifecycle Actions Card -->
-    <div
-      v-if="request && !isClosed"
-      class="card shadow-sm border-0 mb-4"
-      data-testid="request-actions-card"
-    >
-      <div class="card-header bg-body-tertiary py-3">
-        <span class="fw-semibold">
-          <i class="bi bi-sliders me-2 text-primary" aria-hidden="true"></i>
-          Lifecycle Actions ({{ request.status }})
-        </span>
-      </div>
+        <!-- Conditional Lifecycle Actions Card -->
+        <div
+          v-if="!isClosed"
+          class="card shadow-none border mb-2"
+          data-testid="request-actions-card"
+        >
+          <div class="card-header py-1 px-2 bg-body-tertiary d-flex align-items-center justify-content-between">
+            <span class="fw-semibold small">
+              <i class="bi bi-sliders me-1 text-primary" aria-hidden="true"></i>
+              Lifecycle Actions
+            </span>
+            <span class="badge" style="font-size: 10px" :class="statusBadgeClass(request.status)">
+              Status: {{ request.status }}
+            </span>
+          </div>
 
-      <div class="card-body p-4">
-        <div class="row g-4">
-          <!-- CAPTURED: Assign Request Owner -->
-          <div v-if="canAssign" class="col-12" data-testid="assign-action-section">
-            <form class="border rounded p-3 bg-light-subtle" @submit.prevent="handleAssign">
-              <h3 class="h6 fw-bold mb-3">Assign Request Owner</h3>
-              <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-5">
-                  <label for="assignOwnerSelect" class="form-label small fw-medium">
-                    Assignee <span class="text-danger">*</span>
-                  </label>
-                  <select
-                    id="assignOwnerSelect"
-                    v-model="assignForm.ownerPersonId"
-                    class="form-select"
-                    required
-                    :disabled="isSubmittingAction"
-                    data-testid="assign-owner-select"
-                  >
-                    <option value="">Select active person...</option>
-                    <option
-                      v-for="person in activePersons"
-                      :key="person.id"
-                      :value="person.id"
+          <div class="card-body p-2">
+            <!-- CAPTURED: Assign Request Owner -->
+            <div v-if="canAssign" data-testid="assign-action-section">
+              <form class="border rounded p-2 bg-body-tertiary" @submit.prevent="handleAssign">
+                <div class="small fw-bold mb-1">Assign Request Owner</div>
+                <div class="row g-1 align-items-end">
+                  <div class="col-12 col-md-5">
+                    <label for="assignOwnerSelect" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                      Assignee <span class="text-danger">*</span>
+                    </label>
+                    <select
+                      id="assignOwnerSelect"
+                      v-model="assignForm.ownerPersonId"
+                      class="form-select form-select-sm"
+                      required
+                      :disabled="isSubmittingAction"
+                      data-testid="assign-owner-select"
                     >
-                      {{ person.fullName }} ({{ person.email }})
-                    </option>
-                  </select>
+                      <option value="">Select active person...</option>
+                      <option
+                        v-for="person in activePersons"
+                        :key="person.id"
+                        :value="person.id"
+                      >
+                        {{ person.fullName }} ({{ person.email }})
+                      </option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-5">
+                    <label for="assignNotesInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                      Assignment Notes
+                    </label>
+                    <input
+                      id="assignNotesInput"
+                      v-model="assignForm.notes"
+                      type="text"
+                      class="form-control form-control-sm"
+                      placeholder="Optional instructions"
+                      :disabled="isSubmittingAction"
+                      data-testid="assign-notes-input"
+                    />
+                  </div>
+                  <div class="col-12 col-md-2">
+                    <button
+                      type="submit"
+                      class="btn btn-primary btn-sm w-100"
+                      :disabled="isSubmittingAction || !assignForm.ownerPersonId"
+                      data-testid="assign-request-button"
+                    >
+                      <i class="bi bi-person-check me-1" aria-hidden="true"></i>Assign
+                    </button>
+                  </div>
                 </div>
-                <div class="col-12 col-md-5">
-                  <label for="assignNotesInput" class="form-label small fw-medium">
-                    Assignment Notes
-                  </label>
-                  <input
-                    id="assignNotesInput"
-                    v-model="assignForm.notes"
-                    type="text"
-                    class="form-control"
-                    placeholder="Optional assignment instructions"
-                    :disabled="isSubmittingAction"
-                    data-testid="assign-notes-input"
-                  />
-                </div>
-                <div class="col-12 col-md-2 d-grid">
+              </form>
+            </div>
+
+            <!-- Other Lifecycle States Action Forms Grid -->
+            <div class="row g-2">
+              <!-- EVALUATING: Evaluate Request -->
+              <div v-if="canEvaluate" class="col-12 col-md-6" data-testid="evaluate-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleEvaluate">
+                  <div class="small fw-bold mb-1">Evaluate Request</div>
+                  <div class="mb-1">
+                    <textarea
+                      id="evaluateNotesInput"
+                      v-model="evaluateForm.evaluationNotes"
+                      class="form-control form-control-sm"
+                      rows="2"
+                      placeholder="Record triage findings..."
+                      required
+                      :disabled="isSubmittingAction"
+                      data-testid="evaluate-notes-input"
+                    ></textarea>
+                  </div>
                   <button
                     type="submit"
-                    class="btn btn-primary"
-                    :disabled="isSubmittingAction || !assignForm.ownerPersonId"
-                    data-testid="assign-request-button"
+                    class="btn btn-info text-white btn-sm"
+                    :disabled="isSubmittingAction || !evaluateForm.evaluationNotes.trim()"
+                    data-testid="evaluate-request-button"
                   >
-                    <i class="bi bi-person-check me-1" aria-hidden="true"></i>
-                    Assign
+                    <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>Evaluate
                   </button>
-                </div>
+                </form>
               </div>
-            </form>
-          </div>
 
-          <!-- EVALUATING: Evaluate Request -->
-          <div v-if="canEvaluate" class="col-12 col-lg-6" data-testid="evaluate-action-section">
-            <form class="border rounded p-3 h-100 bg-light-subtle" @submit.prevent="handleEvaluate">
-              <h3 class="h6 fw-bold mb-2">Evaluate Request</h3>
-              <div class="mb-3">
-                <label for="evaluateNotesInput" class="form-label small fw-medium">
-                  Evaluation Notes <span class="text-danger">*</span>
-                </label>
-                <textarea
-                  id="evaluateNotesInput"
-                  v-model="evaluateForm.evaluationNotes"
-                  class="form-control"
-                  rows="2"
-                  placeholder="Record triage assessment and technical findings..."
-                  required
-                  :disabled="isSubmittingAction"
-                  data-testid="evaluate-notes-input"
-                ></textarea>
-              </div>
-              <button
-                type="submit"
-                class="btn btn-info text-white"
-                :disabled="isSubmittingAction || !evaluateForm.evaluationNotes.trim()"
-                data-testid="evaluate-request-button"
-              >
-                <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>
-                Evaluate
-              </button>
-            </form>
-          </div>
-
-          <!-- EVALUATING / ACCEPTED: Accept Responsibility -->
-          <div v-if="canAccept" class="col-12 col-lg-6" data-testid="accept-action-section">
-            <form class="border rounded p-3 h-100 bg-light-subtle" @submit.prevent="handleAccept">
-              <h3 class="h6 fw-bold mb-2">Accept Responsibility</h3>
-              <div class="mb-3">
-                <label for="acceptNotesInput" class="form-label small fw-medium">
-                  Acceptance Notes
-                </label>
-                <textarea
-                  id="acceptNotesInput"
-                  v-model="acceptForm.notes"
-                  class="form-control"
-                  rows="2"
-                  placeholder="Optional notes when accepting and starting work..."
-                  :disabled="isSubmittingAction"
-                  data-testid="accept-notes-input"
-                ></textarea>
-              </div>
-              <button
-                type="submit"
-                class="btn btn-success"
-                :disabled="isSubmittingAction"
-                data-testid="accept-request-button"
-              >
-                <i class="bi bi-check-lg me-1" aria-hidden="true"></i>
-                Accept
-              </button>
-            </form>
-          </div>
-
-          <!-- EVALUATING: Reject Request -->
-          <div v-if="canReject" class="col-12 col-lg-6" data-testid="reject-action-section">
-            <form class="border rounded p-3 h-100 bg-light-subtle" @submit.prevent="handleReject">
-              <h3 class="h6 fw-bold mb-2">Reject Request</h3>
-              <div class="mb-3">
-                <label for="rejectReasonInput" class="form-label small fw-medium">
-                  Rejection Reason <span class="text-danger">*</span>
-                </label>
-                <textarea
-                  id="rejectReasonInput"
-                  v-model="rejectForm.reason"
-                  class="form-control"
-                  rows="2"
-                  placeholder="Provide reason for rejecting this request..."
-                  required
-                  :disabled="isSubmittingAction"
-                  data-testid="reject-reason-input"
-                ></textarea>
-              </div>
-              <button
-                type="submit"
-                class="btn btn-danger"
-                :disabled="isSubmittingAction || !rejectForm.reason.trim()"
-                data-testid="reject-request-button"
-              >
-                <i class="bi bi-x-octagon me-1" aria-hidden="true"></i>
-                Reject
-              </button>
-            </form>
-          </div>
-
-          <!-- IN_PROGRESS: Complete Request -->
-          <div v-if="canComplete" class="col-12 col-lg-6" data-testid="complete-action-section">
-            <form class="border rounded p-3 h-100 bg-light-subtle" @submit.prevent="handleComplete">
-              <h3 class="h6 fw-bold mb-2">Complete Request</h3>
-              <div class="mb-3">
-                <label for="completeResolutionInput" class="form-label small fw-medium">
-                  Resolution Summary <span class="text-danger">*</span>
-                </label>
-                <textarea
-                  id="completeResolutionInput"
-                  v-model="completeForm.resolutionDescription"
-                  class="form-control"
-                  rows="2"
-                  placeholder="Describe the completed solution and deliverables..."
-                  required
-                  :disabled="isSubmittingAction"
-                  data-testid="complete-resolution-input"
-                ></textarea>
-              </div>
-              <button
-                type="submit"
-                class="btn btn-success"
-                :disabled="isSubmittingAction || !completeForm.resolutionDescription.trim()"
-                data-testid="complete-request-button"
-              >
-                <i class="bi bi-check2-all me-1" aria-hidden="true"></i>
-                Complete
-              </button>
-            </form>
-          </div>
-
-          <!-- EVALUATING / IN_PROGRESS: Escalate Request -->
-          <div v-if="canEscalate" class="col-12 col-lg-6" data-testid="escalate-action-section">
-            <form class="border rounded p-3 h-100 bg-light-subtle" @submit.prevent="handleEscalate">
-              <h3 class="h6 fw-bold mb-2">Escalate Request</h3>
-              <div class="mb-3">
-                <label for="escalateReasonInput" class="form-label small fw-medium">
-                  Escalation Reason <span class="text-danger">*</span>
-                </label>
-                <textarea
-                  id="escalateReasonInput"
-                  v-model="escalateForm.reason"
-                  class="form-control"
-                  rows="2"
-                  placeholder="Document blocker or required management intervention..."
-                  required
-                  :disabled="isSubmittingAction"
-                  data-testid="escalate-reason-input"
-                ></textarea>
-              </div>
-              <button
-                type="submit"
-                class="btn btn-warning"
-                :disabled="isSubmittingAction || !escalateForm.reason.trim()"
-                data-testid="escalate-request-button"
-              >
-                <i class="bi bi-arrow-up-circle me-1" aria-hidden="true"></i>
-                Escalate
-              </button>
-            </form>
-          </div>
-
-          <!-- Active / ESCALATED: Management Decision -->
-          <div
-            v-if="canManagementDecision"
-            class="col-12 col-lg-6"
-            data-testid="management-decision-action-section"
-          >
-            <form
-              class="border rounded p-3 h-100 bg-light-subtle"
-              @submit.prevent="handleManagementDecision"
-            >
-              <h3 class="h6 fw-bold mb-2">Management Decision</h3>
-              <div class="mb-3">
-                <label for="managementDecisionInput" class="form-label small fw-medium">
-                  Decision Details <span class="text-danger">*</span>
-                </label>
-                <textarea
-                  id="managementDecisionInput"
-                  v-model="managementDecisionForm.decisionDetails"
-                  class="form-control"
-                  rows="2"
-                  placeholder="Record management guidance or determination..."
-                  required
-                  :disabled="isSubmittingAction"
-                  data-testid="management-decision-input"
-                ></textarea>
-              </div>
-              <div v-if="isEscalated" class="mb-3">
-                <label for="managementDecisionTargetStatus" class="form-label small fw-medium">
-                  Transition Status (Optional)
-                </label>
-                <select
-                  id="managementDecisionTargetStatus"
-                  v-model="managementDecisionForm.targetStatus"
-                  class="form-select form-select-sm"
-                  :disabled="isSubmittingAction"
-                  data-testid="management-decision-target-status-select"
-                >
-                  <option value="">Remain ESCALATED</option>
-                  <option value="EVALUATING">Return to EVALUATING</option>
-                  <option value="IN_PROGRESS">Resume IN_PROGRESS</option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                class="btn btn-outline-primary"
-                :disabled="isSubmittingAction || !managementDecisionForm.decisionDetails.trim()"
-                data-testid="management-decision-button"
-              >
-                <i class="bi bi-briefcase me-1" aria-hidden="true"></i>
-                Management Decision
-              </button>
-            </form>
-          </div>
-
-          <!-- Active / ESCALATED: Reassign Ownership -->
-          <div v-if="canReassign" class="col-12 col-lg-6" data-testid="reassign-action-section">
-            <form class="border rounded p-3 h-100 bg-light-subtle" @submit.prevent="handleReassign">
-              <h3 class="h6 fw-bold mb-2">Reassign Ownership</h3>
-              <div class="row g-2 mb-3">
-                <div class="col-12">
-                  <label for="reassignOwnerSelect" class="form-label small fw-medium">
-                    New Assignee <span class="text-danger">*</span>
-                  </label>
-                  <select
-                    id="reassignOwnerSelect"
-                    v-model="reassignForm.newOwnerPersonId"
-                    class="form-select"
-                    required
+              <!-- EVALUATING / ACCEPTED: Accept Responsibility -->
+              <div v-if="canAccept" class="col-12 col-md-6" data-testid="accept-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleAccept">
+                  <div class="small fw-bold mb-1">Accept Responsibility</div>
+                  <div class="mb-1">
+                    <textarea
+                      id="acceptNotesInput"
+                      v-model="acceptForm.notes"
+                      class="form-control form-control-sm"
+                      rows="2"
+                      placeholder="Optional acceptance notes..."
+                      :disabled="isSubmittingAction"
+                      data-testid="accept-notes-input"
+                    ></textarea>
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-success btn-sm"
                     :disabled="isSubmittingAction"
-                    data-testid="reassign-owner-select"
+                    data-testid="accept-request-button"
                   >
-                    <option value="">Select new active person...</option>
-                    <option
-                      v-for="person in activePersons"
-                      :key="person.id"
-                      :value="person.id"
+                    <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Accept
+                  </button>
+                </form>
+              </div>
+
+              <!-- EVALUATING: Reject Request -->
+              <div v-if="canReject" class="col-12 col-md-6" data-testid="reject-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleReject">
+                  <div class="small fw-bold mb-1">Reject Request</div>
+                  <div class="mb-1">
+                    <textarea
+                      id="rejectReasonInput"
+                      v-model="rejectForm.reason"
+                      class="form-control form-control-sm"
+                      rows="2"
+                      placeholder="Reason for rejecting..."
+                      required
+                      :disabled="isSubmittingAction"
+                      data-testid="reject-reason-input"
+                    ></textarea>
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-danger btn-sm"
+                    :disabled="isSubmittingAction || !rejectForm.reason.trim()"
+                    data-testid="reject-request-button"
+                  >
+                    <i class="bi bi-x-octagon me-1" aria-hidden="true"></i>Reject
+                  </button>
+                </form>
+              </div>
+
+              <!-- IN_PROGRESS: Complete Request -->
+              <div v-if="canComplete" class="col-12 col-md-6" data-testid="complete-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleComplete">
+                  <div class="small fw-bold mb-1">Complete Request</div>
+                  <div class="mb-1">
+                    <textarea
+                      id="completeResolutionInput"
+                      v-model="completeForm.resolutionDescription"
+                      class="form-control form-control-sm"
+                      rows="2"
+                      placeholder="Describe completed solution..."
+                      required
+                      :disabled="isSubmittingAction"
+                      data-testid="complete-resolution-input"
+                    ></textarea>
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-success btn-sm"
+                    :disabled="isSubmittingAction || !completeForm.resolutionDescription.trim()"
+                    data-testid="complete-request-button"
+                  >
+                    <i class="bi bi-check2-all me-1" aria-hidden="true"></i>Complete
+                  </button>
+                </form>
+              </div>
+
+              <!-- EVALUATING / IN_PROGRESS: Escalate Request -->
+              <div v-if="canEscalate" class="col-12 col-md-6" data-testid="escalate-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleEscalate">
+                  <div class="small fw-bold mb-1">Escalate Request</div>
+                  <div class="mb-1">
+                    <textarea
+                      id="escalateReasonInput"
+                      v-model="escalateForm.reason"
+                      class="form-control form-control-sm"
+                      rows="2"
+                      placeholder="Document blocker or need for management..."
+                      required
+                      :disabled="isSubmittingAction"
+                      data-testid="escalate-reason-input"
+                    ></textarea>
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-warning btn-sm"
+                    :disabled="isSubmittingAction || !escalateForm.reason.trim()"
+                    data-testid="escalate-request-button"
+                  >
+                    <i class="bi bi-arrow-up-circle me-1" aria-hidden="true"></i>Escalate
+                  </button>
+                </form>
+              </div>
+
+              <!-- Active / ESCALATED: Management Decision -->
+              <div
+                v-if="canManagementDecision"
+                class="col-12 col-md-6"
+                data-testid="management-decision-action-section"
+              >
+                <form
+                  class="border rounded p-2 h-100 bg-body-tertiary"
+                  @submit.prevent="handleManagementDecision"
+                >
+                  <div class="small fw-bold mb-1">Management Decision</div>
+                  <div class="mb-1">
+                    <textarea
+                      id="managementDecisionInput"
+                      v-model="managementDecisionForm.decisionDetails"
+                      class="form-control form-control-sm"
+                      rows="2"
+                      placeholder="Determination or guidance..."
+                      required
+                      :disabled="isSubmittingAction"
+                      data-testid="management-decision-input"
+                    ></textarea>
+                  </div>
+                  <div v-if="isEscalated" class="mb-1">
+                    <select
+                      id="managementDecisionTargetStatus"
+                      v-model="managementDecisionForm.targetStatus"
+                      class="form-select form-select-sm"
+                      :disabled="isSubmittingAction"
+                      data-testid="management-decision-target-status-select"
                     >
-                      {{ person.fullName }} ({{ person.email }})
-                    </option>
-                  </select>
-                </div>
-                <div v-if="isEscalated" class="col-12">
-                  <label for="reassignTargetStatus" class="form-label small fw-medium">
-                    Target Status from ESCALATED
-                  </label>
-                  <select
-                    id="reassignTargetStatus"
-                    v-model="reassignForm.targetStatusForEscalated"
-                    class="form-select form-select-sm"
-                    :disabled="isSubmittingAction"
-                    data-testid="reassign-target-status-select"
+                      <option value="">Remain ESCALATED</option>
+                      <option value="EVALUATING">Return to EVALUATING</option>
+                      <option value="IN_PROGRESS">Resume IN_PROGRESS</option>
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-outline-primary btn-sm"
+                    :disabled="isSubmittingAction || !managementDecisionForm.decisionDetails.trim()"
+                    data-testid="management-decision-button"
                   >
-                    <option value="EVALUATING">EVALUATING</option>
-                    <option value="IN_PROGRESS">IN_PROGRESS</option>
-                  </select>
-                </div>
-                <div class="col-12">
-                  <label for="reassignNotesInput" class="form-label small fw-medium">
-                    Reassignment Notes
-                  </label>
-                  <input
-                    id="reassignNotesInput"
-                    v-model="reassignForm.notes"
-                    type="text"
-                    class="form-control"
-                    placeholder="Reason or handover context"
-                    :disabled="isSubmittingAction"
-                    data-testid="reassign-notes-input"
-                  />
-                </div>
+                    <i class="bi bi-briefcase me-1" aria-hidden="true"></i>Submit Decision
+                  </button>
+                </form>
               </div>
-              <button
-                type="submit"
-                class="btn btn-outline-secondary"
-                :disabled="isSubmittingAction || !reassignForm.newOwnerPersonId"
-                data-testid="reassign-request-button"
-              >
-                <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>
-                Reassign
-              </button>
-            </form>
+
+              <!-- Active / ESCALATED: Reassign Ownership -->
+              <div v-if="canReassign" class="col-12 col-md-6" data-testid="reassign-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleReassign">
+                  <div class="small fw-bold mb-1">Reassign Ownership</div>
+                  <div class="row g-1 mb-1">
+                    <div class="col-12">
+                      <select
+                        id="reassignOwnerSelect"
+                        v-model="reassignForm.newOwnerPersonId"
+                        class="form-select form-select-sm"
+                        required
+                        :disabled="isSubmittingAction"
+                        data-testid="reassign-owner-select"
+                      >
+                        <option value="">Select new assignee...</option>
+                        <option
+                          v-for="person in activePersons"
+                          :key="person.id"
+                          :value="person.id"
+                        >
+                          {{ person.fullName }} ({{ person.email }})
+                        </option>
+                      </select>
+                    </div>
+                    <div v-if="isEscalated" class="col-12">
+                      <select
+                        id="reassignTargetStatus"
+                        v-model="reassignForm.targetStatusForEscalated"
+                        class="form-select form-select-sm"
+                        :disabled="isSubmittingAction"
+                        data-testid="reassign-target-status-select"
+                      >
+                        <option value="EVALUATING">Target: EVALUATING</option>
+                        <option value="IN_PROGRESS">Target: IN_PROGRESS</option>
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <input
+                        id="reassignNotesInput"
+                        v-model="reassignForm.notes"
+                        type="text"
+                        class="form-control form-control-sm"
+                        placeholder="Reassignment notes..."
+                        :disabled="isSubmittingAction"
+                        data-testid="reassign-notes-input"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="isSubmittingAction || !reassignForm.newOwnerPersonId"
+                    data-testid="reassign-request-button"
+                  >
+                    <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Reassign
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- State History Timeline Card Below Request Details -->
-    <div class="card shadow-sm border-0" data-testid="request-history-card">
-      <div class="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">
-          <i class="bi bi-clock-history me-2 text-primary" aria-hidden="true"></i>
-          State History Timeline
-        </span>
-        <span class="badge text-bg-secondary" data-testid="request-history-count">
-          {{ stateHistory.length }}
-        </span>
-      </div>
+      <!-- Properties & History Column (Right) -->
+      <div class="col-12 col-lg-4">
+        <!-- Properties Card -->
+        <div class="card shadow-none border mb-2">
+          <div class="card-header py-1 px-2 bg-body-tertiary fw-semibold small">
+            <i class="bi bi-info-circle me-1 text-primary" aria-hidden="true"></i>
+            Properties
+          </div>
+          <div class="card-body p-2">
+            <dl class="row mb-0 g-1 small" style="font-size: 12px">
+              <dt class="col-4 text-body-secondary fw-normal">Customer:</dt>
+              <dd class="col-8 fw-semibold mb-1" data-testid="request-detail-customer">
+                {{ resolveCustomerDisplay(request) }}
+              </dd>
 
-      <div class="card-body p-4">
-        <div v-if="isHistoryLoading" class="text-center py-4 text-body-secondary">
-          <span
-            class="spinner-border spinner-border-sm me-2"
-            role="status"
-            aria-hidden="true"
-          ></span>
-          Loading state history timeline...
+              <dt class="col-4 text-body-secondary fw-normal">Product:</dt>
+              <dd class="col-8 fw-semibold mb-1" data-testid="request-detail-product">
+                {{ resolveProductDisplay(request) }}
+              </dd>
+
+              <dt class="col-4 text-body-secondary fw-normal">Assignee:</dt>
+              <dd class="col-8 fw-semibold mb-1" data-testid="request-detail-assignee">
+                <i class="bi bi-person me-1 text-secondary" aria-hidden="true"></i>
+                {{ resolveAssigneeDisplay(request) }}
+              </dd>
+
+              <dt class="col-4 text-body-secondary fw-normal">Status:</dt>
+              <dd class="col-8 mb-1">
+                <span class="badge" style="font-size: 10px" :class="statusBadgeClass(request.status)">
+                  {{ request.status }}
+                </span>
+              </dd>
+
+              <dt class="col-4 text-body-secondary fw-normal">Created:</dt>
+              <dd class="col-8 mb-1 text-body-secondary" style="font-size: 11px" data-testid="request-detail-created-at">
+                {{ formatTimestamp(request.createdAt) }}
+              </dd>
+
+              <dt class="col-4 text-body-secondary fw-normal">Updated:</dt>
+              <dd class="col-8 mb-0 text-body-secondary" style="font-size: 11px" data-testid="request-detail-updated-at">
+                {{ formatTimestamp(request.updatedAt) }}
+              </dd>
+            </dl>
+          </div>
         </div>
 
-        <div
-          v-else-if="stateHistory.length === 0"
-          class="text-center py-4 text-body-secondary"
-          data-testid="empty-history-message"
-        >
-          No state transitions recorded for this request yet.
-        </div>
+        <!-- State History Timeline Card -->
+        <div class="card card-table shadow-none border mb-2" data-testid="request-history-card">
+          <div class="card-header py-1 px-2 bg-body-tertiary d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small">
+              <i class="bi bi-clock-history me-1 text-primary" aria-hidden="true"></i>
+              State History
+            </span>
+            <span class="badge text-bg-secondary" style="font-size: 11px" data-testid="request-history-count">
+              {{ stateHistory.length }}
+            </span>
+          </div>
 
-        <ul
-          v-else
-          class="list-group list-group-flush"
-          data-testid="request-history-timeline"
-        >
-          <li
-            v-for="entry in stateHistory"
-            :key="entry.id"
-            class="list-group-item px-0 py-3"
-            data-testid="request-history-item"
-          >
-            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-              <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span
-                  v-if="entry.previousStatus"
-                  class="badge"
-                  :class="statusBadgeClass(entry.previousStatus)"
-                >
-                  {{ entry.previousStatus }}
-                </span>
-                <i
-                  v-if="entry.previousStatus"
-                  class="bi bi-arrow-right text-body-secondary small"
-                  aria-hidden="true"
-                ></i>
-                <span class="badge" :class="statusBadgeClass(entry.newStatus)">
-                  {{ entry.newStatus }}
-                </span>
-                <span class="small text-body-secondary">
-                  by
-                  <strong>{{ resolvePersonDisplay(entry.actorPersonId, entry.actorName) }}</strong>
-                </span>
-                <span
-                  v-if="entry.assignedOwnerPersonId"
-                  class="small text-body-secondary"
-                >
-                  (Owner:
-                  {{
-                    resolvePersonDisplay(
-                      entry.assignedOwnerPersonId,
-                      entry.assignedOwnerName,
-                    )
-                  }})
-                </span>
-              </div>
-
-              <span class="small text-body-secondary">
-                {{ formatTimestamp(entry.assignedAtUtc || entry.timestamp || entry.createdAt) }}
-              </span>
+          <div class="card-body p-0" style="max-height: 520px; overflow-y: auto">
+            <div v-if="isHistoryLoading" class="text-center py-3 text-body-secondary small">
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              Loading timeline...
             </div>
 
             <div
-              v-if="entry.notes"
-              class="mt-2 small text-body-secondary"
-              style="white-space: pre-wrap"
+              v-else-if="stateHistory.length === 0"
+              class="text-center py-3 text-body-secondary small"
+              data-testid="empty-history-message"
             >
-              {{ entry.notes }}
+              No state transitions recorded yet.
             </div>
-          </li>
-        </ul>
+
+            <ul
+              v-else
+              class="list-group list-group-flush"
+              data-testid="request-history-timeline"
+            >
+              <li
+                v-for="entry in stateHistory"
+                :key="entry.id"
+                class="list-group-item px-2 py-1.5"
+                data-testid="request-history-item"
+              >
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-1">
+                  <div class="d-flex align-items-center gap-1 flex-wrap">
+                    <span
+                      v-if="entry.previousStatus"
+                      class="badge"
+                      style="font-size: 10px; padding: 2px 4px"
+                      :class="statusBadgeClass(entry.previousStatus)"
+                    >
+                      {{ entry.previousStatus }}
+                    </span>
+                    <i
+                      v-if="entry.previousStatus"
+                      class="bi bi-arrow-right text-body-secondary"
+                      style="font-size: 10px"
+                      aria-hidden="true"
+                    ></i>
+                    <span class="badge" style="font-size: 10px; padding: 2px 4px" :class="statusBadgeClass(entry.newStatus)">
+                      {{ entry.newStatus }}
+                    </span>
+                  </div>
+
+                  <span class="text-body-secondary font-monospace" style="font-size: 10.5px">
+                    {{ formatTimestamp(entry.assignedAtUtc || entry.timestamp || entry.createdAt) }}
+                  </span>
+                </div>
+
+                <div class="small text-body-secondary mt-1" style="font-size: 11.5px">
+                  by <strong>{{ resolvePersonDisplay(entry.actorPersonId, entry.actorName) }}</strong>
+                  <span v-if="entry.assignedOwnerPersonId">
+                    &rarr; {{ resolvePersonDisplay(entry.assignedOwnerPersonId, entry.assignedOwnerName) }}
+                  </span>
+                </div>
+
+                <div
+                  v-if="entry.notes"
+                  class="mt-1 small text-body-secondary font-monospace p-1 rounded bg-body-tertiary"
+                  style="white-space: pre-wrap; font-size: 11px"
+                >
+                  {{ entry.notes }}
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </section>

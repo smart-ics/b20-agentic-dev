@@ -267,21 +267,19 @@ onMounted(async () => {
 
 <template>
   <section data-screen-id="SCR-MGT-003" class="programmer-workload-view">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <h1 class="h3 mb-1">Programmer Workload Review</h1>
-        <p class="text-body-secondary mb-0">
-          Real-time active request distribution across programmers by lifecycle sub-state and overload indicators (SCR-MGT-003).
-        </p>
-      </div>
+    <!-- Header -->
+    <div class="op-screen-header">
       <div class="d-flex align-items-center gap-2">
-        <router-link to="/analytics/customer-portfolio" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-building me-1" aria-hidden="true"></i>
-          Customer Portfolio
+        <h1 class="h6 mb-0 fw-bold">Programmer Workload Review</h1>
+        <span class="badge text-bg-secondary font-monospace" style="font-size: 11px">SCR-MGT-003</span>
+        <span class="text-body-secondary small d-none d-md-inline">| Real-time active request distribution &amp; overload indicators</span>
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        <router-link to="/analytics/customer-portfolio" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 12px; height: 26px; line-height: 24px">
+          <i class="bi bi-building me-1" aria-hidden="true"></i>Portfolio
         </router-link>
-        <router-link to="/analytics/programmer-performance" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-graph-up me-1" aria-hidden="true"></i>
-          Programmer Performance
+        <router-link to="/analytics/programmer-performance" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 12px; height: 26px; line-height: 24px">
+          <i class="bi bi-graph-up me-1" aria-hidden="true"></i>Performance
         </router-link>
       </div>
     </div>
@@ -289,191 +287,142 @@ onMounted(async () => {
     <!-- Error Alert -->
     <div
       v-if="errorMessage"
-      class="alert alert-danger alert-dismissible fade show"
+      class="alert alert-danger alert-dismissible py-1 px-2 mb-2 small"
       role="alert"
       data-testid="workload-error-alert"
     >
-      <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+      <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
       {{ errorMessage }}
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
     </div>
 
-    <!-- Optional Person Filter Card -->
-    <div class="card shadow-sm mb-4">
-      <div class="card-body">
-        <form class="row g-3 align-items-end" @submit.prevent="loadWorkloads">
-          <div class="col-12 col-md-7 col-lg-6">
-            <label for="workloadPersonSelect" class="form-label fw-semibold">
-              Filter by Programmer / Person (Optional)
-            </label>
-            <select
-              id="workloadPersonSelect"
-              v-model="selectedPersonId"
-              class="form-select"
-              :disabled="isLoadingPersons || isLoadingWorkloads"
-              data-testid="workload-person-selector"
-              @change="handleFilterChange"
+    <!-- Toolbar -->
+    <div class="op-toolbar mb-2">
+      <form class="d-flex flex-wrap align-items-center gap-2 w-100" @submit.prevent="loadWorkloads">
+        <div class="d-flex align-items-center gap-1 flex-grow-1" style="max-width: 420px">
+          <label for="workloadPersonSelect" class="text-nowrap small text-body-secondary mb-0 fw-medium">
+            Programmer:
+          </label>
+          <select
+            id="workloadPersonSelect"
+            v-model="selectedPersonId"
+            class="form-select form-select-sm"
+            :disabled="isLoadingPersons || isLoadingWorkloads"
+            data-testid="workload-person-selector"
+            @change="handleFilterChange"
+          >
+            <option value="">All Active Programmers / Persons</option>
+            <option
+              v-for="person in activePersons"
+              :key="resolvePersonId(person)"
+              :value="resolvePersonId(person)"
             >
-              <option value="">All Active Programmers / Persons</option>
-              <option
-                v-for="person in activePersons"
-                :key="resolvePersonId(person)"
-                :value="resolvePersonId(person)"
-              >
-                {{ resolvePersonLabel(person) }}
-              </option>
-            </select>
-          </div>
-          <div class="col-12 col-md-5 col-lg-4 d-flex gap-2">
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="isLoadingWorkloads"
-              data-testid="load-workload-button"
-            >
-              <span
-                v-if="isLoadingWorkloads"
-                class="spinner-border spinner-border-sm me-1"
-                role="status"
-                aria-hidden="true"
-              ></span>
-              <i v-else class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
-              Refresh Workload
-            </button>
-            <button
-              v-if="selectedPersonId"
-              type="button"
-              class="btn btn-outline-secondary"
-              :disabled="isLoadingWorkloads"
-              data-testid="clear-workload-filter-button"
-              @click="handleClearFilter"
-            >
-              Show All
-            </button>
-          </div>
-        </form>
-      </div>
+              {{ resolvePersonLabel(person) }}
+            </option>
+          </select>
+        </div>
+
+        <div class="d-flex align-items-center gap-1 ms-auto">
+          <button
+            type="submit"
+            class="btn btn-primary btn-sm"
+            :disabled="isLoadingWorkloads"
+            data-testid="load-workload-button"
+          >
+            <span
+              v-if="isLoadingWorkloads"
+              class="spinner-border spinner-border-sm me-1"
+              role="status"
+              aria-hidden="true"
+            ></span>
+            <i v-else class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+            Refresh
+          </button>
+          <button
+            v-if="selectedPersonId"
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            :disabled="isLoadingWorkloads"
+            data-testid="clear-workload-filter-button"
+            @click="handleClearFilter"
+          >
+            Show All
+          </button>
+        </div>
+      </form>
     </div>
 
-    <!-- Summary Metric Cards -->
-    <div class="row g-3 mb-4">
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-body-secondary small text-uppercase fw-semibold">
-              Programmers Listed
-            </div>
-            <div class="display-6 fw-bold mt-1" data-testid="summary-programmers-count">
-              {{ workloads.length }}
-            </div>
-            <div class="small text-body-secondary mt-1">
-              Active organizational persons evaluated
-            </div>
-          </div>
-        </div>
+    <!-- Summary Metric Ribbon -->
+    <div class="op-metric-ribbon mb-2">
+      <div class="op-stat-item">
+        <span class="op-stat-label">Programmers</span>
+        <span class="op-stat-val text-body-emphasis" data-testid="summary-programmers-count">
+          {{ workloads.length }}
+        </span>
       </div>
-
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card shadow-sm h-100 border-primary">
-          <div class="card-body">
-            <div class="text-body-secondary small text-uppercase fw-semibold">
-              Total Active Requests
-            </div>
-            <div
-              class="display-6 fw-bold text-primary mt-1"
-              data-testid="summary-total-active-requests"
-            >
-              {{ totalActiveRequestsAcrossTeam }}
-            </div>
-            <div class="small text-body-secondary mt-1">
-              Open requests across displayed programmers
-            </div>
-          </div>
-        </div>
+      <div class="op-stat-item">
+        <span class="op-stat-label">Active Requests</span>
+        <span class="op-stat-val text-primary" data-testid="summary-total-active-requests">
+          {{ totalActiveRequestsAcrossTeam }}
+        </span>
       </div>
-
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card shadow-sm h-100 border-danger">
-          <div class="card-body">
-            <div class="text-body-secondary small text-uppercase fw-semibold">
-              Escalated Blockers
-            </div>
-            <div
-              class="display-6 fw-bold text-danger mt-1"
-              data-testid="summary-total-escalated"
-            >
-              {{ totalEscalatedAcrossTeam }}
-            </div>
-            <div class="small text-body-secondary mt-1">
-              Requests currently in ESCALATED status
-            </div>
-          </div>
-        </div>
+      <div class="op-stat-item">
+        <span class="op-stat-label">Escalated Blockers</span>
+        <span class="op-stat-val text-danger" data-testid="summary-total-escalated">
+          {{ totalEscalatedAcrossTeam }}
+        </span>
       </div>
-
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card shadow-sm h-100 border-warning">
-          <div class="card-body">
-            <div class="text-body-secondary small text-uppercase fw-semibold">
-              Overloaded Programmers
-            </div>
-            <div
-              class="display-6 fw-bold text-warning-emphasis mt-1"
-              data-testid="summary-overloaded-count"
-            >
-              {{ overloadedProgrammersCount }}
-            </div>
-            <div class="small text-body-secondary mt-1">
-              5+ active requests or 1+ escalated blocker
-            </div>
-          </div>
-        </div>
+      <div class="op-stat-item">
+        <span class="op-stat-label">Overloaded</span>
+        <span class="op-stat-val text-warning-emphasis" data-testid="summary-overloaded-count">
+          {{ overloadedProgrammersCount }}
+        </span>
       </div>
     </div>
 
     <!-- Loading Indicator -->
-    <div v-if="isLoadingWorkloads" class="text-center py-5" data-testid="workload-loading">
-      <div class="spinner-border text-primary" role="status">
+    <div v-if="isLoadingWorkloads" class="text-center py-4" data-testid="workload-loading">
+      <div class="spinner-border spinner-border-sm text-primary" role="status">
         <span class="visually-hidden">Loading programmer active workload...</span>
       </div>
-      <p class="text-body-secondary mt-2 mb-0">Loading real-time programmer workload...</p>
+      <span class="text-body-secondary small ms-2">Loading real-time programmer workload...</span>
     </div>
 
     <!-- Programmer Workload Breakdown Table -->
-    <div v-else class="card shadow-sm mb-4">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">
-          <i class="bi bi-bar-chart-steps me-2 text-primary" aria-hidden="true"></i>
+    <div v-else class="card card-table shadow-none border mb-2">
+      <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center bg-body-tertiary">
+        <span class="fw-semibold small">
+          <i class="bi bi-bar-chart-steps me-1 text-primary" aria-hidden="true"></i>
           Active Workload by Programmer &amp; Lifecycle Sub-State
-        </h2>
-        <span class="badge text-bg-primary">{{ workloads.length }} programmers</span>
+        </span>
+        <span class="badge text-bg-secondary" style="font-size: 11px">{{ workloads.length }} programmers</span>
       </div>
       <div class="card-body p-0">
-        <div v-if="workloads.length === 0" class="p-4 text-center text-body-secondary">
+        <div v-if="workloads.length === 0" class="p-3 text-center text-body-secondary small">
           No programmer workload records found.
         </div>
         <div v-else class="table-responsive">
           <table
-            class="table table-hover align-middle mb-0"
+            class="table table-hover align-middle mb-0 text-nowrap"
             data-testid="programmer-workload-table"
           >
             <thead class="table-light">
               <tr>
                 <th scope="col">Programmer</th>
-                <th scope="col" class="text-center">CAPTURED</th>
-                <th scope="col" class="text-center">EVALUATING</th>
-                <th scope="col" class="text-center">ACCEPTED</th>
-                <th scope="col" class="text-center">IN_PROGRESS</th>
-                <th scope="col" class="text-center">ESCALATED</th>
-                <th scope="col" class="text-center">Total Active</th>
-                <th scope="col" class="text-center">Stalled (72h+)</th>
-                <th scope="col" class="text-center">Capacity Status</th>
-                <th scope="col" class="text-end">Active Queue</th>
+                <th scope="col" class="text-center">Captured</th>
+                <th scope="col" class="text-center">Evaluating</th>
+                <th scope="col" class="text-center">Accepted</th>
+                <th scope="col" class="text-center">In Prog</th>
+                <th scope="col" class="text-center">Escalated</th>
+                <th scope="col" class="text-center">Active</th>
+                <th scope="col" class="text-center">Stalled (&gt;72h)</th>
+                <th scope="col" class="text-center">Capacity</th>
+                <th scope="col" class="text-end">Queue</th>
               </tr>
             </thead>
             <tbody>
@@ -483,37 +432,39 @@ onMounted(async () => {
                 :class="{ 'table-active': expandedPersonId === item.personId }"
               >
                 <td>
-                  <div class="fw-semibold">{{ item.personName || item.fullName }}</div>
-                  <div v-if="item.email" class="small text-body-secondary">{{ item.email }}</div>
+                  <span class="fw-semibold">{{ item.personName || item.fullName }}</span>
+                  <span v-if="item.email" class="text-body-secondary small ms-1 font-monospace" style="font-size: 11px">&lt;{{ item.email }}&gt;</span>
                 </td>
                 <td class="text-center">
-                  <span class="badge text-bg-secondary">{{ item.capturedCount }}</span>
+                  <span class="badge text-bg-secondary" style="font-size: 11px">{{ item.capturedCount }}</span>
                 </td>
                 <td class="text-center">
-                  <span class="badge text-bg-info">{{ item.evaluatingCount }}</span>
+                  <span class="badge text-bg-info" style="font-size: 11px">{{ item.evaluatingCount }}</span>
                 </td>
                 <td class="text-center">
-                  <span class="badge text-bg-primary">{{ item.acceptedCount }}</span>
+                  <span class="badge text-bg-primary" style="font-size: 11px">{{ item.acceptedCount }}</span>
                 </td>
                 <td class="text-center">
-                  <span class="badge text-bg-primary">{{ item.inProgressCount }}</span>
+                  <span class="badge text-bg-primary" style="font-size: 11px">{{ item.inProgressCount }}</span>
                 </td>
                 <td class="text-center">
                   <span
                     class="badge"
-                    :class="item.escalatedCount > 0 ? 'text-bg-danger' : 'text-bg-light border'"
+                    style="font-size: 11px"
+                    :class="item.escalatedCount > 0 ? 'text-bg-danger' : 'text-bg-light border text-body-secondary'"
                   >
                     {{ item.escalatedCount }}
                   </span>
                 </td>
                 <td class="text-center">
-                  <span class="fw-bold fs-6">{{ item.totalActiveCount }}</span>
+                  <span class="fw-bold">{{ item.totalActiveCount }}</span>
                 </td>
                 <td class="text-center">
                   <span
                     class="badge"
+                    style="font-size: 11px"
                     :class="
-                      item.stalledRequestsCount > 0 ? 'text-bg-warning' : 'text-bg-light border'
+                      item.stalledRequestsCount > 0 ? 'text-bg-warning' : 'text-bg-light border text-body-secondary'
                     "
                   >
                     {{ item.stalledRequestsCount }}
@@ -522,6 +473,7 @@ onMounted(async () => {
                 <td class="text-center">
                   <span
                     class="badge"
+                    style="font-size: 10px; padding: 2px 6px"
                     :class="item.isOverloaded ? 'text-bg-danger' : 'text-bg-success'"
                     data-testid="workload-overload-badge"
                   >
@@ -531,7 +483,8 @@ onMounted(async () => {
                 <td class="text-end">
                   <button
                     type="button"
-                    class="btn btn-sm"
+                    class="btn btn-xs py-0 px-2"
+                    style="font-size: 11px; height: 24px; line-height: 22px"
                     :class="
                       expandedPersonId === item.personId
                         ? 'btn-primary'
@@ -560,33 +513,34 @@ onMounted(async () => {
     <!-- Selected / Expanded Programmer Active Request Queue Card -->
     <div
       v-if="selectedPersonWorkload"
-      class="card shadow-sm mb-4"
+      class="card card-table shadow-none border mb-2"
       data-testid="expanded-programmer-queue-card"
     >
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div>
-          <h3 class="h5 mb-0">
-            <i class="bi bi-person-lines-fill me-2 text-primary" aria-hidden="true"></i>
-            Active Request Queue: {{ selectedPersonWorkload.personName }}
-          </h3>
-        </div>
+      <div class="card-header py-1 px-2 d-flex flex-wrap justify-content-between align-items-center gap-2 bg-body-tertiary">
         <div class="d-flex align-items-center gap-2">
-          <span class="badge text-bg-primary">
-            {{ selectedPersonWorkload.activeRequests.length }} active requests
+          <span class="fw-semibold small">
+            <i class="bi bi-person-lines-fill me-1 text-primary" aria-hidden="true"></i>
+            Active Queue: <strong>{{ selectedPersonWorkload.personName }}</strong>
           </span>
+          <span class="badge text-bg-primary" style="font-size: 11px">
+            {{ selectedPersonWorkload.activeRequests.length }} requests
+          </span>
+        </div>
+        <div>
           <router-link
             :to="`/analytics/programmer-performance?personId=${encodeURIComponent(selectedPersonWorkload.personId)}`"
-            class="btn btn-outline-secondary btn-sm"
+            class="btn btn-outline-secondary btn-sm py-0 px-2"
+            style="font-size: 11px; height: 22px; line-height: 20px"
           >
             <i class="bi bi-graph-up me-1" aria-hidden="true"></i>
-            Historical Performance
+            Performance History
           </router-link>
         </div>
       </div>
       <div class="card-body p-0">
         <div
           v-if="selectedPersonWorkload.activeRequests.length === 0"
-          class="p-4 text-center text-body-secondary"
+          class="p-3 text-center text-body-secondary small"
         >
           {{ selectedPersonWorkload.personName }} currently has zero active requests assigned.
         </div>
@@ -597,14 +551,14 @@ onMounted(async () => {
           >
             <thead class="table-light">
               <tr>
-                <th scope="col">Request Title</th>
+                <th scope="col" style="min-width: 220px">Request Title</th>
                 <th scope="col">Customer</th>
-                <th scope="col">Type</th>
-                <th scope="col">Priority</th>
-                <th scope="col">Status</th>
+                <th scope="col" class="text-center">Type</th>
+                <th scope="col" class="text-center">Priority</th>
+                <th scope="col" class="text-center">Status</th>
                 <th scope="col">Escalation / Blocker Note</th>
-                <th scope="col">Last Updated</th>
-                <th scope="col" class="text-end">Action</th>
+                <th scope="col" class="text-nowrap">Updated</th>
+                <th scope="col" class="text-end text-nowrap">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -615,48 +569,50 @@ onMounted(async () => {
                 <td>
                   <router-link
                     :to="`/requests/${resolveRequestId(req)}`"
-                    class="fw-semibold text-decoration-none"
+                    class="fw-medium text-decoration-none text-truncate d-inline-block"
+                    style="max-width: 320px"
                   >
                     {{ req.title }}
                   </router-link>
                 </td>
-                <td>
+                <td class="text-nowrap">
                   <span v-if="req.customerName">
                     {{ req.customerName }}
-                    <span v-if="req.customerCode" class="text-body-secondary small">
+                    <span v-if="req.customerCode" class="text-body-secondary font-monospace" style="font-size: 11px">
                       ({{ req.customerCode }})
                     </span>
                   </span>
                   <span v-else class="text-body-secondary">—</span>
                 </td>
-                <td>
-                  <span class="badge text-bg-light border">{{ req.requestType }}</span>
+                <td class="text-center text-nowrap">
+                  <span class="badge text-bg-light border" style="font-size: 10px">{{ req.requestType }}</span>
                 </td>
-                <td>
-                  <span class="badge" :class="priorityBadgeClass(req.priority)">
+                <td class="text-center text-nowrap">
+                  <span class="badge" style="font-size: 10px" :class="priorityBadgeClass(req.priority)">
                     {{ req.priority }}
                   </span>
                 </td>
-                <td>
-                  <span class="badge" :class="statusBadgeClass(req.status)">
+                <td class="text-center text-nowrap">
+                  <span class="badge" style="font-size: 10px" :class="statusBadgeClass(req.status)">
                     {{ req.status }}
                   </span>
                 </td>
                 <td>
-                  <span v-if="req.escalationReason" class="text-danger small">
+                  <span v-if="req.escalationReason" class="text-danger small text-truncate d-inline-block" style="max-width: 260px">
                     {{ req.escalationReason }}
                   </span>
                   <span v-else class="text-body-secondary">—</span>
                 </td>
-                <td class="small text-body-secondary">
+                <td class="small text-body-secondary text-nowrap" style="font-size: 11.5px">
                   {{ formatDateTime(req.lastUpdatedAt) }}
                 </td>
-                <td class="text-end">
+                <td class="text-end text-nowrap">
                   <router-link
                     :to="`/requests/${resolveRequestId(req)}`"
-                    class="btn btn-outline-primary btn-sm"
+                    class="btn btn-outline-primary btn-sm py-0 px-2"
+                    style="font-size: 11px; height: 22px; line-height: 20px"
                   >
-                    Open / Reassign
+                    Open
                   </router-link>
                 </td>
               </tr>

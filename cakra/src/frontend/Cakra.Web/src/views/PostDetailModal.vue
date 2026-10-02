@@ -756,12 +756,12 @@ onBeforeUnmount(() => {
       @click.self="handleClose"
     >
       <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow-lg border-0">
+        <div class="modal-content shadow border">
           <!-- Modal Header -->
-          <div class="modal-header bg-body-tertiary">
-            <div class="d-flex flex-column gap-1 pe-2">
-              <div class="d-flex flex-wrap align-items-center gap-2">
-                <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace">
+          <div class="modal-header py-1 px-3 bg-body-tertiary">
+            <div class="d-flex flex-column gap-1 pe-2 flex-grow-1">
+              <div class="d-flex flex-wrap align-items-center gap-1">
+                <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace" style="font-size: 10px">
                   SCR-POST-001
                 </span>
 
@@ -769,6 +769,7 @@ onBeforeUnmount(() => {
                 <span
                   v-if="post?.isException"
                   class="badge bg-danger"
+                  style="font-size: 10px"
                   data-testid="post-exception-badge"
                 >
                   <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
@@ -779,6 +780,7 @@ onBeforeUnmount(() => {
                 <span
                   v-if="post?.status"
                   class="badge"
+                  style="font-size: 10px"
                   :class="isArchived ? 'bg-secondary' : 'bg-success-subtle text-success-emphasis'"
                 >
                   {{ post.status }}
@@ -788,6 +790,7 @@ onBeforeUnmount(() => {
                 <span
                   v-if="post?.visibility"
                   class="badge"
+                  style="font-size: 10px"
                   :class="isHidden ? 'bg-warning text-dark' : 'bg-light text-secondary border'"
                 >
                   {{ post.visibility }}
@@ -797,19 +800,20 @@ onBeforeUnmount(() => {
                 <span
                   v-if="post?.source"
                   class="badge bg-info-subtle text-info-emphasis"
+                  style="font-size: 10px"
                 >
                   {{ post.source === 'SYSTEM_GENERATED' ? 'System Event' : 'Operational Post' }}
                 </span>
               </div>
 
-              <h5 id="postDetailModalTitle" class="modal-title fw-bold mb-0 mt-1">
+              <h2 id="postDetailModalTitle" class="modal-title h6 fw-bold mb-0">
                 {{ post?.title || (isLoadingPost ? 'Loading post thread…' : 'Operational Post Detail') }}
-              </h5>
+              </h2>
             </div>
 
             <button
               type="button"
-              class="btn-close"
+              class="btn-close py-1 px-2"
               aria-label="Close modal"
               data-testid="post-modal-close-btn"
               @click="handleClose"
@@ -817,19 +821,19 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Modal Body -->
-          <div class="modal-body">
+          <div class="modal-body p-2 p-md-3">
             <!-- Alert Banners -->
             <div
               v-if="errorMessage"
-              class="alert alert-danger alert-dismissible fade show py-2"
+              class="alert alert-danger alert-dismissible fade show py-1 px-2 mb-2 small"
               role="alert"
               data-testid="post-modal-error"
             >
-              <i class="bi bi-exclamation-octagon-fill me-2" aria-hidden="true"></i>
+              <i class="bi bi-exclamation-octagon-fill me-1" aria-hidden="true"></i>
               {{ errorMessage }}
               <button
                 type="button"
-                class="btn-close py-2"
+                class="btn-close py-1 px-2"
                 aria-label="Dismiss error"
                 @click="errorMessage = null"
               ></button>
@@ -837,15 +841,15 @@ onBeforeUnmount(() => {
 
             <div
               v-if="actionFeedbackMessage"
-              class="alert alert-success alert-dismissible fade show py-2"
+              class="alert alert-success alert-dismissible fade show py-1 px-2 mb-2 small"
               role="status"
               data-testid="post-modal-feedback"
             >
-              <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
+              <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>
               {{ actionFeedbackMessage }}
               <button
                 type="button"
-                class="btn-close py-2"
+                class="btn-close py-1 px-2"
                 aria-label="Dismiss notice"
                 @click="actionFeedbackMessage = null"
               ></button>
@@ -854,10 +858,10 @@ onBeforeUnmount(() => {
             <!-- Loading State -->
             <div
               v-if="isLoadingPost && !post"
-              class="py-5 text-center text-body-secondary"
+              class="py-4 text-center text-body-secondary"
               data-testid="post-modal-loading"
             >
-              <div class="spinner-border text-primary mb-2" role="status">
+              <div class="spinner-border spinner-border-sm text-primary mb-1" role="status">
                 <span class="visually-hidden">Loading post details…</span>
               </div>
               <p class="mb-0 small">Loading post thread and discussion…</p>
@@ -866,24 +870,25 @@ onBeforeUnmount(() => {
             <!-- Post Thread Content -->
             <template v-else-if="post">
               <!-- Author, Timestamp & Context Metadata Bar -->
-              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
-                <div class="d-flex flex-wrap align-items-center gap-2 text-body-secondary small">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mb-2 pb-1 border-bottom">
+                <div class="d-flex flex-wrap align-items-center gap-2 text-body-secondary small" style="font-size: 11.5px">
                   <span class="fw-semibold text-body" data-testid="post-author">
                     <i class="bi bi-person-circle me-1" aria-hidden="true"></i>
                     {{ postAuthorDisplay }}
                   </span>
                   <span>•</span>
-                  <time :datetime="post.createdAt" data-testid="post-created-at">
+                  <time :datetime="post.createdAt" class="font-monospace" style="font-size: 11px" data-testid="post-created-at">
                     <i class="bi bi-clock me-1" aria-hidden="true"></i>
                     {{ formatDateTime(post.createdAt) }}
                   </time>
                 </div>
 
                 <!-- Context Badges (Customer & Product) -->
-                <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-1">
                   <span
                     v-if="post.customerName"
                     class="badge bg-primary-subtle text-primary-emphasis"
+                    style="font-size: 10px"
                     data-testid="post-customer-badge"
                   >
                     <i class="bi bi-building me-1" aria-hidden="true"></i>
@@ -892,6 +897,7 @@ onBeforeUnmount(() => {
                   <span
                     v-if="post.productName"
                     class="badge bg-secondary-subtle text-secondary-emphasis"
+                    style="font-size: 10px"
                     data-testid="post-product-badge"
                   >
                     <i class="bi bi-box-seam me-1" aria-hidden="true"></i>
@@ -902,11 +908,11 @@ onBeforeUnmount(() => {
 
               <!-- Post Body / Content -->
               <div
-                class="card bg-body-tertiary border-0 mb-3"
+                class="card bg-body-tertiary border mb-2 shadow-none"
                 data-testid="post-body-card"
               >
-                <div class="card-body">
-                  <p class="card-text mb-0" style="white-space: pre-wrap" data-testid="post-body">
+                <div class="card-body p-2">
+                  <p class="card-text mb-0 small" style="white-space: pre-wrap; font-size: 12.5px; line-height: 1.4" data-testid="post-body">
                     {{ postBody }}
                   </p>
                 </div>
@@ -915,19 +921,20 @@ onBeforeUnmount(() => {
               <!-- Contextual Reference Navigation (UC-FCOL-004: Navigate to Request / Work Package) -->
               <div
                 v-if="effectiveRequestId || effectiveWorkPackageId"
-                class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 mb-4 rounded border bg-light"
+                class="d-flex flex-wrap align-items-center justify-content-between gap-1 p-1 px-2 mb-2 rounded border bg-light-subtle small"
                 data-testid="post-reference-links"
               >
-                <div class="small text-body-secondary">
+                <div class="text-body-secondary" style="font-size: 11px">
                   <i class="bi bi-link-45deg me-1" aria-hidden="true"></i>
-                  <span class="fw-semibold text-body">Referenced Operational Context:</span>
+                  <span class="fw-semibold text-body">Referenced Context:</span>
                 </div>
 
-                <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-1">
                   <RouterLink
                     v-if="effectiveRequestId"
                     :to="`/requests/${effectiveRequestId}`"
-                    class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                    class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1 py-0 px-2"
+                    style="font-size: 11px; height: 22px; line-height: 20px"
                     data-testid="post-request-link"
                     @click="navigateToRequest(effectiveRequestId)"
                   >
@@ -938,7 +945,8 @@ onBeforeUnmount(() => {
                   <RouterLink
                     v-if="effectiveWorkPackageId"
                     :to="`/work-packages/${effectiveWorkPackageId}`"
-                    class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                    class="btn btn-xs btn-outline-secondary d-inline-flex align-items-center gap-1 py-0 px-2"
+                    style="font-size: 11px; height: 22px; line-height: 20px"
                     data-testid="post-work-package-link"
                     @click="navigateToWorkPackage(effectiveWorkPackageId)"
                   >
@@ -949,23 +957,24 @@ onBeforeUnmount(() => {
               </div>
 
               <!-- Operational Reactions Bar (UC-FCOL-002 / FEAT-FCOL-002) -->
-              <section class="mb-4" aria-label="Operational reactions">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                  <h6 class="fw-semibold mb-0 small text-uppercase text-body-secondary">
-                    Operational Reactions
-                    <span class="badge bg-secondary ms-1">{{ totalReactionCount }}</span>
-                  </h6>
-                  <span class="small text-body-secondary">
-                    Click a reaction to add or remove
+              <section class="mb-2" aria-label="Operational reactions">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <span class="fw-semibold small text-uppercase text-body-secondary" style="font-size: 10.5px">
+                    Reactions
+                    <span class="badge text-bg-secondary ms-1" style="font-size: 9px">{{ totalReactionCount }}</span>
+                  </span>
+                  <span class="text-body-secondary" style="font-size: 10px">
+                    Click to toggle
                   </span>
                 </div>
 
-                <div class="d-flex flex-wrap gap-2" data-testid="post-reaction-buttons">
+                <div class="d-flex flex-wrap gap-1" data-testid="post-reaction-buttons">
                   <button
                     v-for="option in REACTION_OPTIONS"
                     :key="option.type"
                     type="button"
-                    class="btn btn-sm d-inline-flex align-items-center gap-1"
+                    class="btn btn-xs d-inline-flex align-items-center gap-1 py-0 px-1.5"
+                    style="font-size: 11px; height: 24px; line-height: 22px"
                     :class="
                       hasUserReacted(option.type)
                         ? 'btn-primary'
@@ -980,7 +989,8 @@ onBeforeUnmount(() => {
                     <i class="bi" :class="option.iconClass" aria-hidden="true"></i>
                     <span>{{ option.label }}</span>
                     <span
-                      class="badge rounded-pill ms-1"
+                      class="badge rounded-pill ms-0.5"
+                      style="font-size: 9.5px; padding: 1px 4px"
                       :class="
                         hasUserReacted(option.type)
                           ? 'bg-light text-primary'
@@ -994,43 +1004,44 @@ onBeforeUnmount(() => {
                 </div>
               </section>
 
-              <hr class="my-3" />
+              <hr class="my-2" />
 
               <!-- Comments Section (UC-FCOL-001 / FEAT-FCOL-001) -->
               <section aria-label="Discussion comments">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                  <h6 class="fw-semibold mb-0">
-                    <i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <span class="fw-semibold small" style="font-size: 11.5px">
+                    <i class="bi bi-chat-left-text me-1 text-primary" aria-hidden="true"></i>
                     Discussion Comments
-                    <span class="badge bg-secondary ms-1" data-testid="post-comment-count">
+                    <span class="badge text-bg-secondary ms-1" style="font-size: 10px" data-testid="post-comment-count">
                       {{ comments.length }}
                     </span>
-                  </h6>
+                  </span>
 
                   <button
                     type="button"
-                    class="btn btn-sm btn-link text-decoration-none p-0"
+                    class="btn btn-link text-decoration-none p-0 small"
+                    style="font-size: 11px"
                     :disabled="isLoadingComments"
                     @click="refreshThreadState"
                   >
-                    <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
-                    Refresh
+                    <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh
                   </button>
                 </div>
 
                 <!-- Comments Loading Indicator -->
                 <div
                   v-if="isLoadingComments && comments.length === 0"
-                  class="text-center py-3 text-body-secondary small"
+                  class="text-center py-2 text-body-secondary small"
                 >
-                  <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                   Loading comments…
                 </div>
 
                 <!-- Empty Comments State -->
                 <div
                   v-else-if="comments.length === 0"
-                  class="text-center py-4 bg-body-tertiary rounded mb-3 text-body-secondary small"
+                  class="text-center py-2 bg-body-tertiary rounded mb-2 text-body-secondary small"
+                  style="font-size: 11.5px"
                   data-testid="post-comments-empty"
                 >
                   No comments yet. Start the operational discussion below.
@@ -1039,22 +1050,24 @@ onBeforeUnmount(() => {
                 <!-- Comments List -->
                 <ul
                   v-else
-                  class="list-group list-group-flush border rounded mb-3"
+                  class="list-group list-group-flush border rounded mb-2"
+                  style="max-height: 240px; overflow-y: auto"
                   data-testid="post-comments-list"
                 >
                   <li
                     v-for="comment in comments"
                     :key="comment.id"
-                    class="list-group-item py-3"
+                    class="list-group-item py-1.5 px-2"
                     data-testid="post-comment-item"
                   >
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                      <span class="fw-semibold small" data-testid="comment-author">
+                    <div class="d-flex justify-content-between align-items-center mb-0.5">
+                      <span class="fw-semibold small" style="font-size: 11.5px" data-testid="comment-author">
                         <i class="bi bi-person me-1 text-secondary" aria-hidden="true"></i>
                         {{ formatCommentAuthor(comment) }}
                       </span>
                       <time
-                        class="text-body-secondary small"
+                        class="text-body-secondary font-monospace"
+                        style="font-size: 10.5px"
                         :datetime="comment.createdAt"
                         data-testid="comment-created-at"
                       >
@@ -1063,7 +1076,7 @@ onBeforeUnmount(() => {
                     </div>
                     <p
                       class="mb-0 small text-body"
-                      style="white-space: pre-wrap"
+                      style="white-space: pre-wrap; font-size: 12px; line-height: 1.35"
                       data-testid="comment-content"
                     >
                       {{ comment.content }}
@@ -1073,35 +1086,34 @@ onBeforeUnmount(() => {
 
                 <!-- Comment Input Form -->
                 <form
-                  class="card bg-body-tertiary border-0"
+                  class="card bg-body-tertiary border rounded shadow-none mb-0"
                   data-testid="post-comment-form"
                   @submit.prevent="handleCommentSubmit"
                 >
-                  <div class="card-body">
-                    <label for="newPostCommentTextarea" class="form-label small fw-semibold">
-                      Add a Comment
-                    </label>
+                  <div class="card-body p-2">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                      <label for="newPostCommentTextarea" class="form-label mb-0 small fw-semibold" style="font-size: 11px">
+                        Add Comment
+                      </label>
+                      <span v-if="isArchived" class="text-muted small" style="font-size: 10.5px">
+                        Post archived (read-only).
+                      </span>
+                    </div>
                     <textarea
                       id="newPostCommentTextarea"
                       v-model="newCommentContent"
-                      class="form-control mb-2"
-                      rows="3"
-                      placeholder="Write a comment contributing context, findings, or next steps…"
+                      class="form-control form-control-sm mb-1"
+                      rows="2"
+                      placeholder="Write comment..."
                       :disabled="isSubmittingComment || isArchived"
                       required
                       data-testid="post-comment-textarea"
                     ></textarea>
-                    <div class="d-flex justify-content-between align-items-center">
-                      <span v-if="isArchived" class="text-muted small">
-                        This post is archived and no longer accepts new comments.
-                      </span>
-                      <span v-else class="text-body-secondary small">
-                        Comments are permanently recorded in the operational thread.
-                      </span>
-
+                    <div class="d-flex justify-content-end">
                       <button
                         type="submit"
-                        class="btn btn-primary btn-sm"
+                        class="btn btn-primary btn-sm py-0 px-2"
+                        style="font-size: 11px; height: 24px; line-height: 22px"
                         :disabled="isSubmittingComment || !newCommentContent.trim() || isArchived"
                         data-testid="post-comment-submit"
                       >
@@ -1122,12 +1134,13 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Modal Footer -->
-          <div class="modal-footer d-flex justify-content-between align-items-center">
-            <div class="d-flex flex-wrap gap-2">
+          <div class="modal-footer py-1 px-3 bg-body-tertiary d-flex justify-content-between align-items-center">
+            <div class="d-flex flex-wrap gap-1">
               <button
                 v-if="post"
                 type="button"
-                class="btn btn-sm btn-outline-secondary"
+                class="btn btn-sm btn-outline-secondary py-0 px-2"
+                style="font-size: 11px; height: 24px; line-height: 22px"
                 :disabled="isTogglingVisibility"
                 data-testid="post-visibility-toggle-btn"
                 @click="handleToggleVisibility"
@@ -1143,19 +1156,21 @@ onBeforeUnmount(() => {
               <button
                 v-if="post && !isArchived"
                 type="button"
-                class="btn btn-sm btn-outline-warning"
+                class="btn btn-sm btn-outline-warning py-0 px-2"
+                style="font-size: 11px; height: 24px; line-height: 22px"
                 :disabled="isArchiving"
                 data-testid="post-archive-btn"
                 @click="handleArchivePost"
               >
                 <i class="bi bi-archive me-1" aria-hidden="true"></i>
-                Archive Post
+                Archive
               </button>
             </div>
 
             <button
               type="button"
-              class="btn btn-secondary btn-sm"
+              class="btn btn-secondary btn-sm py-0 px-2"
+              style="font-size: 11px; height: 24px; line-height: 22px"
               data-testid="post-modal-footer-close-btn"
               @click="handleClose"
             >

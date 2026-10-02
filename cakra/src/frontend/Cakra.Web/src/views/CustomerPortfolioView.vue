@@ -285,13 +285,16 @@ onMounted(async () => {
 
 <template>
   <section data-screen-id="SCR-MGT-001" class="customer-portfolio-view">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <h1 class="h3 mb-1">Customer Progress Review</h1>
-        <p class="text-body-secondary mb-0">
-          Real-time operational request portfolio, open blockers, recent completions, and maintenance contract status per customer (SCR-MGT-001).
-        </p>
+    <!-- Compact Screen Header -->
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="op-screen-title">
+          <i class="bi bi-building text-primary" aria-hidden="true"></i>
+          Customer Portfolio Analytics
+        </h1>
+        <span class="badge text-bg-light border text-secondary font-monospace">SCR-MGT-001</span>
       </div>
+
       <div class="d-flex align-items-center gap-2">
         <button
           type="button"
@@ -316,240 +319,166 @@ onMounted(async () => {
     <!-- Error Alert -->
     <div
       v-if="errorMessage"
-      class="alert alert-danger alert-dismissible fade show"
+      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 py-1 px-2 mb-2"
       role="alert"
       data-testid="portfolio-error-alert"
     >
-      <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
-      {{ errorMessage }}
+      <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
+      <div>{{ errorMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
     </div>
 
-    <!-- Customer Selector Card -->
-    <div class="card shadow-sm mb-4">
-      <div class="card-body">
-        <form class="row g-3 align-items-end" @submit.prevent="loadCustomerPortfolio">
-          <div class="col-12 col-md-8 col-lg-6">
-            <label for="customerPortfolioSelect" class="form-label fw-semibold">
-              Select Customer
-            </label>
-            <select
-              id="customerPortfolioSelect"
-              v-model="selectedCustomerId"
-              class="form-select"
-              :disabled="isLoadingCustomers || isLoadingPortfolio"
-              data-testid="customer-selector"
-              @change="handleCustomerChange"
+    <!-- Compact Customer Selector Toolbar -->
+    <div class="op-toolbar">
+      <form class="d-flex flex-wrap align-items-center gap-2 w-100" @submit.prevent="loadCustomerPortfolio">
+        <div class="d-flex align-items-center gap-1">
+          <label for="customerPortfolioSelect" class="form-label mb-0 fs-11 text-nowrap">Select Customer:</label>
+          <select
+            id="customerPortfolioSelect"
+            v-model="selectedCustomerId"
+            class="form-select form-select-sm"
+            style="min-width: 180px; max-width: 280px;"
+            :disabled="isLoadingCustomers || isLoadingPortfolio"
+            data-testid="customer-selector"
+            @change="handleCustomerChange"
+          >
+            <option value="">-- Choose an active customer --</option>
+            <option
+              v-for="customer in activeCustomers"
+              :key="resolveCustomerId(customer)"
+              :value="resolveCustomerId(customer)"
             >
-              <option value="">-- Choose an active customer --</option>
-              <option
-                v-for="customer in activeCustomers"
-                :key="resolveCustomerId(customer)"
-                :value="resolveCustomerId(customer)"
-              >
-                {{ resolveCustomerLabel(customer) }}
-              </option>
-            </select>
-          </div>
-          <div class="col-12 col-md-4 col-lg-3 d-flex gap-2">
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="!selectedCustomerId || isLoadingPortfolio"
-              data-testid="load-portfolio-button"
+              {{ resolveCustomerLabel(customer) }}
+            </option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary btn-sm"
+          :disabled="!selectedCustomerId || isLoadingPortfolio"
+          data-testid="load-portfolio-button"
+        >
+          <span
+            v-if="isLoadingPortfolio"
+            class="spinner-border spinner-border-sm me-1"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          <i v-else class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+          Load
+        </button>
+
+        <!-- Customer Identity Quick Bar if loaded -->
+        <div v-if="portfolio" class="d-flex align-items-center gap-2 ms-auto" data-testid="customer-summary-card">
+          <div class="d-flex align-items-center gap-1.5">
+            <span class="fw-bold">{{ portfolio.customerName }}</span>
+            <span class="badge text-bg-light border font-monospace">{{ portfolio.customerCode }}</span>
+            <span
+              class="badge"
+              :class="portfolio.customerStatus === 'ACTIVE' ? 'text-bg-success' : 'text-bg-secondary'"
             >
-              <span
-                v-if="isLoadingPortfolio"
-                class="spinner-border spinner-border-sm me-1"
-                role="status"
-                aria-hidden="true"
-              ></span>
-              <i v-else class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
-              Load Portfolio
-            </button>
+              {{ portfolio.customerStatus }}
+            </span>
           </div>
-        </form>
-      </div>
+
+          <span
+            class="badge"
+            :class="portfolio.hasActiveMaintenanceContract ? 'text-bg-success' : 'text-bg-warning'"
+            data-testid="contract-status-badge"
+          >
+            <i
+              class="bi me-0.5"
+              :class="portfolio.hasActiveMaintenanceContract ? 'bi-shield-check' : 'bi-shield-exclamation'"
+              aria-hidden="true"
+            ></i>
+            {{ portfolio.hasActiveMaintenanceContract ? 'Contract: ACTIVE' : 'NO CONTRACT' }}
+          </span>
+
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm py-0 px-1.5 fs-11"
+            data-testid="edit-customer-button"
+            @click="openEditModal(portfolio.customerId)"
+          >
+            <i class="bi bi-pencil me-0.5" aria-hidden="true"></i>
+            Edit
+          </button>
+        </div>
+      </form>
     </div>
 
     <!-- Loading Indicator -->
-    <div v-if="isLoadingPortfolio" class="text-center py-5" data-testid="portfolio-loading">
-      <div class="spinner-border text-primary" role="status">
+    <div v-if="isLoadingPortfolio" class="text-center py-4" data-testid="portfolio-loading">
+      <div class="spinner-border spinner-border-sm text-primary" role="status">
         <span class="visually-hidden">Loading customer portfolio...</span>
       </div>
-      <p class="text-body-secondary mt-2 mb-0">Loading customer request portfolio...</p>
+      <p class="text-body-secondary small mt-1 mb-0">Loading customer request portfolio...</p>
     </div>
 
     <!-- Portfolio Content -->
     <template v-else-if="portfolio">
-      <!-- Customer Header & Contract Summary Card -->
-      <div class="card shadow-sm mb-4" data-testid="customer-summary-card">
-        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
-          <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
-              <h2 class="h4 mb-0">{{ portfolio.customerName }}</h2>
-              <span class="badge text-bg-light border font-monospace">
-                {{ portfolio.customerCode }}
-              </span>
-              <span
-                class="badge"
-                :class="
-                  portfolio.customerStatus === 'ACTIVE' ? 'text-bg-success' : 'text-bg-secondary'
-                "
-              >
-                {{ portfolio.customerStatus }}
-              </span>
-            </div>
-            <div class="text-body-secondary small">
-              Customer ID: <span class="font-monospace">{{ portfolio.customerId }}</span>
-            </div>
-          </div>
-
-          <div class="d-flex align-items-center gap-2">
-            <button
-              type="button"
-              class="btn btn-outline-primary btn-sm me-2"
-              data-testid="edit-customer-button"
-              @click="openEditModal(portfolio.customerId)"
-            >
-              <i class="bi bi-pencil me-1" aria-hidden="true"></i>
-              Edit Customer
-            </button>
-            <span class="text-body-secondary small fw-semibold">Maintenance Contract:</span>
-            <span
-              class="badge fs-6"
-              :class="
-                portfolio.hasActiveMaintenanceContract ? 'text-bg-success' : 'text-bg-warning'
-              "
-              data-testid="contract-status-badge"
-            >
-              <i
-                class="bi me-1"
-                :class="
-                  portfolio.hasActiveMaintenanceContract
-                    ? 'bi-shield-check'
-                    : 'bi-shield-exclamation'
-                "
-                aria-hidden="true"
-              ></i>
-              {{
-                portfolio.hasActiveMaintenanceContract
-                  ? `ACTIVE (${portfolio.contractStatus || 'ACTIVE'})`
-                  : `NO ACTIVE CONTRACT (${portfolio.contractStatus || 'NONE'})`
-              }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Summary Metric Cards -->
-      <div class="row g-3 mb-4">
-        <div class="col-12 col-sm-6 col-lg-3">
-          <div class="card shadow-sm h-100 border-primary">
-            <div class="card-body">
-              <div class="text-body-secondary small text-uppercase fw-semibold">
-                Active Requests
-              </div>
-              <div
-                class="display-6 fw-bold text-primary mt-1"
-                data-testid="metric-active-requests"
-              >
-                {{ portfolio.activeRequestsCount }}
-              </div>
-              <div class="small text-body-secondary mt-1">
-                Captured, Evaluating, Accepted, In Progress, Escalated
-              </div>
-            </div>
-          </div>
+      <!-- Compact Operational Metric Ribbon -->
+      <div class="op-metric-ribbon">
+        <div class="op-stat-item">
+          <span class="op-stat-label">Active Requests:</span>
+          <span class="op-stat-val text-primary" data-testid="metric-active-requests">
+            {{ portfolio.activeRequestsCount }}
+          </span>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-          <div class="card shadow-sm h-100 border-danger">
-            <div class="card-body">
-              <div class="text-body-secondary small text-uppercase fw-semibold">
-                Open Blockers (Escalated)
-              </div>
-              <div
-                class="display-6 fw-bold text-danger mt-1"
-                data-testid="metric-open-blockers"
-              >
-                {{ portfolio.openBlockersCount }}
-              </div>
-              <div class="small text-body-secondary mt-1">
-                Escalated requests requiring management attention
-              </div>
-            </div>
-          </div>
+        <div class="op-stat-item">
+          <span class="op-stat-label text-danger">Open Blockers:</span>
+          <span class="op-stat-val text-danger" data-testid="metric-open-blockers">
+            {{ portfolio.openBlockersCount }}
+          </span>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-          <div class="card shadow-sm h-100 border-success">
-            <div class="card-body">
-              <div class="text-body-secondary small text-uppercase fw-semibold">
-                Recent Completions
-              </div>
-              <div
-                class="display-6 fw-bold text-success mt-1"
-                data-testid="metric-recent-completions"
-              >
-                {{ portfolio.recentCompletionsCount }}
-              </div>
-              <div class="small text-body-secondary mt-1">
-                Completed requests delivered for customer
-              </div>
-            </div>
-          </div>
+        <div class="op-stat-item">
+          <span class="op-stat-label text-success">Completions:</span>
+          <span class="op-stat-val text-success" data-testid="metric-recent-completions">
+            {{ portfolio.recentCompletionsCount }}
+          </span>
         </div>
 
-        <div class="col-12 col-sm-6 col-lg-3">
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
-              <div class="text-body-secondary small text-uppercase fw-semibold">
-                Total Recorded Requests
-              </div>
-              <div class="display-6 fw-bold mt-1" data-testid="metric-total-requests">
-                {{ portfolio.totalRequestsCount }}
-              </div>
-              <div class="small text-body-secondary mt-1">
-                Rejected: {{ portfolio.rejectedRequestsCount }}
-              </div>
-            </div>
-          </div>
+        <div class="op-stat-item">
+          <span class="op-stat-label">Total Requests:</span>
+          <span class="op-stat-val" data-testid="metric-total-requests">
+            {{ portfolio.totalRequestsCount }}
+          </span>
+          <span class="text-muted fs-11 ms-1">(Rejected: {{ portfolio.rejectedRequestsCount }})</span>
         </div>
       </div>
 
       <!-- Open Blockers (ESCALATED) Table -->
-      <div class="card shadow-sm mb-4 border-danger">
-        <div class="card-header bg-danger-subtle text-danger-emphasis d-flex justify-content-between align-items-center">
-          <h3 class="h5 mb-0">
-            <i class="bi bi-exclamation-octagon-fill me-2" aria-hidden="true"></i>
+      <div v-if="openBlockersList.length > 0" class="card border border-danger mb-2">
+        <div class="card-header bg-danger-subtle text-danger-emphasis py-1 px-3 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">
+            <i class="bi bi-exclamation-octagon-fill me-1" aria-hidden="true"></i>
             Open Blockers (ESCALATED)
-          </h3>
+          </span>
           <span class="badge text-bg-danger">{{ openBlockersList.length }}</span>
         </div>
         <div class="card-body p-0">
-          <div v-if="openBlockersList.length === 0" class="p-4 text-center text-body-secondary">
-            No open blockers (`ESCALATED`) for this customer.
-          </div>
-          <div v-else class="table-responsive">
+          <div class="table-responsive">
             <table
               class="table table-hover align-middle mb-0"
               data-testid="open-blockers-table"
             >
-              <thead class="table-light">
+              <thead>
                 <tr>
                   <th scope="col">Request</th>
-                  <th scope="col">Priority</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Assigned Owner</th>
+                  <th scope="col" style="width: 80px;">Priority</th>
+                  <th scope="col" style="width: 90px;">Status</th>
+                  <th scope="col" style="width: 140px;">Assigned Owner</th>
                   <th scope="col">Escalation Reason</th>
-                  <th scope="col">Last Updated</th>
-                  <th scope="col" class="text-end">Action</th>
+                  <th scope="col" style="width: 125px;">Last Updated</th>
+                  <th scope="col" style="width: 120px;" class="text-end">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -557,11 +486,11 @@ onMounted(async () => {
                   <td>
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="fw-semibold text-decoration-none"
+                      class="fw-semibold text-decoration-none text-dark"
                     >
                       {{ item.title }}
                     </router-link>
-                    <div class="small text-body-secondary">{{ item.requestType }}</div>
+                    <span class="badge text-bg-light border ms-1 fs-11">{{ item.requestType }}</span>
                   </td>
                   <td>
                     <span class="badge" :class="priorityBadgeClass(item.priority)">
@@ -575,17 +504,17 @@ onMounted(async () => {
                   </td>
                   <td>{{ item.ownerName || 'Unassigned' }}</td>
                   <td>
-                    <span class="text-danger">{{ item.escalationReason || '—' }}</span>
+                    <span class="text-danger fw-medium">{{ item.escalationReason || '—' }}</span>
                   </td>
-                  <td class="small text-body-secondary">
+                  <td class="text-body-secondary fs-11">
                     {{ formatDateTime(item.lastUpdatedAt) }}
                   </td>
                   <td class="text-end">
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="btn btn-outline-danger btn-sm"
+                      class="btn btn-outline-danger btn-sm py-0 px-1.5 fs-11"
                     >
-                      Review / Reassign
+                      Review
                     </router-link>
                   </td>
                 </tr>
@@ -596,16 +525,16 @@ onMounted(async () => {
       </div>
 
       <!-- Active Requests Table -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h3 class="h5 mb-0">
-            <i class="bi bi-list-task me-2 text-primary" aria-hidden="true"></i>
+      <div class="card border mb-2">
+        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">
+            <i class="bi bi-list-task me-1 text-primary" aria-hidden="true"></i>
             Active Requests
-          </h3>
+          </span>
           <span class="badge text-bg-primary">{{ activeRequestsList.length }}</span>
         </div>
         <div class="card-body p-0">
-          <div v-if="activeRequestsList.length === 0" class="p-4 text-center text-body-secondary">
+          <div v-if="activeRequestsList.length === 0" class="p-3 text-center text-body-secondary small">
             No active requests for this customer.
           </div>
           <div v-else class="table-responsive">
@@ -613,16 +542,16 @@ onMounted(async () => {
               class="table table-hover align-middle mb-0"
               data-testid="active-requests-table"
             >
-              <thead class="table-light">
+              <thead>
                 <tr>
                   <th scope="col">Title</th>
-                  <th scope="col">Type</th>
-                  <th scope="col">Priority</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Assigned Owner</th>
-                  <th scope="col">Created</th>
-                  <th scope="col">Last Activity</th>
-                  <th scope="col" class="text-end">Action</th>
+                  <th scope="col" style="width: 80px;">Type</th>
+                  <th scope="col" style="width: 80px;">Priority</th>
+                  <th scope="col" style="width: 90px;">Status</th>
+                  <th scope="col" style="width: 140px;">Assigned Owner</th>
+                  <th scope="col" style="width: 120px;">Created</th>
+                  <th scope="col" style="width: 120px;">Last Activity</th>
+                  <th scope="col" style="width: 70px;" class="text-end">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -630,13 +559,14 @@ onMounted(async () => {
                   <td>
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="fw-semibold text-decoration-none"
+                      class="fw-semibold text-decoration-none text-dark text-truncate d-inline-block"
+                      style="max-width: 380px;"
                     >
                       {{ item.title }}
                     </router-link>
                   </td>
                   <td>
-                    <span class="badge text-bg-light border">{{ item.requestType }}</span>
+                    <span class="badge text-bg-light border fs-11">{{ item.requestType }}</span>
                   </td>
                   <td>
                     <span class="badge" :class="priorityBadgeClass(item.priority)">
@@ -649,16 +579,14 @@ onMounted(async () => {
                     </span>
                   </td>
                   <td>{{ item.ownerName || 'Unassigned' }}</td>
-                  <td class="small text-body-secondary">{{ formatDateTime(item.createdAt) }}</td>
-                  <td class="small text-body-secondary">
-                    {{ formatDateTime(item.lastUpdatedAt) }}
-                  </td>
+                  <td class="text-body-secondary fs-11">{{ formatDateTime(item.createdAt) }}</td>
+                  <td class="text-body-secondary fs-11">{{ formatDateTime(item.lastUpdatedAt) }}</td>
                   <td class="text-end">
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="btn btn-outline-primary btn-sm"
+                      class="btn btn-outline-primary btn-sm py-0 px-1.5 fs-11"
                     >
-                      View Details
+                      View
                     </router-link>
                   </td>
                 </tr>
@@ -669,18 +597,18 @@ onMounted(async () => {
       </div>
 
       <!-- Recent Completions (COMPLETED) Table -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h3 class="h5 mb-0">
-            <i class="bi bi-check2-circle me-2 text-success" aria-hidden="true"></i>
+      <div class="card border">
+        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">
+            <i class="bi bi-check2-circle me-1 text-success" aria-hidden="true"></i>
             Recent Completions (COMPLETED)
-          </h3>
+          </span>
           <span class="badge text-bg-success">{{ recentCompletionsList.length }}</span>
         </div>
         <div class="card-body p-0">
           <div
             v-if="recentCompletionsList.length === 0"
-            class="p-4 text-center text-body-secondary"
+            class="p-3 text-center text-body-secondary small"
           >
             No completed requests recorded for this customer yet.
           </div>
@@ -689,14 +617,14 @@ onMounted(async () => {
               class="table table-hover align-middle mb-0"
               data-testid="recent-completions-table"
             >
-              <thead class="table-light">
+              <thead>
                 <tr>
                   <th scope="col">Title</th>
-                  <th scope="col">Outcome</th>
-                  <th scope="col">Assigned Owner</th>
+                  <th scope="col" style="width: 100px;">Outcome</th>
+                  <th scope="col" style="width: 140px;">Assigned Owner</th>
                   <th scope="col">Resolution Summary</th>
-                  <th scope="col">Resolved At</th>
-                  <th scope="col" class="text-end">Action</th>
+                  <th scope="col" style="width: 125px;">Resolved At</th>
+                  <th scope="col" style="width: 70px;" class="text-end">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -704,11 +632,11 @@ onMounted(async () => {
                   <td>
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="fw-semibold text-decoration-none"
+                      class="fw-semibold text-decoration-none text-dark text-truncate d-inline-block"
+                      style="max-width: 320px;"
                     >
                       {{ item.title }}
                     </router-link>
-                    <div class="small text-body-secondary">{{ item.requestType }}</div>
                   </td>
                   <td>
                     <span class="badge text-bg-success">
@@ -716,16 +644,16 @@ onMounted(async () => {
                     </span>
                   </td>
                   <td>{{ item.ownerName || '—' }}</td>
-                  <td>{{ item.resolutionSummary || '—' }}</td>
-                  <td class="small text-body-secondary">
+                  <td class="text-truncate" style="max-width: 250px;">{{ item.resolutionSummary || '—' }}</td>
+                  <td class="text-body-secondary fs-11">
                     {{ formatDateTime(item.resolvedAt || item.lastUpdatedAt) }}
                   </td>
                   <td class="text-end">
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="btn btn-outline-secondary btn-sm"
+                      class="btn btn-outline-secondary btn-sm py-0 px-1.5 fs-11"
                     >
-                      View Details
+                      View
                     </router-link>
                   </td>
                 </tr>
@@ -737,9 +665,9 @@ onMounted(async () => {
     </template>
 
     <!-- Empty Prompt when no customer selected -->
-    <div v-else class="card shadow-sm">
-      <div class="card-body text-center py-5 text-body-secondary">
-        <i class="bi bi-building fs-2 d-block mb-2" aria-hidden="true"></i>
+    <div v-else class="card border">
+      <div class="card-body text-center py-4 text-body-secondary small">
+        <i class="bi bi-building fs-3 d-block mb-1" aria-hidden="true"></i>
         Select an active customer above to inspect their real-time request portfolio, open blockers, and recent completions.
       </div>
     </div>

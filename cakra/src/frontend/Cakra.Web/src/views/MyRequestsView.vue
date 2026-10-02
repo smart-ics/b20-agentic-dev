@@ -182,17 +182,18 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="container-fluid py-2" data-screen-id="SCR-REQ-004">
-    <!-- Screen Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <div class="d-flex align-items-center gap-2">
-          <h1 class="h3 mb-0 fw-bold">My Assigned Requests</h1>
-          <span class="badge text-bg-light border text-secondary">SCR-REQ-004</span>
-        </div>
-        <p class="text-body-secondary small mb-0 mt-1">
-          Review and manage operational requests currently assigned to your personal queue.
-        </p>
+  <section data-screen-id="SCR-REQ-004">
+    <!-- Compact Screen Header -->
+    <div class="op-screen-header">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="op-screen-title">
+          <i class="bi bi-person-workspace text-primary" aria-hidden="true"></i>
+          My Assigned Requests
+        </h1>
+        <span class="badge text-bg-light border text-secondary font-monospace">SCR-REQ-004</span>
+        <span class="badge text-bg-secondary ms-1" data-testid="my-requests-count">
+          {{ myRequests.length }}
+        </span>
       </div>
 
       <div class="d-flex align-items-center gap-2">
@@ -231,154 +232,149 @@ onMounted(async () => {
     <div
       v-if="errorMessage"
       role="alert"
-      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-4"
+      class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 py-1 px-2 mb-2"
       data-testid="my-requests-error-alert"
     >
       <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
       <div>{{ errorMessage }}</div>
       <button
         type="button"
-        class="btn-close"
+        class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
       ></button>
     </div>
 
-    <!-- My Assigned Requests Table Card -->
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">
-          <i class="bi bi-person-workspace me-2 text-primary" aria-hidden="true"></i>
-          Assigned Requests
-        </span>
-        <span class="badge text-bg-secondary" data-testid="my-requests-count">
-          {{ myRequests.length }}
-        </span>
-      </div>
+    <!-- High-Density My Assigned Requests Table Card -->
+    <div class="card border">
+      <div class="table-responsive">
+        <table
+          class="table table-hover align-middle mb-0"
+          data-testid="my-requests-table"
+        >
+          <thead>
+            <tr>
+              <th scope="col" style="width: 105px;">ID</th>
+              <th scope="col">Title</th>
+              <th scope="col" style="width: 150px;">Customer</th>
+              <th scope="col" style="width: 140px;">Product</th>
+              <th scope="col" style="width: 105px;">Status</th>
+              <th scope="col" style="width: 140px;">Assignee</th>
+              <th scope="col" style="width: 125px;">CreatedAt</th>
+              <th scope="col" style="width: 90px;" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="isLoading">
+              <td colspan="8" class="text-center py-4 text-body-secondary">
+                <span
+                  class="spinner-border spinner-border-sm me-2"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                Loading assigned requests...
+              </td>
+            </tr>
 
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table
-            class="table table-hover align-middle mb-0"
-            data-testid="my-requests-table"
-          >
-            <thead class="table-light">
-              <tr>
-                <th scope="col" class="ps-4">ID</th>
-                <th scope="col">Title</th>
-                <th scope="col">Customer</th>
-                <th scope="col">Product</th>
-                <th scope="col">Status</th>
-                <th scope="col">Assignee</th>
-                <th scope="col">CreatedAt</th>
-                <th scope="col" class="pe-4 text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="isLoading">
-                <td colspan="8" class="text-center py-5 text-body-secondary">
-                  <span
-                    class="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  Loading assigned requests...
-                </td>
-              </tr>
-
-              <tr v-else-if="myRequests.length === 0">
-                <td
-                  colspan="8"
-                  class="text-center py-5 text-body-secondary"
-                  data-testid="empty-my-requests-row"
-                >
-                  You currently have no assigned operational requests.
-                </td>
-              </tr>
-
-              <tr
-                v-for="req in myRequests"
-                v-else
-                :key="req.id"
-                :data-request-id="req.id"
-                style="cursor: pointer"
-                data-testid="my-request-row"
-                @click="navigateToDetail(req.id)"
+            <tr v-else-if="myRequests.length === 0">
+              <td
+                colspan="8"
+                class="text-center py-4 text-body-secondary"
+                data-testid="empty-my-requests-row"
               >
-                <td class="ps-4">
+                You currently have no assigned operational requests.
+              </td>
+            </tr>
+
+            <tr
+              v-for="req in myRequests"
+              v-else
+              :key="req.id"
+              :data-request-id="req.id"
+              style="cursor: pointer"
+              data-testid="my-request-row"
+              @click="navigateToDetail(req.id)"
+            >
+              <td>
+                <router-link
+                  :to="`/requests/${req.id}`"
+                  class="font-monospace text-decoration-none fw-semibold"
+                  style="font-size: 11.5px;"
+                  data-testid="my-request-id-link"
+                  @click.stop
+                >
+                  {{ req.id }}
+                </router-link>
+              </td>
+
+              <td>
+                <div class="d-flex align-items-center gap-1.5 flex-nowrap">
                   <router-link
                     :to="`/requests/${req.id}`"
-                    class="font-monospace small text-decoration-none"
-                    data-testid="my-request-id-link"
+                    class="fw-semibold text-decoration-none text-dark text-truncate"
+                    style="max-width: 360px;"
+                    data-testid="my-request-title-link"
+                    :title="req.title"
                     @click.stop
                   >
-                    {{ req.id }}
+                    {{ req.title }}
                   </router-link>
-                </td>
-
-                <td>
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <router-link
-                      :to="`/requests/${req.id}`"
-                      class="fw-semibold text-decoration-none text-body"
-                      data-testid="my-request-title-link"
-                      @click.stop
-                    >
-                      {{ req.title }}
-                    </router-link>
-                    <span
-                      v-if="req.priority"
-                      class="badge"
-                      :class="priorityBadgeClass(req.priority)"
-                    >
-                      {{ req.priority }}
-                    </span>
-                  </div>
-                </td>
-
-                <td>
-                  {{ resolveCustomerDisplay(req) }}
-                </td>
-
-                <td>
-                  {{ resolveProductDisplay(req) }}
-                </td>
-
-                <td>
                   <span
-                    class="badge"
-                    :class="statusBadgeClass(req.status)"
-                    data-testid="my-request-status-badge"
+                    v-if="req.priority"
+                    class="badge flex-shrink-0"
+                    :class="priorityBadgeClass(req.priority)"
                   >
-                    {{ req.status }}
+                    {{ req.priority }}
                   </span>
-                </td>
+                </div>
+              </td>
 
-                <td>
-                  <span>
-                    <i class="bi bi-person me-1 text-secondary" aria-hidden="true"></i>
-                    {{ resolveAssigneeDisplay(req) }}
-                  </span>
-                </td>
+              <td>
+                <span class="text-truncate d-inline-block" style="max-width: 145px;" :title="resolveCustomerDisplay(req)">
+                  {{ resolveCustomerDisplay(req) }}
+                </span>
+              </td>
 
-                <td class="text-body-secondary small">
-                  {{ formatTimestamp(req.createdAt) }}
-                </td>
+              <td>
+                <span class="text-truncate d-inline-block" style="max-width: 135px;" :title="resolveProductDisplay(req)">
+                  {{ resolveProductDisplay(req) }}
+                </span>
+              </td>
 
-                <td class="pe-4 text-end">
-                  <router-link
-                    :to="`/requests/${req.id}`"
-                    class="btn btn-outline-primary btn-sm"
-                    data-testid="my-request-detail-button"
-                    @click.stop
-                  >
-                    View Detail
-                  </router-link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              <td>
+                <span
+                  class="badge"
+                  :class="statusBadgeClass(req.status)"
+                  data-testid="my-request-status-badge"
+                >
+                  {{ req.status }}
+                </span>
+              </td>
+
+              <td>
+                <span class="text-truncate d-inline-block" style="max-width: 135px;">
+                  <i class="bi bi-person me-0.5 text-secondary" aria-hidden="true"></i>
+                  {{ resolveAssigneeDisplay(req) }}
+                </span>
+              </td>
+
+              <td class="text-body-secondary fs-11">
+                {{ formatTimestamp(req.createdAt) }}
+              </td>
+
+              <td class="text-end" @click.stop>
+                <router-link
+                  :to="`/requests/${req.id}`"
+                  class="btn btn-outline-primary btn-sm py-0 px-1.5 fs-11"
+                  data-testid="my-request-detail-button"
+                  @click.stop
+                >
+                  View
+                </router-link>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
