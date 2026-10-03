@@ -79,6 +79,7 @@ const form = reactive({
   productId: '',
   requestType: 'GENERAL',
   priority: 'NORMAL',
+  complexity: 1,
 })
 
 const isSubmitDisabled = computed(
@@ -161,6 +162,7 @@ async function handleSubmit(): Promise<void> {
       productId: form.productId.trim() || null,
       requestType: form.requestType || 'GENERAL',
       priority: form.priority || 'NORMAL',
+      complexity: Number(form.complexity) || 1,
     })
 
     const createdId = response.data.id ?? response.data.requestId
@@ -290,7 +292,7 @@ onMounted(async () => {
             </div>
 
             <!-- Customer Select -->
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
               <label for="requestCustomer" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Customer (Optional)
               </label>
@@ -314,7 +316,7 @@ onMounted(async () => {
             </div>
 
             <!-- Product Select -->
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
               <label for="requestProduct" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Product (Optional)
               </label>
@@ -334,6 +336,27 @@ onMounted(async () => {
                 >
                   {{ resolveProductLabel(product) }}
                 </option>
+              </select>
+            </div>
+
+            <!-- Complexity Select -->
+            <div class="col-12 col-md-4">
+              <label for="requestComplexity" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Complexity
+              </label>
+              <select
+                id="requestComplexity"
+                v-model.number="form.complexity"
+                name="complexity"
+                class="form-select form-select-sm"
+                :disabled="isSubmitting"
+                data-testid="request-complexity-select"
+              >
+                <option :value="1">1 (Very Low)</option>
+                <option :value="2">2 (Low)</option>
+                <option :value="3">3 (Medium)</option>
+                <option :value="4">4 (High)</option>
+                <option :value="5">5 (Very High)</option>
               </select>
             </div>
 

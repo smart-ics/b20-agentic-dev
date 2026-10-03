@@ -148,6 +148,7 @@ public sealed class RequestsController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RecordRequest(
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RecordRequestBody? request = null,
         CancellationToken cancellationToken = default)
@@ -160,7 +161,8 @@ public sealed class RequestsController : ApiControllerBase
             RequestType: request?.ResolvedRequestType ?? "GENERAL",
             Priority: request?.ResolvedPriority ?? "NORMAL",
             ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId),
-            WorkPackageId: FirstNonEmptyGuid(request?.WorkPackageId));
+            WorkPackageId: FirstNonEmptyGuid(request?.WorkPackageId),
+            Complexity: request?.Complexity);
 
         try
         {
@@ -168,12 +170,21 @@ public sealed class RequestsController : ApiControllerBase
             var enriched = await _requestQueryService.GetRequestByIdAsync(created.Id, cancellationToken) ?? created;
 
             _logger.LogInformation(
-                "Recorded request '{RequestId}' ({Title}) in status '{Status}'.",
+                "Recorded request '{RequestId}' ({Title}) in status '{Status}' with complexity {Complexity}.",
                 enriched.Id,
                 enriched.Title,
-                enriched.Status);
+                enriched.Status,
+                enriched.Complexity);
 
             return CreatedAtAction(nameof(GetRequestById), new { id = enriched.Id }, enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
@@ -229,6 +240,7 @@ public sealed class RequestsController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> EvaluateRequest(
         Guid id,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] EvaluateRequestBody? request = null,
@@ -237,7 +249,8 @@ public sealed class RequestsController : ApiControllerBase
         var command = new EvaluateRequestCommand(
             RequestId: id,
             EvaluationNotes: request?.ResolvedEvaluationNotes ?? string.Empty,
-            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
+            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId),
+            Complexity: request?.Complexity);
 
         try
         {
@@ -250,6 +263,76 @@ public sealed class RequestsController : ApiControllerBase
                 enriched.Status);
 
             return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Updates the complexity rating (1 to 5) of an operational request
+    /// (<c>RequestService.UpdateRequestComplexity</c>; Architecture §4 TD-004, TD-005).
+    /// </summary>
+    [HttpPatch("{id:guid}/complexity")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateRequestComplexity(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] UpdateRequestComplexityBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Request ID is required.");
+        }
+
+        if (request is null)
+        {
+            return CreateBadRequestProblem("Request body cannot be null.");
+        }
+
+        if (request.Complexity < 1 || request.Complexity > 5)
+        {
+            return CreateBadRequestProblem("Complexity must be an integer between 1 and 5.");
+        }
+
+        var command = new UpdateRequestComplexityCommand(
+            RequestId: id,
+            Complexity: request.Complexity,
+            Reason: request.Reason,
+            ActorPersonId: FirstNonEmptyGuid(request.ActorPersonId));
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Updated complexity for request '{RequestId}' to {Complexity}.",
+                enriched.Id,
+                enriched.Complexity);
+
+            return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
@@ -506,6 +589,27 @@ public sealed class RequestsController : ApiControllerBase
         };
     }
 
+    private ObjectResult CreateForbiddenProblem(string detail)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status403Forbidden,
+            Title = "Forbidden",
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.3"
+        };
+        problem.Extensions["errorCode"] = "FORBIDDEN";
+        problem.Extensions["traceId"] = traceId;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status403Forbidden,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
     private static Guid? FirstNonEmptyGuid(params Guid?[] candidates)
     {
         foreach (var candidate in candidates)
@@ -546,6 +650,7 @@ public sealed class RequestsController : ApiControllerBase
         public string? Priority { get; set; }
         public Guid? WorkPackageId { get; set; }
         public Guid? ActorPersonId { get; set; }
+        public int? Complexity { get; set; }
 
         public string ResolvedRequestType =>
             FirstNonWhiteSpace(RequestType, Type) ?? "GENERAL";
@@ -579,9 +684,20 @@ public sealed class RequestsController : ApiControllerBase
         public string? Notes { get; set; }
         public string? Evaluation { get; set; }
         public Guid? ActorPersonId { get; set; }
+        public int? Complexity { get; set; }
 
         public string ResolvedEvaluationNotes =>
             FirstNonWhiteSpace(EvaluationNotes, Notes, Evaluation) ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Request payload for <c>PATCH /api/v1/requests/{id}/complexity</c> (<c>UpdateRequestComplexity</c>).
+    /// </summary>
+    public sealed class UpdateRequestComplexityBody
+    {
+        public int Complexity { get; set; }
+        public string? Reason { get; set; }
+        public Guid? ActorPersonId { get; set; }
     }
 
     /// <summary>

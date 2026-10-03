@@ -38,24 +38,26 @@ The Request Owner arrives at a clear operational determination regarding whether
 
 ## Capability
 
-The system provides an evaluation workspace within `SCR-REQ-003: Request Detail` that presents core demand attributes, context links (Customer, Product, Work Package), and supporting evidence, and surfaces actionable evaluation pathways (Accept Responsibility, Reject Request, Escalate Request, Request Management Decision). The owner can record clarification inquiries or preliminary findings prior to concluding the evaluation.
+The system provides an evaluation workspace within `SCR-REQ-003: Request Detail` that presents core demand attributes, context links (Customer, Product, Work Package), and supporting evidence, and surfaces actionable evaluation pathways (Accept Responsibility, Reject Request, Escalate Request, Request Management Decision). The owner can record clarification inquiries or preliminary findings prior to concluding the evaluation, and can record or adjust the Request Complexity rating (1 to 5).
 
 ## Business Rules
 
 - Evaluation is an active triage workflow, distinct from passive screen viewing (Feature Review Standard Principle 5).
 - The Request Owner is accountable for verifying whether the request falls within their technical capability and operational authority (Actor Model Core Principle; Request Domain Section 4).
 - The evaluation process itself does not prematurely mutate the authoritative lifecycle state; the request remains in `CAPTURED` state until an explicit disposition action is executed (Request Domain Section 9.2).
+- The owner or authorized actor (Programmer, Administrator, Team Lead, Manager) may adjust or establish the Request Complexity rating (1 to 5) during triage evaluation (Request Domain Rules 17, 19, 20).
 - The owner may request customer or team clarification via inline notes/comments without completing evaluation (UJ-REQ-003 Alternative Paths).
 - Once evaluated, the workflow guides the owner to one of four authoritative actions: Accept (`FEAT-REQ-004`), Reject (`FEAT-REQ-005`), Escalate (`FEAT-REQ-006`), or Request Management Decision (`FEAT-REQ-007`).
 
 ## Success Result
 
-The Request Owner completes triage evaluation and initiates an authoritative lifecycle transition or condition update based on their operational assessment.
+The Request Owner completes triage evaluation and initiates an authoritative lifecycle transition or condition update based on their operational assessment, optionally updating the Request Complexity rating.
 
 ## Failure Conditions
 
 - Target Request is in `CLOSED` state (state conflict).
 - Actor is not the assigned Request Owner or an authorized manager (authority failure).
+- Specified complexity is outside the range 1 to 5 (validation failure).
 
 ## Acceptance Criteria
 
@@ -63,6 +65,7 @@ The Request Owner completes triage evaluation and initiates an authoritative lif
 - [ ] Evaluation view displays demand details, customer/product context, and activity history.
 - [ ] Interface clearly provides disposition pathways: Accept, Reject, Escalate, and Request Decision.
 - [ ] The owner can submit clarification notes during evaluation without closing the request.
+- [ ] The owner or authorized technical actor can update the Request Complexity rating (1 to 5) during evaluation.
 - [ ] Evaluating the request does not prematurely alter its authoritative lifecycle state.
 
 ## Implementation Notes

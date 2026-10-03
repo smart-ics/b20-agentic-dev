@@ -21,6 +21,7 @@ public partial interface IRequestService
         string priority = "NORMAL",
         Guid? actorPersonId = null,
         Guid? workPackageId = null,
+        int? complexity = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -35,6 +36,7 @@ public partial interface IRequestService
         string priority = "NORMAL",
         Guid? actorPersonId = null,
         Guid? workPackageId = null,
+        int? complexity = null,
         CancellationToken cancellationToken = default)
         => RecordRequestAsync(
             title,
@@ -45,6 +47,7 @@ public partial interface IRequestService
             priority,
             actorPersonId,
             workPackageId,
+            complexity,
             cancellationToken);
 
     /// <summary>
@@ -79,6 +82,7 @@ public partial interface IRequestService
         Guid requestId,
         string evaluationNotes,
         Guid? actorPersonId = null,
+        int? complexity = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -88,8 +92,9 @@ public partial interface IRequestService
         Guid requestId,
         string evaluationNotes,
         Guid? actorPersonId = null,
+        int? complexity = null,
         CancellationToken cancellationToken = default)
-        => EvaluateRequestAsync(requestId, evaluationNotes, actorPersonId, cancellationToken);
+        => EvaluateRequestAsync(requestId, evaluationNotes, actorPersonId, complexity, cancellationToken);
 
     /// <summary>
     /// Accepts operational responsibility for a Request in <c>EVALUATING</c> (or <c>ACCEPTED</c>) state,
@@ -193,4 +198,26 @@ public partial interface IRequestService
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
         => ReviewRequestCompletionAsync(requestId, resolutionDescription, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Updates the complexity rating (1 to 5) of a Request, enforcing role authorization and emitting
+    /// <c>RequestComplexityUpdated</c> (Architecture §4 TD-002, TD-004, TD-005).
+    /// </summary>
+    Task<RequestDto> UpdateRequestComplexityAsync(
+        Guid requestId,
+        int complexity,
+        string? reason = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="UpdateRequestComplexityAsync"/>.
+    /// </summary>
+    Task<RequestDto> UpdateRequestComplexity(
+        Guid requestId,
+        int complexity,
+        string? reason = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => UpdateRequestComplexityAsync(requestId, complexity, reason, actorPersonId, cancellationToken);
 }

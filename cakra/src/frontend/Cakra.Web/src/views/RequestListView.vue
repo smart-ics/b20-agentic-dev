@@ -34,6 +34,7 @@ export interface RequestListItem {
     | 'COMPLETED'
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
+  complexity?: number
   ownerPersonId: string | null
   assigneePersonId?: string | null
   ownerName?: string | null
@@ -171,6 +172,41 @@ function priorityBadgeClass(priority: string): string {
       return 'text-bg-light border text-secondary'
     default:
       return 'text-bg-light border text-body-secondary'
+  }
+}
+
+function complexityBadgeClass(complexity?: number): string {
+  switch (complexity) {
+    case 1:
+      return 'text-bg-light border text-secondary'
+    case 2:
+      return 'text-bg-info text-dark'
+    case 3:
+      return 'text-bg-primary'
+    case 4:
+      return 'text-bg-warning text-dark'
+    case 5:
+      return 'text-bg-danger'
+    default:
+      return 'text-bg-light border text-secondary'
+  }
+}
+
+function formatComplexity(complexity?: number): string {
+  const val = complexity ?? 1
+  switch (val) {
+    case 1:
+      return '1 (Very Low)'
+    case 2:
+      return '2 (Low)'
+    case 3:
+      return '3 (Medium)'
+    case 4:
+      return '4 (High)'
+    case 5:
+      return '5 (Very High)'
+    default:
+      return `${val}`
   }
 }
 
@@ -506,6 +542,14 @@ onMounted(async () => {
                     :class="priorityBadgeClass(req.priority)"
                   >
                     {{ req.priority }}
+                  </span>
+                  <span
+                    class="badge flex-shrink-0"
+                    :class="complexityBadgeClass(req.complexity)"
+                    data-testid="request-complexity-badge"
+                    :title="`Complexity: ${formatComplexity(req.complexity)}`"
+                  >
+                    Complexity: {{ formatComplexity(req.complexity) }}
                   </span>
                 </div>
               </td>

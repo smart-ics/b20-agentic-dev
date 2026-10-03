@@ -96,6 +96,7 @@ const form = reactive({
   productId: '',
   requestType: 'GENERAL',
   priority: 'NORMAL',
+  complexity: 1,
 })
 
 function extractErrorMessage(err: unknown, fallback: string): string {
@@ -162,6 +163,7 @@ function resetForm(): void {
   form.productId = ''
   form.requestType = 'GENERAL'
   form.priority = 'NORMAL'
+  form.complexity = 1
   errorMessage.value = null
   validationErrors.value = {}
 }
@@ -198,6 +200,7 @@ async function handleSubmit(): Promise<void> {
       productId: form.productId.trim() || null,
       requestType: form.requestType || 'GENERAL',
       priority: form.priority || 'NORMAL',
+      complexity: Number(form.complexity) || 1,
     })
 
     emit('saved', response.data)
@@ -351,7 +354,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Customer Select -->
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                   <label for="createRequestCustomer" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                     Customer (Optional)
                   </label>
@@ -375,7 +378,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Product Select -->
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                   <label for="createRequestProduct" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                     Product (Optional)
                   </label>
@@ -395,6 +398,27 @@ onBeforeUnmount(() => {
                     >
                       {{ resolveProductLabel(product) }}
                     </option>
+                  </select>
+                </div>
+
+                <!-- Complexity Select -->
+                <div class="col-12 col-md-4">
+                  <label for="createRequestComplexity" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                    Complexity
+                  </label>
+                  <select
+                    id="createRequestComplexity"
+                    v-model.number="form.complexity"
+                    name="complexity"
+                    class="form-select form-select-sm"
+                    :disabled="isSubmitting"
+                    data-testid="request-complexity-select"
+                  >
+                    <option :value="1">1 (Very Low)</option>
+                    <option :value="2">2 (Low)</option>
+                    <option :value="3">3 (Medium)</option>
+                    <option :value="4">4 (High)</option>
+                    <option :value="5">5 (Very High)</option>
                   </select>
                 </div>
 

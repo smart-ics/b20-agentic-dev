@@ -4,6 +4,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * SCR-REQ-003: Request Detail Screen
@@ -66,6 +67,7 @@ export interface RequestDetail {
     | 'COMPLETED'
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
+  complexity?: number
   ownerPersonId: string | null
   assigneePersonId?: string | null
   ownerName?: string | null
@@ -179,6 +181,44 @@ const canReassign = computed(
   () => !isClosed.value && (isEscalated.value || isEvaluating.value || isAccepted.value || isInProgress.value),
 )
 
+const authStore = useAuthStore()
+
+const AUTHORIZED_COMPLEXITY_ROLES = [
+  'PROGRAMMER',
+  'ADMINISTRATOR',
+  'ADMIN',
+  'DEVELOPER',
+  'TEAM LEAD',
+  'TEAM_LEAD',
+  'MANAGER',
+] as const
+
+const canEditComplexity = computed(() => {
+  if (isClosed.value) {
+    return false
+  }
+  if (!authStore.isAuthenticated) {
+    return true
+  }
+  const userRoles = authStore.roles.map((r) => r.toUpperCase())
+  if (userRoles.length === 0) {
+    return true
+  }
+  return userRoles.some((role) => AUTHORIZED_COMPLEXITY_ROLES.includes(role as (typeof AUTHORIZED_COMPLEXITY_ROLES)[number]))
+})
+
+const complexityForm = reactive({
+  complexity: 1,
+  reason: '',
+  isEditing: false,
+  isSubmitting: false,
+})
+
+function initComplexityForm(): void {
+  complexityForm.complexity = request.value?.complexity ?? 1
+  complexityForm.reason = ''
+}
+
 const personNameById = computed<Record<string, string>>(() => {
   const map: Record<string, string> = {}
   for (const person of activePersons.value) {
@@ -238,6 +278,41 @@ function priorityBadgeClass(priority: string | null | undefined): string {
       return 'text-bg-light border text-secondary'
     default:
       return 'text-bg-light border text-body-secondary'
+  }
+}
+
+function complexityBadgeClass(complexity?: number): string {
+  switch (complexity) {
+    case 1:
+      return 'text-bg-light border text-secondary'
+    case 2:
+      return 'text-bg-info text-dark'
+    case 3:
+      return 'text-bg-primary'
+    case 4:
+      return 'text-bg-warning text-dark'
+    case 5:
+      return 'text-bg-danger'
+    default:
+      return 'text-bg-light border text-secondary'
+  }
+}
+
+function formatComplexity(complexity?: number): string {
+  const val = complexity ?? 1
+  switch (val) {
+    case 1:
+      return '1 (Very Low)'
+    case 2:
+      return '2 (Low)'
+    case 3:
+      return '3 (Medium)'
+    case 4:
+      return '4 (High)'
+    case 5:
+      return '5 (Very High)'
+    default:
+      return `${val}`
   }
 }
 
@@ -616,6 +691,37 @@ async function handleReassign(): Promise<void> {
   }
 }
 
+async function handleUpdateComplexity(): Promise<void> {
+  if (!requestId.value) {
+    return
+  }
+  complexityForm.isSubmitting = true
+  errorMessage.value = null
+  actionSuccessMessage.value = null
+
+  try {
+    const payload: { complexity: number; reason?: string; actorPersonId?: string } = {
+      complexity: Number(complexityForm.complexity),
+      reason: complexityForm.reason.trim() || undefined,
+      actorPersonId: authStore.currentUser?.personId || undefined,
+    }
+
+    const response = await httpClient.patch<RequestDetail>(
+      `/requests/${requestId.value}/complexity`,
+      payload,
+    )
+    request.value = response.data
+    complexityForm.isEditing = false
+    complexityForm.reason = ''
+    actionSuccessMessage.value = 'Request complexity updated successfully.'
+    await loadStateHistory()
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(err, 'Failed to update request complexity.')
+  } finally {
+    complexityForm.isSubmitting = false
+  }
+}
+
 async function navigateBackToList(): Promise<void> {
   await router.push('/requests')
 }
@@ -669,6 +775,14 @@ onMounted(async () => {
             data-testid="request-detail-priority"
           >
             {{ request.priority }}
+          </span>
+          <span
+            class="badge"
+            style="font-size: 11px"
+            :class="complexityBadgeClass(request.complexity)"
+            data-testid="request-detail-complexity"
+          >
+            Complexity: {{ formatComplexity(request.complexity) }}
           </span>
           <span
             v-if="request.requestType"
@@ -1169,6 +1283,30 @@ onMounted(async () => {
                 </span>
               </dd>
 
+              <dt class="col-4 text-body-secondary fw-normal">Complexity:</dt>
+              <dd class="col-8 mb-1" data-testid="request-detail-complexity-property">
+                <div class="d-flex align-items-center gap-1">
+                  <span
+                    class="badge"
+                    style="font-size: 10px"
+                    :class="complexityBadgeClass(request.complexity)"
+                  >
+                    {{ formatComplexity(request.complexity) }}
+                  </span>
+                  <button
+                    v-if="canEditComplexity && !complexityForm.isEditing"
+                    type="button"
+                    class="btn btn-link btn-sm p-0 text-decoration-none"
+                    style="font-size: 11px"
+                    title="Change Complexity"
+                    data-testid="edit-complexity-button"
+                    @click="initComplexityForm(); complexityForm.isEditing = true"
+                  >
+                    <i class="bi bi-pencil ms-1" aria-hidden="true"></i>Edit
+                  </button>
+                </div>
+              </dd>
+
               <dt class="col-4 text-body-secondary fw-normal">Created:</dt>
               <dd class="col-8 mb-1 text-body-secondary" style="font-size: 11px" data-testid="request-detail-created-at">
                 {{ formatTimestamp(request.createdAt) }}
@@ -1179,6 +1317,69 @@ onMounted(async () => {
                 {{ formatTimestamp(request.updatedAt) }}
               </dd>
             </dl>
+
+            <!-- Inline Complexity Editor -->
+            <div
+              v-if="complexityForm.isEditing"
+              class="border rounded p-2 bg-body-tertiary mt-2"
+              data-testid="edit-complexity-form"
+            >
+              <div class="fw-semibold small mb-1" style="font-size: 11px">
+                <i class="bi bi-sliders me-1 text-primary" aria-hidden="true"></i>Update Complexity (1 - 5)
+              </div>
+              <div class="mb-1">
+                <select
+                  v-model.number="complexityForm.complexity"
+                  class="form-select form-select-sm"
+                  :disabled="complexityForm.isSubmitting"
+                  data-testid="edit-complexity-select"
+                >
+                  <option :value="1">1 (Very Low)</option>
+                  <option :value="2">2 (Low)</option>
+                  <option :value="3">3 (Medium)</option>
+                  <option :value="4">4 (High)</option>
+                  <option :value="5">5 (Very High)</option>
+                </select>
+              </div>
+              <div class="mb-1">
+                <input
+                  v-model="complexityForm.reason"
+                  type="text"
+                  class="form-control form-control-sm"
+                  placeholder="Optional reason (max 500 chars)"
+                  maxlength="500"
+                  :disabled="complexityForm.isSubmitting"
+                  data-testid="edit-complexity-reason-input"
+                />
+              </div>
+              <div class="d-flex gap-1 justify-content-end">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm py-0 px-2"
+                  style="font-size: 11px"
+                  :disabled="complexityForm.isSubmitting"
+                  @click="complexityForm.isEditing = false"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm py-0 px-2"
+                  style="font-size: 11px"
+                  :disabled="complexityForm.isSubmitting"
+                  data-testid="save-complexity-button"
+                  @click="handleUpdateComplexity"
+                >
+                  <span
+                    v-if="complexityForm.isSubmitting"
+                    class="spinner-border spinner-border-sm me-1"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

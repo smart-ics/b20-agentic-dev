@@ -161,6 +161,8 @@ public class RequestsControllerTests : IAsyncLifetime
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/reassign", new { newOwnerPersonId = randomId }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PatchAsJsonAsync($"/api/v1/requests/{randomId}/complexity", new { complexity = 3 }))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         (await client.GetAsync("/api/v1/customers/active")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -224,6 +226,7 @@ public class RequestsControllerTests : IAsyncLifetime
         created.GetProperty("status").GetString().Should().Be(RequestStatusNames.Captured);
         created.GetProperty("customerName").GetString().Should().Be("RSUD Dr. Soetomo");
         created.GetProperty("productName").GetString().Should().Be("MyHospital Core");
+        created.GetProperty("complexity").GetInt32().Should().Be(1);
 
         // 2. POST /api/v1/requests/{id}/assign -> 200 OK (EVALUATING)
         var assignResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
@@ -246,6 +249,23 @@ public class RequestsControllerTests : IAsyncLifetime
         var evaluated = await evaluateResp.Content.ReadFromJsonAsync<JsonElement>();
         evaluated.GetProperty("status").GetString().Should().Be(RequestStatusNames.Evaluating);
         evaluated.GetProperty("evaluationNotes").GetString().Should().Be("HttpClient socket exhaustion due to per-call HttpClient instantiation.");
+
+        // 3b. PATCH /api/v1/requests/{requestId}/complexity -> 200 OK
+        var patchComplexityResp = await ctx.Client.PatchAsJsonAsync($"/api/v1/requests/{requestId}/complexity", new
+        {
+            complexity = 4,
+            reason = "Architectural evaluation shows high integration complexity"
+        });
+        patchComplexityResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var patched = await patchComplexityResp.Content.ReadFromJsonAsync<JsonElement>();
+        patched.GetProperty("complexity").GetInt32().Should().Be(4);
+
+        // Invalid complexity -> 400 Bad Request
+        var invalidPatchResp = await ctx.Client.PatchAsJsonAsync($"/api/v1/requests/{requestId}/complexity", new
+        {
+            complexity = 7
+        });
+        invalidPatchResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         // 4. POST /api/v1/requests/{id}/accept -> 200 OK (IN_PROGRESS)
         var acceptResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/accept", new
@@ -277,6 +297,7 @@ public class RequestsControllerTests : IAsyncLifetime
         detail.GetProperty("ownerName").GetString().Should().Be("Budi Santoso");
         detail.GetProperty("customerName").GetString().Should().Be("RSUD Dr. Soetomo");
         detail.GetProperty("productName").GetString().Should().Be("MyHospital Core");
+        detail.GetProperty("complexity").GetInt32().Should().Be(4);
 
         // 7. GET /api/v1/requests/{id}/history -> 200 OK with ordered state transition audit trail
         var historyResp = await ctx.Client.GetAsync($"/api/v1/requests/{requestId}/history");
@@ -454,6 +475,86 @@ public class RequestsControllerTests : IAsyncLifetime
         notFoundResp.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
+    [Fact]
+    public async Task Request_complexity_endpoints_support_creation_evaluation_patch_and_role_authorization()
+    {
+        if (!_sqlServerAvailable || _factory is null) return;
+
+        var ctx = await SeedOperationalActorsAndMasterDataAsync();
+
+        Guid unauthorizedPersonId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var unauthorizedPerson = await mediator.Send(new CreatePersonCommand("Viewer", "User", "viewer@cakra.id"));
+            var viewerRole = await mediator.Send(new CreateRoleCommand("Viewer", "Read-only viewer"));
+            await mediator.Send(new AssignRoleToPersonCommand(unauthorizedPerson.Id, viewerRole.Id));
+            unauthorizedPersonId = unauthorizedPerson.Id;
+        }
+
+        // 1. Create with custom complexity (3) -> 201 Created
+        var createResp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "Request with initial complexity 3",
+            description = "Initial complexity specified at capture time",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id,
+            requestType = "Feature",
+            complexity = 3
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var requestId = created.GetProperty("id").GetGuid();
+        created.GetProperty("complexity").GetInt32().Should().Be(3);
+
+        // 2. Evaluate with updated complexity (5) -> 200 OK
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
+        {
+            ownerPersonId = ctx.Programmer1Id
+        });
+
+        var evaluateResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/evaluate", new
+        {
+            evaluationNotes = "Very high complexity discovered during technical analysis.",
+            complexity = 5
+        });
+        evaluateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var evaluated = await evaluateResp.Content.ReadFromJsonAsync<JsonElement>();
+        evaluated.GetProperty("complexity").GetInt32().Should().Be(5);
+
+        // 3. Patch complexity with authorized actor (2) -> 200 OK
+        var patchResp = await ctx.Client.PatchAsJsonAsync($"/api/v1/requests/{requestId}/complexity", new
+        {
+            complexity = 2,
+            reason = "Scope reduced, complexity lowered."
+        });
+        patchResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var patched = await patchResp.Content.ReadFromJsonAsync<JsonElement>();
+        patched.GetProperty("complexity").GetInt32().Should().Be(2);
+
+        // 4. Patch complexity with unauthorized actor -> 403 Forbidden
+        var forbiddenResp = await ctx.Client.PatchAsJsonAsync($"/api/v1/requests/{requestId}/complexity", new
+        {
+            complexity = 4,
+            reason = "Unauthorized attempt",
+            actorPersonId = unauthorizedPersonId
+        });
+        forbiddenResp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // 5. Patch complexity with out-of-range value (0 or 6) -> 400 Bad Request
+        var badRangeResp1 = await ctx.Client.PatchAsJsonAsync($"/api/v1/requests/{requestId}/complexity", new
+        {
+            complexity = 0
+        });
+        badRangeResp1.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var badRangeResp2 = await ctx.Client.PatchAsJsonAsync($"/api/v1/requests/{requestId}/complexity", new
+        {
+            complexity = 6
+        });
+        badRangeResp2.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     private sealed record SeededContext(
         HttpClient Client,
         Guid Programmer1Id,
@@ -485,6 +586,9 @@ public class RequestsControllerTests : IAsyncLifetime
             var prog2 = await mediator.Send(new CreatePersonCommand("Rina", "Wijaya", "rina.wijaya@cakra.id"));
             prog1Id = prog1.Id;
             prog2Id = prog2.Id;
+
+            var progRole = await mediator.Send(new CreateRoleCommand("Programmer", "Programmer role"));
+            await mediator.Send(new AssignRoleToPersonCommand(prog1.Id, progRole.Id));
 
             var cust1 = await mediator.Send(new CreateCustomerCommand("CUST-SOETOMO", "RSUD Dr. Soetomo", true));
             var cust2 = await mediator.Send(new CreateCustomerCommand("CUST-HARAPAN", "RS Harapan Kita", true));

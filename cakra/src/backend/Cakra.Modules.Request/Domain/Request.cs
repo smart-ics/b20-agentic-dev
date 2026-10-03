@@ -28,6 +28,9 @@ public sealed class Request : EntityBase
     /// <summary>Priority level (e.g. LOW, NORMAL, HIGH, URGENT).</summary>
     public string Priority { get; private set; } = "NORMAL";
 
+    /// <summary>Authoritative numerical complexity rating (1 to 5).</summary>
+    public int Complexity { get; private set; } = 1;
+
     /// <summary>PersonId of the assigned Request Owner in Organization domain, or <c>null</c> if unassigned.</summary>
     public Guid? OwnerPersonId { get; private set; }
 
@@ -77,6 +80,7 @@ public sealed class Request : EntityBase
         Guid? productId = null,
         Guid? workPackageId = null,
         string? priority = null,
+        int? complexity = null,
         DateTime? utcNow = null)
     {
         if (id == Guid.Empty)
@@ -90,6 +94,10 @@ public sealed class Request : EntityBase
         if (actorPersonId == Guid.Empty)
             throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
 
+        var initialComplexity = complexity ?? 1;
+        if (initialComplexity < 1 || initialComplexity > 5)
+            throw new RequestDomainValidationException("Complexity must be an integer between 1 and 5.", nameof(complexity));
+
         var now = utcNow ?? DateTime.UtcNow;
 
         var request = new Request
@@ -100,6 +108,7 @@ public sealed class Request : EntityBase
             RequestType = requestType.Trim(),
             Status = RequestStatus.Captured,
             Priority = string.IsNullOrWhiteSpace(priority) ? "NORMAL" : priority.Trim().ToUpperInvariant(),
+            Complexity = initialComplexity,
             CustomerId = customerId,
             ProductId = productId,
             WorkPackageId = workPackageId,
@@ -245,6 +254,45 @@ public sealed class Request : EntityBase
             requestId: Id,
             evaluatedByPersonId: actorPersonId,
             evaluationNotes: EvaluationNotes,
+            occurredAtUtc: now));
+    }
+
+    /// <summary>
+    /// Updates the complexity rating while the request is in an active lifecycle state (Architecture CR-005).
+    /// </summary>
+    public void SetComplexity(
+        int newComplexity,
+        Guid actorPersonId,
+        string? reason = null,
+        DateTime? utcNow = null)
+    {
+        if (newComplexity < 1 || newComplexity > 5)
+            throw new RequestDomainValidationException("Complexity must be an integer between 1 and 5.", nameof(newComplexity));
+
+        if (actorPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
+
+        if (Status == RequestStatus.Completed || Status == RequestStatus.Rejected)
+        {
+            throw new InvalidRequestStateTransitionException(
+                Id, Status, nameof(SetComplexity), reason: "Cannot change complexity on a closed request.");
+        }
+
+        if (Complexity == newComplexity)
+            return;
+
+        var previousComplexity = Complexity;
+        var now = utcNow ?? DateTime.UtcNow;
+
+        Complexity = newComplexity;
+        UpdatedAt = now;
+
+        _domainEvents.Add(new RequestComplexityUpdated(
+            requestId: Id,
+            previousComplexity: previousComplexity,
+            newComplexity: newComplexity,
+            actorPersonId: actorPersonId,
+            reason: reason?.Trim(),
             occurredAtUtc: now));
     }
 
@@ -675,7 +723,8 @@ public sealed class Request : EntityBase
         DateTime createdAt,
         DateTime? updatedAt,
         RequestResolution? resolution = null,
-        IEnumerable<RequestAssignment>? assignments = null)
+        IEnumerable<RequestAssignment>? assignments = null,
+        int complexity = 1)
     {
         var request = new Request
         {
@@ -685,6 +734,7 @@ public sealed class Request : EntityBase
             RequestType = requestType,
             Status = status,
             Priority = priority,
+            Complexity = complexity,
             OwnerPersonId = ownerPersonId,
             CustomerId = customerId,
             ProductId = productId,

@@ -60,6 +60,7 @@ public sealed class RequestQueryService :
                 r.[RequestType],
                 r.[Status],
                 r.[Priority],
+                r.[Complexity],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -188,6 +189,7 @@ public sealed class RequestQueryService :
                 r.[RequestType],
                 r.[Status],
                 r.[Priority],
+                r.[Complexity],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -283,6 +285,7 @@ public sealed class RequestQueryService :
                 r.[RequestType],
                 r.[Status],
                 r.[Priority],
+                r.[Complexity],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -437,6 +440,7 @@ public sealed class RequestQueryService :
                 r.[RequestType],
                 r.[Status],
                 r.[Priority],
+                r.[Complexity],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -602,6 +606,7 @@ public sealed class RequestQueryService :
         public string RequestType { get; init; } = "GENERAL";
         public string Status { get; init; } = RequestStatusNames.Captured;
         public string Priority { get; init; } = "NORMAL";
+        public int Complexity { get; init; } = 1;
         public Guid? OwnerPersonId { get; init; }
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
@@ -646,6 +651,7 @@ public sealed class RequestQueryService :
                 RequestType = RequestType,
                 Status = Status,
                 Priority = Priority,
+                Complexity = Complexity,
                 OwnerPersonId = OwnerPersonId,
                 CustomerId = CustomerId,
                 ProductId = ProductId,

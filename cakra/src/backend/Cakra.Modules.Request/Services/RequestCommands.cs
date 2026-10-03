@@ -14,7 +14,8 @@ public sealed record RecordRequestCommand(
     string RequestType = "GENERAL",
     string Priority = "NORMAL",
     Guid? ActorPersonId = null,
-    Guid? WorkPackageId = null) : IRequest<RequestDto>;
+    Guid? WorkPackageId = null,
+    int? Complexity = null) : IRequest<RequestDto>;
 
 public sealed class RecordRequestCommandValidator : AbstractValidator<RecordRequestCommand>
 {
@@ -34,6 +35,11 @@ public sealed class RecordRequestCommandValidator : AbstractValidator<RecordRequ
         RuleFor(x => x.Priority)
             .NotEmpty().WithMessage("Priority is required.")
             .MaximumLength(20).WithMessage("Priority must not exceed 20 characters.");
+
+        RuleFor(x => x.Complexity)
+            .InclusiveBetween(1, 5)
+            .When(x => x.Complexity.HasValue)
+            .WithMessage("Complexity must be an integer between 1 and 5.");
 
         RuleFor(x => x.CustomerId)
             .Must(id => id != Guid.Empty)
@@ -91,7 +97,8 @@ public sealed class AssignRequestOwnerCommandValidator : AbstractValidator<Assig
 public sealed record EvaluateRequestCommand(
     Guid RequestId,
     string EvaluationNotes,
-    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+    Guid? ActorPersonId = null,
+    int? Complexity = null) : IRequest<RequestDto>;
 
 public sealed class EvaluateRequestCommandValidator : AbstractValidator<EvaluateRequestCommand>
 {
@@ -102,6 +109,40 @@ public sealed class EvaluateRequestCommandValidator : AbstractValidator<Evaluate
 
         RuleFor(x => x.EvaluationNotes)
             .NotEmpty().WithMessage("Evaluation notes are required.");
+
+        RuleFor(x => x.Complexity)
+            .InclusiveBetween(1, 5)
+            .When(x => x.Complexity.HasValue)
+            .WithMessage("Complexity must be an integer between 1 and 5.");
+
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
+
+/// <summary>
+/// Command to update the complexity of an operational Request (Architecture §4 TD-004, TD-005).
+/// </summary>
+public sealed record UpdateRequestComplexityCommand(
+    Guid RequestId,
+    int Complexity,
+    string? Reason = null,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class UpdateRequestComplexityCommandValidator : AbstractValidator<UpdateRequestComplexityCommand>
+{
+    public UpdateRequestComplexityCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.Complexity)
+            .InclusiveBetween(1, 5).WithMessage("Complexity must be an integer between 1 and 5.");
+
+        RuleFor(x => x.Reason)
+            .MaximumLength(500).WithMessage("Reason must not exceed 500 characters.");
 
         RuleFor(x => x.ActorPersonId)
             .Must(id => id != Guid.Empty)

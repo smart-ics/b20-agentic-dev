@@ -35,6 +35,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [RequestType],
                 [Status],
                 [Priority],
+                [Complexity],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -112,6 +113,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [RequestType],
                 [Status],
                 [Priority],
+                [Complexity],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -154,6 +156,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [RequestType],
                 [Status],
                 [Priority],
+                [Complexity],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -170,6 +173,7 @@ internal sealed class RequestRepository : IRequestRepository
                 @RequestType,
                 @Status,
                 @Priority,
+                @Complexity,
                 @OwnerPersonId,
                 @CustomerId,
                 @ProductId,
@@ -191,6 +195,7 @@ internal sealed class RequestRepository : IRequestRepository
             entity.RequestType,
             Status = entity.Status.ToName(),
             entity.Priority,
+            entity.Complexity,
             entity.OwnerPersonId,
             entity.CustomerId,
             entity.ProductId,
@@ -217,6 +222,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [RequestType] = @RequestType,
                 [Status] = @Status,
                 [Priority] = @Priority,
+                [Complexity] = @Complexity,
                 [OwnerPersonId] = @OwnerPersonId,
                 [CustomerId] = @CustomerId,
                 [ProductId] = @ProductId,
@@ -237,6 +243,7 @@ internal sealed class RequestRepository : IRequestRepository
             entity.RequestType,
             Status = entity.Status.ToName(),
             entity.Priority,
+            entity.Complexity,
             entity.OwnerPersonId,
             entity.CustomerId,
             entity.ProductId,
@@ -430,6 +437,7 @@ internal sealed class RequestRepository : IRequestRepository
         public string RequestType { get; init; } = string.Empty;
         public string Status { get; init; } = RequestStatusNames.Captured;
         public string Priority { get; init; } = "NORMAL";
+        public int Complexity { get; init; } = 1;
         public Guid? OwnerPersonId { get; init; }
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
@@ -461,7 +469,8 @@ internal sealed class RequestRepository : IRequestRepository
                 CreatedAt,
                 UpdatedAt,
                 resolution,
-                assignments);
+                assignments,
+                Complexity);
         }
     }
 

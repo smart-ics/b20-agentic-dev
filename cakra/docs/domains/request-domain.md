@@ -3,8 +3,8 @@
 Title: Request Domain
 Code: REQUEST
 Artifact: DOMAIN
-Version: 1.1
-LastUpdated: 2026-09-26
+Version: 1.2
+LastUpdated: 2026-10-03
 ---
 
 # 1. Business Overview
@@ -24,6 +24,7 @@ The domain answers:
 * Who requested it?
 * Who owns it?
 * What is the current state?
+* What is the operational complexity?
 * What Customer, Product, or Work Package is relevant?
 
 A Request is not a Commitment.
@@ -36,15 +37,16 @@ A Request does not imply that ICS has agreed to perform the requested work.
 
 # 2. Ubiquitous Language
 
-| Term            | Meaning                                                                                   |
-| --------------- | ----------------------------------------------------------------------------------------- |
-| Request         | A recorded demand for ICS to perform, change, investigate, provide, or resolve something. |
-| Requester       | The Person or external party that originated the Request.                                 |
-| Request Owner   | The Person responsible for maintaining and resolving the Request.                         |
-| Request Type    | A classification describing the nature of the Request.                                    |
-| Request Status  | The authoritative current state of the Request.                                           |
-| Request Context | The Customer, Product, or Work Package associated with the Request.                       |
-| Resolution      | The outcome that satisfies or terminates the Request.                                     |
+| Term               | Meaning                                                                                   |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| Request            | A recorded demand for ICS to perform, change, investigate, provide, or resolve something. |
+| Requester          | The Person or external party that originated the Request.                                 |
+| Request Owner      | The Person responsible for maintaining and resolving the Request.                         |
+| Request Type       | A classification describing the nature of the Request.                                    |
+| Request Status     | The authoritative current state of the Request.                                           |
+| Request Complexity | A standardized numerical rating (1 to 5) reflecting the operational and technical effort.  |
+| Request Context    | The Customer, Product, or Work Package associated with the Request.                       |
+| Resolution         | The outcome that satisfies or terminates the Request.                                     |
 
 ---
 
@@ -55,6 +57,7 @@ The Request Domain provides:
 * Request Management
 * Request Ownership Management
 * Request Classification Management
+* Request Complexity & Sizing Management
 * Request Context Management
 * Request Lifecycle Management
 * Request Resolution Management
@@ -103,6 +106,7 @@ Title
 Description
 Type
 Status
+Complexity
 Requester
 OwnerPersonId
 CustomerId
@@ -110,6 +114,8 @@ ProductId
 WorkPackageId
 Resolution
 ```
+
+`Complexity` is an integer rating between 1 (lowest/baseline) and 5 (highest). It defaults to 1 upon capture.
 
 `CustomerId`, `ProductId`, and `WorkPackageId` are optional.
 
@@ -174,6 +180,7 @@ The Request Aggregate is the authoritative source of:
 
 * Request identity
 * Current Request state
+* Request complexity
 * Request ownership
 * Request context
 * Request resolution
@@ -259,6 +266,16 @@ The referenced Person or Customer Contact remains owned by its source domain.
 15. Closing a Request must record its meaningful outcome when an outcome exists.
 
 16. A closed Request remains historically retrievable.
+
+17. Every Request must have a Complexity rating on an integer scale between 1 (lowest/baseline) and 5 (highest).
+
+18. Newly recorded Requests default to Complexity 1 unless an explicit valid Complexity rating is provided at creation.
+
+19. Setting or updating Request Complexity is restricted to authorized technical and operational management roles (Programmer, Administrator, Team Lead, Manager).
+
+20. Request Complexity may be updated while the Request is in any active operational state.
+
+21. A closed Request (Completed or Rejected) cannot have its Complexity modified.
 
 ---
 
@@ -356,6 +373,7 @@ RequestCustomerChanged
 RequestProductChanged
 RequestWorkPackageChanged
 RequestStatusChanged
+RequestComplexityUpdated
 RequestResolved
 RequestRejected
 RequestCancelled

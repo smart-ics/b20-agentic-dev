@@ -25,8 +25,19 @@ public sealed partial class RequestService :
     IRequestHandler<AcceptRequestResponsibilityCommand, RequestDto>,
     IRequestHandler<RejectRequestCommand, RequestDto>,
     IRequestHandler<ReviewRequestCompletionCommand, RequestDto>,
-    IRequestHandler<CompleteRequestCommand, RequestDto>
+    IRequestHandler<CompleteRequestCommand, RequestDto>,
+    IRequestHandler<UpdateRequestComplexityCommand, RequestDto>
 {
+    private static readonly HashSet<string> AuthorizedComplexityRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Programmer",
+        "Administrator",
+        "Admin",
+        "Developer",
+        "Team Lead",
+        "Manager"
+    };
+
     /// <summary>
     /// Fallback system actor PersonId used only when commands execute outside an authenticated
     /// HTTP request context and no explicit <c>ActorPersonId</c> is supplied.
@@ -41,6 +52,21 @@ public sealed partial class RequestService :
     private readonly ICurrentContextProvider? _currentContextProvider;
     private readonly IAuditContext? _auditContext;
     private readonly ISystemClock? _clock;
+
+    internal async Task ValidateComplexityAuthorizationAsync(Guid actorPersonId, CancellationToken cancellationToken)
+    {
+        if (actorPersonId == SystemActorPersonId)
+        {
+            return;
+        }
+
+        var roles = await _organizationQueryService.GetPersonRolesAsync(actorPersonId, cancellationToken);
+        if (!roles.Any(r => AuthorizedComplexityRoles.Contains(r)))
+        {
+            throw new UnauthorizedAccessException(
+                $"Actor '{actorPersonId}' does not possess an authorized role to modify request complexity.");
+        }
+    }
 
     public RequestService(
         IDbConnectionFactory connectionFactory,
@@ -95,6 +121,7 @@ public sealed partial class RequestService :
         string priority = "NORMAL",
         Guid? actorPersonId = null,
         Guid? workPackageId = null,
+        int? complexity = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -118,6 +145,11 @@ public sealed partial class RequestService :
         }
 
         var resolvedActorId = ResolveActorPersonId(actorPersonId);
+        if (complexity.HasValue && complexity.Value != 1)
+        {
+            await ValidateComplexityAuthorizationAsync(resolvedActorId, cancellationToken);
+        }
+
         var normalizedType = string.IsNullOrWhiteSpace(requestType) ? "GENERAL" : requestType.Trim();
         var normalizedPriority = string.IsNullOrWhiteSpace(priority) ? "NORMAL" : priority.Trim().ToUpperInvariant();
         var now = UtcNow;
@@ -132,6 +164,7 @@ public sealed partial class RequestService :
             productId: productId,
             workPackageId: workPackageId,
             priority: normalizedPriority,
+            complexity: complexity,
             utcNow: now);
 
         await _requestRepository.AddAsync(request, cancellationToken);
@@ -189,6 +222,7 @@ public sealed partial class RequestService :
         Guid requestId,
         string evaluationNotes,
         Guid? actorPersonId = null,
+        int? complexity = null,
         CancellationToken cancellationToken = default)
     {
         if (requestId == Guid.Empty)
@@ -210,6 +244,12 @@ public sealed partial class RequestService :
 
         request.Evaluate(evaluationNotes, resolvedActorId, now);
 
+        if (complexity.HasValue)
+        {
+            await ValidateComplexityAuthorizationAsync(resolvedActorId, cancellationToken);
+            request.SetComplexity(complexity.Value, resolvedActorId, reason: "Set during evaluation", utcNow: now.AddMilliseconds(5));
+        }
+
         await PersistStateChangesAndDispatchAsync(
             request,
             existingAssignmentIds,
@@ -229,6 +269,7 @@ public sealed partial class RequestService :
         string priority = "NORMAL",
         Guid? actorPersonId = null,
         Guid? workPackageId = null,
+        int? complexity = null,
         CancellationToken cancellationToken = default)
         => RecordRequestAsync(
             title,
@@ -239,6 +280,7 @@ public sealed partial class RequestService :
             priority,
             actorPersonId,
             workPackageId,
+            complexity,
             cancellationToken);
 
     /// <inheritdoc />
@@ -255,8 +297,9 @@ public sealed partial class RequestService :
         Guid requestId,
         string evaluationNotes,
         Guid? actorPersonId = null,
+        int? complexity = null,
         CancellationToken cancellationToken = default)
-        => EvaluateRequestAsync(requestId, evaluationNotes, actorPersonId, cancellationToken);
+        => EvaluateRequestAsync(requestId, evaluationNotes, actorPersonId, complexity, cancellationToken);
 
     /// <inheritdoc />
     public async Task<RequestDto> AcceptRequestResponsibilityAsync(
@@ -423,6 +466,58 @@ public sealed partial class RequestService :
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
         => ReviewRequestCompletionAsync(requestId, resolutionDescription, actorPersonId, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<RequestDto> UpdateRequestComplexityAsync(
+        Guid requestId,
+        int complexity,
+        string? reason = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
+        }
+
+        if (complexity < 1 || complexity > 5)
+        {
+            throw new RequestDomainValidationException("Complexity must be an integer between 1 and 5.", nameof(complexity));
+        }
+
+        if (reason is not null && reason.Length > 500)
+        {
+            throw new RequestDomainValidationException("Reason must not exceed 500 characters.", nameof(reason));
+        }
+
+        var request = await GetRequiredRequestAsync(requestId, cancellationToken);
+
+        var resolvedActorId = ResolveActorPersonId(actorPersonId, fallbackPersonId: request.OwnerPersonId);
+        await ValidateComplexityAuthorizationAsync(resolvedActorId, cancellationToken);
+
+        var existingAssignmentIds = SnapshotAssignmentIds(request);
+        var hadResolution = request.Resolution is not null;
+        var now = GetNextMonotonicTimestamp(request);
+
+        request.SetComplexity(complexity, resolvedActorId, reason, now);
+
+        await PersistStateChangesAndDispatchAsync(
+            request,
+            existingAssignmentIds,
+            hadResolution,
+            cancellationToken);
+
+        return RequestDto.FromDomain(request);
+    }
+
+    /// <inheritdoc />
+    public Task<RequestDto> UpdateRequestComplexity(
+        Guid requestId,
+        int complexity,
+        string? reason = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => UpdateRequestComplexityAsync(requestId, complexity, reason, actorPersonId, cancellationToken);
 
     internal DateTime GetNextMonotonicTimestamp(Domain.Request request)
     {
@@ -645,6 +740,7 @@ public sealed partial class RequestService :
             request.Priority,
             request.ActorPersonId,
             request.WorkPackageId,
+            request.Complexity,
             cancellationToken);
     }
 
@@ -666,6 +762,7 @@ public sealed partial class RequestService :
             request.RequestId,
             request.EvaluationNotes,
             request.ActorPersonId,
+            request.Complexity,
             cancellationToken);
     }
 
@@ -705,6 +802,17 @@ public sealed partial class RequestService :
         return ReviewRequestCompletionAsync(
             request.RequestId,
             request.ResolutionDescription,
+            request.ActorPersonId,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(UpdateRequestComplexityCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return UpdateRequestComplexityAsync(
+            request.RequestId,
+            request.Complexity,
+            request.Reason,
             request.ActorPersonId,
             cancellationToken);
     }

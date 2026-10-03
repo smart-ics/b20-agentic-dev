@@ -33,6 +33,9 @@ public record RequestDto
     /// <summary>Priority level (LOW, NORMAL, HIGH, URGENT).</summary>
     public string Priority { get; init; } = "NORMAL";
 
+    /// <summary>Authoritative numerical complexity rating (1 to 5).</summary>
+    public int Complexity { get; init; } = 1;
+
     /// <summary>PersonId of the assigned Request Owner in Organization domain, or <c>null</c> if unassigned.</summary>
     public Guid? OwnerPersonId { get; init; }
 
@@ -107,6 +110,7 @@ public record RequestDto
             RequestType = request.RequestType,
             Status = request.Status.ToName(),
             Priority = request.Priority,
+            Complexity = request.Complexity,
             OwnerPersonId = request.OwnerPersonId,
             CustomerId = request.CustomerId,
             ProductId = request.ProductId,
