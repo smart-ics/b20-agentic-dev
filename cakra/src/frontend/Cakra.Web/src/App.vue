@@ -113,18 +113,6 @@ const currentScreenTitle = computed(() => {
 
         <router-link
           class="sidebar-nav-item"
-          to="/requests"
-          active-class="active"
-          data-testid="nav-requests-link"
-          :title="isCollapsed ? 'Requests' : undefined"
-          @click="closeMobile"
-        >
-          <i class="bi bi-card-checklist nav-icon" aria-hidden="true"></i>
-          <span v-show="!isCollapsed" class="nav-label">Requests</span>
-        </router-link>
-
-        <router-link
-          class="sidebar-nav-item"
           to="/requests/my"
           active-class="active"
           data-testid="nav-my-requests-link"
@@ -133,18 +121,6 @@ const currentScreenTitle = computed(() => {
         >
           <i class="bi bi-person-workspace nav-icon" aria-hidden="true"></i>
           <span v-show="!isCollapsed" class="nav-label">My Requests</span>
-        </router-link>
-
-        <router-link
-          class="sidebar-nav-item"
-          to="/requests/search"
-          active-class="active"
-          data-testid="nav-request-search-link"
-          :title="isCollapsed ? 'Request Search' : undefined"
-          @click="closeMobile"
-        >
-          <i class="bi bi-search nav-icon" aria-hidden="true"></i>
-          <span v-show="!isCollapsed" class="nav-label">Request Search</span>
         </router-link>
 
         <router-link

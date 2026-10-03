@@ -11,10 +11,10 @@ This document details the destinations and movement paths for the **Request Coll
 
 ```text
 Requests Area
-├── SCR-REQ-005: My Assigned Requests
+├── SCR-REQ-005: My Assigned Requests [Primary Global Navigation]
 │   └── Request Selection ──────────► SCR-REQ-003: Request Detail
 │
-├── SCR-REQ-004: Request Search & History
+├── SCR-REQ-004: Request Search & History [Contextual / Direct Navigation]
 │   └── Result Selection ───────────► SCR-REQ-003: Request Detail
 │
 └── SCR-REQ-003: Request Detail
@@ -36,11 +36,11 @@ Requests Area
 
 ### UJ-COL-002: Search Request History
 * **Primary Actor:** Implementator
-* **Entry Point:** Global Navigation (`Requests > Search & History`) or `SCR-REQ-001: Request List`
+* **Entry Point:** Contextual Navigation / Direct URL (`/requests/search`) or `SCR-REQ-001: Request List`
 * **Destination:** `SCR-REQ-004: Request Search & History`
 * **Exit / Destination:** `SCR-REQ-003: Request Detail`
 * **Movement Path:**
-  1. Actor arrives at `SCR-REQ-004: Request Search & History`.
+  1. Actor arrives at `SCR-REQ-004: Request Search & History` via direct URL or contextual link from `SCR-REQ-001`.
   2. Actor selects a historical record from search results, navigating to `SCR-REQ-003: Request Detail`.
   3. From `SCR-REQ-003`, actor can return to `SCR-REQ-004`.
 

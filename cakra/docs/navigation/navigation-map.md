@@ -28,12 +28,12 @@ CAKRA - ICS Operational System
 │   │   └── Create Post (SCR-POST-002)
 │
 ├── Requests Area
-│   ├── Request List (SCR-REQ-001)
+│   ├── My Assigned Requests (SCR-REQ-005) [Primary Global Navigation]
+│   │   └── Request Detail (SCR-REQ-003)
+│   ├── Request List (SCR-REQ-001) [Contextual / Secondary Navigation]
 │   │   ├── Create Request (SCR-REQ-002)
 │   │   └── Request Detail (SCR-REQ-003)
-│   ├── My Assigned Requests (SCR-REQ-005)
-│   │   └── Request Detail (SCR-REQ-003)
-│   └── Request Search & History (SCR-REQ-004)
+│   └── Request Search & History (SCR-REQ-004) [Contextual / Direct Navigation]
 │       └── Request Detail (SCR-REQ-003)
 │
 └── Management Oversight Area
@@ -76,9 +76,13 @@ Contains destinations for viewing, searching, creating, and inspecting Request r
 
 * **Primary Actors:** Implementator, Request Owner
 * **Destinations:**
+  * **`SCR-REQ-005`: My Assigned Requests**
+    * *Purpose:* View Requests assigned to the current user (primary global sidebar entry point for Requests).
+    * *Entry Points:* Global Sidebar Navigation (`Operations > My Requests`).
+    * *Exit / Destinations:* `SCR-REQ-003: Request Detail`, `SCR-REQ-001: Request List` (via "All Requests" contextual link).
   * **`SCR-REQ-001`: Request List**
     * *Purpose:* View and locate Requests within the system.
-    * *Entry Points:* Global Navigation (`Requests > All Requests`).
+    * *Entry Points:* Contextual Navigation (via "All Requests" link on `SCR-REQ-005: My Assigned Requests`, "Back to Requests" link on `SCR-REQ-003: Request Detail`, or direct URL).
     * *Exit / Destinations:* `SCR-REQ-002: Create Request`, `SCR-REQ-003: Request Detail`.
   * **`SCR-REQ-002`: Create Request**
     * *Purpose:* Record and submit a new Request.
@@ -90,11 +94,7 @@ Contains destinations for viewing, searching, creating, and inspecting Request r
     * *Exit / Destinations:* `SCR-REQ-001: Request List`, `SCR-REQ-005: My Assigned Requests`, Originating Screen.
   * **`SCR-REQ-004`: Request Search & History**
     * *Purpose:* Search and retrieve historical Request records.
-    * *Entry Points:* Global Navigation (`Requests > Search & History`), `SCR-REQ-001`.
-    * *Exit / Destinations:* `SCR-REQ-003: Request Detail`.
-  * **`SCR-REQ-005`: My Assigned Requests**
-    * *Purpose:* View Requests assigned to the current user.
-    * *Entry Points:* Global Navigation (`Requests > My Assigned`).
+    * *Entry Points:* Contextual Navigation / Direct URL (`/requests/search`), or secondary link from `SCR-REQ-001: Request List`.
     * *Exit / Destinations:* `SCR-REQ-003: Request Detail`.
 
 ---
