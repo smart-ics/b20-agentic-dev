@@ -36,13 +36,17 @@ CAKRA - ICS Operational System
 │   └── Request Search & History (SCR-REQ-004) [Contextual / Direct Navigation]
 │       └── Request Detail (SCR-REQ-003)
 │
-└── Management Oversight Area
-    ├── Customer Progress Review (SCR-MGT-001)
-    │   └── Request Detail (SCR-REQ-003)
-    ├── Programmer Performance Review (SCR-MGT-002)
-    │   └── Request Detail (SCR-REQ-003)
-    └── Programmer Workload Review (SCR-MGT-003)
-        └── Request Detail (SCR-REQ-003)
+├── Management Oversight Area
+│   ├── Customer Progress Review (SCR-MGT-001)
+│   │   └── Request Detail (SCR-REQ-003)
+│   ├── Programmer Performance Review (SCR-MGT-002)
+│   │   └── Request Detail (SCR-REQ-003)
+│   └── Programmer Workload Review (SCR-MGT-003)
+│       └── Request Detail (SCR-REQ-003)
+│
+└── Administration Area
+    └── User Management (SCR-USR-001)
+        └── Add / Edit User Modal (SCR-USR-002)
 ```
 
 ---
@@ -120,6 +124,23 @@ Contains destinations for reviewing operational request progress, performance re
 
 ---
 
+### Area 3: Administration
+
+Contains administrative destinations for managing IAM identity records, user accounts, and status transitions, restricted exclusively to users holding the `Administrator` or `Admin` role.
+
+* **Primary Actors:** Administrator, Admin
+* **Destinations:**
+  * **`SCR-USR-001`: User Management**
+    * *Purpose:* Primary workspace for viewing, searching, and managing user accounts with operational status metrics.
+    * *Entry Points:* Global Sidebar Navigation (`Administration > User Management` — route `/admin/users`).
+    * *Exit / Destinations:* `SCR-USR-002: Add / Edit User Modal`.
+  * **`SCR-USR-002`: Add / Edit User Modal**
+    * *Purpose:* Modal dialog for registering a new user account tied to an unassociated active Person, or updating an existing user's email, status, and credentials.
+    * *Entry Points:* `SCR-USR-001: User Management` ("Add User" action or user row "Edit" action).
+    * *Exit / Destinations:* `SCR-USR-001: User Management` (upon save or cancellation).
+
+---
+
 ## 4. Navigation Graph and Movement Paths
 
 ```mermaid
@@ -144,6 +165,11 @@ flowchart TD
         MGT_WORK["SCR-MGT-003<br/>Programmer Workload Review"]
     end
 
+    subgraph Administration_Area [Administration Area]
+        USR_MGMT["SCR-USR-001<br/>User Management"]
+        USR_MODAL["SCR-USR-002<br/>Add / Edit User Modal"]
+    end
+
     %% Movement Paths
     FEED -->|"Select Post"| POST_DETAIL
     FEED -->|"Create Post"| POST_CREATE
@@ -165,10 +191,15 @@ flowchart TD
 
     REQ_DETAIL -->|"Back / Return"| REQ_LIST
     REQ_DETAIL -->|"Back / Return"| REQ_MY
+
+    USR_MGMT -->|"Add / Edit Action"| USR_MODAL
+    USR_MODAL -->|"Save / Close"| USR_MGMT
 ```
 
 ### Movement Descriptions
 
+* **From User Management (`SCR-USR-001`)**:
+  * Open `SCR-USR-002: Add / Edit User Modal` to register a new user account or update an existing account.
 * **From Request List (`SCR-REQ-001`)**:
   * Navigate to `SCR-REQ-002: Create Request` to enter a new Request.
   * Select a Request to navigate to `SCR-REQ-003: Request Detail`.
@@ -206,6 +237,8 @@ Every screen in this navigation map traces directly to approved operational arti
 | **SCR-MGT-001** | Customer Progress Review | UJ-MGT-002 | UC-MGT-002 | SC-MGT-002 | Management | Request, Customer |
 | **SCR-MGT-002** | Programmer Performance Review | UJ-MGT-003 | UC-MGT-003 | SC-MGT-003 | Management | Request, Organization |
 | **SCR-MGT-003** | Programmer Workload Review | UJ-MGT-004 | UC-MGT-004 | SC-MGT-004 | Management | Request, Organization |
+| **SCR-USR-001** | User Management View | UJ-USR-001 | UC-USR-001 | SC-USR-001 | Administrator, Admin | Identity, Organization |
+| **SCR-USR-002** | Add / Edit User Modal | UJ-USR-001 | UC-USR-001 | SC-USR-001 | Administrator, Admin | Identity, Organization |
 
 ---
 
@@ -213,7 +246,7 @@ Every screen in this navigation map traces directly to approved operational arti
 
 Verification against the **Navigation Creation Skill** checklist:
 
-* [x] **Every screen maps to a User Journey:** All 11 screens directly satisfy at least one approved user journey.
+* [x] **Every screen maps to a User Journey:** All 13 screens directly satisfy at least one approved user journey.
 * [x] **Every screen maps to a Use Case:** All screens trace directly to approved use cases.
 * [x] **Every screen maps to an Operational Scenario:** All use cases are anchored in approved operational scenarios.
 * [x] **No new business concepts introduced:** Structure reflects only approved domain concepts (Request, Customer, Organization, Post, Product).

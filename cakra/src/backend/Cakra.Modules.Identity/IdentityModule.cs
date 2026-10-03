@@ -38,5 +38,6 @@ public sealed class IdentityModule : IModule
         services.AddSingleton<IPasswordHasher<UserAccount>, PasswordHasher<UserAccount>>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<IAuthorizationService, AuthorizationService>();
+        services.AddScoped<IUserAccountService, UserAccountService>();
     }
 }

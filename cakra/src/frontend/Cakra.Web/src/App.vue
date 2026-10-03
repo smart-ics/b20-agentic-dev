@@ -37,9 +37,15 @@ async function handleLogout(): Promise<void> {
   await router.push('/login')
 }
 
+// Role-based visibility for administrative sections (Architecture §14; CR-007)
+const isAdmin = computed(
+  () => authStore.roles.includes('Administrator') || authStore.roles.includes('Admin'),
+)
+
 // Derive clean contextual titles for the topbar
 const currentScreenTitle = computed(() => {
   const path = route.path
+  if (path.startsWith('/admin/users')) return 'User Management'
   if (path.startsWith('/feed')) return 'Operational Feed'
   if (path.startsWith('/requests/create')) return 'Create Operational Request'
   if (path.startsWith('/requests/my')) return 'My Assigned Requests'
@@ -187,6 +193,22 @@ const currentScreenTitle = computed(() => {
         >
           <i class="bi bi-people nav-icon" aria-hidden="true"></i>
           <span v-show="!isCollapsed" class="nav-label">Programmer Workload</span>
+        </router-link>
+
+        <!-- Section: Administration -->
+        <div class="nav-section-title" v-if="isAdmin && !isCollapsed">Administration</div>
+
+        <router-link
+          v-if="isAdmin"
+          class="sidebar-nav-item"
+          to="/admin/users"
+          active-class="active"
+          data-testid="nav-user-management-link"
+          :title="isCollapsed ? 'User Management' : undefined"
+          @click="closeMobile"
+        >
+          <i class="bi bi-person-gear nav-icon" aria-hidden="true"></i>
+          <span v-show="!isCollapsed" class="nav-label">User Management</span>
         </router-link>
       </nav>
 

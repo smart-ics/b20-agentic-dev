@@ -144,6 +144,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/admin/users',
+    name: 'user-management',
+    component: () => import('@/views/UserManagementView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresRole: 'Administrator',
+      screenId: 'SCR-USR-001',
+    },
+  },
+  {
     path: '/',
     name: 'home',
     redirect: '/feed',
@@ -174,6 +184,14 @@ router.beforeEach(async (to) => {
 
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     return { path: '/feed' }
+  }
+
+  if (to.meta.requiresRole) {
+    const hasRequiredRole =
+      authStore.roles.includes('Administrator') || authStore.roles.includes('Admin')
+    if (!hasRequiredRole) {
+      return { path: '/feed' }
+    }
   }
 
   return true

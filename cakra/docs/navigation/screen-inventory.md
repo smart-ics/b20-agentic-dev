@@ -22,6 +22,8 @@ Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios*
 | `SCR-POST-002` | Create Post | Operational Feed | Implementator | UJ-FCOL-003 | UC-FCOL-003 |
 | `SCR-CUST-001` | Create Customer Modal | Customer Master | Administrator, Management | UJ-CUST-001 | UC-CUST-001 |
 | `SCR-CUST-002` | Edit Customer Modal | Customer Master | Administrator, Management | UJ-CUST-001 | UC-CUST-001 |
+| `SCR-USR-001` | User Management View | Administration | Administrator, Admin | UJ-USR-001 | UC-USR-001 |
+| `SCR-USR-002` | Add / Edit User Modal | Administration | Administrator, Admin | UJ-USR-001 | UC-USR-001 |
 
 ---
 
@@ -440,4 +442,58 @@ Modal dialog interface for updating customer attributes, toggling active status,
 
 **Exit / Destination:**
 * Customer Portfolio View (`CustomerPortfolioView.vue`) — closes modal and reloads portfolio list upon successful save or cancellation
+
+---
+
+### SCR-USR-001
+
+**Screen Name:**
+User Management View
+
+**Purpose:**
+Administrative user management console displaying all user accounts, operational metrics (Total Accounts, Active, Locked, Suspended), keyword search, status filtering, and action triggers for creating or editing user accounts. Access restricted strictly to users possessing the Administrator or Admin role.
+
+**Primary Actors:**
+* Administrator
+* Admin
+
+**Supported Use Cases:**
+* UC-USR-001: Manage User Accounts
+
+**Supported User Journeys:**
+* UJ-USR-001: Manage User Accounts
+
+**Entry Points:**
+* Global Navigation Sidebar (`Administration > User Management` — route `/admin/users`)
+
+**Exit / Destination:**
+* `SCR-USR-002: Add / Edit User Modal`
+
+---
+
+### SCR-USR-002
+
+**Screen Name:**
+Add / Edit User Modal
+
+**Purpose:**
+Modal dialog interface for registering a new user account tied to an unassociated active Person record or updating an existing user's email, account status (ACTIVE, LOCKED, SUSPENDED), and resetting credentials.
+
+**Primary Actors:**
+* Administrator
+* Admin
+
+**Supported Use Cases:**
+* UC-USR-001: Manage User Accounts
+
+**Supported User Journeys:**
+* UJ-USR-001: Manage User Accounts
+
+**Entry Points:**
+* User Management View (`SCR-USR-001`) — "Add User" button action (`data-testid="add-user-btn"`)
+* User Management View (`SCR-USR-001`) — User table row "Edit" button action (`data-testid="edit-user-btn"`)
+
+**Exit / Destination:**
+* User Management View (`SCR-USR-001`) — closes modal and refreshes user accounts table upon successful save or cancellation
+
 
