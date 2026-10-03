@@ -4,6 +4,13 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
+import type { RequestSubTask } from '@/api/requests'
+import {
+  addSubTask as apiAddSubTask,
+  completeSubTask as apiCompleteSubTask,
+  reopenSubTask as apiReopenSubTask,
+  removeSubTask as apiRemoveSubTask,
+} from '@/api/requests'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -82,6 +89,10 @@ export interface RequestDetail {
   evaluationNotes?: string | null
   escalationReason?: string | null
   managementDecisionNotes?: string | null
+  totalSubTasksCount?: number
+  completedSubTasksCount?: number
+  completionPercentage?: number
+  subTasks?: RequestSubTask[]
   resolution?: RequestResolutionDetail | null
   assignments?: RequestAssignmentHistoryItem[]
   createdAt: string
@@ -227,6 +238,46 @@ const personNameById = computed<Record<string, string>>(() => {
   }
   return map
 })
+
+// Sub-Tasks Checklist State & Actions (CR-006, Architecture TD-001..TD-003, TD-010)
+const newSubTaskForm = reactive({
+  title: '',
+  assigneePersonId: '',
+})
+const isSubTaskLoading = ref(false)
+const subTaskOperatingId = ref<string | null>(null)
+
+const hasUnfinishedSubTasks = computed(() => {
+  const total = request.value?.totalSubTasksCount ?? 0
+  const completed = request.value?.completedSubTasksCount ?? 0
+  return total > 0 && completed < total
+})
+
+const unfinishedSubTasksCount = computed(() => {
+  const total = request.value?.totalSubTasksCount ?? 0
+  const completed = request.value?.completedSubTasksCount ?? 0
+  return Math.max(0, total - completed)
+})
+
+function resolveSubTaskAssigneeDisplay(subTask: RequestSubTask): string {
+  if (subTask.assigneeName && subTask.assigneeName.trim().length > 0) {
+    return subTask.assigneeName
+  }
+  if (subTask.assigneePersonId) {
+    return personNameById.value[subTask.assigneePersonId] ?? subTask.assigneePersonId
+  }
+  return 'Unassigned'
+}
+
+function resolveSubTaskCompletedByDisplay(subTask: RequestSubTask): string {
+  if (subTask.completedByName && subTask.completedByName.trim().length > 0) {
+    return subTask.completedByName
+  }
+  if (subTask.completedByPersonId) {
+    return personNameById.value[subTask.completedByPersonId] ?? subTask.completedByPersonId
+  }
+  return ''
+}
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
@@ -722,6 +773,76 @@ async function handleUpdateComplexity(): Promise<void> {
   }
 }
 
+async function handleAddSubTask(): Promise<void> {
+  const title = newSubTaskForm.title.trim()
+  if (!title || !request.value || isClosed.value) {
+    return
+  }
+  isSubTaskLoading.value = true
+  errorMessage.value = null
+  actionSuccessMessage.value = null
+
+  try {
+    const updated = await apiAddSubTask(
+      request.value.id,
+      title,
+      newSubTaskForm.assigneePersonId || null,
+    )
+    request.value = { ...request.value, ...updated } as RequestDetail
+    newSubTaskForm.title = ''
+    newSubTaskForm.assigneePersonId = ''
+    actionSuccessMessage.value = 'Sub-task added successfully.'
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(err, 'Failed to add sub-task.')
+  } finally {
+    isSubTaskLoading.value = false
+  }
+}
+
+async function handleToggleSubTask(subTask: RequestSubTask): Promise<void> {
+  if (!request.value || isClosed.value) {
+    return
+  }
+  subTaskOperatingId.value = subTask.id
+  errorMessage.value = null
+  actionSuccessMessage.value = null
+
+  try {
+    let updated
+    if (subTask.isCompleted) {
+      updated = await apiReopenSubTask(request.value.id, subTask.id)
+      actionSuccessMessage.value = `Sub-task "${subTask.title}" reopened.`
+    } else {
+      updated = await apiCompleteSubTask(request.value.id, subTask.id)
+      actionSuccessMessage.value = `Sub-task "${subTask.title}" completed.`
+    }
+    request.value = { ...request.value, ...updated } as RequestDetail
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(err, 'Failed to update sub-task status.')
+  } finally {
+    subTaskOperatingId.value = null
+  }
+}
+
+async function handleRemoveSubTask(subTaskId: string): Promise<void> {
+  if (!request.value || isClosed.value) {
+    return
+  }
+  subTaskOperatingId.value = subTaskId
+  errorMessage.value = null
+  actionSuccessMessage.value = null
+
+  try {
+    const updated = await apiRemoveSubTask(request.value.id, subTaskId)
+    request.value = { ...request.value, ...updated } as RequestDetail
+    actionSuccessMessage.value = 'Sub-task removed successfully.'
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(err, 'Failed to remove sub-task.')
+  } finally {
+    subTaskOperatingId.value = null
+  }
+}
+
 async function navigateBackToList(): Promise<void> {
   await router.push('/requests')
 }
@@ -792,6 +913,28 @@ onMounted(async () => {
           >
             {{ request.requestType }}
           </span>
+          <div
+            v-if="(request.totalSubTasksCount ?? 0) > 0"
+            class="d-inline-flex align-items-center gap-1 border rounded px-2 py-0 bg-light"
+            style="height: 22px; font-size: 11px"
+            data-testid="request-header-progress"
+          >
+            <span class="text-body-secondary small fw-medium">Progress:</span>
+            <div class="progress" style="width: 50px; height: 8px;">
+              <div
+                class="progress-bar"
+                :class="(request.completionPercentage ?? 0) === 100 ? 'bg-success' : 'bg-primary'"
+                role="progressbar"
+                :style="{ width: `${request.completionPercentage ?? 0}%` }"
+                :aria-valuenow="request.completionPercentage ?? 0"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              ></div>
+            </div>
+            <span class="fw-semibold">
+              {{ request.completionPercentage ?? 0 }}% ({{ request.completedSubTasksCount ?? 0 }}/{{ request.totalSubTasksCount ?? 0 }})
+            </span>
+          </div>
         </template>
       </div>
 
@@ -929,6 +1072,176 @@ onMounted(async () => {
                 {{ request.resolution.description }}
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Sub-Tasks Checklist Card (CR-006, Architecture §4 TD-001..TD-003, TD-010) -->
+        <div class="card shadow-none border mb-2" data-testid="request-subtasks-card">
+          <div class="card-header py-1 px-2 bg-body-tertiary d-flex align-items-center justify-content-between flex-wrap gap-1">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fw-semibold small">
+                <i class="bi bi-check2-square me-1 text-primary" aria-hidden="true"></i>
+                Sub-Tasks Checklist
+              </span>
+              <span class="badge text-bg-secondary" data-testid="subtasks-count-badge">
+                {{ request.completedSubTasksCount ?? 0 }} / {{ request.totalSubTasksCount ?? 0 }}
+              </span>
+            </div>
+
+            <!-- Progress Bar inside Card Header -->
+            <div
+              v-if="(request.totalSubTasksCount ?? 0) > 0"
+              class="d-flex align-items-center gap-2"
+              data-testid="subtasks-progress-header"
+            >
+              <div class="progress" style="width: 100px; height: 10px;">
+                <div
+                  class="progress-bar"
+                  :class="(request.completionPercentage ?? 0) === 100 ? 'bg-success' : 'bg-primary'"
+                  role="progressbar"
+                  :style="{ width: `${request.completionPercentage ?? 0}%` }"
+                  :aria-valuenow="request.completionPercentage ?? 0"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                ></div>
+              </div>
+              <span class="fw-bold small text-body-secondary" style="font-size: 11px;">
+                {{ request.completionPercentage ?? 0 }}%
+              </span>
+            </div>
+          </div>
+
+          <div class="card-body p-2">
+            <!-- Sub-tasks items list -->
+            <div
+              v-if="!request.subTasks || request.subTasks.length === 0"
+              class="text-body-secondary small py-2 px-1 text-center"
+              data-testid="no-subtasks-message"
+            >
+              No sub-tasks defined for this request.
+            </div>
+
+            <ul v-else class="list-group list-group-flush mb-2" data-testid="subtasks-list">
+              <li
+                v-for="subTask in request.subTasks"
+                :key="subTask.id"
+                class="list-group-item px-2 py-2 d-flex align-items-start justify-content-between gap-2 border rounded mb-1 bg-body-subtle"
+                data-testid="subtask-item"
+                :data-subtask-id="subTask.id"
+              >
+                <div class="d-flex align-items-start gap-2 flex-grow-1 min-w-0">
+                  <div class="form-check mt-0 mb-0 pt-0">
+                    <input
+                      :id="`subtask-chk-${subTask.id}`"
+                      type="checkbox"
+                      class="form-check-input"
+                      style="cursor: pointer;"
+                      :checked="subTask.isCompleted"
+                      :disabled="isClosed || subTaskOperatingId === subTask.id"
+                      data-testid="subtask-checkbox"
+                      @change="handleToggleSubTask(subTask)"
+                    />
+                  </div>
+                  <div class="flex-grow-1 min-w-0">
+                    <label
+                      :for="`subtask-chk-${subTask.id}`"
+                      class="form-check-label d-block fw-medium mb-0 text-break"
+                      :class="{ 'text-decoration-line-through text-body-secondary': subTask.isCompleted }"
+                      style="font-size: 13px; cursor: pointer;"
+                      data-testid="subtask-title"
+                    >
+                      {{ subTask.title }}
+                    </label>
+
+                    <!-- Subtask Metadata -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-1 text-body-secondary" style="font-size: 11px;" data-testid="subtask-meta">
+                      <span v-if="subTask.assigneePersonId || subTask.assigneeName" class="badge text-bg-light border text-secondary">
+                        <i class="bi bi-person me-1" aria-hidden="true"></i>{{ resolveSubTaskAssigneeDisplay(subTask) }}
+                      </span>
+                      <span v-else class="badge text-bg-light border text-body-tertiary">
+                        <i class="bi bi-person me-1" aria-hidden="true"></i>Unassigned
+                      </span>
+
+                      <span v-if="subTask.isCompleted" class="text-success small">
+                        <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Completed
+                        <span v-if="resolveSubTaskCompletedByDisplay(subTask)">by {{ resolveSubTaskCompletedByDisplay(subTask) }}</span>
+                        <span v-if="subTask.completedAt"> on {{ formatTimestamp(subTask.completedAt) }}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Actions: Delete Sub-Task -->
+                <div v-if="!isClosed" class="flex-shrink-0">
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm py-0 px-1"
+                    style="font-size: 11px; height: 24px; line-height: 22px;"
+                    title="Remove Sub-Task"
+                    :disabled="subTaskOperatingId === subTask.id"
+                    data-testid="delete-subtask-button"
+                    @click="handleRemoveSubTask(subTask.id)"
+                  >
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </li>
+            </ul>
+
+            <!-- Inline Add Sub-Task Form (only when active) -->
+            <form
+              v-if="!isClosed"
+              class="border rounded p-2 bg-body-tertiary"
+              data-testid="add-subtask-form"
+              @submit.prevent="handleAddSubTask"
+            >
+              <div class="small fw-semibold mb-1" style="font-size: 11.5px;">
+                <i class="bi bi-plus-circle me-1 text-primary" aria-hidden="true"></i>
+                Add Sub-Task
+              </div>
+              <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-7">
+                  <input
+                    v-model="newSubTaskForm.title"
+                    type="text"
+                    class="form-control form-control-sm"
+                    placeholder="Enter sub-task title..."
+                    maxlength="255"
+                    required
+                    :disabled="isSubTaskLoading"
+                    data-testid="add-subtask-title-input"
+                  />
+                </div>
+                <div class="col-8 col-md-3">
+                  <select
+                    v-model="newSubTaskForm.assigneePersonId"
+                    class="form-select form-select-sm"
+                    :disabled="isSubTaskLoading"
+                    data-testid="add-subtask-assignee-select"
+                  >
+                    <option value="">(Assignee: Optional)</option>
+                    <option
+                      v-for="person in activePersons"
+                      :key="person.id"
+                      :value="person.id"
+                    >
+                      {{ person.fullName }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-4 col-md-2 text-end">
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-sm w-100 py-1"
+                    :disabled="isSubTaskLoading || !newSubTaskForm.title.trim()"
+                    data-testid="add-subtask-button"
+                  >
+                    <span v-if="isSubTaskLoading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    <i v-else class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
 
@@ -1086,10 +1399,20 @@ onMounted(async () => {
                 </form>
               </div>
 
-              <!-- IN_PROGRESS: Complete Request -->
+              <!-- IN_PROGRESS: Complete Request (Guarded by sub-tasks completion invariant TD-002) -->
               <div v-if="canComplete" class="col-12 col-md-6" data-testid="complete-action-section">
                 <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleComplete">
                   <div class="small fw-bold mb-1">Complete Request</div>
+                  <div
+                    v-if="hasUnfinishedSubTasks"
+                    class="alert alert-warning py-1 px-2 mb-2 small d-flex align-items-center gap-1"
+                    data-testid="complete-subtasks-warning"
+                  >
+                    <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0" aria-hidden="true"></i>
+                    <span>
+                      Cannot complete request: <strong>{{ unfinishedSubTasksCount }} unfinished sub-task(s)</strong> remain. All sub-tasks must be completed or removed before completion.
+                    </span>
+                  </div>
                   <div class="mb-1">
                     <textarea
                       id="completeResolutionInput"
@@ -1098,14 +1421,15 @@ onMounted(async () => {
                       rows="2"
                       placeholder="Describe completed solution..."
                       required
-                      :disabled="isSubmittingAction"
+                      :disabled="isSubmittingAction || hasUnfinishedSubTasks"
                       data-testid="complete-resolution-input"
                     ></textarea>
                   </div>
                   <button
                     type="submit"
                     class="btn btn-success btn-sm"
-                    :disabled="isSubmittingAction || !completeForm.resolutionDescription.trim()"
+                    :disabled="isSubmittingAction || !completeForm.resolutionDescription.trim() || hasUnfinishedSubTasks"
+                    :title="hasUnfinishedSubTasks ? 'All sub-tasks must be completed or removed before completing the request' : 'Complete Request'"
                     data-testid="complete-request-button"
                   >
                     <i class="bi bi-check2-all me-1" aria-hidden="true"></i>Complete

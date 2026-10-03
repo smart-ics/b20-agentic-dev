@@ -26,9 +26,23 @@ public sealed partial class RequestService :
     IRequestHandler<RejectRequestCommand, RequestDto>,
     IRequestHandler<ReviewRequestCompletionCommand, RequestDto>,
     IRequestHandler<CompleteRequestCommand, RequestDto>,
-    IRequestHandler<UpdateRequestComplexityCommand, RequestDto>
+    IRequestHandler<UpdateRequestComplexityCommand, RequestDto>,
+    IRequestHandler<AddRequestSubTaskCommand, RequestDto>,
+    IRequestHandler<CompleteRequestSubTaskCommand, RequestDto>,
+    IRequestHandler<ReopenRequestSubTaskCommand, RequestDto>,
+    IRequestHandler<RemoveRequestSubTaskCommand, RequestDto>
 {
     private static readonly HashSet<string> AuthorizedComplexityRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Programmer",
+        "Administrator",
+        "Admin",
+        "Developer",
+        "Team Lead",
+        "Manager"
+    };
+
+    private static readonly HashSet<string> AuthorizedSubTaskRoles = new(StringComparer.OrdinalIgnoreCase)
     {
         "Programmer",
         "Administrator",
@@ -66,6 +80,62 @@ public sealed partial class RequestService :
             throw new UnauthorizedAccessException(
                 $"Actor '{actorPersonId}' does not possess an authorized role to modify request complexity.");
         }
+    }
+
+    internal async Task ValidateSubTaskManagementAuthorizationAsync(
+        Domain.Request request,
+        Guid actorPersonId,
+        CancellationToken cancellationToken)
+    {
+        if (actorPersonId == SystemActorPersonId)
+        {
+            return;
+        }
+
+        if (request.OwnerPersonId.HasValue && request.OwnerPersonId.Value == actorPersonId)
+        {
+            return;
+        }
+
+        var roles = await _organizationQueryService.GetPersonRolesAsync(actorPersonId, cancellationToken);
+        if (roles.Any(r => AuthorizedSubTaskRoles.Contains(r)))
+        {
+            return;
+        }
+
+        throw new UnauthorizedAccessException(
+            $"Actor '{actorPersonId}' does not possess an authorized role or request ownership to manage sub-tasks on request '{request.Id}'.");
+    }
+
+    internal async Task ValidateSubTaskCompletionAuthorizationAsync(
+        Domain.Request request,
+        RequestSubTask subTask,
+        Guid actorPersonId,
+        CancellationToken cancellationToken)
+    {
+        if (actorPersonId == SystemActorPersonId)
+        {
+            return;
+        }
+
+        if (subTask.AssigneePersonId.HasValue && subTask.AssigneePersonId.Value == actorPersonId)
+        {
+            return;
+        }
+
+        if (request.OwnerPersonId.HasValue && request.OwnerPersonId.Value == actorPersonId)
+        {
+            return;
+        }
+
+        var roles = await _organizationQueryService.GetPersonRolesAsync(actorPersonId, cancellationToken);
+        if (roles.Any(r => AuthorizedSubTaskRoles.Contains(r)))
+        {
+            return;
+        }
+
+        throw new UnauthorizedAccessException(
+            $"Actor '{actorPersonId}' does not possess an authorized role, request ownership, or sub-task assignment to complete or reopen sub-task '{subTask.Id}' on request '{request.Id}'.");
     }
 
     public RequestService(
@@ -122,6 +192,7 @@ public sealed partial class RequestService :
         Guid? actorPersonId = null,
         Guid? workPackageId = null,
         int? complexity = null,
+        IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -166,6 +237,19 @@ public sealed partial class RequestService :
             priority: normalizedPriority,
             complexity: complexity,
             utcNow: now);
+
+        if (initialSubTasks is not null && initialSubTasks.Count > 0)
+        {
+            foreach (var initialSubTask in initialSubTasks)
+            {
+                if (initialSubTask.AssigneePersonId.HasValue)
+                {
+                    await ValidateAssigneeAsync(initialSubTask.AssigneePersonId.Value, cancellationToken);
+                }
+
+                request.AddSubTask(initialSubTask.Title, initialSubTask.AssigneePersonId, resolvedActorId, now);
+            }
+        }
 
         await _requestRepository.AddAsync(request, cancellationToken);
 
@@ -270,6 +354,7 @@ public sealed partial class RequestService :
         Guid? actorPersonId = null,
         Guid? workPackageId = null,
         int? complexity = null,
+        IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
         CancellationToken cancellationToken = default)
         => RecordRequestAsync(
             title,
@@ -281,6 +366,7 @@ public sealed partial class RequestService :
             actorPersonId,
             workPackageId,
             complexity,
+            initialSubTasks,
             cancellationToken);
 
     /// <inheritdoc />
@@ -519,6 +605,174 @@ public sealed partial class RequestService :
         CancellationToken cancellationToken = default)
         => UpdateRequestComplexityAsync(requestId, complexity, reason, actorPersonId, cancellationToken);
 
+    /// <inheritdoc />
+    public async Task<RequestDto> AddRequestSubTaskAsync(
+        Guid requestId,
+        string title,
+        Guid? assigneePersonId = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
+        }
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new RequestDomainValidationException("Sub-task title cannot be empty.", nameof(title));
+        }
+
+        var request = await GetRequiredRequestAsync(requestId, cancellationToken);
+        var resolvedActorId = ResolveActorPersonId(actorPersonId);
+        await ValidateSubTaskManagementAuthorizationAsync(request, resolvedActorId, cancellationToken);
+
+        if (assigneePersonId.HasValue)
+        {
+            await ValidateAssigneeAsync(assigneePersonId.Value, cancellationToken);
+        }
+
+        var now = UtcNow;
+        request.AddSubTask(title, assigneePersonId, resolvedActorId, now);
+
+        await _requestRepository.UpdateAsync(request, cancellationToken);
+        await DispatchDomainEventsAsync(request, cancellationToken);
+
+        return RequestDto.FromDomain(request);
+    }
+
+    /// <inheritdoc />
+    public Task<RequestDto> AddRequestSubTask(
+        Guid requestId,
+        string title,
+        Guid? assigneePersonId = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => AddRequestSubTaskAsync(requestId, title, assigneePersonId, actorPersonId, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<RequestDto> CompleteRequestSubTaskAsync(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
+        }
+
+        if (subTaskId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("SubTaskId cannot be empty.", nameof(subTaskId));
+        }
+
+        var request = await GetRequiredRequestAsync(requestId, cancellationToken);
+        var subTask = request.SubTasks.FirstOrDefault(t => t.Id == subTaskId)
+            ?? throw new KeyNotFoundException($"Sub-task '{subTaskId}' not found on Request '{requestId}'.");
+
+        var resolvedActorId = ResolveActorPersonId(actorPersonId, fallbackPersonId: subTask.AssigneePersonId);
+        await ValidateSubTaskCompletionAuthorizationAsync(request, subTask, resolvedActorId, cancellationToken);
+
+        var now = UtcNow;
+        request.CompleteSubTask(subTaskId, resolvedActorId, now);
+
+        await _requestRepository.UpdateAsync(request, cancellationToken);
+        await DispatchDomainEventsAsync(request, cancellationToken);
+
+        return RequestDto.FromDomain(request);
+    }
+
+    /// <inheritdoc />
+    public Task<RequestDto> CompleteRequestSubTask(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => CompleteRequestSubTaskAsync(requestId, subTaskId, actorPersonId, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<RequestDto> ReopenRequestSubTaskAsync(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
+        }
+
+        if (subTaskId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("SubTaskId cannot be empty.", nameof(subTaskId));
+        }
+
+        var request = await GetRequiredRequestAsync(requestId, cancellationToken);
+        var subTask = request.SubTasks.FirstOrDefault(t => t.Id == subTaskId)
+            ?? throw new KeyNotFoundException($"Sub-task '{subTaskId}' not found on Request '{requestId}'.");
+
+        var resolvedActorId = ResolveActorPersonId(actorPersonId, fallbackPersonId: subTask.AssigneePersonId);
+        await ValidateSubTaskCompletionAuthorizationAsync(request, subTask, resolvedActorId, cancellationToken);
+
+        var now = UtcNow;
+        request.ReopenSubTask(subTaskId, resolvedActorId, now);
+
+        await _requestRepository.UpdateAsync(request, cancellationToken);
+        await DispatchDomainEventsAsync(request, cancellationToken);
+
+        return RequestDto.FromDomain(request);
+    }
+
+    /// <inheritdoc />
+    public Task<RequestDto> ReopenRequestSubTask(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => ReopenRequestSubTaskAsync(requestId, subTaskId, actorPersonId, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<RequestDto> RemoveRequestSubTaskAsync(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
+        }
+
+        if (subTaskId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("SubTaskId cannot be empty.", nameof(subTaskId));
+        }
+
+        var request = await GetRequiredRequestAsync(requestId, cancellationToken);
+        var subTask = request.SubTasks.FirstOrDefault(t => t.Id == subTaskId)
+            ?? throw new KeyNotFoundException($"Sub-task '{subTaskId}' not found on Request '{requestId}'.");
+
+        var resolvedActorId = ResolveActorPersonId(actorPersonId);
+        await ValidateSubTaskManagementAuthorizationAsync(request, resolvedActorId, cancellationToken);
+
+        var now = UtcNow;
+        request.RemoveSubTask(subTaskId, resolvedActorId, now);
+
+        await _requestRepository.UpdateAsync(request, cancellationToken);
+        await DispatchDomainEventsAsync(request, cancellationToken);
+
+        return RequestDto.FromDomain(request);
+    }
+
+    /// <inheritdoc />
+    public Task<RequestDto> RemoveRequestSubTask(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => RemoveRequestSubTaskAsync(requestId, subTaskId, actorPersonId, cancellationToken);
+
     internal DateTime GetNextMonotonicTimestamp(Domain.Request request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -741,6 +995,7 @@ public sealed partial class RequestService :
             request.ActorPersonId,
             request.WorkPackageId,
             request.Complexity,
+            request.InitialSubTasks,
             cancellationToken);
     }
 
@@ -813,6 +1068,47 @@ public sealed partial class RequestService :
             request.RequestId,
             request.Complexity,
             request.Reason,
+            request.ActorPersonId,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(AddRequestSubTaskCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return AddRequestSubTaskAsync(
+            request.RequestId,
+            request.Title,
+            request.AssigneePersonId,
+            request.ActorPersonId,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(CompleteRequestSubTaskCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return CompleteRequestSubTaskAsync(
+            request.RequestId,
+            request.SubTaskId,
+            request.ActorPersonId,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(ReopenRequestSubTaskCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ReopenRequestSubTaskAsync(
+            request.RequestId,
+            request.SubTaskId,
+            request.ActorPersonId,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(RemoveRequestSubTaskCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return RemoveRequestSubTaskAsync(
+            request.RequestId,
+            request.SubTaskId,
             request.ActorPersonId,
             cancellationToken);
     }

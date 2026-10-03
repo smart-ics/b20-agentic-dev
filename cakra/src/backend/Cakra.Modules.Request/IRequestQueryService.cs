@@ -136,6 +136,22 @@ public interface IRequestQueryService
         => ListMyAssignedRequestsAsync(null, cancellationToken);
 
     /// <summary>
+    /// Retrieves active requests containing sub-tasks assigned to <paramref name="personId"/> where IsCompleted = 0
+    /// (Architecture CR-006 §4 TD-009).
+    /// </summary>
+    Task<IReadOnlyList<RequestDto>> GetRequestsWithAssignedSubTasksAsync(
+        Guid personId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="GetRequestsWithAssignedSubTasksAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<RequestDto>> GetRequestsWithAssignedSubTasks(
+        Guid personId,
+        CancellationToken cancellationToken = default)
+        => GetRequestsWithAssignedSubTasksAsync(personId, cancellationToken);
+
+    /// <summary>
     /// Executes a filtered and paginated query over <c>request.Requests</c> filtering by status,
     /// assignee, customer, product, or work package (Architecture §7, §8 — UC-COL-002..004, SCR-REQ-001, SCR-REQ-005).
     /// </summary>

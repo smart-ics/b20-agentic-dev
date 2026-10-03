@@ -54,6 +54,22 @@ export interface CreatedRequestResponse {
   createdAt?: string
 }
 
+export interface ActivePersonOption {
+  id: string
+  personId?: string
+  firstName?: string
+  lastName?: string
+  fullName: string
+  email?: string
+  status?: string
+}
+
+export interface InitialSubTaskItem {
+  id: string
+  title: string
+  assigneePersonId: string | null
+}
+
 interface ProblemDetailsPayload {
   title?: string
   detail?: string
@@ -68,6 +84,11 @@ const router = useRouter()
 
 const activeCustomers = ref<ActiveCustomerOption[]>([])
 const activeProducts = ref<ActiveProductOption[]>([])
+const activePersons = ref<ActivePersonOption[]>([])
+const initialSubTasks = ref<InitialSubTaskItem[]>([])
+const newSubTaskTitle = ref('')
+const newSubTaskAssignee = ref('')
+
 const isLoadingLookups = ref(false)
 const isSubmitting = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -120,21 +141,49 @@ function resolveProductLabel(product: ActiveProductOption): string {
   return code ? `${name} (${code})` : name
 }
 
+function resolvePersonName(personId: string): string {
+  const person = activePersons.value.find((p) => p.id === personId || p.personId === personId)
+  if (person) {
+    return person.fullName || `${person.firstName ?? ''} ${person.lastName ?? ''}`.trim()
+  }
+  return personId
+}
+
+function addInitialSubTask(): void {
+  const title = newSubTaskTitle.value.trim()
+  if (!title) return
+
+  initialSubTasks.value.push({
+    id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    title,
+    assigneePersonId: newSubTaskAssignee.value.trim() || null,
+  })
+
+  newSubTaskTitle.value = ''
+  newSubTaskAssignee.value = ''
+}
+
+function removeInitialSubTask(index: number): void {
+  initialSubTasks.value.splice(index, 1)
+}
+
 async function loadLookups(): Promise<void> {
   isLoadingLookups.value = true
   errorMessage.value = null
 
   try {
-    const [customersResponse, productsResponse] = await Promise.all([
+    const [customersResponse, productsResponse, personsResponse] = await Promise.all([
       httpClient.get<ActiveCustomerOption[]>('/customers/active'),
       httpClient.get<ActiveProductOption[]>('/products/active'),
+      httpClient.get<ActivePersonOption[]>('/organization/persons/active'),
     ])
     activeCustomers.value = customersResponse.data
     activeProducts.value = productsResponse.data
+    activePersons.value = personsResponse.data
   } catch (err) {
     errorMessage.value = extractErrorMessage(
       err,
-      'Failed to load active customers or products for selection.',
+      'Failed to load active customers, products, or team members for selection.',
     )
   } finally {
     isLoadingLookups.value = false
@@ -155,6 +204,12 @@ async function handleSubmit(): Promise<void> {
   isSubmitting.value = true
 
   try {
+    const initialSubTasksPayload = initialSubTasks.value.map((st, idx) => ({
+      title: st.title,
+      assigneePersonId: st.assigneePersonId || null,
+      sortOrder: idx + 1,
+    }))
+
     const response = await httpClient.post<CreatedRequestResponse>('/requests', {
       title: trimmedTitle,
       description: trimmedDescription,
@@ -163,6 +218,7 @@ async function handleSubmit(): Promise<void> {
       requestType: form.requestType || 'GENERAL',
       priority: form.priority || 'NORMAL',
       complexity: Number(form.complexity) || 1,
+      initialSubTasks: initialSubTasksPayload.length > 0 ? initialSubTasksPayload : undefined,
     })
 
     const createdId = response.data.id ?? response.data.requestId
@@ -376,6 +432,98 @@ onMounted(async () => {
                 :disabled="isSubmitting"
                 data-testid="request-description-input"
               ></textarea>
+            </div>
+
+            <!-- Initial Sub-Tasks Checklist Section (CR-006, Architecture §4 TD-010) -->
+            <div class="col-12 mt-2" data-testid="initial-subtasks-section">
+              <label class="form-label mb-1 small fw-medium d-flex justify-content-between align-items-center" style="font-size: 11px">
+                <span>
+                  <i class="bi bi-list-check me-1 text-primary" aria-hidden="true"></i>
+                  Initial Sub-Tasks Checklist (Optional)
+                </span>
+                <span class="text-body-secondary" style="font-size: 10.5px">
+                  {{ initialSubTasks.length }} item(s) defined
+                </span>
+              </label>
+
+              <!-- Added Sub-Tasks List -->
+              <div
+                v-if="initialSubTasks.length > 0"
+                class="border rounded p-2 mb-2 bg-body-tertiary"
+                data-testid="initial-subtasks-list"
+              >
+                <div
+                  v-for="(subTask, index) in initialSubTasks"
+                  :key="subTask.id"
+                  class="d-flex align-items-center justify-content-between gap-2 p-1.5 mb-1 bg-white border rounded small"
+                  data-testid="initial-subtask-item"
+                >
+                  <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                    <span class="badge text-bg-light border text-secondary font-monospace" style="font-size: 10px;">
+                      #{{ index + 1 }}
+                    </span>
+                    <span class="text-truncate fw-medium" :title="subTask.title" style="font-size: 12.5px;">
+                      {{ subTask.title }}
+                    </span>
+                    <span
+                      v-if="subTask.assigneePersonId"
+                      class="badge text-bg-light border text-body-secondary small"
+                    >
+                      <i class="bi bi-person me-1"></i>{{ resolvePersonName(subTask.assigneePersonId) }}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm py-0 px-1"
+                    style="font-size: 11px; height: 22px; line-height: 20px;"
+                    title="Remove sub-task"
+                    :disabled="isSubmitting"
+                    data-testid="remove-initial-subtask-button"
+                    @click="removeInitialSubTask(index)"
+                  >
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Add Sub-Task Inline Inputs -->
+              <div class="input-group input-group-sm">
+                <input
+                  v-model="newSubTaskTitle"
+                  type="text"
+                  class="form-control"
+                  placeholder="Sub-task title (e.g. Prepare design docs, write tests)..."
+                  maxlength="255"
+                  :disabled="isSubmitting"
+                  data-testid="initial-subtask-title-input"
+                  @keydown.enter.prevent="addInitialSubTask"
+                />
+                <select
+                  v-model="newSubTaskAssignee"
+                  class="form-select"
+                  style="max-width: 200px;"
+                  :disabled="isSubmitting || isLoadingLookups"
+                  data-testid="initial-subtask-assignee-select"
+                >
+                  <option value="">(Assignee: Optional)</option>
+                  <option
+                    v-for="person in activePersons"
+                    :key="person.id"
+                    :value="person.id"
+                  >
+                    {{ person.fullName }}
+                  </option>
+                </select>
+                <button
+                  type="button"
+                  class="btn btn-outline-primary"
+                  :disabled="isSubmitting || !newSubTaskTitle.trim()"
+                  data-testid="add-initial-subtask-button"
+                  @click="addInitialSubTask"
+                >
+                  <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add Sub-Task
+                </button>
+              </div>
             </div>
           </div>
 

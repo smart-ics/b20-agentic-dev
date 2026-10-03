@@ -42,6 +42,7 @@ public sealed class RequestCompletionAndQueriesTests
         typeof(GetRequestByIdQuery).IsPublic.Should().BeTrue();
         typeof(GetRequestStateHistoryQuery).IsPublic.Should().BeTrue();
         typeof(ListMyAssignedRequestsQuery).IsPublic.Should().BeTrue();
+        typeof(GetRequestsWithAssignedSubTasksQuery).IsPublic.Should().BeTrue();
         typeof(GetFilteredRequestGridQuery).IsPublic.Should().BeTrue();
     }
 

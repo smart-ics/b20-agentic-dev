@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentValidation;
+using Cakra.Modules.Request.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
@@ -123,6 +124,36 @@ public sealed class GlobalExceptionHandlingMiddleware
                     Type = "https://tools.ietf.org/html/rfc7235#section-3.1"
                 };
                 problemDetails.Extensions["errorCode"] = "UNAUTHORIZED";
+                problemDetails.Extensions["traceId"] = traceId;
+                break;
+
+            case RequestDomainException domainException:
+                statusCode = StatusCodes.Status400BadRequest;
+                _logger.LogWarning(domainException, "Request domain rule violation for request {Path}", context.Request.Path);
+                problemDetails = new ProblemDetails
+                {
+                    Status = statusCode,
+                    Title = "Bad Request",
+                    Detail = domainException.Message,
+                    Instance = context.Request.Path,
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                };
+                problemDetails.Extensions["errorCode"] = "BAD_REQUEST";
+                problemDetails.Extensions["traceId"] = traceId;
+                break;
+
+            case InvalidRequestStateTransitionException stateTransitionException:
+                statusCode = StatusCodes.Status400BadRequest;
+                _logger.LogWarning(stateTransitionException, "Invalid request state transition for request {Path}", context.Request.Path);
+                problemDetails = new ProblemDetails
+                {
+                    Status = statusCode,
+                    Title = "Bad Request",
+                    Detail = stateTransitionException.Message,
+                    Instance = context.Request.Path,
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                };
+                problemDetails.Extensions["errorCode"] = "BAD_REQUEST";
                 problemDetails.Extensions["traceId"] = traceId;
                 break;
 

@@ -22,6 +22,12 @@ public sealed record GetRequestStateHistoryQuery(Guid RequestId) : IRequest<IRea
 public sealed record ListMyAssignedRequestsQuery(Guid? PersonId = null) : IRequest<IReadOnlyList<RequestDto>>;
 
 /// <summary>
+/// MediatR query to retrieve active requests containing unfinished sub-tasks assigned to <paramref name="PersonId"/>
+/// (Architecture CR-006 §4 TD-009).
+/// </summary>
+public sealed record GetRequestsWithAssignedSubTasksQuery(Guid PersonId) : IRequest<IReadOnlyList<RequestDto>>;
+
+/// <summary>
 /// MediatR query to retrieve a filtered and paginated request grid
 /// (Architecture §7, §8 — UC-COL-002..004).
 /// </summary>

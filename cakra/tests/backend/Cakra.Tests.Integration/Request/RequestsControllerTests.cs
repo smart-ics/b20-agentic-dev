@@ -163,6 +163,16 @@ public class RequestsControllerTests : IAsyncLifetime
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.PatchAsJsonAsync($"/api/v1/requests/{randomId}/complexity", new { complexity = 3 }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/subtasks", new { title = "Sub-task" }))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/subtasks/{randomId}/complete", new { }))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/subtasks/{randomId}/reopen", new { }))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.DeleteAsync($"/api/v1/requests/{randomId}/subtasks/{randomId}"))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.GetAsync("/api/v1/requests/assigned-subtasks"))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         (await client.GetAsync("/api/v1/customers/active")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -553,6 +563,266 @@ public class RequestsControllerTests : IAsyncLifetime
             complexity = 6
         });
         badRangeResp2.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Initial_subtasks_intake_via_POST_api_v1_requests_persists_subtasks_and_calculates_progress()
+    {
+        if (!_sqlServerAvailable || _factory is null) return;
+
+        var ctx = await SeedOperationalActorsAndMasterDataAsync();
+
+        // 1. POST /api/v1/requests with initial subtasks -> 201 Created
+        var createResp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "Request with initial subtasks",
+            description = "Intake includes 2 subtasks",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id,
+            requestType = "Bug",
+            priority = "HIGH",
+            initialSubTasks = new[]
+            {
+                new { title = "Sub-task 1: Root cause analysis", assigneePersonId = (Guid?)ctx.Programmer1Id },
+                new { title = "Sub-task 2: Implement patch", assigneePersonId = (Guid?)ctx.Programmer2Id }
+            }
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var requestId = created.GetProperty("id").GetGuid();
+        created.GetProperty("totalSubTasksCount").GetInt32().Should().Be(2);
+        created.GetProperty("completedSubTasksCount").GetInt32().Should().Be(0);
+        created.GetProperty("completionPercentage").GetInt32().Should().Be(0);
+
+        var subtasks = created.GetProperty("subTasks");
+        subtasks.GetArrayLength().Should().Be(2);
+        subtasks[0].GetProperty("title").GetString().Should().Be("Sub-task 1: Root cause analysis");
+        subtasks[0].GetProperty("isCompleted").GetBoolean().Should().BeFalse();
+        subtasks[0].GetProperty("assigneePersonId").GetGuid().Should().Be(ctx.Programmer1Id);
+        subtasks[1].GetProperty("title").GetString().Should().Be("Sub-task 2: Implement patch");
+
+        // 2. GET /api/v1/requests/{id} -> 200 OK with subtasks
+        var getResp = await ctx.Client.GetAsync($"/api/v1/requests/{requestId}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var detail = await getResp.Content.ReadFromJsonAsync<JsonElement>();
+        detail.GetProperty("totalSubTasksCount").GetInt32().Should().Be(2);
+        detail.GetProperty("subTasks").GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Subtask_lifecycle_endpoints_add_complete_reopen_and_remove_update_progress_and_metrics()
+    {
+        if (!_sqlServerAvailable || _factory is null) return;
+
+        var ctx = await SeedOperationalActorsAndMasterDataAsync();
+
+        // 1. Create request -> 201 Created
+        var createResp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "Subtask lifecycle tracking",
+            description = "Track subtask additions, completion, and reopening",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var requestId = (await createResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        // Assign to Programmer1 -> EVALUATING
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
+        {
+            ownerPersonId = ctx.Programmer1Id
+        })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Accept -> IN_PROGRESS
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/accept", new
+        {
+            notes = "Accepted"
+        })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 2. POST /api/v1/requests/{id}/subtasks -> 200 OK
+        var addResp1 = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/subtasks", new
+        {
+            title = "Verify schema migrations",
+            assigneePersonId = ctx.Programmer1Id
+        });
+        addResp1.StatusCode.Should().Be(HttpStatusCode.OK);
+        var res1 = await addResp1.Content.ReadFromJsonAsync<JsonElement>();
+        res1.GetProperty("totalSubTasksCount").GetInt32().Should().Be(1);
+        res1.GetProperty("completedSubTasksCount").GetInt32().Should().Be(0);
+        res1.GetProperty("completionPercentage").GetInt32().Should().Be(0);
+        var subTask1Id = res1.GetProperty("subTasks")[0].GetProperty("id").GetGuid();
+
+        // Add second subtask
+        var addResp2 = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/subtasks", new
+        {
+            title = "Write integration tests",
+            assigneePersonId = ctx.Programmer2Id
+        });
+        addResp2.StatusCode.Should().Be(HttpStatusCode.OK);
+        var res2 = await addResp2.Content.ReadFromJsonAsync<JsonElement>();
+        res2.GetProperty("totalSubTasksCount").GetInt32().Should().Be(2);
+        res2.GetProperty("completedSubTasksCount").GetInt32().Should().Be(0);
+        res2.GetProperty("completionPercentage").GetInt32().Should().Be(0);
+        var subTask2Id = res2.GetProperty("subTasks")[1].GetProperty("id").GetGuid();
+
+        // 3. Complete subtask 1 -> 200 OK (50% progress)
+        var completeSubResp = await ctx.Client.PostAsJsonAsync(
+            $"/api/v1/requests/{requestId}/subtasks/{subTask1Id}/complete",
+            new { actorPersonId = ctx.Programmer1Id });
+        completeSubResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var completedSub = await completeSubResp.Content.ReadFromJsonAsync<JsonElement>();
+        completedSub.GetProperty("totalSubTasksCount").GetInt32().Should().Be(2);
+        completedSub.GetProperty("completedSubTasksCount").GetInt32().Should().Be(1);
+        completedSub.GetProperty("completionPercentage").GetInt32().Should().Be(50);
+
+        // 4. Query GET /api/v1/requests/assigned-subtasks for Programmer2 -> should include requestId
+        var assignedResp = await ctx.Client.GetAsync($"/api/v1/requests/assigned-subtasks?personId={ctx.Programmer2Id}");
+        assignedResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var assignedList = await assignedResp.Content.ReadFromJsonAsync<JsonElement>();
+        assignedList.EnumerateArray().Any(r => r.GetProperty("id").GetGuid() == requestId).Should().BeTrue();
+
+        // 5. Reopen subtask 1 -> 200 OK (0% progress)
+        var reopenResp = await ctx.Client.PostAsJsonAsync(
+            $"/api/v1/requests/{requestId}/subtasks/{subTask1Id}/reopen",
+            new { actorPersonId = ctx.Programmer1Id });
+        reopenResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reopened = await reopenResp.Content.ReadFromJsonAsync<JsonElement>();
+        reopened.GetProperty("completedSubTasksCount").GetInt32().Should().Be(0);
+        reopened.GetProperty("completionPercentage").GetInt32().Should().Be(0);
+
+        // 6. Delete subtask 2 -> 200 OK (1 total subtask remaining)
+        var deleteResp = await ctx.Client.DeleteAsync(
+            $"/api/v1/requests/{requestId}/subtasks/{subTask2Id}?actorPersonId={ctx.Programmer1Id}");
+        deleteResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deletedResult = await deleteResp.Content.ReadFromJsonAsync<JsonElement>();
+        deletedResult.GetProperty("totalSubTasksCount").GetInt32().Should().Be(1);
+        deletedResult.GetProperty("subTasks").GetArrayLength().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Complete_request_fails_with_400_Bad_Request_when_unfinished_subtasks_exist_and_succeeds_once_all_completed()
+    {
+        if (!_sqlServerAvailable || _factory is null) return;
+
+        var ctx = await SeedOperationalActorsAndMasterDataAsync();
+
+        // Create request
+        var createResp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "Completion guard test",
+            description = "Verify RequestHasUnfinishedSubTasksException blocks completion",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id
+        });
+        var requestId = (await createResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        // Assign to Programmer1 -> EVALUATING
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new { ownerPersonId = ctx.Programmer1Id });
+
+        // Accept -> IN_PROGRESS
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/accept", new { notes = "Accepted" });
+
+        // Add an unfinished sub-task
+        var addResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/subtasks", new
+        {
+            title = "Mandatory checklist item",
+            assigneePersonId = ctx.Programmer1Id
+        });
+        addResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var subTaskId = (await addResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("subTasks")[0].GetProperty("id").GetGuid();
+
+        // 1. Attempt to complete request while subtask is unfinished -> 400 Bad Request
+        var failCompleteResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/complete", new
+        {
+            resolutionDescription = "Attempting closure with unfinished tasks",
+            actorPersonId = ctx.Programmer1Id
+        });
+        failCompleteResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // 2. Complete the subtask -> 200 OK
+        var compSubResp = await ctx.Client.PostAsJsonAsync(
+            $"/api/v1/requests/{requestId}/subtasks/{subTaskId}/complete",
+            new { actorPersonId = ctx.Programmer1Id });
+        compSubResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 3. Attempt to complete request now that all subtasks are finished -> 200 OK
+        var successCompleteResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/complete", new
+        {
+            resolutionDescription = "All sub-tasks finished cleanly.",
+            actorPersonId = ctx.Programmer1Id
+        });
+        successCompleteResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var completed = await successCompleteResp.Content.ReadFromJsonAsync<JsonElement>();
+        completed.GetProperty("status").GetString().Should().Be(RequestStatusNames.Completed);
+        completed.GetProperty("completionPercentage").GetInt32().Should().Be(100);
+
+        // 4. Attempting sub-task mutation on completed request -> 400 Bad Request (closed state immutability)
+        var mutateClosedResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/subtasks", new
+        {
+            title = "Illegal post-closure task",
+            assigneePersonId = ctx.Programmer1Id
+        });
+        mutateClosedResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Subtask_authorization_guards_reject_unauthorized_actors_with_403_Forbidden()
+    {
+        if (!_sqlServerAvailable || _factory is null) return;
+
+        var ctx = await SeedOperationalActorsAndMasterDataAsync();
+
+        // Create an unauthorized person (no roles, not request owner, not assignee)
+        Guid unauthorizedPersonId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var p = await mediator.Send(new CreatePersonCommand("Unauthorized", "User", "unauth.user@cakra.id"));
+            unauthorizedPersonId = p.Id;
+        }
+
+        // Create a request owned by Programmer1
+        var createResp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "Subtask auth test",
+            description = "Verify 403 Forbidden for unauthorized actors",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id
+        });
+        var requestId = (await createResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        // Assign to Programmer1 -> EVALUATING
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new { ownerPersonId = ctx.Programmer1Id });
+
+        // 1. Unauthorized actor attempts to add sub-task -> 403 Forbidden
+        var addForbiddenResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/subtasks", new
+        {
+            title = "Unauthorized subtask",
+            actorPersonId = unauthorizedPersonId
+        });
+        addForbiddenResp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // Authorized add by owner
+        var addResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/subtasks", new
+        {
+            title = "Owner subtask",
+            assigneePersonId = ctx.Programmer1Id,
+            actorPersonId = ctx.Programmer1Id
+        });
+        addResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var subTaskId = (await addResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("subTasks")[0].GetProperty("id").GetGuid();
+
+        // 2. Unauthorized actor attempts to complete sub-task assigned to Programmer1 -> 403 Forbidden
+        var completeForbiddenResp = await ctx.Client.PostAsJsonAsync(
+            $"/api/v1/requests/{requestId}/subtasks/{subTaskId}/complete",
+            new { actorPersonId = unauthorizedPersonId });
+        completeForbiddenResp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // 3. Unauthorized actor attempts to remove sub-task -> 403 Forbidden
+        var removeForbiddenResp = await ctx.Client.DeleteAsync(
+            $"/api/v1/requests/{requestId}/subtasks/{subTaskId}?actorPersonId={unauthorizedPersonId}");
+        removeForbiddenResp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     private sealed record SeededContext(

@@ -36,6 +36,9 @@ internal sealed class RequestRepository : IRequestRepository
                 [Status],
                 [Priority],
                 [Complexity],
+                [TotalSubTasksCount],
+                [CompletedSubTasksCount],
+                [CompletionPercentage],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -81,6 +84,23 @@ internal sealed class RequestRepository : IRequestRepository
             ORDER BY [AssignedAtUtc] ASC, [CreatedAt] ASC;
             """;
 
+        const string subTasksSql = """
+            SELECT
+                [Id],
+                [RequestId],
+                [Title],
+                [IsCompleted],
+                [AssigneePersonId],
+                [CompletedAt],
+                [CompletedByPersonId],
+                [SortOrder],
+                [CreatedAt],
+                [UpdatedAt]
+            FROM [request].[RequestSubTasks]
+            WHERE [RequestId] = @RequestId
+            ORDER BY [SortOrder] ASC, [CreatedAt] ASC;
+            """;
+
         using var connection = _connectionFactory.CreateConnection();
 
         var row = await connection.QuerySingleOrDefaultAsync<RequestRow>(
@@ -97,10 +117,14 @@ internal sealed class RequestRepository : IRequestRepository
         var assignmentRows = await connection.QueryAsync<RequestAssignmentRow>(
             new CommandDefinition(assignmentsSql, new { RequestId = id }, cancellationToken: cancellationToken));
 
+        var subTaskRows = await connection.QueryAsync<RequestSubTaskRow>(
+            new CommandDefinition(subTasksSql, new { RequestId = id }, cancellationToken: cancellationToken));
+
         var resolution = resolutionRow?.ToDomain();
         var assignments = assignmentRows.Select(a => a.ToDomain()).ToList();
+        var subTasks = subTaskRows.Select(st => st.ToDomain()).ToList();
 
-        return row.ToDomain(resolution, assignments);
+        return row.ToDomain(resolution, assignments, subTasks);
     }
 
     public async Task<IReadOnlyList<Domain.Request>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -114,6 +138,9 @@ internal sealed class RequestRepository : IRequestRepository
                 [Status],
                 [Priority],
                 [Complexity],
+                [TotalSubTasksCount],
+                [CompletedSubTasksCount],
+                [CompletionPercentage],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -157,6 +184,9 @@ internal sealed class RequestRepository : IRequestRepository
                 [Status],
                 [Priority],
                 [Complexity],
+                [TotalSubTasksCount],
+                [CompletedSubTasksCount],
+                [CompletionPercentage],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -174,6 +204,9 @@ internal sealed class RequestRepository : IRequestRepository
                 @Status,
                 @Priority,
                 @Complexity,
+                @TotalSubTasksCount,
+                @CompletedSubTasksCount,
+                @CompletionPercentage,
                 @OwnerPersonId,
                 @CustomerId,
                 @ProductId,
@@ -186,7 +219,40 @@ internal sealed class RequestRepository : IRequestRepository
             );
             """;
 
+        const string insertSubTaskSql = """
+            INSERT INTO [request].[RequestSubTasks] (
+                [Id],
+                [RequestId],
+                [Title],
+                [IsCompleted],
+                [AssigneePersonId],
+                [CompletedAt],
+                [CompletedByPersonId],
+                [SortOrder],
+                [CreatedAt],
+                [UpdatedAt]
+            ) VALUES (
+                @Id,
+                @RequestId,
+                @Title,
+                @IsCompleted,
+                @AssigneePersonId,
+                @CompletedAt,
+                @CompletedByPersonId,
+                @SortOrder,
+                @CreatedAt,
+                @UpdatedAt
+            );
+            """;
+
         using var connection = _connectionFactory.CreateConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            connection.Open();
+        }
+
+        using var transaction = connection.BeginTransaction();
+
         await connection.ExecuteAsync(new CommandDefinition(sql, new
         {
             entity.Id,
@@ -196,6 +262,9 @@ internal sealed class RequestRepository : IRequestRepository
             Status = entity.Status.ToName(),
             entity.Priority,
             entity.Complexity,
+            entity.TotalSubTasksCount,
+            entity.CompletedSubTasksCount,
+            entity.CompletionPercentage,
             entity.OwnerPersonId,
             entity.CustomerId,
             entity.ProductId,
@@ -205,7 +274,26 @@ internal sealed class RequestRepository : IRequestRepository
             entity.ManagementDecisionNotes,
             entity.CreatedAt,
             entity.UpdatedAt
-        }, cancellationToken: cancellationToken));
+        }, transaction: transaction, cancellationToken: cancellationToken));
+
+        foreach (var subTask in entity.SubTasks)
+        {
+            await connection.ExecuteAsync(new CommandDefinition(insertSubTaskSql, new
+            {
+                subTask.Id,
+                subTask.RequestId,
+                subTask.Title,
+                subTask.IsCompleted,
+                subTask.AssigneePersonId,
+                subTask.CompletedAt,
+                subTask.CompletedByPersonId,
+                subTask.SortOrder,
+                subTask.CreatedAt,
+                subTask.UpdatedAt
+            }, transaction: transaction, cancellationToken: cancellationToken));
+        }
+
+        transaction.Commit();
     }
 
     public async Task UpdateAsync(Domain.Request entity, CancellationToken cancellationToken = default)
@@ -223,6 +311,9 @@ internal sealed class RequestRepository : IRequestRepository
                 [Status] = @Status,
                 [Priority] = @Priority,
                 [Complexity] = @Complexity,
+                [TotalSubTasksCount] = @TotalSubTasksCount,
+                [CompletedSubTasksCount] = @CompletedSubTasksCount,
+                [CompletionPercentage] = @CompletionPercentage,
                 [OwnerPersonId] = @OwnerPersonId,
                 [CustomerId] = @CustomerId,
                 [ProductId] = @ProductId,
@@ -234,7 +325,64 @@ internal sealed class RequestRepository : IRequestRepository
             WHERE [Id] = @Id;
             """;
 
+        const string getExistingSubTaskIdsSql = """
+            SELECT [Id]
+            FROM [request].[RequestSubTasks]
+            WHERE [RequestId] = @RequestId;
+            """;
+
+        const string insertSubTaskSql = """
+            INSERT INTO [request].[RequestSubTasks] (
+                [Id],
+                [RequestId],
+                [Title],
+                [IsCompleted],
+                [AssigneePersonId],
+                [CompletedAt],
+                [CompletedByPersonId],
+                [SortOrder],
+                [CreatedAt],
+                [UpdatedAt]
+            ) VALUES (
+                @Id,
+                @RequestId,
+                @Title,
+                @IsCompleted,
+                @AssigneePersonId,
+                @CompletedAt,
+                @CompletedByPersonId,
+                @SortOrder,
+                @CreatedAt,
+                @UpdatedAt
+            );
+            """;
+
+        const string updateSubTaskSql = """
+            UPDATE [request].[RequestSubTasks]
+            SET
+                [Title] = @Title,
+                [IsCompleted] = @IsCompleted,
+                [AssigneePersonId] = @AssigneePersonId,
+                [CompletedAt] = @CompletedAt,
+                [CompletedByPersonId] = @CompletedByPersonId,
+                [SortOrder] = @SortOrder,
+                [UpdatedAt] = @UpdatedAt
+            WHERE [Id] = @Id;
+            """;
+
+        const string deleteSubTaskSql = """
+            DELETE FROM [request].[RequestSubTasks]
+            WHERE [Id] = @Id;
+            """;
+
         using var connection = _connectionFactory.CreateConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            connection.Open();
+        }
+
+        using var transaction = connection.BeginTransaction();
+
         await connection.ExecuteAsync(new CommandDefinition(sql, new
         {
             entity.Id,
@@ -244,6 +392,9 @@ internal sealed class RequestRepository : IRequestRepository
             Status = entity.Status.ToName(),
             entity.Priority,
             entity.Complexity,
+            entity.TotalSubTasksCount,
+            entity.CompletedSubTasksCount,
+            entity.CompletionPercentage,
             entity.OwnerPersonId,
             entity.CustomerId,
             entity.ProductId,
@@ -252,7 +403,59 @@ internal sealed class RequestRepository : IRequestRepository
             entity.EscalationReason,
             entity.ManagementDecisionNotes,
             entity.UpdatedAt
-        }, cancellationToken: cancellationToken));
+        }, transaction: transaction, cancellationToken: cancellationToken));
+
+        var existingIds = (await connection.QueryAsync<Guid>(
+            new CommandDefinition(getExistingSubTaskIdsSql, new { RequestId = entity.Id }, transaction: transaction, cancellationToken: cancellationToken)))
+            .ToHashSet();
+
+        var currentIds = entity.SubTasks.Select(st => st.Id).ToHashSet();
+
+        // 1. Delete removed sub-tasks
+        foreach (var existingId in existingIds)
+        {
+            if (!currentIds.Contains(existingId))
+            {
+                await connection.ExecuteAsync(new CommandDefinition(deleteSubTaskSql, new { Id = existingId }, transaction: transaction, cancellationToken: cancellationToken));
+            }
+        }
+
+        // 2. Insert new or update existing sub-tasks
+        foreach (var subTask in entity.SubTasks)
+        {
+            if (existingIds.Contains(subTask.Id))
+            {
+                await connection.ExecuteAsync(new CommandDefinition(updateSubTaskSql, new
+                {
+                    subTask.Id,
+                    subTask.Title,
+                    subTask.IsCompleted,
+                    subTask.AssigneePersonId,
+                    subTask.CompletedAt,
+                    subTask.CompletedByPersonId,
+                    subTask.SortOrder,
+                    subTask.UpdatedAt
+                }, transaction: transaction, cancellationToken: cancellationToken));
+            }
+            else
+            {
+                await connection.ExecuteAsync(new CommandDefinition(insertSubTaskSql, new
+                {
+                    subTask.Id,
+                    subTask.RequestId,
+                    subTask.Title,
+                    subTask.IsCompleted,
+                    subTask.AssigneePersonId,
+                    subTask.CompletedAt,
+                    subTask.CompletedByPersonId,
+                    subTask.SortOrder,
+                    subTask.CreatedAt,
+                    subTask.UpdatedAt
+                }, transaction: transaction, cancellationToken: cancellationToken));
+            }
+        }
+
+        transaction.Commit();
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -438,6 +641,9 @@ internal sealed class RequestRepository : IRequestRepository
         public string Status { get; init; } = RequestStatusNames.Captured;
         public string Priority { get; init; } = "NORMAL";
         public int Complexity { get; init; } = 1;
+        public int TotalSubTasksCount { get; init; } = 0;
+        public int CompletedSubTasksCount { get; init; } = 0;
+        public int CompletionPercentage { get; init; } = 0;
         public Guid? OwnerPersonId { get; init; }
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
@@ -450,7 +656,8 @@ internal sealed class RequestRepository : IRequestRepository
 
         public Domain.Request ToDomain(
             RequestResolution? resolution = null,
-            IEnumerable<RequestAssignment>? assignments = null)
+            IEnumerable<RequestAssignment>? assignments = null,
+            IEnumerable<RequestSubTask>? subTasks = null)
         {
             return Domain.Request.Rehydrate(
                 Id,
@@ -470,8 +677,39 @@ internal sealed class RequestRepository : IRequestRepository
                 UpdatedAt,
                 resolution,
                 assignments,
-                Complexity);
+                Complexity,
+                subTasks,
+                TotalSubTasksCount,
+                CompletedSubTasksCount,
+                CompletionPercentage);
         }
+    }
+
+    private sealed class RequestSubTaskRow
+    {
+        public Guid Id { get; init; }
+        public Guid RequestId { get; init; }
+        public string Title { get; init; } = string.Empty;
+        public bool IsCompleted { get; init; }
+        public Guid? AssigneePersonId { get; init; }
+        public DateTime? CompletedAt { get; init; }
+        public Guid? CompletedByPersonId { get; init; }
+        public int SortOrder { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public DateTime? UpdatedAt { get; init; }
+
+        public RequestSubTask ToDomain() =>
+            RequestSubTask.Rehydrate(
+                Id,
+                RequestId,
+                Title,
+                IsCompleted,
+                AssigneePersonId,
+                CompletedAt,
+                CompletedByPersonId,
+                SortOrder,
+                CreatedAt,
+                UpdatedAt);
     }
 
     private sealed class RequestResolutionRow

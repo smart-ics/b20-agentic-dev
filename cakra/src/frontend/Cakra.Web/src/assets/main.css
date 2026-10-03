@@ -1,71 +1,79 @@
 /* ==========================================================================
    CAKRA - High-Density ICS Operational Workspace Design System
-   Architecture §19.4 | Color Hunt Palette: #142850, #27496D, #0C7B93, #00A8CC
+   Architecture §19.4 | Color Hunt Palette: #364F6B, #3FC1C9, #F5F5F5, #FC5185
    Dense typography & spacing inspired by Linear, GitHub, YouTrack, Jira Cloud
    ========================================================================== */
 
 :root {
-  /* Cakra Palette Tokens (Color Hunt: #142850, #27496D, #0C7B93, #00A8CC) */
-  --cakra-midnight: #142850;
-  --cakra-midnight-rgb: 20, 40, 80;
-  --cakra-steel: #27496d;
-  --cakra-steel-rgb: 39, 73, 109;
-  --cakra-teal: #0c7b93;
-  --cakra-teal-rgb: 12, 123, 147;
-  --cakra-cyan: #00a8cc;
-  --cakra-cyan-rgb: 0, 168, 204;
+  /* Cakra Palette Tokens (Color Hunt: #364F6B, #3FC1C9, #F5F5F5, #FC5185) */
+  --cakra-navy: #364f6b;
+  --cakra-navy-rgb: 54, 79, 107;
+  --cakra-cyan: #3fc1c9;
+  --cakra-cyan-rgb: 63, 193, 201;
+  --cakra-canvas: #f5f5f5;
+  --cakra-canvas-rgb: 245, 245, 245;
+  --cakra-pink: #fc5185;
+  --cakra-pink-rgb: 252, 81, 133;
+
+  /* Aliases & Specific Shades */
+  --cakra-midnight: #223245;
+  --cakra-midnight-rgb: 34, 50, 69;
+  --cakra-steel: #364f6b;
+  --cakra-steel-rgb: 54, 79, 107;
+  --cakra-teal: #3fc1c9;
+  --cakra-teal-rgb: 63, 193, 201;
+  --cakra-coral: #fc5185;
+  --cakra-coral-rgb: 252, 81, 133;
 
   /* Semantic Core Tokens */
-  --cakra-dark: #142850;
-  --cakra-dark-rgb: 20, 40, 80;
-  --cakra-primary: #0c7b93;
-  --cakra-primary-rgb: 12, 123, 147;
-  --cakra-secondary: #00a8cc;
-  --cakra-secondary-rgb: 0, 168, 204;
-  --cakra-accent: #00a8cc;
-  --cakra-accent-rgb: 0, 168, 204;
+  --cakra-dark: #364f6b;
+  --cakra-dark-rgb: 54, 79, 107;
+  --cakra-primary: #364f6b;
+  --cakra-primary-rgb: 54, 79, 107;
+  --cakra-secondary: #3fc1c9;
+  --cakra-secondary-rgb: 63, 193, 201;
+  --cakra-accent: #fc5185;
+  --cakra-accent-rgb: 252, 81, 133;
 
   /* Aliases for backwards compatibility with legacy tokens */
-  --cakra-navy: #0c7b93;
-  --cakra-navy-rgb: 12, 123, 147;
-  --cakra-blue: #00a8cc;
-  --cakra-blue-rgb: 0, 168, 204;
-  --cakra-ice: #e8f4fa;
-  --cakra-ice-rgb: 232, 244, 250;
-  --cakra-cream: #e8f4fa;
-  --cakra-cream-rgb: 232, 244, 250;
-  --cakra-terracotta: #0c7b93;
-  --cakra-terracotta-rgb: 12, 123, 147;
-  --cakra-amber: #00a8cc;
-  --cakra-amber-rgb: 0, 168, 204;
-  --cakra-crimson: #0c7b93;
-  --cakra-crimson-rgb: 12, 123, 147;
-  --cakra-sage: #27496d;
-  --cakra-sage-rgb: 39, 73, 109;
-  --cakra-moss: #0c7b93;
-  --cakra-moss-rgb: 12, 123, 147;
-  --cakra-obsidian: #142850;
-  --cakra-obsidian-rgb: 20, 40, 80;
-  --cakra-plum: #27496d;
-  --cakra-plum-rgb: 39, 73, 109;
-  --cakra-magenta: #0c7b93;
-  --cakra-magenta-rgb: 12, 123, 147;
-  --cakra-rose: #00a8cc;
-  --cakra-rose-rgb: 0, 168, 204;
+  --cakra-blue: #3fc1c9;
+  --cakra-blue-rgb: 63, 193, 201;
+  --cakra-ice: #f5f5f5;
+  --cakra-ice-rgb: 245, 245, 245;
+  --cakra-cream: #f5f5f5;
+  --cakra-cream-rgb: 245, 245, 245;
+  --cakra-terracotta: #fc5185;
+  --cakra-terracotta-rgb: 252, 81, 133;
+  --cakra-amber: #3fc1c9;
+  --cakra-amber-rgb: 63, 193, 201;
+  --cakra-crimson: #fc5185;
+  --cakra-crimson-rgb: 252, 81, 133;
+  --cakra-sage: #364f6b;
+  --cakra-sage-rgb: 54, 79, 107;
+  --cakra-moss: #3fc1c9;
+  --cakra-moss-rgb: 63, 193, 201;
+  --cakra-obsidian: #364f6b;
+  --cakra-obsidian-rgb: 54, 79, 107;
+  --cakra-plum: #364f6b;
+  --cakra-plum-rgb: 54, 79, 107;
+  --cakra-magenta: #fc5185;
+  --cakra-magenta-rgb: 252, 81, 133;
+  --cakra-rose: #fc5185;
+  --cakra-rose-rgb: 252, 81, 133;
 
   /* Surfaces & Ambient Neutrals */
-  --cakra-bg-canvas: #f3f7fa;
+  --cakra-bg-canvas: #f5f5f5;
   --cakra-bg-surface: #ffffff;
-  --cakra-border: #d4e2ed;
-  --cakra-border-subtle: #e9f1f7;
-  --cakra-text-main: #142850;
-  --cakra-text-muted: #506882;
-  --cakra-text-subtle: #8298b0;
+  --cakra-border: #dbe3eb;
+  --cakra-border-subtle: #edf2f7;
+  --cakra-text-main: #364f6b;
+  --cakra-text-muted: #5e7690;
+  --cakra-text-subtle: #8c9fb3;
 
-  /* Layered Shadows (Crisp & Subtle with navy undertone) */
-  --cakra-shadow-xs: 0 1px 2px 0 rgba(20, 40, 80, 0.05);
-  --cakra-shadow-sm: 0 1px 3px 0 rgba(20, 40, 80, 0.08), 0 1px 2px -1px rgba(20, 40, 80, 0.04);
-  --cakra-shadow-md: 0 4px 12px -2px rgba(20, 40, 80, 0.12);
+  /* Layered Shadows (Crisp & Subtle with slate navy undertone) */
+  --cakra-shadow-xs: 0 1px 2px 0 rgba(54, 79, 107, 0.05);
+  --cakra-shadow-sm: 0 1px 3px 0 rgba(54, 79, 107, 0.08), 0 1px 2px -1px rgba(54, 79, 107, 0.04);
+  --cakra-shadow-md: 0 4px 12px -2px rgba(54, 79, 107, 0.12);
 
   /* Compact Radii */
   --cakra-radius-xs: 3px;
@@ -74,29 +82,29 @@
   --cakra-radius-lg: 10px;
 
   /* Bootstrap 5 Theme Overrides */
-  --bs-primary: #0c7b93;
-  --bs-primary-rgb: 12, 123, 147;
-  --bs-secondary: #00a8cc;
-  --bs-secondary-rgb: 0, 168, 204;
-  --bs-dark: #142850;
-  --bs-dark-rgb: 20, 40, 80;
-  --bs-info: #00a8cc;
-  --bs-info-rgb: 0, 168, 204;
+  --bs-primary: #364f6b;
+  --bs-primary-rgb: 54, 79, 107;
+  --bs-secondary: #3fc1c9;
+  --bs-secondary-rgb: 63, 193, 201;
+  --bs-dark: #364f6b;
+  --bs-dark-rgb: 54, 79, 107;
+  --bs-info: #3fc1c9;
+  --bs-info-rgb: 63, 193, 201;
   --bs-success: #16a34a;
   --bs-success-rgb: 22, 163, 74;
   --bs-warning: #d97706;
   --bs-warning-rgb: 217, 119, 6;
   --bs-danger: #dc2626;
   --bs-danger-rgb: 220, 38, 38;
-  --bs-light: #e8f4fa;
-  --bs-light-rgb: 232, 244, 250;
-  --bs-body-bg: #f3f7fa;
-  --bs-body-color: #142850;
+  --bs-light: #f5f5f5;
+  --bs-light-rgb: 245, 245, 245;
+  --bs-body-bg: #f5f5f5;
+  --bs-body-color: #364f6b;
   --bs-body-font-size: 0.8125rem; /* 13px base */
   --bs-body-line-height: 1.35;
-  --bs-link-color: #0c7b93;
-  --bs-link-hover-color: #075465;
-  --bs-border-color: #d4e2ed;
+  --bs-link-color: #267982;
+  --bs-link-hover-color: #fc5185;
+  --bs-border-color: #dbe3eb;
 
   /* High-Density Layout Dimensions */
   --sidebar-width: 204px;
@@ -168,13 +176,13 @@ code, kbd, samp, pre, .font-monospace {
   top: 0;
   left: 0;
   z-index: 1030;
-  background: linear-gradient(180deg, #0d1a35 0%, #142850 50%, #1a3563 100%);
+  background: linear-gradient(180deg, #223245 0%, #2c4158 50%, #364f6b 100%);
   color: var(--cakra-ice);
   display: flex;
   flex-direction: column;
   transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  border-right: 1px solid rgba(0, 168, 204, 0.18);
-  box-shadow: 2px 0 10px rgba(13, 26, 53, 0.4);
+  border-right: 1px solid rgba(63, 193, 201, 0.18);
+  box-shadow: 2px 0 10px rgba(34, 50, 69, 0.4);
 }
 
 .cakra-sidebar.is-collapsed {
@@ -188,8 +196,8 @@ code, kbd, samp, pre, .font-monospace {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  border-bottom: 1px solid rgba(0, 168, 204, 0.18);
-  background-color: rgba(13, 26, 53, 0.95);
+  border-bottom: 1px solid rgba(63, 193, 201, 0.18);
+  background-color: rgba(34, 50, 69, 0.95);
   flex-shrink: 0;
 }
 
@@ -197,14 +205,15 @@ code, kbd, samp, pre, .font-monospace {
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  background: linear-gradient(135deg, #0c7b93 0%, #00a8cc 100%);
+  background: linear-gradient(135deg, #3fc1c9 0%, #fc5185 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.95rem;
   flex-shrink: 0;
-  border: 1px solid rgba(232, 244, 250, 0.35);
+  border: 1px solid rgba(245, 245, 245, 0.35);
+  box-shadow: 0 2px 6px rgba(252, 81, 133, 0.3);
 }
 
 .brand-text-wrapper {
@@ -242,7 +251,7 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .btn-close-mobile:hover {
-  background-color: rgba(0, 168, 204, 0.18);
+  background-color: rgba(63, 193, 201, 0.18);
   color: #ffffff;
 }
 
@@ -273,7 +282,7 @@ code, kbd, samp, pre, .font-monospace {
   gap: 0.55rem;
   padding: 0.38rem 0.55rem;
   border-radius: 5px;
-  color: rgba(232, 244, 250, 0.85);
+  color: rgba(245, 245, 245, 0.88);
   text-decoration: none;
   font-size: 0.78rem;
   font-weight: 500;
@@ -292,7 +301,7 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .sidebar-nav-item:hover {
-  background-color: rgba(0, 168, 204, 0.16);
+  background-color: rgba(63, 193, 201, 0.16);
   color: #ffffff;
 }
 
@@ -301,10 +310,10 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .sidebar-nav-item.active {
-  background: linear-gradient(90deg, #0c7b93 0%, #178fa8 100%);
+  background: linear-gradient(90deg, rgba(63, 193, 201, 0.28) 0%, rgba(63, 193, 201, 0.08) 100%);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 1px 4px rgba(20, 40, 80, 0.4);
+  box-shadow: 0 1px 4px rgba(34, 50, 69, 0.4);
   border-left: 2.5px solid var(--cakra-cyan);
 }
 
@@ -324,9 +333,9 @@ code, kbd, samp, pre, .font-monospace {
 
 /* Sidebar Footer */
 .sidebar-footer {
-  border-top: 1px solid rgba(0, 168, 204, 0.18);
+  border-top: 1px solid rgba(63, 193, 201, 0.18);
   padding: 0.4rem 0.5rem;
-  background-color: rgba(13, 26, 53, 0.95);
+  background-color: rgba(34, 50, 69, 0.95);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -344,14 +353,14 @@ code, kbd, samp, pre, .font-monospace {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0c7b93, #00a8cc);
+  background: linear-gradient(135deg, #3fc1c9, #fc5185);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
   flex-shrink: 0;
-  border: 1px solid rgba(232, 244, 250, 0.4);
+  border: 1px solid rgba(245, 245, 245, 0.4);
 }
 
 .user-meta {
@@ -362,7 +371,7 @@ code, kbd, samp, pre, .font-monospace {
 
 .user-role-badge {
   font-size: 0.65rem;
-  background-color: rgba(12, 123, 147, 0.45);
+  background-color: rgba(63, 193, 201, 0.25);
   color: var(--cakra-ice);
   padding: 0.12rem 0.35rem;
   border-radius: 4px;
@@ -370,7 +379,7 @@ code, kbd, samp, pre, .font-monospace {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border: 1px solid rgba(0, 168, 204, 0.35);
+  border: 1px solid rgba(63, 193, 201, 0.4);
 }
 
 .sidebar-actions {
@@ -381,8 +390,8 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .btn-sidebar-collapse {
-  background: rgba(0, 168, 204, 0.12);
-  border: 1px solid rgba(0, 168, 204, 0.3);
+  background: rgba(63, 193, 201, 0.12);
+  border: 1px solid rgba(63, 193, 201, 0.3);
   color: var(--cakra-ice);
   padding: 0.2rem 0.45rem;
   border-radius: 4px;
@@ -395,13 +404,13 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .btn-sidebar-collapse:hover {
-  background-color: #0c7b93;
+  background-color: #364f6b;
   color: #ffffff;
 }
 
 .btn-sidebar-logout {
   background: transparent;
-  border: 1px solid rgba(232, 244, 250, 0.25);
+  border: 1px solid rgba(245, 245, 245, 0.25);
   color: var(--cakra-ice);
   padding: 0.2rem 0.55rem;
   border-radius: 4px;
@@ -415,8 +424,8 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .btn-sidebar-logout:hover {
-  background-color: #dc2626;
-  border-color: #dc2626;
+  background-color: #fc5185;
+  border-color: #fc5185;
   color: #ffffff;
 }
 
@@ -461,7 +470,7 @@ code, kbd, samp, pre, .font-monospace {
   font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: var(--cakra-primary);
+  color: var(--cakra-accent);
   font-weight: 700;
   line-height: 1;
 }
@@ -474,12 +483,13 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .cakra-role-badge {
-  background: #0c7b93 !important;
+  background: #364f6b !important;
   color: #ffffff !important;
   font-weight: 600;
   font-size: 0.7rem;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
+  border: 1px solid rgba(63, 193, 201, 0.4);
 }
 
 .cakra-page-content {
@@ -513,7 +523,7 @@ code, kbd, samp, pre, .font-monospace {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(13, 26, 53, 0.65);
+    background-color: rgba(34, 50, 69, 0.65);
     backdrop-filter: blur(3px);
     z-index: 1025;
   }
@@ -527,12 +537,12 @@ code, kbd, samp, pre, .font-monospace {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(circle at 50% 20%, #27496d 0%, #142850 100%);
+  background: radial-gradient(circle at 50% 20%, #364f6b 0%, #202e3e 100%);
 }
 
 .cakra-unauth-header {
-  border-bottom: 1px solid rgba(0, 168, 204, 0.2);
-  background-color: rgba(20, 40, 80, 0.85);
+  border-bottom: 1px solid rgba(63, 193, 201, 0.2);
+  background-color: rgba(34, 50, 69, 0.85);
   backdrop-filter: blur(10px);
 }
 
@@ -540,11 +550,12 @@ code, kbd, samp, pre, .font-monospace {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #0c7b93 0%, #00a8cc 100%);
+  background: linear-gradient(135deg, #3fc1c9 0%, #fc5185 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(232, 244, 250, 0.35);
+  border: 1px solid rgba(245, 245, 245, 0.35);
+  box-shadow: 0 4px 12px rgba(252, 81, 133, 0.3);
 }
 
 .cakra-unauth-content {
@@ -553,10 +564,10 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .cakra-unauth-footer {
-  border-top: 1px solid rgba(0, 168, 204, 0.15);
+  border-top: 1px solid rgba(63, 193, 201, 0.15);
   background-color: transparent;
   font-size: 0.72rem;
-  color: rgba(232, 244, 250, 0.75) !important;
+  color: rgba(245, 245, 245, 0.75) !important;
 }
 
 /* ==========================================================================
@@ -580,8 +591,8 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .btn-primary {
-  background: #0c7b93;
-  border-color: #0c7b93;
+  background: #364f6b;
+  border-color: #364f6b;
   color: #ffffff;
   font-weight: 600;
 }
@@ -589,45 +600,62 @@ code, kbd, samp, pre, .font-monospace {
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active {
-  background: #086175 !important;
-  border-color: #086175 !important;
+  background: #27394e !important;
+  border-color: #27394e !important;
   color: #ffffff !important;
 }
 
 .btn-outline-primary {
-  color: #0c7b93;
-  border-color: #00a8cc;
+  color: #364f6b;
+  border-color: #364f6b;
 }
 
 .btn-outline-primary:hover {
-  background-color: #0c7b93;
-  border-color: #0c7b93;
+  background-color: #364f6b;
+  border-color: #364f6b;
   color: #ffffff;
 }
 
 .btn-secondary {
-  background: #00a8cc;
-  border-color: #00a8cc;
-  color: #ffffff;
+  background: #3fc1c9;
+  border-color: #3fc1c9;
+  color: #1e2c3c;
   font-weight: 600;
 }
 
 .btn-secondary:hover {
-  background: #0294b4;
-  border-color: #0294b4;
-  color: #ffffff;
+  background: #32aab1;
+  border-color: #32aab1;
+  color: #1e2c3c;
 }
 
 .btn-outline-secondary {
-  color: #142850;
-  border-color: #d4e2ed;
+  color: #364f6b;
+  border-color: #dbe3eb;
   background-color: #ffffff;
 }
 
 .btn-outline-secondary:hover {
-  background-color: #e8f4fa;
-  border-color: #00a8cc;
-  color: #142850;
+  background-color: #f5f5f5;
+  border-color: #3fc1c9;
+  color: #364f6b;
+}
+
+.btn-accent,
+.btn-coral,
+.btn-pink {
+  background: #fc5185;
+  border-color: #fc5185;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-accent:hover,
+.btn-coral:hover,
+.btn-pink:hover {
+  background: #e23e70;
+  border-color: #e23e70;
+  color: #ffffff;
 }
 
 /* Compact Cards */
@@ -639,7 +667,7 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .card-header {
-  background-color: #f0f6fa;
+  background-color: #f5f7f9;
   border-bottom: 1px solid var(--cakra-border);
   font-weight: 600;
   font-size: 0.8125rem;
@@ -652,7 +680,7 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .card-footer {
-  background-color: #f0f6fa;
+  background-color: #f5f7f9;
   border-top: 1px solid var(--cakra-border);
   padding: 0.4rem 0.75rem;
 }
@@ -665,7 +693,7 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .table thead th {
-  background-color: #e8f1f7;
+  background-color: #edf2f7;
   color: var(--cakra-dark);
   font-weight: 700;
   font-size: 0.68rem;
@@ -683,18 +711,18 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .table-hover tbody tr:hover {
-  background-color: #edf4f9;
+  background-color: #f2f6fa;
 }
 
 .table-active {
-  background-color: #dbebf5 !important;
+  background-color: #e4edf5 !important;
 }
 
 /* Compact Form Controls */
 .form-control,
 .form-select {
   border-radius: 5px;
-  border: 1px solid #c2d6e4;
+  border: 1px solid #ccd8e4;
   font-size: 0.78rem;
   padding: 0.22rem 0.5rem;
   min-height: 28px;
@@ -705,7 +733,7 @@ code, kbd, samp, pre, .font-monospace {
 .form-control:focus,
 .form-select:focus {
   border-color: var(--cakra-cyan);
-  box-shadow: 0 0 0 2px rgba(0, 168, 204, 0.25);
+  box-shadow: 0 0 0 2px rgba(63, 193, 201, 0.25);
 }
 
 .form-label {
@@ -722,8 +750,8 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .form-check-input:checked {
-  background-color: #0c7b93;
-  border-color: #0c7b93;
+  background-color: #364f6b;
+  border-color: #364f6b;
 }
 
 .form-switch .form-check-input {
@@ -746,20 +774,20 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .badge.text-bg-secondary {
-  background-color: #27496d !important;
+  background-color: #4b6584 !important;
   color: #ffffff !important;
 }
 
 .badge.bg-primary,
 .badge.text-bg-primary {
-  background-color: #0c7b93 !important;
+  background-color: #364f6b !important;
   color: #ffffff !important;
 }
 
 .badge.bg-info,
 .badge.text-bg-info {
-  background-color: #00a8cc !important;
-  color: #ffffff !important;
+  background-color: #3fc1c9 !important;
+  color: #1e2c3c !important;
 }
 
 .badge.bg-danger {
@@ -781,9 +809,18 @@ code, kbd, samp, pre, .font-monospace {
 
 .badge.bg-light,
 .badge.text-bg-light {
-  background-color: #e8f4fa !important;
-  color: #142850 !important;
-  border: 1px solid #d4e2ed;
+  background-color: #f5f5f5 !important;
+  color: #364f6b !important;
+  border: 1px solid #dbe3eb;
+}
+
+.badge.bg-accent,
+.badge.text-bg-accent,
+.badge-accent,
+.badge-coral,
+.badge-pink {
+  background-color: #fc5185 !important;
+  color: #ffffff !important;
 }
 
 /* Pagination */
@@ -807,8 +844,8 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .pagination .page-link:hover {
-  color: #075465;
-  background-color: #e8f4fa;
+  color: #267982;
+  background-color: #f5f5f5;
 }
 
 /* Alerts */
@@ -827,7 +864,7 @@ code, kbd, samp, pre, .font-monospace {
 .modal-header {
   padding: 0.6rem 0.85rem;
   border-bottom: 1px solid var(--cakra-border);
-  background-color: #f0f6fa;
+  background-color: #f5f7f9;
   color: var(--cakra-dark);
 }
 .modal-body {
@@ -836,7 +873,7 @@ code, kbd, samp, pre, .font-monospace {
 .modal-footer {
   padding: 0.5rem 0.85rem;
   border-top: 1px solid var(--cakra-border);
-  background-color: #f0f6fa;
+  background-color: #f5f7f9;
 }
 
 /* ==========================================================================
@@ -933,56 +970,69 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .op-feed-row:hover {
-  background-color: #edf4f9;
+  background-color: #f2f6fa;
   border-color: var(--cakra-cyan);
   box-shadow: var(--cakra-shadow-xs);
 }
 
 .op-feed-row.is-exception {
-  border-left: 3.5px solid #dc2626 !important;
-  background-color: #fff8f8;
+  border-left: 3.5px solid #fc5185 !important;
+  background-color: #fff6f8;
 }
 
 /* Palette utility helper classes */
+.text-cakra-navy { color: var(--cakra-navy) !important; }
+.text-cakra-cyan { color: var(--cakra-cyan) !important; }
+.text-cakra-teal { color: var(--cakra-teal) !important; }
+.text-cakra-pink { color: var(--cakra-pink) !important; }
+.text-cakra-coral { color: var(--cakra-coral) !important; }
+.text-cakra-canvas { color: var(--cakra-canvas) !important; }
+.text-cakra-dark { color: var(--cakra-dark) !important; }
 .text-cakra-midnight { color: var(--cakra-midnight) !important; }
 .text-cakra-steel { color: var(--cakra-steel) !important; }
-.text-cakra-teal { color: var(--cakra-teal) !important; }
-.text-cakra-cyan { color: var(--cakra-cyan) !important; }
 
-.text-cakra-dark { color: var(--cakra-dark) !important; }
-.text-cakra-terracotta { color: var(--cakra-primary) !important; }
-.text-cakra-amber { color: var(--cakra-cyan) !important; }
-.text-cakra-navy { color: var(--cakra-primary) !important; }
-.text-cakra-blue { color: var(--cakra-cyan) !important; }
+/* Legacy & semantic alias classes */
+.text-cakra-primary { color: var(--cakra-primary) !important; }
+.text-cakra-secondary { color: var(--cakra-secondary) !important; }
+.text-cakra-accent { color: var(--cakra-accent) !important; }
 .text-cakra-ice { color: var(--cakra-ice) !important; }
 .text-cakra-cream { color: var(--cakra-ice) !important; }
-.text-cakra-crimson { color: var(--cakra-primary) !important; }
-.text-cakra-sage { color: var(--cakra-steel) !important; }
+.text-cakra-blue { color: var(--cakra-cyan) !important; }
+.text-cakra-terracotta { color: var(--cakra-pink) !important; }
+.text-cakra-amber { color: var(--cakra-cyan) !important; }
+.text-cakra-crimson { color: var(--cakra-pink) !important; }
+.text-cakra-sage { color: var(--cakra-navy) !important; }
 .text-cakra-moss { color: var(--cakra-teal) !important; }
-.text-cakra-obsidian { color: var(--cakra-midnight) !important; }
+.text-cakra-obsidian { color: var(--cakra-dark) !important; }
 .text-cakra-plum { color: var(--cakra-steel) !important; }
-.text-cakra-magenta { color: var(--cakra-teal) !important; }
-.text-cakra-rose { color: var(--cakra-cyan) !important; }
+.text-cakra-magenta { color: var(--cakra-pink) !important; }
+.text-cakra-rose { color: var(--cakra-pink) !important; }
 
+.bg-cakra-navy { background-color: var(--cakra-navy) !important; }
+.bg-cakra-cyan { background-color: var(--cakra-cyan) !important; }
+.bg-cakra-teal { background-color: var(--cakra-teal) !important; }
+.bg-cakra-pink { background-color: var(--cakra-pink) !important; }
+.bg-cakra-coral { background-color: var(--cakra-coral) !important; }
+.bg-cakra-canvas { background-color: var(--cakra-canvas) !important; }
+.bg-cakra-dark { background-color: var(--cakra-dark) !important; }
 .bg-cakra-midnight { background-color: var(--cakra-midnight) !important; }
 .bg-cakra-steel { background-color: var(--cakra-steel) !important; }
-.bg-cakra-teal { background-color: var(--cakra-teal) !important; }
-.bg-cakra-cyan { background-color: var(--cakra-cyan) !important; }
 
-.bg-cakra-dark { background-color: var(--cakra-dark) !important; }
-.bg-cakra-terracotta { background-color: var(--cakra-primary) !important; }
-.bg-cakra-amber { background-color: var(--cakra-cyan) !important; }
-.bg-cakra-navy { background-color: var(--cakra-primary) !important; }
-.bg-cakra-blue { background-color: var(--cakra-cyan) !important; }
+.bg-cakra-primary { background-color: var(--cakra-primary) !important; }
+.bg-cakra-secondary { background-color: var(--cakra-secondary) !important; }
+.bg-cakra-accent { background-color: var(--cakra-accent) !important; }
 .bg-cakra-ice { background-color: var(--cakra-ice) !important; }
 .bg-cakra-cream { background-color: var(--cakra-ice) !important; }
-.bg-cakra-crimson { background-color: var(--cakra-primary) !important; }
-.bg-cakra-sage { background-color: var(--cakra-steel) !important; }
+.bg-cakra-blue { background-color: var(--cakra-cyan) !important; }
+.bg-cakra-terracotta { background-color: var(--cakra-pink) !important; }
+.bg-cakra-amber { background-color: var(--cakra-cyan) !important; }
+.bg-cakra-crimson { background-color: var(--cakra-pink) !important; }
+.bg-cakra-sage { background-color: var(--cakra-navy) !important; }
 .bg-cakra-moss { background-color: var(--cakra-teal) !important; }
-.bg-cakra-obsidian { background-color: var(--cakra-midnight) !important; }
+.bg-cakra-obsidian { background-color: var(--cakra-dark) !important; }
 .bg-cakra-plum { background-color: var(--cakra-steel) !important; }
-.bg-cakra-magenta { background-color: var(--cakra-teal) !important; }
-.bg-cakra-rose { background-color: var(--cakra-cyan) !important; }
+.bg-cakra-magenta { background-color: var(--cakra-pink) !important; }
+.bg-cakra-rose { background-color: var(--cakra-pink) !important; }
 
 .fs-11 { font-size: 11px !important; }
 .fs-12 { font-size: 12px !important; }

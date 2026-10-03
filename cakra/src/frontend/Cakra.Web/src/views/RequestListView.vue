@@ -46,6 +46,9 @@ export interface RequestListItem {
   productName?: string | null
   productCode?: string | null
   workPackageId?: string | null
+  totalSubTasksCount?: number
+  completedSubTasksCount?: number
+  completionPercentage?: number
   createdAt: string
   updatedAt?: string | null
 }
@@ -474,13 +477,14 @@ onMounted(async () => {
               <th scope="col" style="width: 150px;">Customer</th>
               <th scope="col" style="width: 140px;">Product</th>
               <th scope="col" style="width: 110px;">Status</th>
+              <th scope="col" style="width: 130px;">Progress</th>
               <th scope="col" style="width: 150px;">Assignee</th>
               <th scope="col" style="width: 130px;">CreatedAt</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="7" class="text-center py-4 text-body-secondary">
+              <td colspan="8" class="text-center py-4 text-body-secondary">
                 <span
                   class="spinner-border spinner-border-sm me-2"
                   role="status"
@@ -492,7 +496,7 @@ onMounted(async () => {
 
             <tr v-else-if="requests.length === 0">
               <td
-                colspan="7"
+                colspan="8"
                 class="text-center py-4 text-body-secondary"
                 data-testid="empty-requests-row"
               >
@@ -577,6 +581,32 @@ onMounted(async () => {
                 >
                   {{ req.status }}
                 </span>
+              </td>
+
+              <!-- Progress Column -->
+              <td>
+                <div
+                  v-if="(req.totalSubTasksCount ?? 0) > 0"
+                  class="d-flex flex-column gap-1"
+                  data-testid="request-progress-cell"
+                >
+                  <div class="d-flex justify-content-between align-items-center" style="font-size: 11px;">
+                    <span class="fw-semibold">{{ req.completionPercentage ?? 0 }}%</span>
+                    <span class="text-body-secondary small">({{ req.completedSubTasksCount ?? 0 }}/{{ req.totalSubTasksCount ?? 0 }})</span>
+                  </div>
+                  <div class="progress" style="height: 6px;">
+                    <div
+                      class="progress-bar"
+                      :class="(req.completionPercentage ?? 0) === 100 ? 'bg-success' : 'bg-primary'"
+                      role="progressbar"
+                      :style="{ width: `${req.completionPercentage ?? 0}%` }"
+                      :aria-valuenow="req.completionPercentage ?? 0"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    ></div>
+                  </div>
+                </div>
+                <span v-else class="text-body-secondary small" style="font-size: 11px;">—</span>
               </td>
 
               <!-- Assignee Column -->

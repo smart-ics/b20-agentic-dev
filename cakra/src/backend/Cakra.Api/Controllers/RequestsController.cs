@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using Cakra.Core;
 using Cakra.Modules.Request;
 using Cakra.Modules.Request.Domain;
+using Cakra.Modules.Request.Domain.Exceptions;
 using Cakra.Modules.Request.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -25,15 +27,18 @@ public sealed class RequestsController : ApiControllerBase
     private readonly IMediator _mediator;
     private readonly IRequestQueryService _requestQueryService;
     private readonly ILogger<RequestsController> _logger;
+    private readonly ICurrentContextProvider? _currentContextProvider;
 
     public RequestsController(
         IMediator mediator,
         IRequestQueryService requestQueryService,
-        ILogger<RequestsController> logger)
+        ILogger<RequestsController> logger,
+        ICurrentContextProvider? currentContextProvider = null)
     {
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _requestQueryService = requestQueryService ?? throw new ArgumentNullException(nameof(requestQueryService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _currentContextProvider = currentContextProvider;
     }
 
     /// <summary>
@@ -101,6 +106,27 @@ public sealed class RequestsController : ApiControllerBase
     }
 
     /// <summary>
+    /// Retrieves active requests containing unfinished sub-tasks assigned to the specified or current authenticated person
+    /// (CR-006 Architecture TD-009).
+    /// </summary>
+    [HttpGet("assigned-subtasks")]
+    [ProducesResponseType(typeof(IReadOnlyList<RequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyList<RequestDto>>> GetRequestsWithAssignedSubTasks(
+        [FromQuery] Guid? personId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var resolvedPersonId = FirstNonEmptyGuid(personId) ?? _currentContextProvider?.CurrentPersonId;
+        if (!resolvedPersonId.HasValue || resolvedPersonId.Value == Guid.Empty)
+        {
+            return Ok(Array.Empty<RequestDto>());
+        }
+
+        var items = await _mediator.Send(new GetRequestsWithAssignedSubTasksQuery(resolvedPersonId.Value), cancellationToken);
+        return Ok(items);
+    }
+
+    /// <summary>
     /// Retrieves a single request's details by unique identifier
     /// (<c>RequestQueryService.GetRequestById</c>; Architecture §7, §8 — <c>SCR-REQ-003</c>).
     /// </summary>
@@ -162,7 +188,8 @@ public sealed class RequestsController : ApiControllerBase
             Priority: request?.ResolvedPriority ?? "NORMAL",
             ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId),
             WorkPackageId: FirstNonEmptyGuid(request?.WorkPackageId),
-            Complexity: request?.Complexity);
+            Complexity: request?.Complexity,
+            InitialSubTasks: request?.ResolvedInitialSubTasks);
 
         try
         {
@@ -181,6 +208,10 @@ public sealed class RequestsController : ApiControllerBase
         catch (UnauthorizedAccessException ex)
         {
             return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
         }
         catch (ArgumentException ex)
         {
@@ -499,6 +530,7 @@ public sealed class RequestsController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ReviewRequestCompletion(
         Guid id,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CompleteRequestBody? request = null,
@@ -520,6 +552,18 @@ public sealed class RequestsController : ApiControllerBase
                 enriched.Status);
 
             return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
@@ -561,6 +605,251 @@ public sealed class RequestsController : ApiControllerBase
                 enriched.Status);
 
             return Ok(enriched);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Adds a sub-task checklist item to an active request
+    /// (<c>RequestService.AddRequestSubTask</c>; CR-006 Architecture §4 TD-001, TD-003, TD-006).
+    /// </summary>
+    [HttpPost("{id:guid}/subtasks")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddSubTask(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AddSubTaskBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Request ID is required.");
+        }
+
+        var command = new AddRequestSubTaskCommand(
+            RequestId: id,
+            Title: request?.Title ?? string.Empty,
+            AssigneePersonId: request?.ResolvedAssigneePersonId,
+            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Added sub-task '{Title}' to request '{RequestId}'. Sub-tasks count: {Count}, Progress: {Progress}%.",
+                request?.Title,
+                id,
+                enriched.TotalSubTasksCount,
+                enriched.CompletionPercentage);
+
+            return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Marks a sub-task checklist item completed on a request
+    /// (<c>RequestService.CompleteRequestSubTask</c>; CR-006 Architecture §4 TD-001, TD-003, TD-006).
+    /// </summary>
+    [HttpPost("{id:guid}/subtasks/{subTaskId:guid}/complete")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CompleteSubTask(
+        Guid id,
+        Guid subTaskId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] SubTaskActionBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Request ID is required.");
+        }
+
+        if (subTaskId == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Sub-task ID is required.");
+        }
+
+        var command = new CompleteRequestSubTaskCommand(
+            RequestId: id,
+            SubTaskId: subTaskId,
+            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Completed sub-task '{SubTaskId}' on request '{RequestId}'. Progress: {Progress}%.",
+                subTaskId,
+                id,
+                enriched.CompletionPercentage);
+
+            return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Reopens a completed sub-task checklist item back to pending on a request
+    /// (<c>RequestService.ReopenRequestSubTask</c>; CR-006 Architecture §4 TD-001, TD-003, TD-006).
+    /// </summary>
+    [HttpPost("{id:guid}/subtasks/{subTaskId:guid}/reopen")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReopenSubTask(
+        Guid id,
+        Guid subTaskId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] SubTaskActionBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Request ID is required.");
+        }
+
+        if (subTaskId == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Sub-task ID is required.");
+        }
+
+        var command = new ReopenRequestSubTaskCommand(
+            RequestId: id,
+            SubTaskId: subTaskId,
+            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Reopened sub-task '{SubTaskId}' on request '{RequestId}'. Progress: {Progress}%.",
+                subTaskId,
+                id,
+                enriched.CompletionPercentage);
+
+            return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Removes a sub-task checklist item from a request
+    /// (<c>RequestService.RemoveRequestSubTask</c>; CR-006 Architecture §4 TD-001, TD-006).
+    /// </summary>
+    [HttpDelete("{id:guid}/subtasks/{subTaskId:guid}")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveSubTask(
+        Guid id,
+        Guid subTaskId,
+        [FromQuery] Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Request ID is required.");
+        }
+
+        if (subTaskId == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Sub-task ID is required.");
+        }
+
+        var command = new RemoveRequestSubTaskCommand(
+            RequestId: id,
+            SubTaskId: subTaskId,
+            ActorPersonId: FirstNonEmptyGuid(actorPersonId));
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Removed sub-task '{SubTaskId}' from request '{RequestId}'. Sub-tasks count: {Count}, Progress: {Progress}%.",
+                subTaskId,
+                id,
+                enriched.TotalSubTasksCount,
+                enriched.CompletionPercentage);
+
+            return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
@@ -610,6 +899,27 @@ public sealed class RequestsController : ApiControllerBase
         };
     }
 
+    private ObjectResult CreateNotFoundProblem(string detail)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status404NotFound,
+            Title = "Not Found",
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.4"
+        };
+        problem.Extensions["errorCode"] = "RESOURCE_NOT_FOUND";
+        problem.Extensions["traceId"] = traceId;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status404NotFound,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
     private static Guid? FirstNonEmptyGuid(params Guid?[] candidates)
     {
         foreach (var candidate in candidates)
@@ -651,12 +961,32 @@ public sealed class RequestsController : ApiControllerBase
         public Guid? WorkPackageId { get; set; }
         public Guid? ActorPersonId { get; set; }
         public int? Complexity { get; set; }
+        public IReadOnlyList<InitialSubTaskInput>? InitialSubTasks { get; set; }
+        public IReadOnlyList<InitialSubTaskInput>? SubTasks { get; set; }
+
+        public IReadOnlyList<InitialSubTaskDto>? ResolvedInitialSubTasks =>
+            (InitialSubTasks ?? SubTasks)?
+                .Where(s => s is not null)
+                .Select(s => new InitialSubTaskDto(
+                    s.Title ?? string.Empty,
+                    FirstNonEmptyGuid(s.AssigneePersonId, s.AssigneeId)))
+                .ToList();
 
         public string ResolvedRequestType =>
             FirstNonWhiteSpace(RequestType, Type) ?? "GENERAL";
 
         public string ResolvedPriority =>
             FirstNonWhiteSpace(Priority) ?? "NORMAL";
+    }
+
+    /// <summary>
+    /// Sub-task input item used during request recording intake.
+    /// </summary>
+    public sealed class InitialSubTaskInput
+    {
+        public string? Title { get; set; }
+        public Guid? AssigneePersonId { get; set; }
+        public Guid? AssigneeId { get; set; }
     }
 
     /// <summary>
@@ -793,5 +1123,27 @@ public sealed class RequestsController : ApiControllerBase
 
         public string? ResolvedTargetStatus =>
             FirstNonWhiteSpace(TargetStatusForEscalated, TargetStatus);
+    }
+
+    /// <summary>
+    /// Request payload for <c>POST /api/v1/requests/{id}/subtasks</c> (<c>AddSubTask</c>).
+    /// </summary>
+    public sealed class AddSubTaskBody
+    {
+        public string? Title { get; set; }
+        public Guid? AssigneePersonId { get; set; }
+        public Guid? AssigneeId { get; set; }
+        public Guid? ActorPersonId { get; set; }
+
+        public Guid? ResolvedAssigneePersonId =>
+            FirstNonEmptyGuid(AssigneePersonId, AssigneeId);
+    }
+
+    /// <summary>
+    /// Optional request payload for sub-task actions (<c>CompleteSubTask</c>, <c>ReopenSubTask</c>).
+    /// </summary>
+    public sealed class SubTaskActionBody
+    {
+        public Guid? ActorPersonId { get; set; }
     }
 }

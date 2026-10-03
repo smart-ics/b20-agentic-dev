@@ -22,6 +22,7 @@ public partial interface IRequestService
         Guid? actorPersonId = null,
         Guid? workPackageId = null,
         int? complexity = null,
+        IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -37,6 +38,7 @@ public partial interface IRequestService
         Guid? actorPersonId = null,
         Guid? workPackageId = null,
         int? complexity = null,
+        IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
         CancellationToken cancellationToken = default)
         => RecordRequestAsync(
             title,
@@ -48,6 +50,7 @@ public partial interface IRequestService
             actorPersonId,
             workPackageId,
             complexity,
+            initialSubTasks,
             cancellationToken);
 
     /// <summary>
@@ -220,4 +223,82 @@ public partial interface IRequestService
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
         => UpdateRequestComplexityAsync(requestId, complexity, reason, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Adds a new operational sub-task checklist item to a Request (Architecture CR-006 §4 TD-001, TD-006).
+    /// </summary>
+    Task<RequestDto> AddRequestSubTaskAsync(
+        Guid requestId,
+        string title,
+        Guid? assigneePersonId = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="AddRequestSubTaskAsync"/>.
+    /// </summary>
+    Task<RequestDto> AddRequestSubTask(
+        Guid requestId,
+        string title,
+        Guid? assigneePersonId = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => AddRequestSubTaskAsync(requestId, title, assigneePersonId, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Marks a sub-task checklist item completed on a Request (Architecture CR-006 §4 TD-001, TD-006).
+    /// </summary>
+    Task<RequestDto> CompleteRequestSubTaskAsync(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="CompleteRequestSubTaskAsync"/>.
+    /// </summary>
+    Task<RequestDto> CompleteRequestSubTask(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => CompleteRequestSubTaskAsync(requestId, subTaskId, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Reopens a completed sub-task checklist item back to pending on a Request (Architecture CR-006 §4 TD-001, TD-003, TD-006).
+    /// </summary>
+    Task<RequestDto> ReopenRequestSubTaskAsync(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="ReopenRequestSubTaskAsync"/>.
+    /// </summary>
+    Task<RequestDto> ReopenRequestSubTask(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => ReopenRequestSubTaskAsync(requestId, subTaskId, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Removes a sub-task checklist item from a Request (Architecture CR-006 §4 TD-001, TD-006).
+    /// </summary>
+    Task<RequestDto> RemoveRequestSubTaskAsync(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="RemoveRequestSubTaskAsync"/>.
+    /// </summary>
+    Task<RequestDto> RemoveRequestSubTask(
+        Guid requestId,
+        Guid subTaskId,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => RemoveRequestSubTaskAsync(requestId, subTaskId, actorPersonId, cancellationToken);
 }

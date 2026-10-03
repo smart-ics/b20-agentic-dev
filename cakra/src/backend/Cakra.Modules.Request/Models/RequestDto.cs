@@ -36,6 +36,15 @@ public record RequestDto
     /// <summary>Authoritative numerical complexity rating (1 to 5).</summary>
     public int Complexity { get; init; } = 1;
 
+    /// <summary>Total count of checklist sub-tasks defined on this request.</summary>
+    public int TotalSubTasksCount { get; init; }
+
+    /// <summary>Count of sub-tasks marked completed on this request.</summary>
+    public int CompletedSubTasksCount { get; init; }
+
+    /// <summary>Authoritative completion percentage (0 to 100).</summary>
+    public int CompletionPercentage { get; init; }
+
     /// <summary>PersonId of the assigned Request Owner in Organization domain, or <c>null</c> if unassigned.</summary>
     public Guid? OwnerPersonId { get; init; }
 
@@ -89,6 +98,9 @@ public record RequestDto
     /// <summary>Recorded resolution outcome when the request is closed.</summary>
     public RequestResolutionDto? Resolution { get; init; }
 
+    /// <summary>List of granular checklist sub-tasks defined on this request.</summary>
+    public IReadOnlyList<RequestSubTaskDto> SubTasks { get; init; } = Array.Empty<RequestSubTaskDto>();
+
     /// <summary>Audit trail of ownership and lifecycle state transitions.</summary>
     public IReadOnlyList<RequestAssignmentDto> Assignments { get; init; } = Array.Empty<RequestAssignmentDto>();
 
@@ -111,6 +123,9 @@ public record RequestDto
             Status = request.Status.ToName(),
             Priority = request.Priority,
             Complexity = request.Complexity,
+            TotalSubTasksCount = request.TotalSubTasksCount,
+            CompletedSubTasksCount = request.CompletedSubTasksCount,
+            CompletionPercentage = request.CompletionPercentage,
             OwnerPersonId = request.OwnerPersonId,
             CustomerId = request.CustomerId,
             ProductId = request.ProductId,
@@ -119,6 +134,7 @@ public record RequestDto
             EscalationReason = request.EscalationReason,
             ManagementDecisionNotes = request.ManagementDecisionNotes,
             Resolution = request.Resolution is null ? null : RequestResolutionDto.FromDomain(request.Resolution),
+            SubTasks = request.SubTasks.Select(RequestSubTaskDto.FromDomain).ToList(),
             Assignments = request.Assignments.Select(RequestAssignmentDto.FromDomain).ToList(),
             CreatedAt = request.CreatedAt,
             UpdatedAt = request.UpdatedAt

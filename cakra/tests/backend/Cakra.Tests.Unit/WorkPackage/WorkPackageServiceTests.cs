@@ -483,6 +483,9 @@ public sealed class WorkPackageServiceTests
         public Task<IReadOnlyList<RequestDto>> ListMyAssignedRequestsAsync(Guid? personId = null, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<RequestDto>>(Array.Empty<RequestDto>());
 
+        public Task<IReadOnlyList<RequestDto>> GetRequestsWithAssignedSubTasksAsync(Guid personId, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<RequestDto>>(Array.Empty<RequestDto>());
+
         public Task<PagedRequestGridResult> GetFilteredRequestGridAsync(RequestGridFilter? filter = null, CancellationToken cancellationToken = default)
             => Task.FromResult(new PagedRequestGridResult());
 

@@ -20,7 +20,8 @@ public sealed class RequestQueryService :
     IRequestHandler<GetRequestByIdQuery, RequestDto?>,
     IRequestHandler<GetRequestStateHistoryQuery, IReadOnlyList<RequestAssignmentDto>>,
     IRequestHandler<ListMyAssignedRequestsQuery, IReadOnlyList<RequestDto>>,
-    IRequestHandler<GetFilteredRequestGridQuery, PagedRequestGridResult>
+    IRequestHandler<GetFilteredRequestGridQuery, PagedRequestGridResult>,
+    IRequestHandler<GetRequestsWithAssignedSubTasksQuery, IReadOnlyList<RequestDto>>
 {
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly ICurrentContextProvider? _currentContextProvider;
@@ -61,6 +62,9 @@ public sealed class RequestQueryService :
                 r.[Status],
                 r.[Priority],
                 r.[Complexity],
+                r.[TotalSubTasksCount],
+                r.[CompletedSubTasksCount],
+                r.[CompletionPercentage],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -92,7 +96,8 @@ public sealed class RequestQueryService :
         }
 
         var assignments = await GetRequestStateHistoryAsync(requestId, cancellationToken);
-        var dto = row.ToDto(assignments);
+        var subTasks = await GetRequestSubTasksAsync(requestId, cancellationToken);
+        var dto = row.ToDto(assignments, subTasks);
         var enriched = await EnrichRequestsAsync(new[] { dto }, cancellationToken);
         return enriched[0];
     }
@@ -190,6 +195,9 @@ public sealed class RequestQueryService :
                 r.[Status],
                 r.[Priority],
                 r.[Complexity],
+                r.[TotalSubTasksCount],
+                r.[CompletedSubTasksCount],
+                r.[CompletionPercentage],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -233,6 +241,137 @@ public sealed class RequestQueryService :
     public Task<IReadOnlyList<RequestDto>> ListMyAssignedRequests(
         CancellationToken cancellationToken)
         => ListMyAssignedRequestsAsync(null, cancellationToken);
+
+    /// <summary>
+    /// Retrieves all sub-task checklist items for a Request from <c>request.RequestSubTasks</c>
+    /// ordered by sort order ascending (Architecture CR-006 §4 TD-001, TD-008).
+    /// </summary>
+    public async Task<IReadOnlyList<RequestSubTaskDto>> GetRequestSubTasksAsync(
+        Guid requestId,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            return Array.Empty<RequestSubTaskDto>();
+        }
+
+        const string sql = """
+            SELECT
+                [Id],
+                [RequestId],
+                [Title],
+                [IsCompleted],
+                [AssigneePersonId],
+                [CompletedAt],
+                [CompletedByPersonId],
+                [SortOrder],
+                [CreatedAt],
+                [UpdatedAt]
+            FROM [request].[RequestSubTasks]
+            WHERE [RequestId] = @RequestId
+            ORDER BY [SortOrder] ASC, [CreatedAt] ASC;
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        var rows = (await connection.QueryAsync<RequestSubTaskQueryRow>(
+            new CommandDefinition(sql, new { RequestId = requestId }, cancellationToken: cancellationToken))).AsList();
+
+        return rows.Select(r => r.ToDto()).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RequestDto>> GetRequestsWithAssignedSubTasksAsync(
+        Guid personId,
+        CancellationToken cancellationToken = default)
+    {
+        if (personId == Guid.Empty)
+        {
+            return Array.Empty<RequestDto>();
+        }
+
+        const string sql = """
+            SELECT DISTINCT
+                r.[Id],
+                r.[Title],
+                r.[Description],
+                r.[RequestType],
+                r.[Status],
+                r.[Priority],
+                r.[Complexity],
+                r.[TotalSubTasksCount],
+                r.[CompletedSubTasksCount],
+                r.[CompletionPercentage],
+                r.[OwnerPersonId],
+                r.[CustomerId],
+                r.[ProductId],
+                r.[WorkPackageId],
+                r.[EvaluationNotes],
+                r.[EscalationReason],
+                r.[ManagementDecisionNotes],
+                r.[CreatedAt],
+                r.[UpdatedAt],
+                res.[Id] AS [ResolutionId],
+                res.[Outcome] AS [ResolutionOutcome],
+                res.[Description] AS [ResolutionDescription],
+                res.[ResolvedBy] AS [ResolutionResolvedBy],
+                res.[ResolvedAt] AS [ResolutionResolvedAt],
+                res.[CreatedAt] AS [ResolutionCreatedAt],
+                res.[UpdatedAt] AS [ResolutionUpdatedAt]
+            FROM [request].[Requests] r
+            INNER JOIN [request].[RequestSubTasks] st ON st.[RequestId] = r.[Id]
+            LEFT JOIN [request].[RequestResolutions] res ON res.[RequestId] = r.[Id]
+            WHERE st.[AssigneePersonId] = @AssigneePersonId
+              AND st.[IsCompleted] = 0
+              AND r.[Status] NOT IN ('COMPLETED', 'REJECTED')
+            ORDER BY r.[CreatedAt] DESC, r.[Id] ASC;
+            """;
+
+        const string subTasksSql = """
+            SELECT
+                [Id],
+                [RequestId],
+                [Title],
+                [IsCompleted],
+                [AssigneePersonId],
+                [CompletedAt],
+                [CompletedByPersonId],
+                [SortOrder],
+                [CreatedAt],
+                [UpdatedAt]
+            FROM [request].[RequestSubTasks]
+            WHERE [RequestId] IN @RequestIds
+            ORDER BY [SortOrder] ASC, [CreatedAt] ASC;
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        var rows = (await connection.QueryAsync<RequestWithResolutionRow>(
+            new CommandDefinition(
+                sql,
+                new { AssigneePersonId = personId },
+                cancellationToken: cancellationToken))).AsList();
+
+        if (rows.Count == 0)
+        {
+            return Array.Empty<RequestDto>();
+        }
+
+        var requestIds = rows.Select(r => r.Id).Distinct().ToList();
+        var subTaskRows = (await connection.QueryAsync<RequestSubTaskQueryRow>(
+            new CommandDefinition(
+                subTasksSql,
+                new { RequestIds = requestIds },
+                cancellationToken: cancellationToken))).AsList();
+
+        var subTasksByReq = subTaskRows
+            .GroupBy(st => st.RequestId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<RequestSubTaskDto>)g.Select(st => st.ToDto()).ToList());
+
+        var dtos = rows.Select(r => r.ToDto(
+            assignments: null,
+            subTasks: subTasksByReq.TryGetValue(r.Id, out var tasks) ? tasks : Array.Empty<RequestSubTaskDto>())).ToList();
+
+        return await EnrichRequestsAsync(dtos, cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<PagedRequestGridResult> GetFilteredRequestGridAsync(
@@ -286,6 +425,9 @@ public sealed class RequestQueryService :
                 r.[Status],
                 r.[Priority],
                 r.[Complexity],
+                r.[TotalSubTasksCount],
+                r.[CompletedSubTasksCount],
+                r.[CompletionPercentage],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -441,6 +583,9 @@ public sealed class RequestQueryService :
                 r.[Status],
                 r.[Priority],
                 r.[Complexity],
+                r.[TotalSubTasksCount],
+                r.[CompletedSubTasksCount],
+                r.[CompletionPercentage],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -563,6 +708,28 @@ public sealed class RequestQueryService :
                 resolution = resolution with { ResolvedByName = resolvedByName };
             }
 
+            var subTasks = item.SubTasks;
+            if (subTasks.Count > 0 && _organizationQueryService is not null)
+            {
+                var enrichedList = new List<RequestSubTaskDto>(subTasks.Count);
+                foreach (var st in subTasks)
+                {
+                    var assigneeName = st.AssigneePersonId.HasValue
+                        ? await ResolvePersonNameAsync(st.AssigneePersonId.Value, personCache, cancellationToken)
+                        : null;
+                    var completedByName = st.CompletedByPersonId.HasValue
+                        ? await ResolvePersonNameAsync(st.CompletedByPersonId.Value, personCache, cancellationToken)
+                        : null;
+
+                    enrichedList.Add(st with
+                    {
+                        AssigneeName = assigneeName,
+                        CompletedByName = completedByName
+                    });
+                }
+                subTasks = enrichedList;
+            }
+
             enriched.Add(item with
             {
                 OwnerName = ownerName,
@@ -570,7 +737,8 @@ public sealed class RequestQueryService :
                 CustomerCode = customer?.CustomerCode,
                 ProductName = product?.Name,
                 ProductCode = product?.Code,
-                Resolution = resolution
+                Resolution = resolution,
+                SubTasks = subTasks
             });
         }
 
@@ -598,6 +766,14 @@ public sealed class RequestQueryService :
         return fullName;
     }
 
+    public Task<IReadOnlyList<RequestDto>> Handle(
+        GetRequestsWithAssignedSubTasksQuery request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return GetRequestsWithAssignedSubTasksAsync(request.PersonId, cancellationToken);
+    }
+
     private sealed class RequestWithResolutionRow
     {
         public Guid Id { get; init; }
@@ -607,6 +783,9 @@ public sealed class RequestQueryService :
         public string Status { get; init; } = RequestStatusNames.Captured;
         public string Priority { get; init; } = "NORMAL";
         public int Complexity { get; init; } = 1;
+        public int TotalSubTasksCount { get; init; } = 0;
+        public int CompletedSubTasksCount { get; init; } = 0;
+        public int CompletionPercentage { get; init; } = 0;
         public Guid? OwnerPersonId { get; init; }
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
@@ -625,7 +804,9 @@ public sealed class RequestQueryService :
         public DateTime? ResolutionCreatedAt { get; init; }
         public DateTime? ResolutionUpdatedAt { get; init; }
 
-        public RequestDto ToDto(IReadOnlyList<RequestAssignmentDto>? assignments = null)
+        public RequestDto ToDto(
+            IReadOnlyList<RequestAssignmentDto>? assignments = null,
+            IReadOnlyList<RequestSubTaskDto>? subTasks = null)
         {
             RequestResolutionDto? resolution = null;
             if (ResolutionId.HasValue && ResolutionId.Value != Guid.Empty)
@@ -652,6 +833,9 @@ public sealed class RequestQueryService :
                 Status = Status,
                 Priority = Priority,
                 Complexity = Complexity,
+                TotalSubTasksCount = TotalSubTasksCount,
+                CompletedSubTasksCount = CompletedSubTasksCount,
+                CompletionPercentage = CompletionPercentage,
                 OwnerPersonId = OwnerPersonId,
                 CustomerId = CustomerId,
                 ProductId = ProductId,
@@ -660,10 +844,39 @@ public sealed class RequestQueryService :
                 EscalationReason = EscalationReason,
                 ManagementDecisionNotes = ManagementDecisionNotes,
                 Resolution = resolution,
+                SubTasks = subTasks ?? Array.Empty<RequestSubTaskDto>(),
                 Assignments = assignments ?? Array.Empty<RequestAssignmentDto>(),
                 CreatedAt = CreatedAt,
                 UpdatedAt = UpdatedAt
             };
         }
+    }
+
+    private sealed class RequestSubTaskQueryRow
+    {
+        public Guid Id { get; init; }
+        public Guid RequestId { get; init; }
+        public string Title { get; init; } = string.Empty;
+        public bool IsCompleted { get; init; }
+        public Guid? AssigneePersonId { get; init; }
+        public DateTime? CompletedAt { get; init; }
+        public Guid? CompletedByPersonId { get; init; }
+        public int SortOrder { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public DateTime? UpdatedAt { get; init; }
+
+        public RequestSubTaskDto ToDto() => new(
+            Id,
+            RequestId,
+            Title,
+            IsCompleted,
+            AssigneePersonId,
+            null,
+            CompletedAt,
+            CompletedByPersonId,
+            null,
+            SortOrder,
+            CreatedAt,
+            UpdatedAt);
     }
 }

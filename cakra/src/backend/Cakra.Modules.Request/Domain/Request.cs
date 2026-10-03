@@ -11,6 +11,7 @@ namespace Cakra.Modules.Request.Domain;
 public sealed class Request : EntityBase
 {
     private readonly List<RequestAssignment> _assignments = new();
+    private readonly List<RequestSubTask> _subTasks = new();
     private readonly List<IDomainEvent> _domainEvents = new();
 
     /// <summary>Brief summary or subject of the operational demand.</summary>
@@ -30,6 +31,18 @@ public sealed class Request : EntityBase
 
     /// <summary>Authoritative numerical complexity rating (1 to 5).</summary>
     public int Complexity { get; private set; } = 1;
+
+    /// <summary>Total count of checklist sub-tasks defined on this request.</summary>
+    public int TotalSubTasksCount { get; private set; }
+
+    /// <summary>Count of sub-tasks marked completed on this request.</summary>
+    public int CompletedSubTasksCount { get; private set; }
+
+    /// <summary>Authoritative completion percentage (0 to 100) calculated from sub-tasks or status.</summary>
+    public int CompletionPercentage { get; private set; }
+
+    /// <summary>Granular operational sub-task checklist items belonging to this request.</summary>
+    public IReadOnlyCollection<RequestSubTask> SubTasks => _subTasks.AsReadOnly();
 
     /// <summary>PersonId of the assigned Request Owner in Organization domain, or <c>null</c> if unassigned.</summary>
     public Guid? OwnerPersonId { get; private set; }
@@ -515,10 +528,20 @@ public sealed class Request : EntityBase
                 Id, Status, nameof(Complete), RequestStatus.Completed, reason: "Request must be in IN_PROGRESS state to be completed.");
         }
 
+        if (_subTasks.Any(t => !t.IsCompleted))
+        {
+            var unfinishedCount = _subTasks.Count(t => !t.IsCompleted);
+            throw new RequestHasUnfinishedSubTasksException(
+                Id,
+                unfinishedCount,
+                $"Cannot complete request '{Id}' because it has {unfinishedCount} unfinished sub-task(s). All sub-tasks must be completed or removed before closure.");
+        }
+
         var now = utcNow ?? DateTime.UtcNow;
         var prevStatus = Status;
 
         Status = RequestStatus.Completed;
+        RecalculateProgress();
         Resolution = RequestResolution.Create(
             requestId: Id,
             outcome: ResolutionOutcomeNames.Completed,
@@ -703,6 +726,177 @@ public sealed class Request : EntityBase
             occurredAtUtc: now));
     }
 
+    // =========================================================================
+    // Sub-Task Checklist Operations (CR-006 Architecture TD-001, TD-003, TD-004, TD-007)
+    // =========================================================================
+
+    private void EnsureActiveStateForSubTaskMutation(string operation)
+    {
+        if (Status == RequestStatus.Completed || Status == RequestStatus.Rejected)
+        {
+            throw new InvalidRequestStateTransitionException(
+                Id,
+                Status,
+                operation,
+                reason: $"Cannot perform '{operation}' on a closed request.");
+        }
+    }
+
+    private void RecalculateProgress()
+    {
+        TotalSubTasksCount = _subTasks.Count;
+        CompletedSubTasksCount = _subTasks.Count(t => t.IsCompleted);
+
+        if (TotalSubTasksCount > 0)
+        {
+            CompletionPercentage = (int)Math.Round((double)CompletedSubTasksCount / TotalSubTasksCount * 100.0);
+        }
+        else
+        {
+            CompletionPercentage = Status == RequestStatus.Completed ? 100 : 0;
+        }
+    }
+
+    /// <summary>
+    /// Adds a new operational sub-task checklist item to the Request (Architecture CR-006 TD-001, TD-003, TD-004, TD-007).
+    /// </summary>
+    public RequestSubTask AddSubTask(
+        string title,
+        Guid? assigneePersonId,
+        Guid actorPersonId,
+        DateTime? utcNow = null,
+        Guid? subTaskId = null)
+    {
+        EnsureActiveStateForSubTaskMutation(nameof(AddSubTask));
+
+        if (actorPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
+
+        var now = utcNow ?? DateTime.UtcNow;
+        var sortOrder = _subTasks.Count > 0 ? _subTasks.Max(t => t.SortOrder) + 1 : 0;
+        var id = subTaskId ?? Guid.NewGuid();
+
+        var subTask = new RequestSubTask(
+            id,
+            Id,
+            title,
+            assigneePersonId,
+            sortOrder,
+            now);
+
+        _subTasks.Add(subTask);
+        UpdatedAt = now;
+        RecalculateProgress();
+
+        _domainEvents.Add(new RequestSubTaskAdded(
+            Id,
+            subTask.Id,
+            subTask.Title,
+            subTask.AssigneePersonId,
+            TotalSubTasksCount,
+            CompletionPercentage,
+            actorPersonId,
+            now));
+
+        return subTask;
+    }
+
+    /// <summary>
+    /// Marks an existing sub-task checklist item completed on the Request (Architecture CR-006 TD-001, TD-003, TD-004, TD-007).
+    /// </summary>
+    public void CompleteSubTask(
+        Guid subTaskId,
+        Guid completedByPersonId,
+        DateTime? utcNow = null)
+    {
+        EnsureActiveStateForSubTaskMutation(nameof(CompleteSubTask));
+
+        if (subTaskId == Guid.Empty)
+            throw new RequestDomainValidationException("SubTaskId cannot be empty.", nameof(subTaskId));
+        if (completedByPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("CompletedByPersonId cannot be empty.", nameof(completedByPersonId));
+
+        var subTask = _subTasks.FirstOrDefault(t => t.Id == subTaskId)
+            ?? throw new KeyNotFoundException($"Sub-task '{subTaskId}' not found on Request '{Id}'.");
+
+        var now = utcNow ?? DateTime.UtcNow;
+        subTask.MarkCompleted(completedByPersonId, now);
+        UpdatedAt = now;
+        RecalculateProgress();
+
+        _domainEvents.Add(new RequestSubTaskCompleted(
+            Id,
+            subTaskId,
+            completedByPersonId,
+            CompletedSubTasksCount,
+            CompletionPercentage,
+            now));
+    }
+
+    /// <summary>
+    /// Reopens a completed sub-task checklist item back to pending on the Request (Architecture CR-006 TD-001, TD-003, TD-004, TD-007).
+    /// </summary>
+    public void ReopenSubTask(
+        Guid subTaskId,
+        Guid actorPersonId,
+        DateTime? utcNow = null)
+    {
+        EnsureActiveStateForSubTaskMutation(nameof(ReopenSubTask));
+
+        if (subTaskId == Guid.Empty)
+            throw new RequestDomainValidationException("SubTaskId cannot be empty.", nameof(subTaskId));
+        if (actorPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
+
+        var subTask = _subTasks.FirstOrDefault(t => t.Id == subTaskId)
+            ?? throw new KeyNotFoundException($"Sub-task '{subTaskId}' not found on Request '{Id}'.");
+
+        var now = utcNow ?? DateTime.UtcNow;
+        subTask.Reopen(now);
+        UpdatedAt = now;
+        RecalculateProgress();
+
+        _domainEvents.Add(new RequestSubTaskReopened(
+            Id,
+            subTaskId,
+            actorPersonId,
+            CompletedSubTasksCount,
+            CompletionPercentage,
+            now));
+    }
+
+    /// <summary>
+    /// Removes a sub-task checklist item from the Request (Architecture CR-006 TD-001, TD-003, TD-004, TD-007).
+    /// </summary>
+    public void RemoveSubTask(
+        Guid subTaskId,
+        Guid actorPersonId,
+        DateTime? utcNow = null)
+    {
+        EnsureActiveStateForSubTaskMutation(nameof(RemoveSubTask));
+
+        if (subTaskId == Guid.Empty)
+            throw new RequestDomainValidationException("SubTaskId cannot be empty.", nameof(subTaskId));
+        if (actorPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
+
+        var subTask = _subTasks.FirstOrDefault(t => t.Id == subTaskId)
+            ?? throw new KeyNotFoundException($"Sub-task '{subTaskId}' not found on Request '{Id}'.");
+
+        _subTasks.Remove(subTask);
+        var now = utcNow ?? DateTime.UtcNow;
+        UpdatedAt = now;
+        RecalculateProgress();
+
+        _domainEvents.Add(new RequestSubTaskRemoved(
+            Id,
+            subTaskId,
+            TotalSubTasksCount,
+            CompletionPercentage,
+            actorPersonId,
+            now));
+    }
+
     /// <summary>
     /// Rehydrates a <see cref="Request"/> aggregate root from persistence storage without emitting domain events.
     /// </summary>
@@ -724,7 +918,11 @@ public sealed class Request : EntityBase
         DateTime? updatedAt,
         RequestResolution? resolution = null,
         IEnumerable<RequestAssignment>? assignments = null,
-        int complexity = 1)
+        int complexity = 1,
+        IEnumerable<RequestSubTask>? subTasks = null,
+        int totalSubTasksCount = 0,
+        int completedSubTasksCount = 0,
+        int completionPercentage = 0)
     {
         var request = new Request
         {
@@ -744,12 +942,24 @@ public sealed class Request : EntityBase
             ManagementDecisionNotes = managementDecisionNotes,
             Resolution = resolution,
             CreatedAt = createdAt,
-            UpdatedAt = updatedAt
+            UpdatedAt = updatedAt,
+            TotalSubTasksCount = totalSubTasksCount,
+            CompletedSubTasksCount = completedSubTasksCount,
+            CompletionPercentage = completionPercentage
         };
 
         if (assignments is not null)
         {
             request._assignments.AddRange(assignments);
+        }
+
+        if (subTasks is not null)
+        {
+            request._subTasks.AddRange(subTasks);
+            if (totalSubTasksCount == 0 && request._subTasks.Count > 0)
+            {
+                request.RecalculateProgress();
+            }
         }
 
         return request;

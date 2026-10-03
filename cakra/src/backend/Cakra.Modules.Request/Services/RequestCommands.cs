@@ -4,6 +4,11 @@ using MediatR;
 namespace Cakra.Modules.Request.Services;
 
 /// <summary>
+/// Lightweight data transfer record for defining an initial sub-task during request recording.
+/// </summary>
+public sealed record InitialSubTaskDto(string Title, Guid? AssigneePersonId = null);
+
+/// <summary>
 /// Command to record a new operational Request in <c>CAPTURED</c> state (Architecture §7, §8 — UC-REQ-001).
 /// </summary>
 public sealed record RecordRequestCommand(
@@ -15,7 +20,8 @@ public sealed record RecordRequestCommand(
     string Priority = "NORMAL",
     Guid? ActorPersonId = null,
     Guid? WorkPackageId = null,
-    int? Complexity = null) : IRequest<RequestDto>;
+    int? Complexity = null,
+    IReadOnlyList<InitialSubTaskDto>? InitialSubTasks = null) : IRequest<RequestDto>;
 
 public sealed class RecordRequestCommandValidator : AbstractValidator<RecordRequestCommand>
 {
@@ -60,6 +66,20 @@ public sealed class RecordRequestCommandValidator : AbstractValidator<RecordRequ
             .Must(id => id != Guid.Empty)
             .When(x => x.ActorPersonId.HasValue)
             .WithMessage("Actor person ID cannot be empty.");
+
+        RuleForEach(x => x.InitialSubTasks)
+            .ChildRules(subTask =>
+            {
+                subTask.RuleFor(s => s.Title)
+                    .NotEmpty().WithMessage("Sub-task title is required.")
+                    .MaximumLength(255).WithMessage("Sub-task title must not exceed 255 characters.");
+
+                subTask.RuleFor(s => s.AssigneePersonId)
+                    .Must(id => id != Guid.Empty)
+                    .When(s => s.AssigneePersonId.HasValue)
+                    .WithMessage("Assignee person ID cannot be empty.");
+            })
+            .When(x => x.InitialSubTasks != null);
     }
 }
 
@@ -254,6 +274,113 @@ public sealed class CompleteRequestCommandValidator : AbstractValidator<Complete
 
         RuleFor(x => x.ResolutionDescription)
             .NotEmpty().WithMessage("Resolution description is required.");
+
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
+
+/// <summary>
+/// Command to add an operational sub-task checklist item to a Request (Architecture CR-006 §4 TD-001, TD-006).
+/// </summary>
+public sealed record AddRequestSubTaskCommand(
+    Guid RequestId,
+    string Title,
+    Guid? AssigneePersonId = null,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class AddRequestSubTaskCommandValidator : AbstractValidator<AddRequestSubTaskCommand>
+{
+    public AddRequestSubTaskCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage("Sub-task title is required.")
+            .MaximumLength(255).WithMessage("Sub-task title must not exceed 255 characters.");
+
+        RuleFor(x => x.AssigneePersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.AssigneePersonId.HasValue)
+            .WithMessage("Assignee person ID cannot be empty.");
+
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
+
+/// <summary>
+/// Command to mark a sub-task checklist item completed on a Request (Architecture CR-006 §4 TD-001, TD-006).
+/// </summary>
+public sealed record CompleteRequestSubTaskCommand(
+    Guid RequestId,
+    Guid SubTaskId,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class CompleteRequestSubTaskCommandValidator : AbstractValidator<CompleteRequestSubTaskCommand>
+{
+    public CompleteRequestSubTaskCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.SubTaskId)
+            .NotEmpty().WithMessage("Sub-task ID is required.");
+
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
+
+/// <summary>
+/// Command to reopen a completed sub-task checklist item back to pending on a Request (Architecture CR-006 §4 TD-001, TD-003, TD-006).
+/// </summary>
+public sealed record ReopenRequestSubTaskCommand(
+    Guid RequestId,
+    Guid SubTaskId,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class ReopenRequestSubTaskCommandValidator : AbstractValidator<ReopenRequestSubTaskCommand>
+{
+    public ReopenRequestSubTaskCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.SubTaskId)
+            .NotEmpty().WithMessage("Sub-task ID is required.");
+
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
+
+/// <summary>
+/// Command to remove a sub-task checklist item from a Request (Architecture CR-006 §4 TD-001, TD-006).
+/// </summary>
+public sealed record RemoveRequestSubTaskCommand(
+    Guid RequestId,
+    Guid SubTaskId,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class RemoveRequestSubTaskCommandValidator : AbstractValidator<RemoveRequestSubTaskCommand>
+{
+    public RemoveRequestSubTaskCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.SubTaskId)
+            .NotEmpty().WithMessage("Sub-task ID is required.");
 
         RuleFor(x => x.ActorPersonId)
             .Must(id => id != Guid.Empty)
