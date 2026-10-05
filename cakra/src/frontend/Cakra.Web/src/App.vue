@@ -331,7 +331,7 @@ const currentScreenTitle = computed(() => {
 
       <!-- Page Content View -->
       <main class="cakra-page-content">
-        <div class="container-fluid px-2 px-md-3 py-2">
+        <div class="cakra-shell-container py-2">
           <router-view />
         </div>
       </main>

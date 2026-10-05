@@ -110,6 +110,10 @@
   --sidebar-width: 204px;
   --sidebar-collapsed-width: 50px;
   --topbar-height: 42px;
+
+  /* Layout Max Width & Padding Tokens */
+  --cakra-content-max-width: 1440px;
+  --cakra-container-padding: clamp(0.75rem, 1.5vw, 1.5rem);
 }
 
 /* ==========================================================================
@@ -495,6 +499,15 @@ code, kbd, samp, pre, .font-monospace {
 .cakra-page-content {
   flex: 1;
   background-color: var(--cakra-bg-canvas);
+}
+
+.cakra-shell-container {
+  width: 100%;
+  max-width: var(--cakra-content-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--cakra-container-padding);
+  padding-right: var(--cakra-container-padding);
 }
 
 .cakra-app-footer {
@@ -957,7 +970,8 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 /* High-Density Feed Item Row (Linear / GitHub style) */
-.op-feed-row {
+.op-feed-row,
+.op-feed-card {
   background-color: #ffffff;
   border: 1px solid var(--cakra-border);
   border-radius: 5px;
@@ -969,15 +983,28 @@ code, kbd, samp, pre, .font-monospace {
   gap: 0.2rem;
 }
 
-.op-feed-row:hover {
+.op-feed-row:hover,
+.op-feed-card:hover {
   background-color: #f2f6fa;
   border-color: var(--cakra-cyan);
   box-shadow: var(--cakra-shadow-xs);
 }
 
-.op-feed-row.is-exception {
+.op-feed-row.is-exception,
+.op-feed-card.is-exception {
   border-left: 3.5px solid #fc5185 !important;
   background-color: #fff6f8;
+}
+
+/* Operational Feed Sticky Contextual Sidebar Panel */
+.op-feed-sticky-panel {
+  position: sticky;
+  top: calc(var(--topbar-height) + 0.75rem);
+  max-height: calc(100vh - var(--topbar-height) - 1.5rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 /* Palette utility helper classes */
@@ -1036,3 +1063,121 @@ code, kbd, samp, pre, .font-monospace {
 
 .fs-11 { font-size: 11px !important; }
 .fs-12 { font-size: 12px !important; }
+
+/* ==========================================================================
+   Timeline Card & Micro-Interaction Tokens (CR-012)
+   ========================================================================== */
+
+/* Floating Reaction Palette (Facebook-style) */
+.op-reaction-palette {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 50rem;
+  border: 1px solid var(--cakra-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  z-index: 1050;
+  animation: opReactionPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes opReactionPop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.op-reaction-palette-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.15rem;
+  padding: 2px 4px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.op-reaction-palette-btn:hover {
+  transform: scale(1.25);
+}
+
+/* Action Bar Buttons */
+.op-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--cakra-text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: background-color 0.12s ease-in-out, color 0.12s ease-in-out;
+  cursor: pointer;
+}
+
+.op-action-btn:hover {
+  background-color: #edf2f7;
+  color: var(--cakra-dark);
+}
+
+.op-action-btn.active {
+  color: var(--cakra-navy);
+  font-weight: 700;
+}
+
+/* Speech Bubble Comment */
+.op-comment-bubble {
+  background-color: #f0f2f5;
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--cakra-dark);
+  word-break: break-word;
+}
+
+/* User Avatar Circle Badge */
+.op-avatar-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #364f6b 0%, #3fc1c9 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.op-avatar-circle-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 0.65rem;
+}
+
+.op-avatar-circle-md {
+  width: 32px;
+  height: 32px;
+  font-size: 0.75rem;
+}
+
