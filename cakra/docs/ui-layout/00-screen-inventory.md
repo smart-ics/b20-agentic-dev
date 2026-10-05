@@ -25,3 +25,10 @@ This artifact defines the authoritative list of screens for the Operational Syst
 | **SCR-MGT-001** | Customer Progress Review | View active and completed Requests grouped by Customer. |
 | **SCR-MGT-002** | Programmer Performance Review | View historical Request outcomes and performance metrics for a specific Programmer. |
 | **SCR-MGT-003** | Programmer Workload Review | View active Request assignments for a specific Programmer. |
+
+## Administration Area
+
+| Screen ID | Screen Name | Purpose |
+| :--- | :--- | :--- |
+| **SCR-ORG-001** | Person Management View | View and manage organizational Person records with identity attributes and lifecycle status. |
+| **SCR-ORG-002** | Add/Edit Person Modal | Modal dialog interface to create a new Person or update existing Person identity attributes. |

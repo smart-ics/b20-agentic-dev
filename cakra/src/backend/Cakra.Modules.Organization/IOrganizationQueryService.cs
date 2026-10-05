@@ -48,6 +48,19 @@ public interface IOrganizationQueryService
         ListActivePersonsAsync(CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
+    /// Retrieves all persons (both active and inactive) ordered by last name and first name (Architecture §7).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<IReadOnlyList<PersonDto>> ListAllPersonsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PersonDto>>(Array.Empty<PersonDto>());
+
+    /// <summary>
+    /// Synchronous convenience overload for <see cref="ListAllPersonsAsync"/> (Architecture §7).
+    /// </summary>
+    IReadOnlyList<PersonDto> ListAllPersons() =>
+        ListAllPersonsAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <summary>
     /// Retrieves all members belonging to the specified team (Architecture §7).
     /// </summary>
     /// <param name="teamId">The unique identifier of the team.</param>

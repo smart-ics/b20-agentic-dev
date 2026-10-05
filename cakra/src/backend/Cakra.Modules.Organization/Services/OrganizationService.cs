@@ -337,6 +337,13 @@ public sealed class OrganizationService : IOrganizationService
         person.Activate(now);
         await _personRepository.UpdateStatusAsync(personId, Person.StatusActive, cancellationToken);
 
+        if (_eventDispatcher is not null)
+        {
+            await _eventDispatcher.DispatchAsync(
+                new PersonActivated(personId, Guid.NewGuid(), now),
+                cancellationToken);
+        }
+
         return person;
     }
 }

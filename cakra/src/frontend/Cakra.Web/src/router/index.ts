@@ -154,6 +154,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/admin/persons',
+    name: 'person-management',
+    component: () => import('@/views/PersonManagementView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresRole: 'Administrator',
+      screenId: 'SCR-ORG-001',
+    },
+  },
+  {
     path: '/',
     name: 'home',
     redirect: '/feed',

@@ -273,17 +273,18 @@ public class OrganizationServiceTests
         persistenceTypes.Should().OnlyContain(t => !t.IsPublic,
             "Internal repositories in Organization module must not be publicly exposed to other modules (Architecture §20)");
     }
+}
 
-    // =========================================================================
-    // Test Fakes
-    // =========================================================================
+// =========================================================================
+// Test Fakes
+// =========================================================================
 
-    private sealed class FixedClock(DateTime initialUtcNow) : ISystemClock
+internal sealed class FixedClock(DateTime initialUtcNow) : ISystemClock
     {
         public DateTime UtcNow { get; set; } = initialUtcNow;
     }
 
-    private sealed class RecordingEventDispatcher : IDomainEventDispatcher
+    internal sealed class RecordingEventDispatcher : IDomainEventDispatcher
     {
         public List<IDomainEvent> DispatchedEvents { get; } = new();
 
@@ -294,7 +295,7 @@ public class OrganizationServiceTests
         }
     }
 
-    private sealed class InMemoryPersonRepository : IPersonRepository
+    internal sealed class InMemoryPersonRepository : IPersonRepository
     {
         private readonly Dictionary<Guid, Person> _items = new();
 
@@ -340,7 +341,7 @@ public class OrganizationServiceTests
         }
     }
 
-    private sealed class InMemoryTeamRepository : ITeamRepository
+    internal sealed class InMemoryTeamRepository : ITeamRepository
     {
         private readonly Dictionary<Guid, Team> _items = new();
 
@@ -373,7 +374,7 @@ public class OrganizationServiceTests
         }
     }
 
-    private sealed class InMemoryRoleRepository : IRoleRepository
+    internal sealed class InMemoryRoleRepository : IRoleRepository
     {
         private readonly Dictionary<Guid, Role> _items = new();
 
@@ -406,7 +407,7 @@ public class OrganizationServiceTests
         }
     }
 
-    private sealed class InMemoryResponsibilityRepository : IResponsibilityRepository
+    internal sealed class InMemoryResponsibilityRepository : IResponsibilityRepository
     {
         private readonly Dictionary<Guid, Responsibility> _items = new();
 
@@ -439,7 +440,7 @@ public class OrganizationServiceTests
         }
     }
 
-    private sealed class InMemoryTeamMembershipRepository : ITeamMembershipRepository
+    internal sealed class InMemoryTeamMembershipRepository : ITeamMembershipRepository
     {
         private readonly List<TeamMembership> _items = new();
 
@@ -466,7 +467,7 @@ public class OrganizationServiceTests
             Task.FromResult(_items.Any(m => m.PersonId == personId && m.TeamId == teamId));
     }
 
-    private sealed class InMemoryRoleAssignmentRepository : IRoleAssignmentRepository
+    internal sealed class InMemoryRoleAssignmentRepository : IRoleAssignmentRepository
     {
         private readonly List<RoleAssignment> _items = new();
 
@@ -497,7 +498,7 @@ public class OrganizationServiceTests
             Task.FromResult(_items.FirstOrDefault(a => a.PersonId == personId && a.RoleId == roleId));
     }
 
-    private sealed class InMemoryResponsibilityAssignmentRepository : IResponsibilityAssignmentRepository
+    internal sealed class InMemoryResponsibilityAssignmentRepository : IResponsibilityAssignmentRepository
     {
         private readonly List<ResponsibilityAssignment> _items = new();
 
@@ -523,4 +524,3 @@ public class OrganizationServiceTests
         public Task<bool> ExistsAsync(Guid personId, Guid responsibilityId, CancellationToken cancellationToken = default) =>
             Task.FromResult(_items.Any(a => a.PersonId == personId && a.ResponsibilityId == responsibilityId));
     }
-}

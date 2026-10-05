@@ -35,6 +35,18 @@ public class OrganizationDomainEventTests
     }
 
     [Fact]
+    public void PersonActivated_populates_event_properties()
+    {
+        var personId = Guid.NewGuid();
+        var evt = new PersonActivated(personId);
+
+        evt.Should().BeAssignableTo<IDomainEvent>();
+        evt.PersonId.Should().Be(personId);
+        evt.EventId.Should().NotBeEmpty();
+        evt.OccurredAtUtc.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public void RoleAssigned_populates_event_properties()
     {
         var personId = Guid.NewGuid();

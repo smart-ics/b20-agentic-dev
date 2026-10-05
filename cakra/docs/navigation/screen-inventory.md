@@ -24,6 +24,8 @@ Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios*
 | `SCR-CUST-002` | Edit Customer Modal | Customer Master | Administrator, Management | UJ-CUST-001 | UC-CUST-001 |
 | `SCR-USR-001` | User Management View | Administration | Administrator, Admin | UJ-USR-001 | UC-USR-001 |
 | `SCR-USR-002` | Add / Edit User Modal | Administration | Administrator, Admin | UJ-USR-001 | UC-USR-001 |
+| `SCR-ORG-001` | Person Management View | Administration | Administrator, Admin | UJ-ORG-001 | UC-ORG-001 |
+| `SCR-ORG-002` | Add / Edit Person Modal | Administration | Administrator, Admin | UJ-ORG-001 | UC-ORG-001 |
 
 ---
 
@@ -495,5 +497,58 @@ Modal dialog interface for registering a new user account tied to an unassociate
 
 **Exit / Destination:**
 * User Management View (`SCR-USR-001`) — closes modal and refreshes user accounts table upon successful save or cancellation
+
+---
+
+### SCR-ORG-001
+
+**Screen Name:**
+Person Management View
+
+**Purpose:**
+Administrative person management console displaying all organizational Person records (active and inactive), operational metrics (Total Persons, Active, Inactive), keyword search across name and email, status filtering, and action triggers for adding, editing, activating, or deactivating Person records. Access restricted strictly to users possessing the Administrator or Admin role.
+
+**Primary Actors:**
+* Administrator
+* Admin
+
+**Supported Use Cases:**
+* UC-ORG-001: Manage Organizational Persons
+
+**Supported User Journeys:**
+* UJ-ORG-001: Manage Organizational Persons
+
+**Entry Points:**
+* Global Navigation Sidebar (`Administration > Person Management` — route `/admin/persons`)
+
+**Exit / Destination:**
+* `SCR-ORG-002: Add / Edit Person Modal`
+
+---
+
+### SCR-ORG-002
+
+**Screen Name:**
+Add / Edit Person Modal
+
+**Purpose:**
+Modal dialog interface for capturing First Name, Last Name, and Email to register a new organizational Person record, or updating identity attributes of an existing Person record, with duplicate email conflict validation.
+
+**Primary Actors:**
+* Administrator
+* Admin
+
+**Supported Use Cases:**
+* UC-ORG-001: Manage Organizational Persons
+
+**Supported User Journeys:**
+* UJ-ORG-001: Manage Organizational Persons
+
+**Entry Points:**
+* Person Management View (`SCR-ORG-001`) — "Add Person" button action (`data-testid="add-person-btn"`)
+* Person Management View (`SCR-ORG-001`) — Person table row "Edit" button action (`data-testid="edit-person-btn"`)
+
+**Exit / Destination:**
+* Person Management View (`SCR-ORG-001`) — closes modal and refreshes persons table upon successful save or cancellation
 
 

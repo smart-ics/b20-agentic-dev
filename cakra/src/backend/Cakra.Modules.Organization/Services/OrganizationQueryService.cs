@@ -93,6 +93,32 @@ public sealed class OrganizationQueryService : IOrganizationQueryService
         ListActivePersonsAsync(CancellationToken.None).GetAwaiter().GetResult();
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<PersonDto>> ListAllPersonsAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                [Id],
+                [FirstName],
+                [LastName],
+                [Email],
+                [Status],
+                [CreatedAt],
+                [UpdatedAt]
+            FROM [organization].[Persons]
+            ORDER BY [LastName], [FirstName];
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        var result = await connection.QueryAsync<PersonDto>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+        return result.AsList();
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<PersonDto> ListAllPersons() =>
+        ListAllPersonsAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<TeamRosterMemberDto>> GetTeamRosterAsync(Guid teamId, CancellationToken cancellationToken = default)
     {
         const string sql = """

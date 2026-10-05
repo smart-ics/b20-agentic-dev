@@ -14,6 +14,7 @@
 | FEAT-MGT-002 | Review Customer Request Progress | Query | UC-MGT-002 |
 | FEAT-MGT-003 | Review Programmer Request Performance | Analytics | UC-MGT-003 |
 | FEAT-MGT-004 | Review Programmer Workload | Query | UC-MGT-004 |
+| FEAT-ORG-001 | Manage Organizational Persons | Command | — |
 | FEAT-REQ-001 | Record Customer Request | Command | UC-REQ-001 |
 | FEAT-REQ-002 | Assign / Reassign Request Owner | Command | UC-REQ-002 |
 | FEAT-REQ-003 | Evaluate Request | Workflow | UC-REQ-003 |

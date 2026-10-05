@@ -468,6 +468,9 @@ public class UsersControllerTests : IntegrationTestBase
         public Task<IReadOnlyList<PersonDto>> ListActivePersonsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<PersonDto>>(_persons.Where(p => p.IsActive).ToList());
 
+        public Task<IReadOnlyList<PersonDto>> ListAllPersonsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<PersonDto>>(_persons.ToList());
+
         public Task<IReadOnlyList<string>> GetPersonRolesAsync(Guid personId, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
     }
