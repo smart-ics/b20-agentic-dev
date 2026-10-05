@@ -41,8 +41,8 @@ public sealed class WorkPackage : EntityBase
     /// <summary>All constituent requests (current and historical traceability per Business Rule 15).</summary>
     public IReadOnlyCollection<WorkPackageRequest> Requests => _requests.AsReadOnly();
 
-    /// <summary>Active constituent requests currently in scope.</summary>
-    public IEnumerable<WorkPackageRequest> ActiveRequests => _requests.Where(r => r.IsActive);
+    /// <summary>Active constituent requests currently in scope ordered by SortOrder.</summary>
+    public IEnumerable<WorkPackageRequest> ActiveRequests => _requests.Where(r => r.IsActive).OrderBy(r => r.SortOrder).ThenBy(r => r.AddedAt);
 
     /// <summary>Domain events raised during the lifecycle of this aggregate.</summary>
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
@@ -315,12 +315,62 @@ public sealed class WorkPackage : EntityBase
         }
 
         var timestamp = addedAtUtc ?? DateTime.UtcNow;
-        var membership = new WorkPackageRequest(Guid.NewGuid(), Id, requestId, timestamp);
+        var nextSortOrder = _requests.Where(r => r.IsActive).Select(r => (int?)r.SortOrder).Max() ?? -1;
+        var membership = new WorkPackageRequest(Guid.NewGuid(), Id, requestId, timestamp, nextSortOrder + 1);
         _requests.Add(membership);
         UpdatedAt = timestamp;
 
         AddDomainEvent(new RequestAddedToWorkPackage(Id, requestId, timestamp));
         return membership;
+    }
+
+    /// <summary>
+    /// Reorders the active constituent requests of the Work Package according to the specified sequence of Request IDs.
+    /// Allowed only in DRAFT and ACTIVE states (Architecture CR-015 §4 TD-003).
+    /// </summary>
+    /// <param name="orderedRequestIds">Ordered list of Request IDs representing the new sequence.</param>
+    /// <param name="reorderedAtUtc">Optional timestamp when the reordering occurred.</param>
+    public void ReorderRequests(IReadOnlyList<Guid> orderedRequestIds, DateTime? reorderedAtUtc = null)
+    {
+        ArgumentNullException.ThrowIfNull(orderedRequestIds);
+
+        if (Status == WorkPackageStatus.Closed)
+        {
+            throw new InvalidWorkPackageStateTransitionException(
+                Id,
+                Status,
+                Status,
+                $"Cannot reorder requests in a CLOSED work package '{Id}'.");
+        }
+
+        var activeList = _requests.Where(r => r.IsActive).ToList();
+
+        if (orderedRequestIds.Count != activeList.Count)
+        {
+            throw new WorkPackageDomainException(
+                $"Ordered request count ({orderedRequestIds.Count}) does not match active request count ({activeList.Count}) in Work Package '{Id}'.");
+        }
+
+        if (orderedRequestIds.Distinct().Count() != orderedRequestIds.Count)
+        {
+            throw new WorkPackageDomainException("Ordered request IDs must not contain duplicates.");
+        }
+
+        var activeByRequestId = activeList.ToDictionary(r => r.RequestId);
+
+        for (var i = 0; i < orderedRequestIds.Count; i++)
+        {
+            var requestId = orderedRequestIds[i];
+            if (!activeByRequestId.TryGetValue(requestId, out var membership))
+            {
+                throw new WorkPackageDomainException(
+                    $"Request '{requestId}' is not an active member of Work Package '{Id}'.");
+            }
+
+            membership.SetSortOrder(i, reorderedAtUtc);
+        }
+
+        UpdatedAt = reorderedAtUtc ?? DateTime.UtcNow;
     }
 
     /// <summary>

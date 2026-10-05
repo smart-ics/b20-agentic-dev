@@ -43,7 +43,7 @@ public sealed class DatabaseMigrationRunner
             .WithScriptsEmbeddedInAssembly(
                 typeof(DatabaseMigrationRunner).Assembly,
                 resourceName => resourceName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
-            .WithTransactionPerScript()
+            .WithoutTransaction()
             .LogToConsole()
             .Build();
 

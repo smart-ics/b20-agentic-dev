@@ -29,7 +29,8 @@ public sealed class WorkPackageService :
     IRequestHandler<AddRequestToWorkPackageCommand, WorkPackageDto>,
     IRequestHandler<RemoveRequestFromWorkPackageCommand, WorkPackageDto>,
     IRequestHandler<ActivateWorkPackageCommand, WorkPackageDto>,
-    IRequestHandler<CloseWorkPackageCommand, WorkPackageDto>
+    IRequestHandler<CloseWorkPackageCommand, WorkPackageDto>,
+    IRequestHandler<ReorderWorkPackageRequestsCommand, WorkPackageDto>
 {
     private readonly IWorkPackageRepository _workPackageRepository;
     private readonly IOrganizationQueryService _organizationQueryService;
@@ -391,6 +392,36 @@ public sealed class WorkPackageService :
         return WorkPackageDto.FromDomain(workPackage);
     }
 
+    /// <inheritdoc />
+    public async Task<WorkPackageDto> ReorderRequestsAsync(
+        Guid workPackageId,
+        IReadOnlyList<Guid> orderedRequestIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (workPackageId == Guid.Empty)
+        {
+            throw new ArgumentException("WorkPackageId cannot be empty.", nameof(workPackageId));
+        }
+
+        ArgumentNullException.ThrowIfNull(orderedRequestIds);
+
+        var workPackage = await GetRequiredWorkPackageAsync(workPackageId, cancellationToken);
+
+        var now = UtcNow;
+        workPackage.ReorderRequests(orderedRequestIds, now);
+
+        await _workPackageRepository.SaveAsync(workPackage, cancellationToken);
+        await DispatchDomainEventsAsync(workPackage, cancellationToken);
+
+        _logger.LogInformation(
+            "Reordered {Count} requests in WorkPackage {WorkPackageId} by ActorPersonId {ActorPersonId}",
+            orderedRequestIds.Count,
+            workPackage.Id,
+            ResolveActorPersonId(workPackage.OwnerPersonId));
+
+        return WorkPackageDto.FromDomain(workPackage);
+    }
+
     // MediatR command handler entry points
     public Task<WorkPackageDto> Handle(CreateWorkPackageCommand request, CancellationToken cancellationToken)
     {
@@ -462,6 +493,15 @@ public sealed class WorkPackageService :
         return CloseWorkPackageAsync(
             request.WorkPackageId,
             request.Reason,
+            cancellationToken);
+    }
+
+    public Task<WorkPackageDto> Handle(ReorderWorkPackageRequestsCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ReorderRequestsAsync(
+            request.WorkPackageId,
+            request.OrderedRequestIds,
             cancellationToken);
     }
 

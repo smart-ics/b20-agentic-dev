@@ -98,6 +98,8 @@ public sealed record FeedItemDto
 
     public string? LatestCommentExcerpt { get; init; }
 
+    public string? SearchContent { get; init; }
+
     public string ReactionCountsJson
     {
         get => _reactionCountsJson;

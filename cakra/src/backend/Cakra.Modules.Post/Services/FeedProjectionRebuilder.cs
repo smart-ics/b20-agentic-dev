@@ -233,6 +233,7 @@ public sealed class FeedProjectionRebuilder : BackgroundService, IFeedProjection
                 [CommentCount],
                 [LatestCommentExcerpt],
                 [ReactionCountsJson],
+                [SearchContent],
                 [CreatedAt],
                 [UpdatedAt],
                 [LastActivityAt]
@@ -262,6 +263,7 @@ public sealed class FeedProjectionRebuilder : BackgroundService, IFeedProjection
                 @CommentCount,
                 @LatestCommentExcerpt,
                 @ReactionCountsJson,
+                @SearchContent,
                 @CreatedAt,
                 @UpdatedAt,
                 @LastActivityAt
@@ -537,6 +539,22 @@ public sealed class FeedProjectionRebuilder : BackgroundService, IFeedProjection
                 : post.Visibility.Trim().ToUpperInvariant();
             var effectiveIsException = isException || exceptionType is not null;
 
+            var commentTuples = new List<(string? AuthorName, string? Content)>(postComments.Count);
+            foreach (var comment in postComments)
+            {
+                var commentAuthor = await ResolvePersonNameAsync(comment.AuthorPersonId);
+                commentTuples.Add((commentAuthor, comment.Content));
+            }
+
+            var searchContent = FeedProjectionHandler.BuildSearchContent(
+                productName,
+                customerName,
+                authorName,
+                title,
+                post.Content,
+                referenceDisplay,
+                commentTuples);
+
             insertParameters.Add(new
             {
                 FeedItemId = Guid.NewGuid(),
@@ -564,6 +582,7 @@ public sealed class FeedProjectionRebuilder : BackgroundService, IFeedProjection
                 CommentCount = commentCount,
                 LatestCommentExcerpt = latestCommentExcerpt,
                 ReactionCountsJson = reactionCountsJson,
+                SearchContent = searchContent,
                 CreatedAt = post.CreatedAt,
                 UpdatedAt = lastActivityAt,
                 LastActivityAt = lastActivityAt

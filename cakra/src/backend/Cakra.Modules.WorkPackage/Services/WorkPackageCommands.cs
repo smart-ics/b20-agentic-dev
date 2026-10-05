@@ -176,3 +176,25 @@ public sealed class CloseWorkPackageCommandValidator : AbstractValidator<CloseWo
             .NotEmpty().WithMessage("Close reason is required.");
     }
 }
+
+/// <summary>
+/// Command to reorder the active constituent requests within a <see cref="Domain.WorkPackage"/>
+/// (CR-015; Architecture §4 TD-002, TD-003).
+/// </summary>
+public sealed record ReorderWorkPackageRequestsCommand(
+    Guid WorkPackageId,
+    IReadOnlyList<Guid> OrderedRequestIds) : IRequest<WorkPackageDto>;
+
+public sealed class ReorderWorkPackageRequestsCommandValidator : AbstractValidator<ReorderWorkPackageRequestsCommand>
+{
+    public ReorderWorkPackageRequestsCommandValidator()
+    {
+        RuleFor(x => x.WorkPackageId)
+            .NotEmpty().WithMessage("Work package ID is required.");
+
+        RuleFor(x => x.OrderedRequestIds)
+            .NotNull().WithMessage("Ordered request IDs list is required.")
+            .NotEmpty().WithMessage("Ordered request IDs list cannot be empty.");
+    }
+}
+

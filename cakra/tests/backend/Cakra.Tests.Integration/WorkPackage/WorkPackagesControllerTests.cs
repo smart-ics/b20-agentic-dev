@@ -11,6 +11,7 @@ using Cakra.Modules.Organization.Commands;
 using Cakra.Modules.Product.Services;
 using Cakra.Modules.Request.Services;
 using Cakra.Modules.WorkPackage.Domain;
+using Dapper;
 using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
@@ -172,6 +173,11 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
         (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/requests", new
         {
             requestId = reqId
+        })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        (await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/requests/reorder", new
+        {
+            orderedRequestIds = new[] { reqId }
         })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         (await client.DeleteAsync($"/api/v1/work-packages/{wpId}/requests/{reqId}"))
@@ -433,6 +439,137 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
         var duplicateActivateResponse = await client.PostAsync($"/api/v1/work-packages/{wp1Id}/activate", null);
         duplicateActivateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         duplicateActivateResponse.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+    }
+
+    [Fact]
+    public async Task Reorder_requests_endpoint_updates_sort_orders_in_database_and_returns_sorted_scope()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
+        using var client = seeded.Client;
+
+        // 1. Create a 3rd request for clear 3-item reordering
+        Guid request3Id;
+        using (var scope = _factory!.Services.CreateScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var req3 = await mediator.Send(new RecordRequestCommand(
+                Title: "BPJS SEP bridging retry timeout adjustment",
+                Description: "Increase timeout threshold.",
+                CustomerId: seeded.Customer1Id,
+                ProductId: seeded.Product1Id,
+                RequestType: "Support",
+                Priority: "URGENT"));
+            request3Id = req3.Id;
+        }
+
+        // 2. Create a Work Package
+        var createResponse = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Reorder Test Package",
+            objective = "Test drag and drop reordering",
+            ownerPersonId = seeded.Owner1Id,
+            customerId = seeded.Customer1Id,
+            productId = seeded.Product1Id
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var wpId = created.GetProperty("id").GetGuid();
+
+        // 3. Add 3 requests (Request1, Request2, Request3)
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/requests", new { requestId = seeded.Request1Id }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/requests", new { requestId = seeded.Request2Id }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/requests", new { requestId = request3Id }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Verify initial scope order: [Request1 (sortOrder 0), Request2 (sortOrder 1), Request3 (sortOrder 2)]
+        var initialScopeResponse = await client.GetAsync($"/api/v1/work-packages/{wpId}/scope");
+        initialScopeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var initialScope = await initialScopeResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var initialItems = initialScope.EnumerateArray().ToList();
+        initialItems.Should().HaveCount(3);
+        initialItems[0].GetProperty("requestId").GetGuid().Should().Be(seeded.Request1Id);
+        initialItems[0].GetProperty("sortOrder").GetInt32().Should().Be(0);
+        initialItems[1].GetProperty("requestId").GetGuid().Should().Be(seeded.Request2Id);
+        initialItems[1].GetProperty("sortOrder").GetInt32().Should().Be(1);
+        initialItems[2].GetProperty("requestId").GetGuid().Should().Be(request3Id);
+        initialItems[2].GetProperty("sortOrder").GetInt32().Should().Be(2);
+
+        // 4. Reorder requests to: [Request3, Request1, Request2]
+        var reorderPayload = new
+        {
+            orderedRequestIds = new[] { request3Id, seeded.Request1Id, seeded.Request2Id }
+        };
+        var reorderResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/requests/reorder", reorderPayload);
+        reorderResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 5. Query GET /api/v1/work-packages/{id}/scope and verify updated sort order
+        var reorderedScopeResponse = await client.GetAsync($"/api/v1/work-packages/{wpId}/scope");
+        reorderedScopeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reorderedScope = await reorderedScopeResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var reorderedItems = reorderedScope.EnumerateArray().ToList();
+        reorderedItems.Should().HaveCount(3);
+
+        reorderedItems[0].GetProperty("requestId").GetGuid().Should().Be(request3Id);
+        reorderedItems[0].GetProperty("sortOrder").GetInt32().Should().Be(0);
+
+        reorderedItems[1].GetProperty("requestId").GetGuid().Should().Be(seeded.Request1Id);
+        reorderedItems[1].GetProperty("sortOrder").GetInt32().Should().Be(1);
+
+        reorderedItems[2].GetProperty("requestId").GetGuid().Should().Be(seeded.Request2Id);
+        reorderedItems[2].GetProperty("sortOrder").GetInt32().Should().Be(2);
+
+        // 6. Direct SQL query verification on [workpackage].[WorkPackageRequests] database table
+        await using (var conn = new SqlConnection(_connectionString))
+        {
+            await conn.OpenAsync();
+            var dbRows = (await conn.QueryAsync<(Guid RequestId, int SortOrder)>(
+                "SELECT RequestId, SortOrder FROM [workpackage].[WorkPackageRequests] WHERE WorkPackageId = @wpId AND RemovedAt IS NULL ORDER BY SortOrder ASC",
+                new { wpId })).ToList();
+
+            dbRows.Should().HaveCount(3);
+            dbRows[0].RequestId.Should().Be(request3Id);
+            dbRows[0].SortOrder.Should().Be(0);
+            dbRows[1].RequestId.Should().Be(seeded.Request1Id);
+            dbRows[1].SortOrder.Should().Be(1);
+            dbRows[2].RequestId.Should().Be(seeded.Request2Id);
+            dbRows[2].SortOrder.Should().Be(2);
+        }
+
+        // 7. Test error cases on reorder endpoint:
+        // a. Mismatched IDs (missing an item) -> 400 BadRequest ProblemDetails
+        var invalidCountResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/requests/reorder", new
+        {
+            orderedRequestIds = new[] { request3Id, seeded.Request1Id }
+        });
+        invalidCountResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // b. Foreign / unknown Request ID -> 400 BadRequest ProblemDetails
+        var foreignIdResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/requests/reorder", new
+        {
+            orderedRequestIds = new[] { request3Id, seeded.Request1Id, Guid.NewGuid() }
+        });
+        foreignIdResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // c. Duplicate IDs -> 400 BadRequest ProblemDetails
+        var duplicateIdResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/requests/reorder", new
+        {
+            orderedRequestIds = new[] { request3Id, request3Id, seeded.Request2Id }
+        });
+        duplicateIdResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // d. Non-existent WorkPackage -> 404 NotFound ProblemDetails
+        var notFoundResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{Guid.NewGuid()}/requests/reorder", reorderPayload);
+        notFoundResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // e. Closed WorkPackage -> 409 Conflict ProblemDetails
+        await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/close", new { reason = "Finished" });
+        var closedReorderResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/requests/reorder", reorderPayload);
+        closedReorderResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
     private async Task<SeededWorkPackageTestContext> CreateAuthenticatedClientAndSeedContextAsync()

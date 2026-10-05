@@ -486,4 +486,184 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
         beyondPage.Items.Should().BeEmpty();
         beyondPage.HasMore.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task GetFeed_with_SearchTerm_matches_across_all_five_dimensions_multi_word_prefix_and_clearing_search_restores_full_feed()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        using var scope = _factory!.Services.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var feedQueryService = scope.ServiceProvider.GetRequiredService<IFeedQueryService>();
+        var currentContext = scope.ServiceProvider.GetRequiredService<ICurrentContextProvider>() as CurrentContextProvider;
+
+        // Create Authors and Commenters in Organization
+        var authorHendro = await mediator.Send(new CreatePersonCommand(
+            "Hendro",
+            "Gunawan",
+            $"hendro.{Guid.NewGuid():N}@cakra.id"));
+
+        var commenterSiti = await mediator.Send(new CreatePersonCommand(
+            "Siti",
+            "Rahma",
+            $"siti.{Guid.NewGuid():N}@cakra.id"));
+
+        var authorBudi = await mediator.Send(new CreatePersonCommand(
+            "Budi",
+            "Santoso",
+            $"budi.{Guid.NewGuid():N}@cakra.id"));
+
+        currentContext?.Initialize(Guid.NewGuid(), authorHendro.Id, new[] { "Implementator", "Programmer" });
+
+        // Create Customers
+        var customerCipto = await mediator.Send(new CreateCustomerCommand(
+            $"CUST-CIPTO-{Guid.NewGuid():N}"[..14],
+            "RSUD Cipto Mangunkusumo",
+            HasActiveMaintenanceContract: true));
+
+        var customerPratama = await mediator.Send(new CreateCustomerCommand(
+            $"CUST-PRATAMA-{Guid.NewGuid():N}"[..14],
+            "Klinik Pratama Sehat",
+            HasActiveMaintenanceContract: true));
+
+        // Create Products
+        var productNeuroScan = await mediator.Send(new CreateProductCommand(
+            $"PRD-NEURO-{Guid.NewGuid():N}"[..14],
+            "NeuroScan Diagnostic RIS",
+            "Neurology imaging and diagnostic suite",
+            authorHendro.Id));
+
+        var productApotek = await mediator.Send(new CreateProductCommand(
+            $"PRD-APOTEK-{Guid.NewGuid():N}"[..14],
+            "ApotekDirect Inventory",
+            "Pharmacy pharmaceutical stock management",
+            authorBudi.Id));
+
+        // Post 1: Authored by Hendro, Product: NeuroScan, Customer: Cipto, with two distinct comments
+        var post1 = await mediator.Send(new RecordSystemPostCommand(
+            Title: "Configured DICOM PACS bridge workstation",
+            Content: "Connected workstation to modality gateway broker.",
+            AuthorPersonId: authorHendro.Id,
+            CustomerId: customerCipto.Id,
+            ProductId: productNeuroScan.Id));
+
+        // Add Comment 1 by Siti Rahma
+        currentContext?.Initialize(Guid.NewGuid(), commenterSiti.Id, new[] { "Implementator" });
+        await mediator.Send(new PostCommentCommand(
+            PostId: post1.Id,
+            Content: "Investigated network latency across subnets.",
+            AuthorPersonId: commenterSiti.Id));
+
+        // Add Comment 2 by Hendro Gunawan
+        currentContext?.Initialize(Guid.NewGuid(), authorHendro.Id, new[] { "Implementator" });
+        await mediator.Send(new PostCommentCommand(
+            PostId: post1.Id,
+            Content: "Applied firmware hotfix patch to resolve timeout.",
+            AuthorPersonId: authorHendro.Id));
+
+        await Task.Delay(15);
+
+        // Post 2: Created via Request (RequestRecordedPostHandler)
+        var request2 = await mediator.Send(new RecordRequestCommand(
+            Title: "Emergency Triage Queue Overload",
+            Description: "Automated bed allocation halted due to HL7 synchronization failure.",
+            CustomerId: customerCipto.Id,
+            ProductId: productNeuroScan.Id,
+            RequestType: "BUG",
+            Priority: "URGENT",
+            ActorPersonId: authorHendro.Id));
+
+        await Task.Delay(15);
+
+        // Post 3: Unrelated post by Budi, Product: ApotekDirect, Customer: Pratama
+        currentContext?.Initialize(Guid.NewGuid(), authorBudi.Id, new[] { "Programmer" });
+        var post3 = await mediator.Send(new RecordSystemPostCommand(
+            Title: "Monthly inventory balance reconciliation",
+            Content: "All pharmacy pharmaceutical stocks verified without discrepancy.",
+            AuthorPersonId: authorBudi.Id,
+            CustomerId: customerPratama.Id,
+            ProductId: productApotek.Id));
+
+        // =========================================================================
+        // 1. Dimension: Product Name ("NeuroScan", "ApotekDirect")
+        // =========================================================================
+        var productSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "NeuroScan" });
+        productSearch.Items.Should().HaveCount(2);
+        productSearch.Items.Select(x => x.PostId).Should().NotContain(post3.Id);
+
+        var productApotekSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "ApotekDirect" });
+        productApotekSearch.Items.Should().ContainSingle().Which.PostId.Should().Be(post3.Id);
+
+        // =========================================================================
+        // 2. Dimension: Customer Name ("Cipto", "Pratama")
+        // =========================================================================
+        var customerCiptoSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Cipto" });
+        customerCiptoSearch.Items.Should().HaveCount(2);
+        customerCiptoSearch.Items.Select(x => x.PostId).Should().NotContain(post3.Id);
+
+        var customerPratamaSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Pratama" });
+        customerPratamaSearch.Items.Should().ContainSingle().Which.PostId.Should().Be(post3.Id);
+
+        // =========================================================================
+        // 3. Dimension: Author Person Name ("Hendro", "Santoso")
+        // =========================================================================
+        var authorHendroSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Hendro" });
+        authorHendroSearch.Items.Should().HaveCount(2);
+
+        var authorBudiSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Santoso" });
+        authorBudiSearch.Items.Should().ContainSingle().Which.PostId.Should().Be(post3.Id);
+
+        // =========================================================================
+        // 4. Dimension: Commenter Name ("Rahma" from commenter Siti Rahma)
+        // =========================================================================
+        var commenterSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Rahma" });
+        commenterSearch.Items.Should().ContainSingle().Which.PostId.Should().Be(post1.Id);
+
+        // =========================================================================
+        // 5. Dimension: Request Text (Title "Triage", Description "allocation")
+        // =========================================================================
+        var requestTitleSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Triage" });
+        requestTitleSearch.Items.Should().ContainSingle().Which.RequestId.Should().Be(request2.Id);
+
+        var requestDescSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "allocation" });
+        requestDescSearch.Items.Should().ContainSingle().Which.RequestId.Should().Be(request2.Id);
+
+        // =========================================================================
+        // 6. Dimension: Comment Text across multiple comments ("latency", "firmware")
+        // =========================================================================
+        var comment1Search = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "latency" });
+        comment1Search.Items.Should().ContainSingle().Which.PostId.Should().Be(post1.Id);
+
+        var comment2Search = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "firmware" });
+        comment2Search.Items.Should().ContainSingle().Which.PostId.Should().Be(post1.Id);
+
+        // =========================================================================
+        // 7. Multi-word Prefix-AND logic ("Hend Neuro", "Rahma subnets", non-matching)
+        // =========================================================================
+        var multiWordPrefixSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Hend Neuro" });
+        multiWordPrefixSearch.Items.Should().HaveCount(2);
+
+        var multiWordCommentSearch = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Rahma subnets" });
+        multiWordCommentSearch.Items.Should().ContainSingle().Which.PostId.Should().Be(post1.Id);
+
+        var nonMatchingMultiWord = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "Triage NonExistentTokenXYZ" });
+        nonMatchingMultiWord.Items.Should().BeEmpty();
+        nonMatchingMultiWord.TotalCount.Should().Be(0);
+
+        // =========================================================================
+        // 8. Clearing search restores full feed list
+        // =========================================================================
+        var clearSearchNull = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = null });
+        clearSearchNull.TotalCount.Should().Be(3);
+        clearSearchNull.Items.Should().HaveCount(3);
+
+        var clearSearchEmpty = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "" });
+        clearSearchEmpty.TotalCount.Should().Be(3);
+        clearSearchEmpty.Items.Should().HaveCount(3);
+
+        var clearSearchWhitespace = await feedQueryService.GetFeedAsync(new FeedFilter { SearchTerm = "   " });
+        clearSearchWhitespace.TotalCount.Should().Be(3);
+        clearSearchWhitespace.Items.Should().HaveCount(3);
+    }
 }

@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text;
 using Cakra.Core;
 using Cakra.Core.Infrastructure.Persistence;
 using Cakra.Modules.Customer;
@@ -192,6 +193,14 @@ public sealed class FeedProjectionHandler :
         var contentExcerpt = Truncate(notification.Content ?? string.Empty, 500);
         var createdAt = notification.OccurredAtUtc == default ? UtcNow : notification.OccurredAtUtc;
 
+        var searchContent = BuildSearchContent(
+            productName,
+            customerName,
+            authorName,
+            title,
+            notification.Content,
+            referenceDisplay);
+
         const string upsertFeedItemSql = """
             IF EXISTS (SELECT 1 FROM [post].[FeedItems] WHERE [PostId] = @PostId)
             BEGIN
@@ -217,6 +226,7 @@ public sealed class FeedProjectionHandler :
                     [ProductName] = @ProductName,
                     [RequestId] = @RequestId,
                     [WorkPackageId] = @WorkPackageId,
+                    [SearchContent] = @SearchContent,
                     [UpdatedAt] = @UpdatedAt,
                     [LastActivityAt] = @LastActivityAt
                 WHERE [PostId] = @PostId;
@@ -249,6 +259,7 @@ public sealed class FeedProjectionHandler :
                     [CommentCount],
                     [LatestCommentExcerpt],
                     [ReactionCountsJson],
+                    [SearchContent],
                     [CreatedAt],
                     [UpdatedAt],
                     [LastActivityAt]
@@ -278,6 +289,7 @@ public sealed class FeedProjectionHandler :
                     0,
                     NULL,
                     N'{}',
+                    @SearchContent,
                     @CreatedAt,
                     @UpdatedAt,
                     @LastActivityAt
@@ -312,6 +324,7 @@ public sealed class FeedProjectionHandler :
                 ProductName = TruncateNullable(productName, 150),
                 RequestId = requestId,
                 WorkPackageId = workPackageId,
+                SearchContent = searchContent,
                 CreatedAt = createdAt,
                 UpdatedAt = createdAt,
                 LastActivityAt = createdAt
@@ -328,8 +341,8 @@ public sealed class FeedProjectionHandler :
     }
 
     /// <summary>
-    /// Handles <see cref="CommentAdded"/> by incrementing <c>CommentCount</c> and updating
-    /// <c>LatestCommentExcerpt</c>, <c>UpdatedAt</c>, and <c>LastActivityAt</c> (Architecture §12 Update Triggers).
+    /// Handles <see cref="CommentAdded"/> by incrementing <c>CommentCount</c>, re-aggregating <c>SearchContent</c>,
+    /// and updating <c>LatestCommentExcerpt</c>, <c>UpdatedAt</c>, and <c>LastActivityAt</c> (Architecture §12 Update Triggers).
     /// </summary>
     public async Task Handle(CommentAdded notification, CancellationToken cancellationToken)
     {
@@ -343,11 +356,79 @@ public sealed class FeedProjectionHandler :
         var latestExcerpt = Truncate(notification.Content ?? string.Empty, 300);
         var occurredAt = notification.OccurredAtUtc == default ? UtcNow : notification.OccurredAtUtc;
 
+        using var connection = _connectionFactory.CreateConnection();
+
+        const string getFeedItemSql = """
+            SELECT
+                [ProductName],
+                [CustomerName],
+                [AuthorName],
+                [Title],
+                [ContentExcerpt],
+                [ReferenceDisplay]
+            FROM [post].[FeedItems]
+            WHERE [PostId] = @PostId;
+            """;
+
+        var feedItem = await connection.QuerySingleOrDefaultAsync<FeedItemSearchSeedRow>(
+            new CommandDefinition(getFeedItemSql, new { notification.PostId }, cancellationToken: cancellationToken));
+
+        const string getCommentsSql = """
+            SELECT
+                c.[AuthorPersonId],
+                c.[Content]
+            FROM [post].[Comments] c
+            WHERE c.[PostId] = @PostId
+              AND c.[Status] = N'ACTIVE'
+            ORDER BY c.[CreatedAt] ASC;
+            """;
+
+        var commentRows = (await connection.QueryAsync<CommentSearchRow>(
+            new CommandDefinition(getCommentsSql, new { notification.PostId }, cancellationToken: cancellationToken))).AsList();
+
+        var authorNameCache = new Dictionary<Guid, string?>();
+        var commenterTuples = new List<(string? AuthorName, string? Content)>(commentRows.Count);
+
+        foreach (var c in commentRows)
+        {
+            string? commenterName = null;
+            if (c.AuthorPersonId == notification.AuthorPersonId && !string.IsNullOrWhiteSpace(notification.AuthorName))
+            {
+                commenterName = notification.AuthorName.Trim();
+            }
+            else if (authorNameCache.TryGetValue(c.AuthorPersonId, out var cachedName))
+            {
+                commenterName = cachedName;
+            }
+            else if (_organizationQueryService is not null)
+            {
+                var person = await _organizationQueryService.GetPersonByIdAsync(c.AuthorPersonId, cancellationToken);
+                commenterName = TrimOrNull(person?.FullName);
+                authorNameCache[c.AuthorPersonId] = commenterName;
+            }
+
+            commenterTuples.Add((commenterName, c.Content));
+        }
+
+        string? searchContent = null;
+        if (feedItem is not null)
+        {
+            searchContent = BuildSearchContent(
+                feedItem.ProductName,
+                feedItem.CustomerName,
+                feedItem.AuthorName,
+                feedItem.Title,
+                feedItem.ContentExcerpt,
+                feedItem.ReferenceDisplay,
+                commenterTuples);
+        }
+
         const string updateCommentProjectionSql = """
             UPDATE [post].[FeedItems]
             SET
                 [CommentCount] = [CommentCount] + 1,
                 [LatestCommentExcerpt] = @LatestCommentExcerpt,
+                [SearchContent] = COALESCE(@SearchContent, [SearchContent]),
                 [UpdatedAt] = CASE
                     WHEN @OccurredAtUtc > [UpdatedAt] THEN @OccurredAtUtc
                     ELSE DATEADD(millisecond, 1, [UpdatedAt])
@@ -359,13 +440,13 @@ public sealed class FeedProjectionHandler :
             WHERE [PostId] = @PostId;
             """;
 
-        using var connection = _connectionFactory.CreateConnection();
         await connection.ExecuteAsync(new CommandDefinition(
             updateCommentProjectionSql,
             new
             {
                 notification.PostId,
                 LatestCommentExcerpt = latestExcerpt,
+                SearchContent = searchContent,
                 OccurredAtUtc = occurredAt
             },
             cancellationToken: cancellationToken));
@@ -843,6 +924,14 @@ public sealed class FeedProjectionHandler :
         var postId = Guid.NewGuid();
         var feedItemId = Guid.NewGuid();
 
+        var searchContent = BuildSearchContent(
+            productName,
+            customerName,
+            authorName,
+            title,
+            content,
+            referenceDisplay);
+
         const string insertSystemExceptionPostAndFeedItemSql = """
             IF OBJECT_ID(N'[post].[Posts]', N'U') IS NOT NULL
                AND OBJECT_ID(N'[post].[FeedItems]', N'U') IS NOT NULL
@@ -1005,6 +1094,7 @@ public sealed class FeedProjectionHandler :
                     [CommentCount],
                     [LatestCommentExcerpt],
                     [ReactionCountsJson],
+                    [SearchContent],
                     [CreatedAt],
                     [UpdatedAt],
                     [LastActivityAt]
@@ -1034,6 +1124,7 @@ public sealed class FeedProjectionHandler :
                     0,
                     NULL,
                     N'{}',
+                    @SearchContent,
                     @OccurredAtUtc,
                     @OccurredAtUtc,
                     @OccurredAtUtc
@@ -1061,6 +1152,7 @@ public sealed class FeedProjectionHandler :
                 ProductName = TruncateNullable(productName, 150),
                 RequestId = requestId,
                 WorkPackageId = workPackageId,
+                SearchContent = searchContent,
                 OccurredAtUtc = occurredAtUtc
             },
             cancellationToken: cancellationToken));
@@ -1166,6 +1258,56 @@ public sealed class FeedProjectionHandler :
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
+    /// <summary>
+    /// Builds consolidated, priority-ordered search tokens across operational dimensions
+    /// (Product, Customer, Post Author, Title, Content/Request text, Reference Display, active Comments)
+    /// capped at 4,000 characters for the <c>[post].[FeedItems].[SearchContent]</c> column (Architecture CR-014 TD-001).
+    /// </summary>
+    public static string BuildSearchContent(
+        string? productName,
+        string? customerName,
+        string? authorName,
+        string? title,
+        string? content,
+        string? referenceDisplay,
+        IEnumerable<(string? AuthorName, string? Content)>? comments = null)
+    {
+        var sb = new StringBuilder(1024);
+
+        AppendToken(sb, productName);
+        AppendToken(sb, customerName);
+        AppendToken(sb, authorName);
+        AppendToken(sb, title);
+        AppendToken(sb, content);
+        AppendToken(sb, referenceDisplay);
+
+        if (comments != null)
+        {
+            foreach (var (commentAuthor, commentText) in comments)
+            {
+                if (sb.Length >= 3900) break;
+                AppendToken(sb, commentAuthor);
+                AppendToken(sb, commentText);
+            }
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    private static void AppendToken(StringBuilder sb, string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return;
+        if (sb.Length > 0) sb.Append(' ');
+        var remaining = 4000 - sb.Length;
+        if (remaining <= 0) return;
+        var trimmed = token.Trim();
+        if (trimmed.Length > remaining)
+        {
+            trimmed = trimmed[..remaining];
+        }
+        sb.Append(trimmed);
+    }
+
     private static string? TrimOrNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
@@ -1176,5 +1318,21 @@ public sealed class FeedProjectionHandler :
     {
         public string ReactionType { get; set; } = string.Empty;
         public int Count { get; set; }
+    }
+
+    private sealed class FeedItemSearchSeedRow
+    {
+        public string? ProductName { get; set; }
+        public string? CustomerName { get; set; }
+        public string? AuthorName { get; set; }
+        public string? Title { get; set; }
+        public string? ContentExcerpt { get; set; }
+        public string? ReferenceDisplay { get; set; }
+    }
+
+    private sealed class CommentSearchRow
+    {
+        public Guid AuthorPersonId { get; set; }
+        public string Content { get; set; } = string.Empty;
     }
 }

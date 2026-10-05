@@ -22,6 +22,9 @@ public sealed class WorkPackageRequest : EntityBase
     /// <summary>UTC timestamp when the request was removed from the Work Package, or <c>null</c> if active.</summary>
     public DateTime? RemovedAt { get; private set; }
 
+    /// <summary>Relative display sequence / priority order of the request within the Work Package (Architecture §11, CR-015).</summary>
+    public int SortOrder { get; private set; }
+
     /// <summary>Indicates whether this membership link is currently active.</summary>
     public bool IsActive => RemovedAt is null;
 
@@ -35,7 +38,7 @@ public sealed class WorkPackageRequest : EntityBase
     /// <summary>
     /// Internal constructor called by <see cref="WorkPackage.AddRequest"/>.
     /// </summary>
-    internal WorkPackageRequest(Guid id, Guid workPackageId, Guid requestId, DateTime addedAt)
+    internal WorkPackageRequest(Guid id, Guid workPackageId, Guid requestId, DateTime addedAt, int sortOrder = 0)
     {
         if (id == Guid.Empty)
         {
@@ -59,6 +62,18 @@ public sealed class WorkPackageRequest : EntityBase
         CreatedAt = addedAt;
         UpdatedAt = null;
         RemovedAt = null;
+        SortOrder = sortOrder;
+    }
+
+    /// <summary>
+    /// Updates the sort order index of this request within the Work Package (Architecture CR-015 §4 TD-003).
+    /// </summary>
+    /// <param name="sortOrder">New zero-based sort order index.</param>
+    /// <param name="updatedAt">Optional UTC timestamp when the reordering occurred.</param>
+    internal void SetSortOrder(int sortOrder, DateTime? updatedAt = null)
+    {
+        SortOrder = sortOrder;
+        UpdatedAt = updatedAt ?? DateTime.UtcNow;
     }
 
     /// <summary>
@@ -93,7 +108,8 @@ public sealed class WorkPackageRequest : EntityBase
         DateTime addedAt,
         DateTime? removedAt = null,
         DateTime? createdAt = null,
-        DateTime? updatedAt = null)
+        DateTime? updatedAt = null,
+        int sortOrder = 0)
     {
         return new WorkPackageRequest
         {
@@ -103,7 +119,8 @@ public sealed class WorkPackageRequest : EntityBase
             AddedAt = addedAt,
             RemovedAt = removedAt,
             CreatedAt = createdAt ?? addedAt,
-            UpdatedAt = updatedAt
+            UpdatedAt = updatedAt,
+            SortOrder = sortOrder
         };
     }
 }

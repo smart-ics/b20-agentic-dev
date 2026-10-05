@@ -72,7 +72,7 @@ public record WorkPackageDto
 
     /// <summary>Active constituent request memberships currently in scope.</summary>
     public IReadOnlyList<WorkPackageScopeItemDto> ActiveRequests =>
-        Requests.Where(r => r.IsActive).ToList();
+        Requests.Where(r => r.IsActive).OrderBy(r => r.SortOrder).ThenBy(r => r.AddedAt).ToList();
 
     /// <summary>Count of active requests in this Work Package.</summary>
     public int ActiveRequestCount
@@ -105,7 +105,7 @@ public record WorkPackageDto
             ClosedAt = workPackage.ClosedAt,
             CreatedAt = workPackage.CreatedAt,
             UpdatedAt = workPackage.UpdatedAt,
-            Requests = workPackage.Requests.Select(WorkPackageScopeItemDto.FromDomain).ToList()
+            Requests = workPackage.Requests.OrderBy(r => r.SortOrder).ThenBy(r => r.AddedAt).Select(WorkPackageScopeItemDto.FromDomain).ToList()
         };
     }
 }
@@ -132,6 +132,9 @@ public record WorkPackageRequestDto
 
     /// <summary>Identifier of the constituent Request.</summary>
     public Guid RequestId { get; init; }
+
+    /// <summary>Explicit sequence index of the Request within the Work Package scope.</summary>
+    public int SortOrder { get; init; }
 
     /// <summary>UTC timestamp when the Request was added to the Work Package.</summary>
     public DateTime AddedAt { get; init; }
@@ -228,6 +231,7 @@ public sealed record WorkPackageScopeItemDto : WorkPackageRequestDto
             Id = membership.Id,
             WorkPackageId = membership.WorkPackageId,
             RequestId = membership.RequestId,
+            SortOrder = membership.SortOrder,
             AddedAt = membership.AddedAt,
             RemovedAt = membership.RemovedAt,
             CreatedAt = membership.CreatedAt,

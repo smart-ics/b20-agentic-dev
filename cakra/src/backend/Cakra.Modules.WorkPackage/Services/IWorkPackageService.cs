@@ -139,4 +139,23 @@ public interface IWorkPackageService
         string reason,
         CancellationToken cancellationToken = default)
         => CloseWorkPackageAsync(workPackageId, reason, cancellationToken);
+
+    /// <summary>
+    /// Reorders the active constituent requests of a Work Package according to the specified list of Request IDs
+    /// (CR-015; Architecture §4 TD-002, TD-003).
+    /// </summary>
+    Task<WorkPackageDto> ReorderRequestsAsync(
+        Guid workPackageId,
+        IReadOnlyList<Guid> orderedRequestIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="ReorderRequestsAsync"/> (CR-015; Architecture §4).
+    /// </summary>
+    Task<WorkPackageDto> ReorderRequests(
+        Guid workPackageId,
+        IReadOnlyList<Guid> orderedRequestIds,
+        CancellationToken cancellationToken = default)
+        => ReorderRequestsAsync(workPackageId, orderedRequestIds, cancellationToken);
 }
+

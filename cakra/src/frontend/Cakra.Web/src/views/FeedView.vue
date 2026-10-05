@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AxiosError } from 'axios'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
 import CreateRequestModal, { type CreatedRequestResponse } from '@/components/CreateRequestModal.vue'
@@ -9,14 +9,15 @@ import FeedTimelineCard from '@/components/FeedTimelineCard.vue'
 import PostDetailModal from '@/views/PostDetailModal.vue'
 
 /**
- * SCR-FEED-001: Operational Feed Screen (CR-012)
- * (Architecture §6, §7, §8 — UC-AWR-001..003, UC-FCOL-003..005, §9 — FEAT-AWR-001, FEAT-FCOL-001..003, FEAT-FCOL-005, §12, §19.4, §20, §21).
+ * SCR-FEED-001: Operational Feed Screen (CR-013, CR-014)
+ * (Architecture §6, §7, §8 — UC-AWR-001..003, UC-FCOL-003..005, §9 — FEAT-AWR-001, FEAT-FCOL-001..003, FEAT-FCOL-005, §12, §19.4, §20, §21; CR-014 TD-006).
  *
- * - Renders a timeline-style operational feed layout (`data-screen-id="SCR-FEED-001"`).
- * - Delegates per-item timeline card rendering, inline comments, and reaction palette to `FeedTimelineCard.vue`.
- * - Provides filter controls for Customer (`GET /api/v1/customers/active`),
- *   Product (`GET /api/v1/products/active`), and Exception-only toggle (`isException`).
- * - Provides search, exception type filtering, and pagination controls (`Previous` / `Next`).
+ * - Continuous infinite scroll timeline stream with native IntersectionObserver sentinel.
+ * - Incremental batch appending with Set-based ID deduplication (`postId` / `feedItemId`).
+ * - Seamless stream prepending for newly created requests without scroll position displacement.
+ * - End-of-stream milestone ("You're all caught up") and inline error recovery retry.
+ * - Dedicated full-width universal search textbox on top of feed stream (300ms debouncing, URL sync, instant clear).
+ * - Contextual sidebar summary metrics (Total Stream Events, Exceptions Loaded, Stream Filter Status).
  * - Coordinates `PostDetailModal.vue` (`SCR-POST-001`) and `CreateRequestModal.vue` (`SCR-REQ-002`).
  */
 
@@ -95,31 +96,32 @@ interface ProblemDetailsPayload {
   errors?: Record<string, string[]>
 }
 
-const EXCEPTION_TYPES = ['ESCALATION', 'REJECTION', 'STALLED'] as const
+const route = useRoute()
+const router = useRouter()
 
 const feedItems = ref<FeedItem[]>([])
 const activeCustomers = ref<ActiveCustomerOption[]>([])
 const activeProducts = ref<ActiveProductOption[]>([])
 
 const isLoadingFeed = ref<boolean>(false)
+const isLoadingMore = ref<boolean>(false)
 const isLoadingLookups = ref<boolean>(false)
 
 const errorMessage = ref<string | null>(null)
+const loadMoreError = ref<string | null>(null)
 
-// Filter state for GET /api/v1/feed
-const filters = reactive({
-  customerId: '',
-  productId: '',
-  isException: false,
-  exceptionType: '',
-  searchTerm: '',
-  pageSize: 20,
-  offset: 0,
-})
+// Universal search and pagination state for GET /api/v1/feed
+const searchTerm = ref<string>('')
+const pageSize = ref<number>(20)
+const offset = ref<number>(0)
 
 const totalCount = ref<number>(0)
-const totalPages = ref<number>(0)
 const hasMore = ref<boolean>(false)
+
+// Sentinel ref for IntersectionObserver
+const sentinelRef = ref<HTMLDivElement | null>(null)
+let observer: IntersectionObserver | null = null
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Create Request Modal state (CR-003, SCR-FEED-001 / SCR-REQ-002)
 const showCreateRequestModal = ref<boolean>(false)
@@ -157,50 +159,21 @@ const productNameById = computed<Record<string, string>>(() => {
   return map
 })
 
-const currentPage = computed<number>(() =>
-  filters.pageSize > 0 ? Math.floor(filters.offset / filters.pageSize) + 1 : 1,
-)
-
-const computedTotalPages = computed<number>(() => {
-  if (totalPages.value > 0) {
-    return totalPages.value
-  }
-  if (totalCount.value > 0 && filters.pageSize > 0) {
-    return Math.ceil(totalCount.value / filters.pageSize)
-  }
-  return feedItems.value.length > 0 ? 1 : 0
-})
-
 const hasActiveFilters = computed<boolean>(
-  () =>
-    filters.customerId.trim().length > 0 ||
-    filters.productId.trim().length > 0 ||
-    filters.isException ||
-    filters.exceptionType.trim().length > 0 ||
-    filters.searchTerm.trim().length > 0,
+  () => searchTerm.value.trim().length > 0,
 )
 
 const exceptionCount = computed<number>(() =>
   feedItems.value.filter((item) => item.isException).length,
 )
 
-const canGoPrevious = computed<boolean>(() => !isLoadingFeed.value && filters.offset > 0)
-
-const canGoNext = computed<boolean>(() => {
-  if (isLoadingFeed.value) {
-    return false
-  }
-  if (hasMore.value) {
-    return true
-  }
-  return filters.offset + feedItems.value.length < totalCount.value
-})
-
-const showingRangeStart = computed<number>(() =>
-  feedItems.value.length === 0 ? 0 : filters.offset + 1,
+const canLoadMore = computed<boolean>(
+  () =>
+    !isLoadingFeed.value &&
+    !isLoadingMore.value &&
+    hasMore.value &&
+    !loadMoreError.value,
 )
-
-const showingRangeEnd = computed<number>(() => filters.offset + feedItems.value.length)
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
@@ -225,7 +198,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 }
 
 function resolveFeedItemKey(item: FeedItem): string {
-  return item.feedItemId || item.id || item.postId
+  return (item.feedItemId || item.id || item.postId || '').trim()
 }
 
 function resolvePostId(item: FeedItem): string {
@@ -260,9 +233,35 @@ function resolveWorkPackageId(item: FeedItem): string | null {
   return null
 }
 
+function disconnectObserver(): void {
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
+}
+
+function setupObserver(): void {
+  disconnectObserver()
+  if (!sentinelRef.value) {
+    return
+  }
+
+  observer = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0]
+      if (entry?.isIntersecting && canLoadMore.value) {
+        void loadNextBatch()
+      }
+    },
+    { root: null, rootMargin: '250px', threshold: 0.1 },
+  )
+
+  observer.observe(sentinelRef.value)
+}
+
 /**
  * Loads active customers (`GET /api/v1/customers/active`) and active products (`GET /api/v1/products/active`)
- * for filter selectors.
+ * for feed timeline card resolution.
  */
 async function loadReferenceLookups(): Promise<void> {
   isLoadingLookups.value = true
@@ -284,41 +283,46 @@ async function loadReferenceLookups(): Promise<void> {
   }
 }
 
+function buildQueryParams(currentOffset: number): Record<string, string | number | boolean> {
+  const params: Record<string, string | number | boolean> = {
+    pageSize: pageSize.value,
+    offset: currentOffset,
+  }
+
+  const term = searchTerm.value.trim()
+  if (term.length > 0) {
+    params.searchTerm = term
+  }
+
+  return params
+}
+
 /**
- * Queries `GET /api/v1/feed` with filter & pagination query parameters (`customerId`, `productId`,
- * `isException`, `pageSize`, `offset`).
+ * Synchronizes search query to URL query parameter (?q=...).
+ */
+function syncRouteQuery(term: string): void {
+  const currentQ = (typeof route.query.q === 'string' ? route.query.q : '') || ''
+  if (currentQ !== term) {
+    const nextQuery = { ...route.query }
+    if (term.length > 0) {
+      nextQuery.q = term
+    } else {
+      delete nextQuery.q
+    }
+    void router.replace({ query: nextQuery })
+  }
+}
+
+/**
+ * Queries `GET /api/v1/feed` with universal search query parameters.
  */
 async function loadFeed(): Promise<void> {
   isLoadingFeed.value = true
   errorMessage.value = null
+  loadMoreError.value = null
 
   try {
-    const params: Record<string, string | number | boolean> = {
-      pageSize: filters.pageSize,
-      offset: filters.offset,
-    }
-
-    if (filters.customerId.trim().length > 0) {
-      params.customerId = filters.customerId.trim()
-    }
-
-    if (filters.productId.trim().length > 0) {
-      params.productId = filters.productId.trim()
-    }
-
-    if (filters.isException) {
-      params.isException = true
-    }
-
-    if (filters.exceptionType.trim().length > 0) {
-      params.exceptionType = filters.exceptionType.trim()
-      params.isException = true
-    }
-
-    if (filters.searchTerm.trim().length > 0) {
-      params.searchTerm = filters.searchTerm.trim()
-    }
-
+    const params = buildQueryParams(offset.value)
     const response = await httpClient.get<FeedPageResponse | FeedItem[]>('/feed', {
       params,
     })
@@ -327,17 +331,15 @@ async function loadFeed(): Promise<void> {
     if (Array.isArray(data)) {
       feedItems.value = data
       totalCount.value = data.length
-      totalPages.value = data.length > 0 ? 1 : 0
       hasMore.value = false
     } else {
       const items = data.items ?? data.feedItems ?? []
       feedItems.value = items
       totalCount.value = typeof data.totalCount === 'number' ? data.totalCount : items.length
-      totalPages.value = typeof data.totalPages === 'number' ? data.totalPages : 0
       hasMore.value =
         typeof data.hasMore === 'boolean'
           ? data.hasMore
-          : filters.offset + items.length < totalCount.value
+          : offset.value + items.length < totalCount.value
     }
   } catch (err: unknown) {
     errorMessage.value = extractErrorMessage(
@@ -349,48 +351,80 @@ async function loadFeed(): Promise<void> {
   }
 }
 
-function applyFilters(): void {
-  filters.offset = 0
-  void loadFeed()
-}
-
-function clearFilters(): void {
-  filters.customerId = ''
-  filters.productId = ''
-  filters.isException = false
-  filters.exceptionType = ''
-  filters.searchTerm = ''
-  filters.offset = 0
-  void loadFeed()
-}
-
-function handleExceptionToggleChange(): void {
-  if (!filters.isException) {
-    filters.exceptionType = ''
-  }
-  applyFilters()
-}
-
-function handleExceptionTypeChange(): void {
-  if (filters.exceptionType.trim().length > 0) {
-    filters.isException = true
-  }
-  applyFilters()
-}
-
-function goToPreviousPage(): void {
-  if (!canGoPrevious.value) {
+/**
+ * Fetches the next incremental batch when the sentinel is reached.
+ */
+async function loadNextBatch(): Promise<void> {
+  if (!canLoadMore.value && !loadMoreError.value) {
     return
   }
-  filters.offset = Math.max(0, filters.offset - filters.pageSize)
-  void loadFeed()
+
+  isLoadingMore.value = true
+  loadMoreError.value = null
+
+  const nextOffset = offset.value + pageSize.value
+
+  try {
+    const params = buildQueryParams(nextOffset)
+    const response = await httpClient.get<FeedPageResponse | FeedItem[]>('/feed', {
+      params,
+    })
+
+    const data = response.data
+    let newItems: FeedItem[] = []
+
+    if (Array.isArray(data)) {
+      newItems = data
+      totalCount.value = feedItems.value.length + newItems.length
+      hasMore.value = false
+    } else {
+      newItems = data.items ?? data.feedItems ?? []
+      if (typeof data.totalCount === 'number') {
+        totalCount.value = data.totalCount
+      }
+      hasMore.value =
+        typeof data.hasMore === 'boolean'
+          ? data.hasMore
+          : nextOffset + newItems.length < totalCount.value
+    }
+
+    if (newItems.length === 0) {
+      hasMore.value = false
+    } else {
+      const existingKeys = new Set(feedItems.value.map(resolveFeedItemKey))
+      const uniqueNewItems = newItems.filter((item) => !existingKeys.has(resolveFeedItemKey(item)))
+      feedItems.value.push(...uniqueNewItems)
+      offset.value = nextOffset
+    }
+  } catch (err: unknown) {
+    loadMoreError.value = extractErrorMessage(
+      err,
+      'Failed to load more feed items. Please try again.',
+    )
+  } finally {
+    isLoadingMore.value = false
+  }
 }
 
-function goToNextPage(): void {
-  if (!canGoNext.value) {
-    return
+function handleSearchInput(): void {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
   }
-  filters.offset += filters.pageSize
+  searchDebounceTimer = setTimeout(() => {
+    syncRouteQuery(searchTerm.value.trim())
+    offset.value = 0
+    void loadFeed()
+  }, 300)
+}
+
+function clearSearch(): void {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
+  searchTerm.value = ''
+  syncRouteQuery('')
+  offset.value = 0
   void loadFeed()
 }
 
@@ -417,8 +451,8 @@ function closePostDetailModal(): void {
 
 /**
  * Handles successful Request creation from `CreateRequestModal.vue` (CR-003, TD-003, TD-004).
- * Closes modal, immediately refreshes operational feed to display newly projected post at top,
- * and sets success alert banner.
+ * Closes modal, prepends newly created item to index 0 of feedItems without resetting scroll position,
+ * increments totalCount, and sets success alert banner.
  */
 function handleRequestSaved(createdRequest: CreatedRequestResponse): void {
   showCreateRequestModal.value = false
@@ -429,15 +463,96 @@ function handleRequestSaved(createdRequest: CreatedRequestResponse): void {
     title: reqTitle,
   }
   errorMessage.value = null
-  void loadFeed()
+
+  // Prepend newly created request/post directly to index 0 of feedItems without scroll displacement
+  const newItem: FeedItem = {
+    id: reqId,
+    feedItemId: reqId,
+    postId: createdRequest.id || reqId,
+    authorName: 'Current User',
+    author: 'Current User',
+    postType: 'REQUEST',
+    source: 'MANUAL',
+    title: reqTitle,
+    contentExcerpt: createdRequest.description || createdRequest.title || null,
+    summary: createdRequest.description || createdRequest.title || null,
+    status: createdRequest.status || 'OPEN',
+    visibility: 'PUBLIC',
+    isException: false,
+    exceptionType: null,
+    referenceType: 'REQUEST',
+    referenceId: reqId,
+    referenceDisplay: reqId,
+    customerId: createdRequest.customerId || null,
+    productId: createdRequest.productId || null,
+    requestId: reqId,
+    workPackageId: null,
+    commentCount: 0,
+    reactionCountsJson: null,
+    reactionCounts: {},
+    reactionCount: 0,
+    createdAt: createdRequest.createdAt || new Date().toISOString(),
+  }
+
+  const existingKeys = new Set(feedItems.value.map(resolveFeedItemKey))
+  if (!existingKeys.has(resolveFeedItemKey(newItem))) {
+    feedItems.value.unshift(newItem)
+    totalCount.value += 1
+  }
 }
 
 function handlePostUpdated(): void {
   void loadFeed()
 }
 
+watch(
+  () => hasMore.value,
+  (more) => {
+    if (!more) {
+      disconnectObserver()
+    } else {
+      setupObserver()
+    }
+  },
+)
+
+watch(
+  () => sentinelRef.value,
+  (el) => {
+    if (el && hasMore.value) {
+      setupObserver()
+    }
+  },
+)
+
+watch(
+  () => route.query.q,
+  (newQ) => {
+    const queryTerm = typeof newQ === 'string' ? newQ.trim() : ''
+    if (queryTerm !== searchTerm.value.trim()) {
+      searchTerm.value = queryTerm
+      offset.value = 0
+      void loadFeed()
+    }
+  },
+)
+
 onMounted(async () => {
+  if (typeof route.query.q === 'string' && route.query.q.trim().length > 0) {
+    searchTerm.value = route.query.q.trim()
+  }
   await Promise.all([loadReferenceLookups(), loadFeed()])
+  if (hasMore.value) {
+    setupObserver()
+  }
+})
+
+onUnmounted(() => {
+  disconnectObserver()
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
 })
 </script>
 
@@ -479,6 +594,36 @@ onMounted(async () => {
               <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
               Refresh
             </button>
+          </div>
+        </div>
+
+        <!-- Universal Search Bar (Dedicated Full-Width Input) -->
+        <div class="op-feed-universal-search card shadow-xs border-0 mb-3" data-testid="feed-universal-search">
+          <div class="card-body p-2">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0 text-muted">
+                <i class="bi bi-search" aria-hidden="true"></i>
+              </span>
+              <input
+                id="feedUniversalSearch"
+                v-model="searchTerm"
+                type="text"
+                class="form-control form-control-sm border-start-0 border-end-0 ps-0"
+                placeholder="Search by product, customer, user, request, or comment text..."
+                data-testid="feed-universal-search-input"
+                @input="handleSearchInput"
+              />
+              <button
+                v-if="searchTerm.trim().length > 0"
+                type="button"
+                class="btn btn-outline-secondary border-start-0 border bg-white text-muted"
+                data-testid="feed-search-clear-btn"
+                aria-label="Clear Search"
+                @click="clearSearch"
+              >
+                <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -536,22 +681,25 @@ onMounted(async () => {
         >
           <div class="card-body py-4 text-center">
             <i class="bi bi-inbox text-body-secondary fs-4 d-block mb-1" aria-hidden="true"></i>
-            <h2 class="h6 fw-semibold mb-1">No Operational Feed Items Found</h2>
+            <h2 class="h6 fw-semibold mb-1">
+              {{ searchTerm.trim().length > 0 ? `No feed items matching '${searchTerm.trim()}'` : 'No Operational Feed Items Found' }}
+            </h2>
             <p class="text-body-secondary small mb-2">
-              <template v-if="hasActiveFilters">
-                No visible feed items match your active Customer, Product, or Exception filter criteria.
+              <template v-if="searchTerm.trim().length > 0">
+                No visible feed items match your search query across products, customers, authors, requests, or comments.
               </template>
               <template v-else>
                 No operational posts or system events have been recorded in the feed yet.
               </template>
             </p>
-            <div v-if="hasActiveFilters" class="d-flex justify-content-center gap-2">
+            <div v-if="searchTerm.trim().length > 0" class="d-flex justify-content-center gap-2">
               <button
                 type="button"
                 class="btn btn-outline-secondary btn-sm"
-                @click="clearFilters"
+                data-testid="feed-empty-clear-btn"
+                @click="clearSearch"
               >
-                Clear Filters
+                Clear Search
               </button>
             </div>
           </div>
@@ -568,200 +716,59 @@ onMounted(async () => {
             @open-modal="openPostDetailModal"
             @post-updated="handlePostUpdated"
           />
+
+          <!-- Bottom Loading Spinner (TD-004) -->
+          <div
+            v-if="isLoadingMore"
+            class="op-feed-bottom-loading my-2"
+            data-testid="feed-bottom-loading"
+          >
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+              <span class="visually-hidden">Loading more items...</span>
+            </div>
+            <span>Loading more feed items...</span>
+          </div>
+
+          <!-- Load More Error & Retry (TD-004) -->
+          <div
+            v-if="loadMoreError"
+            class="op-feed-retry-box my-2"
+            data-testid="feed-load-more-error"
+          >
+            <div class="d-flex align-items-center gap-1.5 text-danger small">
+              <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+              <span>{{ loadMoreError }}</span>
+            </div>
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm py-0.5 px-2"
+              @click="loadNextBatch"
+            >
+              <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+              Retry
+            </button>
+          </div>
+
+          <!-- End of Feed Milestone (TD-004) -->
+          <div
+            v-if="!hasMore && feedItems.length > 0"
+            class="op-feed-end-milestone my-2"
+            data-testid="feed-end-milestone"
+          >
+            <i class="bi bi-check2-circle text-success fs-5 d-block mb-1" aria-hidden="true"></i>
+            <span class="small fw-semibold text-secondary">You're all caught up</span>
+            <p class="text-muted fs-11 mb-0">All {{ totalCount }} operational feed events have been loaded.</p>
+          </div>
+
+          <!-- IntersectionObserver Sentinel (TD-001) -->
+          <div ref="sentinelRef" class="op-feed-sentinel" />
         </div>
-
-    <!-- Compact Pagination Controls -->
-    <nav
-      class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 pt-1 border-top"
-      aria-label="Operational feed pagination"
-      data-testid="feed-pagination"
-    >
-      <div class="small text-body-secondary fs-11">
-        <template v-if="totalCount > 0">
-          Showing <strong>{{ showingRangeStart }}</strong>–<strong>{{ showingRangeEnd }}</strong> of
-          <strong>{{ totalCount }}</strong> items (Page {{ currentPage }}
-          <template v-if="computedTotalPages > 0">of {{ computedTotalPages }}</template>)
-        </template>
-        <template v-else>
-          Showing 0 feed items
-        </template>
-      </div>
-
-      <div class="btn-group btn-group-sm" role="group" aria-label="Pagination buttons">
-        <button
-          type="button"
-          class="btn btn-outline-secondary btn-sm py-0.5 px-2"
-          :disabled="!canGoPrevious"
-          data-testid="feed-pagination-prev"
-          @click="goToPreviousPage"
-        >
-          <i class="bi bi-chevron-left me-0.5" aria-hidden="true"></i>
-          Prev
-        </button>
-        <button
-          type="button"
-          class="btn btn-outline-secondary btn-sm py-0.5 px-2"
-          :disabled="!canGoNext"
-          data-testid="feed-pagination-next"
-          @click="goToNextPage"
-        >
-          Next
-          <i class="bi bi-chevron-right ms-0.5" aria-hidden="true"></i>
-        </button>
-      </div>
-    </nav>
       </div>
 
       <!-- Right Column: Sticky Contextual Panel (~33% / 4 cols on xl+) -->
       <div class="col-12 col-xl-4 col-xxl-4">
         <div class="op-feed-sticky-panel">
-          <!-- Card 1: Feed Filter Toolbar Card -->
-          <div class="card shadow-xs" data-testid="feed-filter-bar">
-            <div class="card-header d-flex align-items-center justify-content-between py-1.5 px-3">
-              <span class="fw-semibold small">
-                <i class="bi bi-funnel me-1 text-primary" aria-hidden="true"></i>
-                Feed Filters
-              </span>
-              <span
-                v-if="hasActiveFilters"
-                class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fs-11"
-              >
-                Active
-              </span>
-            </div>
-            <div class="card-body py-2 px-3">
-              <form class="d-flex flex-column gap-2" @submit.prevent="applyFilters">
-                <!-- Search Term -->
-                <div>
-                  <label for="feedFilterSearch" class="form-label fs-11 mb-1">Search Feed:</label>
-                  <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-light text-muted">
-                      <i class="bi bi-search" aria-hidden="true"></i>
-                    </span>
-                    <input
-                      id="feedFilterSearch"
-                      v-model="filters.searchTerm"
-                      type="text"
-                      class="form-control form-control-sm"
-                      placeholder="Search title, excerpt..."
-                      data-testid="feed-filter-search"
-                    />
-                  </div>
-                </div>
-
-                <!-- Customer Filter -->
-                <div>
-                  <label for="feedFilterCustomer" class="form-label fs-11 mb-1">Customer:</label>
-                  <select
-                    id="feedFilterCustomer"
-                    v-model="filters.customerId"
-                    class="form-select form-select-sm"
-                    data-testid="feed-filter-customer"
-                    @change="applyFilters"
-                  >
-                    <option value="">All Customers</option>
-                    <option
-                      v-for="customer in activeCustomers"
-                      :key="customer.id || customer.customerId"
-                      :value="customer.id || customer.customerId"
-                    >
-                      {{ customer.customerName || customer.name }}
-                      {{
-                        customer.customerCode || customer.code
-                          ? `(${customer.customerCode || customer.code})`
-                          : ''
-                      }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Product Filter -->
-                <div>
-                  <label for="feedFilterProduct" class="form-label fs-11 mb-1">Product:</label>
-                  <select
-                    id="feedFilterProduct"
-                    v-model="filters.productId"
-                    class="form-select form-select-sm"
-                    data-testid="feed-filter-product"
-                    @change="applyFilters"
-                  >
-                    <option value="">All Products</option>
-                    <option
-                      v-for="product in activeProducts"
-                      :key="product.id || product.productId"
-                      :value="product.id || product.productId"
-                    >
-                      {{ product.name || product.productName }}
-                      {{
-                        product.code || product.productCode
-                          ? `(${product.code || product.productCode})`
-                          : ''
-                      }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Exception Type Filter -->
-                <div>
-                  <label for="feedFilterExceptionType" class="form-label fs-11 mb-1">Exception Type:</label>
-                  <select
-                    id="feedFilterExceptionType"
-                    v-model="filters.exceptionType"
-                    class="form-select form-select-sm"
-                    data-testid="feed-filter-exception-type"
-                    @change="handleExceptionTypeChange"
-                  >
-                    <option value="">Any Type</option>
-                    <option v-for="exType in EXCEPTION_TYPES" :key="exType" :value="exType">
-                      {{ exType }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Exceptions-Only Toggle -->
-                <div class="form-check form-switch pt-1 mb-0">
-                  <input
-                    id="feedFilterExceptionsOnly"
-                    v-model="filters.isException"
-                    class="form-check-input"
-                    type="checkbox"
-                    role="switch"
-                    data-testid="feed-filter-exception"
-                    @change="handleExceptionToggleChange"
-                  />
-                  <label class="form-check-label fw-semibold fs-11 text-nowrap" for="feedFilterExceptionsOnly">
-                    <span class="badge bg-danger px-1 py-0 me-1" style="font-size: 9px;">!</span>
-                    Exceptions Only
-                  </label>
-                </div>
-
-                <!-- Filter Actions -->
-                <div class="d-flex align-items-center gap-2 pt-2 border-top">
-                  <button
-                    type="submit"
-                    class="btn btn-primary btn-sm flex-fill"
-                    :disabled="isLoadingFeed"
-                    data-testid="apply-feed-filters-btn"
-                  >
-                    <i class="bi bi-funnel-fill me-1" aria-hidden="true"></i>
-                    Apply Filters
-                  </button>
-                  <button
-                    v-if="hasActiveFilters"
-                    type="button"
-                    class="btn btn-outline-secondary btn-sm"
-                    :disabled="isLoadingFeed"
-                    data-testid="clear-feed-filters-btn"
-                    @click="clearFilters"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <!-- Card 2: Summary Metrics / Active Status -->
+          <!-- Summary Metrics / Active Status -->
           <div class="card shadow-xs">
             <div class="card-header py-1.5 px-3">
               <span class="fw-semibold small">
@@ -776,7 +783,7 @@ onMounted(async () => {
                   <span class="fw-bold fs-12 text-dark">{{ totalCount }}</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center border-bottom pb-1.5">
-                  <span class="text-body-secondary fs-11">Exceptions on Page</span>
+                  <span class="text-body-secondary fs-11">Exceptions Loaded</span>
                   <span
                     class="badge"
                     :class="exceptionCount > 0 ? 'bg-danger' : 'bg-light text-secondary border'"
@@ -784,19 +791,13 @@ onMounted(async () => {
                     {{ exceptionCount }}
                   </span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center border-bottom pb-1.5">
+                <div class="d-flex justify-content-between align-items-center">
                   <span class="text-body-secondary fs-11">Stream Filter Status</span>
                   <span
                     class="badge"
                     :class="hasActiveFilters ? 'bg-info bg-opacity-10 text-info border border-info border-opacity-25' : 'bg-light text-secondary border'"
                   >
                     {{ hasActiveFilters ? 'Filtered' : 'Unfiltered' }}
-                  </span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center">
-                  <span class="text-body-secondary fs-11">Current Page</span>
-                  <span class="fs-11 text-dark fw-semibold">
-                    {{ currentPage }} <span class="text-muted">/</span> {{ computedTotalPages > 0 ? computedTotalPages : 1 }}
                   </span>
                 </div>
               </div>

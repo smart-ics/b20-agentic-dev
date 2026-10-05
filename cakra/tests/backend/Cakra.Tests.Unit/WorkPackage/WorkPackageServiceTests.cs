@@ -269,6 +269,41 @@ public sealed class WorkPackageServiceTests
     }
 
     [Fact]
+    public async Task ReorderRequests_WithValidOrder_ReordersMembershipsAndPersists()
+    {
+        var secondRequestId = Guid.NewGuid();
+        _requestQuery.AddRequest(secondRequestId, "REQ-2: UI adjustment", "IN_PROGRESS", _activeOwnerId);
+
+        var wp = await _service.CreateWorkPackageAsync("WP", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(wp.Id, _existingRequestId);
+        await _service.AddRequestToWorkPackageAsync(wp.Id, secondRequestId);
+
+        var initialPackage = await _repository.GetByIdAsync(wp.Id);
+        initialPackage!.ActiveRequests.Select(r => r.RequestId)
+            .Should().ContainInOrder(_existingRequestId, secondRequestId);
+
+        _clock.Advance(TimeSpan.FromMinutes(5));
+
+        // Act - Reorder so secondRequestId comes first
+        var updated = await _service.ReorderRequestsAsync(wp.Id, new[] { secondRequestId, _existingRequestId });
+
+        // Assert
+        updated.ActiveRequests.Select(r => r.RequestId)
+            .Should().ContainInOrder(secondRequestId, _existingRequestId);
+
+        var persisted = await _repository.GetByIdAsync(wp.Id);
+        persisted!.ActiveRequests.Select(r => r.RequestId)
+            .Should().ContainInOrder(secondRequestId, _existingRequestId);
+    }
+
+    [Fact]
+    public async Task ReorderRequests_WithNonexistentWorkPackage_ThrowsKeyNotFoundException()
+    {
+        var act = async () => await _service.ReorderRequestsAsync(Guid.NewGuid(), new[] { Guid.NewGuid() });
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
     public void CommandValidators_ValidateRequiredFields()
     {
         new CreateWorkPackageCommandValidator()
@@ -298,6 +333,14 @@ public sealed class WorkPackageServiceTests
         new CloseWorkPackageCommandValidator()
             .Validate(new CloseWorkPackageCommand(Guid.Empty, ""))
             .IsValid.Should().BeFalse();
+
+        new ReorderWorkPackageRequestsCommandValidator()
+            .Validate(new ReorderWorkPackageRequestsCommand(Guid.Empty, Array.Empty<Guid>()))
+            .IsValid.Should().BeFalse();
+
+        new ReorderWorkPackageRequestsCommandValidator()
+            .Validate(new ReorderWorkPackageRequestsCommand(Guid.NewGuid(), Array.Empty<Guid>()))
+            .IsValid.Should().BeFalse();
     }
 
     private sealed class InMemoryWorkPackageRepository : IWorkPackageRepository
@@ -324,6 +367,9 @@ public sealed class WorkPackageServiceTests
             _packages[entity.Id] = entity;
             return Task.CompletedTask;
         }
+
+        public Task SaveAsync(Cakra.Modules.WorkPackage.Domain.WorkPackage entity, CancellationToken cancellationToken = default)
+            => UpdateAsync(entity, cancellationToken);
 
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {

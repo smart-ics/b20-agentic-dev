@@ -401,6 +401,45 @@ public sealed class WorkPackagesController : ApiControllerBase
         }
     }
 
+    /// <summary>
+    /// Reorders the active requests belonging to a work package (CR-015; Architecture §4 TD-002, TD-003).
+    /// </summary>
+    [HttpPut("{id:guid}/requests/reorder")]
+    [ProducesResponseType(typeof(WorkPackageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ReorderRequests(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReorderWorkPackageRequestsBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        var orderedIds = request?.ResolvedOrderedRequestIds ?? Array.Empty<Guid>();
+        var command = new ReorderWorkPackageRequestsCommand(id, orderedIds);
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _workPackageQueryService.GetWorkPackageByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Reordered {Count} requests in work package '{WorkPackageId}'.",
+                orderedIds.Count,
+                enriched.Id);
+
+            return Ok(enriched);
+        }
+        catch (InvalidWorkPackageStateTransitionException ex)
+        {
+            return CreateConflictProblem(ex.Message);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or WorkPackageDomainException or ArgumentException)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
     private ObjectResult CreateBadRequestProblem(string detail)
     {
         var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
@@ -418,6 +457,27 @@ public sealed class WorkPackagesController : ApiControllerBase
         return new ObjectResult(problem)
         {
             StatusCode = StatusCodes.Status400BadRequest,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private ObjectResult CreateConflictProblem(string detail)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status409Conflict,
+            Title = "Conflict",
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8"
+        };
+        problem.Extensions["errorCode"] = "CONFLICT";
+        problem.Extensions["traceId"] = traceId;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status409Conflict,
             ContentTypes = { "application/problem+json" }
         };
     }
@@ -548,5 +608,24 @@ public sealed class WorkPackagesController : ApiControllerBase
 
         public Guid ResolvedRequestId =>
             FirstNonEmptyGuid(RequestId, Id) ?? Guid.Empty;
+    }
+
+    /// <summary>
+    /// Request payload for <c>PUT /api/v1/work-packages/{id}/requests/reorder</c> (<c>ReorderRequests</c>).
+    /// </summary>
+    public class ReorderWorkPackageRequestsBody
+    {
+        public List<Guid>? OrderedRequestIds { get; set; }
+        public List<Guid>? RequestIds { get; set; }
+
+        public IReadOnlyList<Guid> ResolvedOrderedRequestIds =>
+            OrderedRequestIds ?? RequestIds ?? (IReadOnlyList<Guid>)Array.Empty<Guid>();
+    }
+
+    /// <summary>
+    /// Request payload for <c>PUT /api/v1/work-packages/{id}/requests/reorder</c> (<c>ReorderRequests</c>).
+    /// </summary>
+    public sealed class ReorderWorkPackageRequestsRequest : ReorderWorkPackageRequestsBody
+    {
     }
 }

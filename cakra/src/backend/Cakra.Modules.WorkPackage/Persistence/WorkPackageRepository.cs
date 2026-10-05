@@ -1,3 +1,4 @@
+using System.Data;
 using Cakra.Core.Infrastructure.Persistence;
 using Cakra.Modules.WorkPackage.Domain;
 using Dapper;
@@ -11,6 +12,12 @@ namespace Cakra.Modules.WorkPackage.Persistence;
 /// </summary>
 internal sealed class WorkPackageRepository : IWorkPackageRepository
 {
+    static WorkPackageRepository()
+    {
+        SqlMapper.AddTypeMap(typeof(DateTime), DbType.DateTime2);
+        SqlMapper.AddTypeMap(typeof(DateTime?), DbType.DateTime2);
+    }
+
     private readonly IDbConnectionFactory _connectionFactory;
 
     public WorkPackageRepository(IDbConnectionFactory connectionFactory)
@@ -47,13 +54,14 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 [Id],
                 [WorkPackageId],
                 [RequestId],
+                [SortOrder],
                 [AddedAt],
                 [RemovedAt],
                 [CreatedAt],
                 [UpdatedAt]
             FROM [workpackage].[WorkPackageRequests]
             WHERE [WorkPackageId] = @WorkPackageId
-            ORDER BY [AddedAt] ASC, [CreatedAt] ASC, [Id] ASC;
+            ORDER BY [SortOrder] ASC, [AddedAt] ASC, [CreatedAt] ASC, [Id] ASC;
             """;
 
         using var connection = _connectionFactory.CreateConnection();
@@ -97,12 +105,13 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 [Id],
                 [WorkPackageId],
                 [RequestId],
+                [SortOrder],
                 [AddedAt],
                 [RemovedAt],
                 [CreatedAt],
                 [UpdatedAt]
             FROM [workpackage].[WorkPackageRequests]
-            ORDER BY [AddedAt] ASC, [CreatedAt] ASC, [Id] ASC;
+            ORDER BY [WorkPackageId] ASC, [SortOrder] ASC, [AddedAt] ASC, [CreatedAt] ASC, [Id] ASC;
             """;
 
         using var connection = _connectionFactory.CreateConnection();
@@ -169,7 +178,36 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
             );
             """;
 
+        const string insertMembershipSql = """
+            INSERT INTO [workpackage].[WorkPackageRequests] (
+                [Id],
+                [WorkPackageId],
+                [RequestId],
+                [SortOrder],
+                [AddedAt],
+                [RemovedAt],
+                [CreatedAt],
+                [UpdatedAt]
+            ) VALUES (
+                @Id,
+                @WorkPackageId,
+                @RequestId,
+                @SortOrder,
+                @AddedAt,
+                @RemovedAt,
+                @CreatedAt,
+                @UpdatedAt
+            );
+            """;
+
         using var connection = _connectionFactory.CreateConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            connection.Open();
+        }
+
+        using var transaction = connection.BeginTransaction();
+
         await connection.ExecuteAsync(new CommandDefinition(sql, new
         {
             entity.Id,
@@ -183,12 +221,24 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
             entity.ClosedAt,
             entity.CreatedAt,
             entity.UpdatedAt
-        }, cancellationToken: cancellationToken));
+        }, transaction: transaction, cancellationToken: cancellationToken));
 
         foreach (var membership in entity.Requests)
         {
-            await AddRequestMembershipAsync(membership, cancellationToken);
+            await connection.ExecuteAsync(new CommandDefinition(insertMembershipSql, new
+            {
+                membership.Id,
+                membership.WorkPackageId,
+                membership.RequestId,
+                membership.SortOrder,
+                membership.AddedAt,
+                membership.RemovedAt,
+                membership.CreatedAt,
+                membership.UpdatedAt
+            }, transaction: transaction, cancellationToken: cancellationToken));
         }
+
+        transaction.Commit();
     }
 
     public async Task UpdateAsync(Domain.WorkPackage entity, CancellationToken cancellationToken = default)
@@ -212,7 +262,51 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
             WHERE [Id] = @Id;
             """;
 
+        const string getExistingMembershipIdsSql = """
+            SELECT [Id]
+            FROM [workpackage].[WorkPackageRequests]
+            WHERE [WorkPackageId] = @WorkPackageId;
+            """;
+
+        const string insertMembershipSql = """
+            INSERT INTO [workpackage].[WorkPackageRequests] (
+                [Id],
+                [WorkPackageId],
+                [RequestId],
+                [SortOrder],
+                [AddedAt],
+                [RemovedAt],
+                [CreatedAt],
+                [UpdatedAt]
+            ) VALUES (
+                @Id,
+                @WorkPackageId,
+                @RequestId,
+                @SortOrder,
+                @AddedAt,
+                @RemovedAt,
+                @CreatedAt,
+                @UpdatedAt
+            );
+            """;
+
+        const string updateMembershipSql = """
+            UPDATE [workpackage].[WorkPackageRequests]
+            SET
+                [SortOrder] = @SortOrder,
+                [RemovedAt] = @RemovedAt,
+                [UpdatedAt] = @UpdatedAt
+            WHERE [Id] = @Id;
+            """;
+
         using var connection = _connectionFactory.CreateConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            connection.Open();
+        }
+
+        using var transaction = connection.BeginTransaction();
+
         await connection.ExecuteAsync(new CommandDefinition(sql, new
         {
             entity.Id,
@@ -225,8 +319,47 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
             entity.ClosedReason,
             entity.ClosedAt,
             entity.UpdatedAt
-        }, cancellationToken: cancellationToken));
+        }, transaction: transaction, cancellationToken: cancellationToken));
+
+        var existingIds = (await connection.QueryAsync<Guid>(new CommandDefinition(
+            getExistingMembershipIdsSql,
+            new { WorkPackageId = entity.Id },
+            transaction: transaction,
+            cancellationToken: cancellationToken))).ToHashSet();
+
+        foreach (var membership in entity.Requests)
+        {
+            if (existingIds.Contains(membership.Id))
+            {
+                await connection.ExecuteAsync(new CommandDefinition(updateMembershipSql, new
+                {
+                    membership.Id,
+                    membership.SortOrder,
+                    membership.RemovedAt,
+                    membership.UpdatedAt
+                }, transaction: transaction, cancellationToken: cancellationToken));
+            }
+            else
+            {
+                await connection.ExecuteAsync(new CommandDefinition(insertMembershipSql, new
+                {
+                    membership.Id,
+                    membership.WorkPackageId,
+                    membership.RequestId,
+                    membership.SortOrder,
+                    membership.AddedAt,
+                    membership.RemovedAt,
+                    membership.CreatedAt,
+                    membership.UpdatedAt
+                }, transaction: transaction, cancellationToken: cancellationToken));
+            }
+        }
+
+        transaction.Commit();
     }
+
+    public Task SaveAsync(Domain.WorkPackage entity, CancellationToken cancellationToken = default)
+        => UpdateAsync(entity, cancellationToken);
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -260,6 +393,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 [Id],
                 [WorkPackageId],
                 [RequestId],
+                [SortOrder],
                 [AddedAt],
                 [RemovedAt],
                 [CreatedAt],
@@ -268,6 +402,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 @Id,
                 @WorkPackageId,
                 @RequestId,
+                @SortOrder,
                 @AddedAt,
                 @RemovedAt,
                 @CreatedAt,
@@ -281,6 +416,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
             membership.Id,
             membership.WorkPackageId,
             membership.RequestId,
+            membership.SortOrder,
             membership.AddedAt,
             membership.RemovedAt,
             membership.CreatedAt,
@@ -299,6 +435,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
         const string sql = """
             UPDATE [workpackage].[WorkPackageRequests]
             SET
+                [SortOrder] = @SortOrder,
                 [RemovedAt] = @RemovedAt,
                 [UpdatedAt] = @UpdatedAt
             WHERE [Id] = @Id;
@@ -308,6 +445,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
         await connection.ExecuteAsync(new CommandDefinition(sql, new
         {
             membership.Id,
+            membership.SortOrder,
             membership.RemovedAt,
             membership.UpdatedAt
         }, cancellationToken: cancellationToken));
@@ -322,13 +460,14 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 [Id],
                 [WorkPackageId],
                 [RequestId],
+                [SortOrder],
                 [AddedAt],
                 [RemovedAt],
                 [CreatedAt],
                 [UpdatedAt]
             FROM [workpackage].[WorkPackageRequests]
             WHERE [WorkPackageId] = @WorkPackageId
-            ORDER BY [AddedAt] ASC, [CreatedAt] ASC, [Id] ASC;
+            ORDER BY [SortOrder] ASC, [AddedAt] ASC, [CreatedAt] ASC, [Id] ASC;
             """;
 
         using var connection = _connectionFactory.CreateConnection();
@@ -412,6 +551,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
         public Guid Id { get; init; }
         public Guid WorkPackageId { get; init; }
         public Guid RequestId { get; init; }
+        public int SortOrder { get; init; }
         public DateTime AddedAt { get; init; }
         public DateTime? RemovedAt { get; init; }
         public DateTime CreatedAt { get; init; }
@@ -425,6 +565,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 AddedAt,
                 RemovedAt,
                 CreatedAt,
-                UpdatedAt);
+                UpdatedAt,
+                SortOrder);
     }
 }

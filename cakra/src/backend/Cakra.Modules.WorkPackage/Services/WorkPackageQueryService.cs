@@ -149,13 +149,14 @@ public sealed class WorkPackageQueryService :
                 wpr.[Id],
                 wpr.[WorkPackageId],
                 wpr.[RequestId],
+                wpr.[SortOrder],
                 wpr.[AddedAt],
                 wpr.[RemovedAt],
                 wpr.[CreatedAt],
                 wpr.[UpdatedAt]
             FROM [workpackage].[WorkPackageRequests] wpr
             WHERE wpr.[WorkPackageId] IN @WorkPackageIds
-            ORDER BY wpr.[AddedAt] ASC, wpr.[CreatedAt] ASC, wpr.[Id] ASC;
+            ORDER BY wpr.[SortOrder] ASC, wpr.[AddedAt] ASC, wpr.[CreatedAt] ASC, wpr.[Id] ASC;
             """;
 
         var membershipRows = (await connection.QueryAsync<WorkPackageMembershipQueryRow>(
@@ -197,13 +198,14 @@ public sealed class WorkPackageQueryService :
                 wpr.[Id],
                 wpr.[WorkPackageId],
                 wpr.[RequestId],
+                wpr.[SortOrder],
                 wpr.[AddedAt],
                 wpr.[RemovedAt],
                 wpr.[CreatedAt],
                 wpr.[UpdatedAt]
             FROM [workpackage].[WorkPackageRequests] wpr
             WHERE wpr.[WorkPackageId] = @WorkPackageId
-            ORDER BY wpr.[AddedAt] ASC, wpr.[CreatedAt] ASC, wpr.[Id] ASC;
+            ORDER BY wpr.[SortOrder] ASC, wpr.[AddedAt] ASC, wpr.[CreatedAt] ASC, wpr.[Id] ASC;
             """;
 
         using var connection = _connectionFactory.CreateConnection();
@@ -485,6 +487,7 @@ public sealed class WorkPackageQueryService :
         public Guid Id { get; init; }
         public Guid WorkPackageId { get; init; }
         public Guid RequestId { get; init; }
+        public int SortOrder { get; init; }
         public DateTime AddedAt { get; init; }
         public DateTime? RemovedAt { get; init; }
         public DateTime CreatedAt { get; init; }
@@ -497,6 +500,7 @@ public sealed class WorkPackageQueryService :
                 Id = Id,
                 WorkPackageId = WorkPackageId,
                 RequestId = RequestId,
+                SortOrder = SortOrder,
                 AddedAt = AddedAt,
                 RemovedAt = RemovedAt,
                 CreatedAt = CreatedAt,

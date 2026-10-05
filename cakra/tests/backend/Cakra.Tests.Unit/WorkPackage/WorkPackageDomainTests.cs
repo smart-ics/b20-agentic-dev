@@ -617,6 +617,130 @@ public sealed class WorkPackageDomainTests
 
     #endregion
 
+    #region Reordering & SortOrder Tests
+
+    [Fact]
+    public void WorkPackage_AddRequest_AssignsSequentialSortOrder()
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+        var req1 = Guid.NewGuid();
+        var req2 = Guid.NewGuid();
+        var req3 = Guid.NewGuid();
+
+        // Act
+        var m1 = package.AddRequest(req1);
+        var m2 = package.AddRequest(req2);
+        var m3 = package.AddRequest(req3);
+
+        // Assert
+        m1.SortOrder.Should().Be(0);
+        m2.SortOrder.Should().Be(1);
+        m3.SortOrder.Should().Be(2);
+
+        package.ActiveRequests.Select(r => r.RequestId)
+            .Should().ContainInOrder(req1, req2, req3);
+    }
+
+    [Fact]
+    public void WorkPackage_ReorderRequests_UpdatesSortOrderCorrectly()
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+        var req1 = Guid.NewGuid();
+        var req2 = Guid.NewGuid();
+        var req3 = Guid.NewGuid();
+
+        var m1 = package.AddRequest(req1);
+        var m2 = package.AddRequest(req2);
+        var m3 = package.AddRequest(req3);
+
+        var reorderTime = DateTime.UtcNow.AddMinutes(5);
+
+        // Act - Reorder: [req3, req1, req2]
+        package.ReorderRequests(new[] { req3, req1, req2 }, reorderTime);
+
+        // Assert
+        m3.SortOrder.Should().Be(0);
+        m1.SortOrder.Should().Be(1);
+        m2.SortOrder.Should().Be(2);
+
+        package.UpdatedAt.Should().Be(reorderTime);
+        package.ActiveRequests.Select(r => r.RequestId)
+            .Should().ContainInOrder(req3, req1, req2);
+
+        // Also verify reordering in ACTIVE state works
+        package.Activate();
+        var reorderActiveTime = DateTime.UtcNow.AddMinutes(10);
+        package.ReorderRequests(new[] { req2, req3, req1 }, reorderActiveTime);
+
+        m2.SortOrder.Should().Be(0);
+        m3.SortOrder.Should().Be(1);
+        m1.SortOrder.Should().Be(2);
+        package.ActiveRequests.Select(r => r.RequestId)
+            .Should().ContainInOrder(req2, req3, req1);
+    }
+
+    [Fact]
+    public void WorkPackage_ReorderRequests_WhenClosed_ThrowsException()
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+        var req1 = Guid.NewGuid();
+        var req2 = Guid.NewGuid();
+        package.AddRequest(req1);
+        package.AddRequest(req2);
+        package.Close("Scope finished");
+
+        // Act
+        var act = () => package.ReorderRequests(new[] { req2, req1 });
+
+        // Assert
+        act.Should().Throw<InvalidWorkPackageStateTransitionException>()
+            .WithMessage("*CLOSED*");
+    }
+
+    [Fact]
+    public void WorkPackage_ReorderRequests_WithMismatchedIds_ThrowsException()
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+        var req1 = Guid.NewGuid();
+        var req2 = Guid.NewGuid();
+        var req3 = Guid.NewGuid();
+        package.AddRequest(req1);
+        package.AddRequest(req2);
+        package.AddRequest(req3);
+
+        var foreignReq = Guid.NewGuid();
+
+        // 1. Less IDs than active requests count
+        var actLess = () => package.ReorderRequests(new[] { req1, req2 });
+        actLess.Should().Throw<WorkPackageDomainException>()
+            .WithMessage("*count*");
+
+        // 2. More IDs than active requests count
+        var actMore = () => package.ReorderRequests(new[] { req1, req2, req3, foreignReq });
+        actMore.Should().Throw<WorkPackageDomainException>()
+            .WithMessage("*count*");
+
+        // 3. Duplicate IDs
+        var actDuplicate = () => package.ReorderRequests(new[] { req1, req1, req2 });
+        actDuplicate.Should().Throw<WorkPackageDomainException>()
+            .WithMessage("*duplicate*");
+
+        // 4. Same count but contains foreign/inactive ID
+        var actForeign = () => package.ReorderRequests(new[] { req1, req2, foreignReq });
+        actForeign.Should().Throw<WorkPackageDomainException>()
+            .WithMessage("*not an active member*");
+
+        // 5. Null argument
+        var actNull = () => package.ReorderRequests(null!);
+        actNull.Should().Throw<ArgumentNullException>();
+    }
+
+    #endregion
+
     #region Business Rule 9 Tests
 
     [Fact]

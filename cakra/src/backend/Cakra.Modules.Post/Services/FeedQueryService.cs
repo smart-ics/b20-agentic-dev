@@ -11,10 +11,11 @@ namespace Cakra.Modules.Post.Services;
 
 /// <summary>
 /// High-performance Dapper query service executing single-table indexed queries over the
-/// <c>post.FeedItems</c> materialized read model (Architecture §6, §7, §8, §9, §12, §19.2, §19.3, §20, §21).
+/// <c>post.FeedItems</c> materialized read model (Architecture §6, §7, §8, §9, §12, §19.2, §19.3, §20, §21; CR-014 §4, §5).
 /// Supports <c>UC-FCOL-004</c> (Navigate from Post to Request), <c>UC-FCOL-005</c> (Filter Operational Feed),
 /// <c>UC-AWR-001</c> (Observe Operational Feed), <c>UC-AWR-002</c> (Discover Request via Feed), and
-/// <c>UC-AWR-003</c> (Monitor Operational Exceptions via Feed) with sub-50ms target latency.
+/// <c>UC-AWR-003</c> (Monitor Operational Exceptions via Feed) with sub-50ms target latency and zero cross-schema JOINs.
+/// Supports universal search compilation with Prefix-AND syntax and dual-mode FTS execution with graceful parameterized LIKE fallback.
 /// </summary>
 public sealed class FeedQueryService :
     IFeedQueryService,
@@ -27,6 +28,14 @@ public sealed class FeedQueryService :
         SqlMapper.AddTypeMap(typeof(DateTime), DbType.DateTime2);
         SqlMapper.AddTypeMap(typeof(DateTime?), DbType.DateTime2);
     }
+
+    private static readonly HashSet<string> FtsReservedWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "AND", "OR", "NOT", "NEAR", "FORMSOF", "INFLECTIONAL", "THESAURUS", "ISABOUT", "WEIGHT"
+    };
+
+    private static bool? _isFtsAvailable;
+    private static readonly SemaphoreSlim _ftsCheckLock = new(1, 1);
 
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly ILogger<FeedQueryService> _logger;
@@ -58,10 +67,58 @@ public sealed class FeedQueryService :
         var referenceType = NormalizeOptionalString(filter?.ReferenceType)?.ToUpperInvariant();
         var exceptionType = PostExceptionTypes.NormalizeAndValidate(filter?.ExceptionType);
         var exceptionsOnly = (filter?.IsException == true) || exceptionType is not null;
-        var searchTerm = NormalizeOptionalString(filter?.SearchTerm);
-        var searchPattern = searchTerm is null ? null : $"%{EscapeLikeWildcards(searchTerm)}%";
+        var rawSearchTerm = NormalizeOptionalString(filter?.SearchTerm);
+        var tokens = ExtractSearchTokens(rawSearchTerm);
+        var (ftsQuery, _) = ParseSearchTokens(rawSearchTerm);
 
-        const string getFeedSql = """
+        using var connection = _connectionFactory.CreateConnection();
+        var isFtsActive = await CheckFtsAvailabilityAsync(connection, cancellationToken);
+
+        var parameters = new DynamicParameters();
+        parameters.Add("CustomerId", customerId);
+        parameters.Add("ProductId", productId);
+        parameters.Add("ExceptionsOnly", exceptionsOnly);
+        parameters.Add("ExceptionType", exceptionType);
+        parameters.Add("RequestId", requestId);
+        parameters.Add("WorkPackageId", workPackageId);
+        parameters.Add("AuthorPersonId", authorPersonId);
+        parameters.Add("ReferenceType", referenceType);
+        parameters.Add("ReferenceId", referenceId);
+        parameters.Add("Offset", offset);
+        parameters.Add("PageSize", pageSize);
+
+        string searchPredicate;
+        if (isFtsActive && ftsQuery is not null)
+        {
+            parameters.Add("FtsQuery", ftsQuery);
+            searchPredicate = "AND CONTAINS([SearchContent], @FtsQuery)";
+        }
+        else if (tokens.Count > 0)
+        {
+            var tokenPredicates = new List<string>(tokens.Count);
+            for (var i = 0; i < tokens.Count; i++)
+            {
+                var paramName = $"SearchToken_{i}";
+                parameters.Add(paramName, $"%{EscapeLikeWildcards(tokens[i])}%");
+                tokenPredicates.Add($"""
+                    (
+                        [SearchContent] LIKE @{paramName} ESCAPE N'\'
+                        OR [Title] LIKE @{paramName} ESCAPE N'\'
+                        OR [ContentExcerpt] LIKE @{paramName} ESCAPE N'\'
+                        OR [CustomerName] LIKE @{paramName} ESCAPE N'\'
+                        OR [ProductName] LIKE @{paramName} ESCAPE N'\'
+                        OR [ReferenceDisplay] LIKE @{paramName} ESCAPE N'\'
+                    )
+                    """);
+            }
+            searchPredicate = "AND " + string.Join(" AND ", tokenPredicates);
+        }
+        else
+        {
+            searchPredicate = string.Empty;
+        }
+
+        var getFeedSql = $"""
             SELECT COUNT(1)
             FROM [post].[FeedItems]
             WHERE [Visibility] = N'VISIBLE'
@@ -75,14 +132,7 @@ public sealed class FeedQueryService :
               AND (@AuthorPersonId IS NULL OR [AuthorPersonId] = @AuthorPersonId)
               AND (@ReferenceType IS NULL OR [ReferenceType] = @ReferenceType)
               AND (@ReferenceId IS NULL OR [ReferenceId] = @ReferenceId)
-              AND (
-                  @SearchPattern IS NULL
-                  OR [Title] LIKE @SearchPattern ESCAPE N'\'
-                  OR [ContentExcerpt] LIKE @SearchPattern ESCAPE N'\'
-                  OR [CustomerName] LIKE @SearchPattern ESCAPE N'\'
-                  OR [ProductName] LIKE @SearchPattern ESCAPE N'\'
-                  OR [ReferenceDisplay] LIKE @SearchPattern ESCAPE N'\'
-              );
+              {searchPredicate};
 
             SELECT
                 [FeedItemId],
@@ -125,35 +175,11 @@ public sealed class FeedQueryService :
               AND (@AuthorPersonId IS NULL OR [AuthorPersonId] = @AuthorPersonId)
               AND (@ReferenceType IS NULL OR [ReferenceType] = @ReferenceType)
               AND (@ReferenceId IS NULL OR [ReferenceId] = @ReferenceId)
-              AND (
-                  @SearchPattern IS NULL
-                  OR [Title] LIKE @SearchPattern ESCAPE N'\'
-                  OR [ContentExcerpt] LIKE @SearchPattern ESCAPE N'\'
-                  OR [CustomerName] LIKE @SearchPattern ESCAPE N'\'
-                  OR [ProductName] LIKE @SearchPattern ESCAPE N'\'
-                  OR [ReferenceDisplay] LIKE @SearchPattern ESCAPE N'\'
-              )
+              {searchPredicate}
             ORDER BY [CreatedAt] DESC, [FeedItemId] DESC
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
             """;
 
-        var parameters = new
-        {
-            CustomerId = customerId,
-            ProductId = productId,
-            ExceptionsOnly = exceptionsOnly,
-            ExceptionType = exceptionType,
-            RequestId = requestId,
-            WorkPackageId = workPackageId,
-            AuthorPersonId = authorPersonId,
-            ReferenceType = referenceType,
-            ReferenceId = referenceId,
-            SearchPattern = searchPattern,
-            Offset = offset,
-            PageSize = pageSize
-        };
-
-        using var connection = _connectionFactory.CreateConnection();
         using var multi = await connection.QueryMultipleAsync(
             new CommandDefinition(getFeedSql, parameters, cancellationToken: cancellationToken));
 
@@ -163,7 +189,7 @@ public sealed class FeedQueryService :
         stopwatch.Stop();
 
         _logger.LogInformation(
-            "FeedQueryService.GetFeedAsync returned {ItemCount}/{TotalCount} items in {ElapsedMs}ms (CustomerId={CustomerId}, ProductId={ProductId}, ExceptionsOnly={ExceptionsOnly}, ExceptionType={ExceptionType}, PageSize={PageSize}, Offset={Offset})",
+            "FeedQueryService.GetFeedAsync returned {ItemCount}/{TotalCount} items in {ElapsedMs}ms (CustomerId={CustomerId}, ProductId={ProductId}, ExceptionsOnly={ExceptionsOnly}, ExceptionType={ExceptionType}, FtsActive={FtsActive}, PageSize={PageSize}, Offset={Offset})",
             items.Count,
             totalCount,
             stopwatch.ElapsedMilliseconds,
@@ -171,6 +197,7 @@ public sealed class FeedQueryService :
             productId,
             exceptionsOnly,
             exceptionType,
+            isFtsActive,
             pageSize,
             offset);
 
@@ -351,6 +378,94 @@ public sealed class FeedQueryService :
     {
         ArgumentNullException.ThrowIfNull(request);
         return GetFeedItemByIdAsync(request.FeedItemId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Extracts and sanitizes search tokens by stripping punctuation and reserved FTS words (Architecture CR-014 §4 TD-003).
+    /// </summary>
+    public static IReadOnlyList<string> ExtractSearchTokens(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return Array.Empty<string>();
+        }
+
+        var cleaned = new string(input
+            .Select(c => char.IsLetterOrDigit(c) || char.IsWhiteSpace(c) ? c : ' ')
+            .ToArray());
+
+        return cleaned
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(t => !IsFtsReservedWord(t))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Parses and sanitizes a raw search input string into a Prefix-AND full-text query
+    /// and a parameterized LIKE search pattern (Architecture CR-014 §4 TD-003).
+    /// </summary>
+    public static (string? FtsQuery, string? LikePattern) ParseSearchTokens(string? input)
+    {
+        var tokens = ExtractSearchTokens(input);
+        if (tokens.Count == 0)
+        {
+            return (null, null);
+        }
+
+        var ftsQuery = string.Join(" AND ", tokens.Select(t => $"\"{t}*\""));
+        var likePattern = $"%{string.Join("%", tokens.Select(EscapeLikeWildcards))}%";
+
+        return (ftsQuery, likePattern);
+    }
+
+    /// <summary>
+    /// Determines whether the specified token matches a SQL Server Full-Text Search reserved keyword.
+    /// </summary>
+    public static bool IsFtsReservedWord(string token) =>
+        !string.IsNullOrEmpty(token) && FtsReservedWords.Contains(token);
+
+    private async Task<bool> CheckFtsAvailabilityAsync(IDbConnection connection, CancellationToken cancellationToken)
+    {
+        if (_isFtsAvailable.HasValue)
+        {
+            return _isFtsAvailable.Value;
+        }
+
+        await _ftsCheckLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_isFtsAvailable.HasValue)
+            {
+                return _isFtsAvailable.Value;
+            }
+
+            const string ftsCheckSql = """
+                SELECT CAST(CASE WHEN SERVERPROPERTY('IsFullTextInstalled') = 1
+                                 AND EXISTS (SELECT 1 FROM sys.fulltext_indexes WHERE object_id = OBJECT_ID(N'[post].[FeedItems]'))
+                            THEN 1 ELSE 0 END AS BIT);
+                """;
+
+            var isInstalled = await connection.ExecuteScalarAsync<bool>(
+                new CommandDefinition(ftsCheckSql, cancellationToken: cancellationToken));
+
+            _isFtsAvailable = isInstalled;
+            return isInstalled;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to determine FTS availability on [post].[FeedItems]. Falling back to LIKE search.");
+            _isFtsAvailable = false;
+            return false;
+        }
+        finally
+        {
+            _ftsCheckLock.Release();
+        }
+    }
+
+    internal static void ResetFtsAvailabilityCache()
+    {
+        _isFtsAvailable = null;
     }
 
     private static (int PageSize, int Offset, int Page) ResolvePagination(

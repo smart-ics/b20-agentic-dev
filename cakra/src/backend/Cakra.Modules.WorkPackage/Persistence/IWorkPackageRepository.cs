@@ -33,4 +33,12 @@ internal interface IWorkPackageRepository : IRepository<Domain.WorkPackage>, IAc
     Task<IReadOnlyList<WorkPackageRequest>> GetMembershipsByWorkPackageIdAsync(
         Guid workPackageId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists the Work Package aggregate root and all its constituent request memberships
+    /// within a single atomic database transaction (Architecture CR-015 §4 TD-002, TD-003).
+    /// </summary>
+    Task SaveAsync(
+        Domain.WorkPackage entity,
+        CancellationToken cancellationToken = default);
 }

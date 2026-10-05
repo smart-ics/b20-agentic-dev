@@ -1181,3 +1181,57 @@ code, kbd, samp, pre, .font-monospace {
   font-size: 0.75rem;
 }
 
+/* ==========================================================================
+   Continuous Infinite Scroll & Milestone Tokens (CR-013)
+   ========================================================================== */
+
+/* Feed Sentinel Target for IntersectionObserver */
+.op-feed-sentinel {
+  height: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* End-of-Stream Milestone Card */
+.op-feed-end-milestone {
+  background-color: #f8fafc;
+  border: 1px dashed var(--cakra-border);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  text-align: center;
+  transition: all 0.15s ease-in-out;
+}
+
+.op-feed-end-milestone:hover {
+  background-color: #ffffff;
+  border-color: var(--cakra-cyan);
+}
+
+/* Inline Error Retry Container */
+.op-feed-retry-box {
+  background-color: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 6px;
+  padding: 0.5rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Bottom Loading Container */
+.op-feed-bottom-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 0;
+  gap: 0.5rem;
+  color: var(--cakra-text-muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+

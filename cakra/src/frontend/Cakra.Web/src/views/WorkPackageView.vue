@@ -4,10 +4,11 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
+import { reorderWorkPackageRequests } from '@/api/workpackages'
 
 /**
  * SCR-WP-001: Work Package Screen
- * (Architecture §7, §8 — UC-WP-001..003, §9 — FEAT-WP-001, §11, §19.4, §19.6, §20, §21).
+ * (Architecture §7, §8 — UC-WP-001..003, §9 — FEAT-WP-001, §11, §19.4, §19.6, §20, §21; CR-015).
  *
  * - Renders a Bootstrap 5 table listing work packages with columns:
  *   ID, Objective, Owner, Customer, Product, Status.
@@ -23,7 +24,8 @@ import { httpClient } from '@/api/http'
  *     `Close` in DRAFT/ACTIVE via `POST /api/v1/work-packages/${id}/close`)
  *   * Scope management section (`GET /api/v1/work-packages/${id}/scope`) with "Add Request"
  *     selector/input (`POST /api/v1/work-packages/${id}/requests`) and linked request list
- *     with remove buttons (`DELETE /api/v1/work-packages/${id}/requests/${requestId}`).
+ *     with remove buttons (`DELETE /api/v1/work-packages/${id}/requests/${requestId}`) and
+ *     HTML5 drag-and-drop reordering with optimistic updates and background auto-save (`PUT /api/v1/work-packages/${id}/requests/reorder`).
  */
 
 export interface WorkPackageScopeItem {
@@ -31,6 +33,7 @@ export interface WorkPackageScopeItem {
   membershipId?: string
   workPackageId: string
   requestId: string
+  sortOrder?: number
   addedAt: string
   removedAt?: string | null
   isActive: boolean
@@ -765,6 +768,99 @@ async function handleRemoveRequestFromScope(requestId: string): Promise<void> {
     )
   } finally {
     removingRequestId.value = null
+  }
+}
+
+// Drag and drop state and event handlers for active scope requests (CR-015)
+const draggedIndex = ref<number | null>(null)
+const dropTargetIndex = ref<number | null>(null)
+const isReordering = ref(false)
+
+function onDragStart(event: DragEvent, index: number): void {
+  if (!canModifyPackage.value || isReordering.value) {
+    event.preventDefault()
+    return
+  }
+  draggedIndex.value = index
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(index))
+  }
+}
+
+function onDragOver(event: DragEvent, index: number): void {
+  if (!canModifyPackage.value || draggedIndex.value === null || isReordering.value) {
+    return
+  }
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dropTargetIndex.value = index
+}
+
+function onDragLeave(_event: DragEvent, index: number): void {
+  if (dropTargetIndex.value === index) {
+    dropTargetIndex.value = null
+  }
+}
+
+function onDragEnd(): void {
+  draggedIndex.value = null
+  dropTargetIndex.value = null
+}
+
+async function onDrop(event: DragEvent, targetIndex: number): Promise<void> {
+  if (!canModifyPackage.value || draggedIndex.value === null || isReordering.value) {
+    return
+  }
+  event.preventDefault()
+
+  const fromIndex = draggedIndex.value
+  const toIndex = targetIndex
+
+  draggedIndex.value = null
+  dropTargetIndex.value = null
+
+  if (fromIndex === toIndex) {
+    return
+  }
+
+  const wpId = selectedWorkPackage.value?.id
+  if (!wpId) {
+    return
+  }
+
+  // Snapshot previous scope items for rollback on error
+  const previousScopeItems = [...scopeItems.value]
+
+  // Optimistically reorder active items
+  const activeItems = [...activeScopeItems.value]
+  const [movedItem] = activeItems.splice(fromIndex, 1)
+  activeItems.splice(toIndex, 0, movedItem)
+
+  // Update sortOrder on active items
+  activeItems.forEach((item, idx) => {
+    item.sortOrder = idx
+  })
+
+  // Combine with inactive/historical items
+  const inactiveItems = scopeItems.value.filter((item) => !item.isActive || Boolean(item.removedAt))
+  scopeItems.value = [...activeItems, ...inactiveItems]
+
+  const orderedRequestIds = activeItems.map((item) => item.requestId)
+
+  isReordering.value = true
+  errorMessage.value = null
+
+  try {
+    await reorderWorkPackageRequests(wpId, orderedRequestIds)
+  } catch (err) {
+    // Rollback to prior snapshot
+    scopeItems.value = previousScopeItems
+    errorMessage.value = extractErrorMessage(err, 'Failed to reorder requests.')
+  } finally {
+    isReordering.value = false
   }
 }
 
@@ -1536,33 +1632,55 @@ onMounted(async () => {
                 data-testid="scope-requests-list"
               >
                 <li
-                  v-for="item in activeScopeItems"
+                  v-for="(item, index) in activeScopeItems"
                   :key="item.id || item.requestId"
-                  class="list-group-item d-flex justify-content-between align-items-center gap-1 px-2 py-1"
+                  class="list-group-item d-flex justify-content-between align-items-center gap-1 px-2 py-1 scope-request-item"
+                  :class="{
+                    'is-dragging': draggedIndex === index,
+                    'drop-target': dropTargetIndex === index && draggedIndex !== index,
+                  }"
+                  :draggable="canModifyPackage"
                   :data-request-id="item.requestId"
+                  :data-sort-order="item.sortOrder"
                   data-testid="scope-request-item"
+                  @dragstart="onDragStart($event, index)"
+                  @dragover="onDragOver($event, index)"
+                  @dragleave="onDragLeave($event, index)"
+                  @dragend="onDragEnd"
+                  @drop="onDrop($event, index)"
                 >
-                  <div class="me-auto text-truncate" style="max-width: 78%">
-                    <div class="d-flex align-items-center gap-1 flex-wrap">
-                      <router-link
-                        :to="`/requests/${item.requestId}`"
-                        class="fw-medium text-decoration-none small text-truncate"
-                        style="font-size: 12px; max-width: 220px"
-                        data-testid="scope-request-link"
-                      >
-                        {{ item.title || item.requestTitle || item.requestId }}
-                      </router-link>
-                      <span
-                        v-if="item.status || item.requestStatus"
-                        class="badge"
-                        style="font-size: 9.5px; padding: 2px 4px"
-                        :class="requestStatusBadgeClass(item.status || item.requestStatus)"
-                      >
-                        {{ item.status || item.requestStatus }}
-                      </span>
-                    </div>
-                    <div class="text-body-secondary font-monospace" style="font-size: 10px">
-                      {{ item.requestId }}
+                  <div class="d-flex align-items-center me-auto text-truncate" style="max-width: 78%">
+                    <span
+                      v-if="canModifyPackage"
+                      class="drag-handle text-body-secondary me-2 flex-shrink-0"
+                      title="Drag to reorder"
+                      aria-label="Drag to reorder"
+                      data-testid="drag-handle"
+                    >
+                      <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+                    </span>
+                    <div class="text-truncate">
+                      <div class="d-flex align-items-center gap-1 flex-wrap">
+                        <router-link
+                          :to="`/requests/${item.requestId}`"
+                          class="fw-medium text-decoration-none small text-truncate"
+                          style="font-size: 12px; max-width: 220px"
+                          data-testid="scope-request-link"
+                        >
+                          {{ item.title || item.requestTitle || item.requestId }}
+                        </router-link>
+                        <span
+                          v-if="item.status || item.requestStatus"
+                          class="badge"
+                          style="font-size: 9.5px; padding: 2px 4px"
+                          :class="requestStatusBadgeClass(item.status || item.requestStatus)"
+                        >
+                          {{ item.status || item.requestStatus }}
+                        </span>
+                      </div>
+                      <div class="text-body-secondary font-monospace" style="font-size: 10px">
+                        {{ item.requestId }}
+                      </div>
                     </div>
                   </div>
 
@@ -1571,7 +1689,7 @@ onMounted(async () => {
                     type="button"
                     class="btn btn-outline-danger btn-xs py-0 px-1"
                     style="font-size: 10px; height: 22px; line-height: 20px"
-                    :disabled="removingRequestId === item.requestId || isSubmittingAction"
+                    :disabled="removingRequestId === item.requestId || isSubmittingAction || isReordering"
                     data-testid="remove-request-button"
                     @click="handleRemoveRequestFromScope(item.requestId)"
                   >
@@ -1612,3 +1730,25 @@ onMounted(async () => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.scope-request-item.is-dragging {
+  opacity: 0.45;
+  background-color: var(--bs-tertiary-bg, #f8f9fa);
+}
+
+.scope-request-item.drop-target {
+  border-top: 2px solid var(--bs-primary, #0d6efd) !important;
+  background-color: rgba(13, 110, 253, 0.05);
+}
+</style>
