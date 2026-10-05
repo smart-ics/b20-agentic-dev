@@ -1,9 +1,13 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json;
 using Cakra.Api.Infrastructure.Authentication;
 using Cakra.Core;
+using Cakra.Modules.Identity.Commands;
 using Cakra.Modules.Identity.Domain;
 using Cakra.Modules.Identity.Services;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -15,8 +19,8 @@ using IIdentityAuthorizationService = Cakra.Modules.Identity.Services.IAuthoriza
 namespace Cakra.Api.Controllers;
 
 /// <summary>
-/// REST API controller for authentication and session management (<c>SCR-AUTH-001</c>, <c>UC-AUTH-001</c>, <c>FEAT-AUTH-001</c>).
-/// Exposes <c>/api/v1/auth/login</c>, <c>/api/v1/auth/logout</c>, and <c>/api/v1/auth/me</c> (Architecture §14, §19.5, §19.6).
+/// REST API controller for authentication and session management (<c>SCR-AUTH-001</c>, <c>UC-AUTH-001</c>, <c>FEAT-AUTH-001</c>, <c>FEAT-USR-002</c>).
+/// Exposes <c>/api/v1/auth/login</c>, <c>/api/v1/auth/register</c>, <c>/api/v1/auth/logout</c>, and <c>/api/v1/auth/me</c> (Architecture §14, §19.5, §19.6).
 /// </summary>
 [Route("api/v1/auth")]
 public sealed class AuthController : ApiControllerBase
@@ -24,17 +28,20 @@ public sealed class AuthController : ApiControllerBase
     private readonly IIdentityAuthenticationService _authenticationService;
     private readonly IIdentityAuthorizationService _authorizationService;
     private readonly ICurrentContextProvider _currentContextProvider;
+    private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         IIdentityAuthenticationService authenticationService,
         IIdentityAuthorizationService authorizationService,
         ICurrentContextProvider currentContextProvider,
+        IMediator mediator,
         ILogger<AuthController> logger)
     {
         _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
         _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
         _currentContextProvider = currentContextProvider ?? throw new ArgumentNullException(nameof(currentContextProvider));
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -110,6 +117,47 @@ public sealed class AuthController : ApiControllerBase
     }
 
     /// <summary>
+    /// Registers a new self-service user account with Pending approval status (CR-009; FEAT-USR-002; Architecture §4 TD-001).
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("register")]
+    [ProducesResponseType(typeof(UserAccountDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterRequest? request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            return CreateBadRequestProblem("Request body cannot be null.");
+        }
+
+        try
+        {
+            var command = new RegisterUserAccountCommand(
+                request.Username ?? string.Empty,
+                request.Email ?? string.Empty,
+                request.Password ?? string.Empty);
+
+            var result = await _mediator.Send(command, cancellationToken);
+            return StatusCode(StatusCodes.Status201Created, result);
+        }
+        catch (ValidationException ex)
+        {
+            return CreateValidationProblem(ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateConflictProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Invalidates the current server-side session and clears the session authentication cookie (Architecture §14, §19.5).
     /// </summary>
     [AllowAnonymous]
@@ -173,6 +221,16 @@ public sealed class AuthController : ApiControllerBase
             errorCode = "ACCOUNT_LOCKED";
             typeUrl = "https://tools.ietf.org/html/rfc7231#section-6.5.3";
         }
+        else if (string.Equals(result.ErrorCode, "ACCOUNT_PENDING_APPROVAL", StringComparison.OrdinalIgnoreCase))
+        {
+            statusCode = StatusCodes.Status400BadRequest;
+            title = "Account Pending Approval";
+            detail = !string.IsNullOrWhiteSpace(result.ErrorMessage)
+                ? result.ErrorMessage
+                : "Your account is pending administrative approval.";
+            errorCode = "ACCOUNT_PENDING_APPROVAL";
+            typeUrl = "https://tools.ietf.org/html/rfc7231#section-6.5.1";
+        }
         else if (string.Equals(result.ErrorCode, "ACCOUNT_NOT_ACTIVE", StringComparison.OrdinalIgnoreCase))
         {
             statusCode = StatusCodes.Status403Forbidden;
@@ -213,11 +271,85 @@ public sealed class AuthController : ApiControllerBase
             Type = typeUrl
         };
         problem.Extensions["errorCode"] = errorCode;
+        problem.Extensions["code"] = errorCode;
         problem.Extensions["traceId"] = traceId;
 
         return new ObjectResult(problem)
         {
             StatusCode = statusCode,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private ObjectResult CreateConflictProblem(string detail)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status409Conflict,
+            Title = "Conflict",
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8"
+        };
+        problem.Extensions["errorCode"] = "CONFLICT";
+        problem.Extensions["code"] = "CONFLICT";
+        problem.Extensions["traceId"] = traceId;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status409Conflict,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private ObjectResult CreateBadRequestProblem(string detail)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Bad Request",
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+        };
+        problem.Extensions["errorCode"] = "BAD_REQUEST";
+        problem.Extensions["code"] = "BAD_REQUEST";
+        problem.Extensions["traceId"] = traceId;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status400BadRequest,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private ObjectResult CreateValidationProblem(ValidationException ex)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var errors = ex.Errors
+            .GroupBy(e => JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName))
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(e => e.ErrorMessage).ToArray()
+            );
+
+        var problem = new ValidationProblemDetails(errors)
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Validation Error",
+            Detail = "One or more validation errors occurred.",
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+        };
+        problem.Extensions["errorCode"] = "VALIDATION_FAILED";
+        problem.Extensions["code"] = "VALIDATION_FAILED";
+        problem.Extensions["traceId"] = traceId;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status400BadRequest,
             ContentTypes = { "application/problem+json" }
         };
     }

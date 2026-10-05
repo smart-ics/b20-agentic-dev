@@ -60,6 +60,12 @@ public sealed class AuthenticationService : IAuthenticationService
             return LoginResult.Failed("INVALID_CREDENTIALS", "Invalid username or password.");
         }
 
+        if (string.Equals(user.Status, UserAccountStatus.Pending, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger?.LogWarning("Authentication failed: user '{UserId}' is pending approval.", user.Id);
+            return LoginResult.Failed("ACCOUNT_PENDING_APPROVAL", "Your account is pending administrative approval.");
+        }
+
         if (!user.IsActive)
         {
             _logger?.LogWarning("Authentication failed: user '{UserId}' is not active (Status: {Status}).", user.Id, user.Status);

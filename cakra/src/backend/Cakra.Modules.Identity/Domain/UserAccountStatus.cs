@@ -13,4 +13,7 @@ public static class UserAccountStatus
 
     /// <summary>Account is suspended administratively.</summary>
     public const string Suspended = "SUSPENDED";
+
+    /// <summary>Account registration is pending administrator approval (CR-009).</summary>
+    public const string Pending = "Pending";
 }

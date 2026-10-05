@@ -45,6 +45,7 @@ const isAdmin = computed(
 // Derive clean contextual titles for the topbar
 const currentScreenTitle = computed(() => {
   const path = route.path
+  if (path.startsWith('/admin/customers')) return 'Customer Management'
   if (path.startsWith('/admin/persons')) return 'Person Management'
   if (path.startsWith('/admin/users')) return 'User Management'
   if (path.startsWith('/feed')) return 'Operational Feed'
@@ -223,6 +224,19 @@ const currentScreenTitle = computed(() => {
         >
           <i class="bi bi-person-lock nav-icon" aria-hidden="true"></i>
           <span v-show="!isCollapsed" class="nav-label">Person Management</span>
+        </router-link>
+
+        <router-link
+          v-if="isAdmin"
+          class="sidebar-nav-item"
+          to="/admin/customers"
+          active-class="active"
+          data-testid="nav-customer-management-link"
+          :title="isCollapsed ? 'Customer Management' : undefined"
+          @click="closeMobile"
+        >
+          <i class="bi bi-building-gear nav-icon" aria-hidden="true"></i>
+          <span v-show="!isCollapsed" class="nav-label">Customer Management</span>
         </router-link>
       </nav>
 

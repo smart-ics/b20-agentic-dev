@@ -14,11 +14,15 @@ using Xunit;
 namespace Cakra.Tests.Integration.Identity;
 
 /// <summary>
-/// Integration tests verifying <see cref="Cakra.Api.Controllers.AuthController"/> (P2-S11 — SCR-AUTH-001):
+/// Integration tests verifying <see cref="Cakra.Api.Controllers.AuthController"/> (P2-S11, P3-S05 — SCR-AUTH-001, CR-009, FEAT-USR-002):
 /// - POST /api/v1/auth/login success: sets secure, HttpOnly, SameSite=Strict session cookie and returns user profile
 /// - POST /api/v1/auth/login failure (invalid credentials): returns 401 RFC 7807 ProblemDetails with INVALID_CREDENTIALS
 /// - POST /api/v1/auth/login failure (account locked): returns 403 RFC 7807 ProblemDetails with ACCOUNT_LOCKED
+/// - POST /api/v1/auth/login failure (account pending): returns 400 RFC 7807 ProblemDetails with ACCOUNT_PENDING_APPROVAL
 /// - POST /api/v1/auth/login failure (repeated bad passwords lock account on 5th failure)
+/// - POST /api/v1/auth/register success: returns 201 Created and creates account with Pending status and PersonId = Guid.Empty
+/// - POST /api/v1/auth/register failure (duplicate username/email): returns 409 Conflict ProblemDetails
+/// - POST /api/v1/auth/register failure (validation errors): returns 400 Bad Request ProblemDetails
 /// - GET /api/v1/auth/me: returns 200 with UserId, PersonId, Roles when authenticated; 401 when unauthenticated
 /// - POST /api/v1/auth/logout: revokes server-side session, clears session cookie, invalidates subsequent requests
 /// </summary>
@@ -120,6 +124,127 @@ public class AuthControllerTests : IntegrationTestBase
         problem.GetProperty("errorCode").GetString().Should().Be("ACCOUNT_LOCKED");
         problem.GetProperty("detail").GetString().Should().ContainEquivalentOf("locked");
         problem.GetProperty("traceId").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Login_with_pending_account_returns_distinct_400_problem_details_with_ACCOUNT_PENDING_APPROVAL()
+    {
+        var harness = CreateTestHarness();
+        harness.SeedUser("pending.user", "pending@cakra.id", "ValidPass#2026", status: UserAccountStatus.Pending);
+
+        var response = await harness.Client.PostAsJsonAsync("/api/v1/auth/login", new
+        {
+            username = "pending.user",
+            password = "ValidPass#2026"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        response.Headers.Contains("Set-Cookie").Should().BeFalse("pending account must not issue a session cookie");
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(400);
+        problem.GetProperty("title").GetString().Should().Be("Account Pending Approval");
+        problem.GetProperty("errorCode").GetString().Should().Be("ACCOUNT_PENDING_APPROVAL");
+        problem.GetProperty("code").GetString().Should().Be("ACCOUNT_PENDING_APPROVAL");
+        problem.GetProperty("detail").GetString().Should().Contain("pending administrative approval");
+        problem.GetProperty("traceId").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Register_with_valid_payload_returns_201_and_creates_pending_account()
+    {
+        var harness = CreateTestHarness();
+
+        var response = await harness.Client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            username = "johndoe",
+            email = "john.doe@example.com",
+            password = "SecurePassword123!"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.Contains("Set-Cookie").Should().BeFalse("registration must not issue a session cookie");
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("userId").GetGuid().Should().NotBeEmpty();
+        body.GetProperty("personId").GetGuid().Should().Be(Guid.Empty);
+        body.GetProperty("username").GetString().Should().Be("johndoe");
+        body.GetProperty("email").GetString().Should().Be("john.doe@example.com");
+        body.GetProperty("status").GetString().Should().Be(UserAccountStatus.Pending);
+
+        // Verify account persisted in repository with Pending status
+        var user = harness.AccountRepo.Items.Values.FirstOrDefault(u => u.Username == "johndoe");
+        user.Should().NotBeNull();
+        user!.Status.Should().Be(UserAccountStatus.Pending);
+        user.PersonId.Should().Be(Guid.Empty);
+    }
+
+    [Fact]
+    public async Task Register_with_duplicate_username_returns_409_conflict_problem_details()
+    {
+        var harness = CreateTestHarness();
+        harness.SeedUser("existinguser", "existing@example.com", "Password123!");
+
+        var response = await harness.Client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            username = "existinguser",
+            email = "newemail@example.com",
+            password = "Password123!"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(409);
+        problem.GetProperty("title").GetString().Should().Be("Conflict");
+        problem.GetProperty("errorCode").GetString().Should().Be("CONFLICT");
+        problem.GetProperty("detail").GetString().Should().Contain("Username is already taken.");
+    }
+
+    [Fact]
+    public async Task Register_with_duplicate_email_returns_409_conflict_problem_details()
+    {
+        var harness = CreateTestHarness();
+        harness.SeedUser("firstuser", "duplicate@example.com", "Password123!");
+
+        var response = await harness.Client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            username = "seconduser",
+            email = "DUPLICATE@example.com",
+            password = "Password123!"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(409);
+        problem.GetProperty("title").GetString().Should().Be("Conflict");
+        problem.GetProperty("errorCode").GetString().Should().Be("CONFLICT");
+        problem.GetProperty("detail").GetString().Should().Contain("Email is already registered.");
+    }
+
+    [Fact]
+    public async Task Register_with_invalid_input_returns_400_bad_request_problem_details()
+    {
+        var harness = CreateTestHarness();
+
+        var response = await harness.Client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            username = "user",
+            email = "invalid-email",
+            password = "short"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(400);
+        problem.GetProperty("errorCode").GetString().Should().Be("VALIDATION_FAILED");
+        problem.GetProperty("errors").EnumerateObject().Should().NotBeEmpty();
     }
 
     [Fact]

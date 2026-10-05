@@ -1,74 +1,103 @@
-# Feature
+---
+Title: Manage Customer Master Data and Contacts
+Code: FEAT-CUST-001
+Artifact: FEATURE
+Version: 2.0
+LastUpdated: 2026-10-05
+---
 
-## Identity
+# 1. Purpose
 
-ID: FEAT-CUST-001
-Name: Manage Customer Master Data
-Type: Command
+Provides a dedicated administrative interface for creating, updating, activating, and deactivating Customer organizations, as well as managing associated Customer Contact Persons, ensuring authoritative customer organizational data is maintained within the Customer domain while remaining available for operational demand capture and tracking.
 
-## Purpose
+# 2. Business Outcome
 
-Enables Administrators to create new Customer Master records and update existing Customer Master records to maintain authoritative customer organizational data.
+Customer organizational records and representative contact persons are created and maintained by authorized Administrators through a dedicated management screen with search, metric summaries, and lifecycle controls, ensuring operational requests and historical references have accurate customer representation.
 
-## User Outcome
+# 3. Participating Domains
 
-Customer Master data is accurately created, updated, and maintained in an authoritative state, making valid customer records available for operational demand capture and tracking.
+## Customer
+- Owns the authoritative `Customer` and `Customer Contact` aggregates and their identity/state attributes.
+- Owns the Customer lifecycle state machine (`ACTIVE` <-> `INACTIVE`) and Customer Contact lifecycle (`ACTIVE` <-> `INACTIVE`).
+- Provides the write commands (`CreateCustomer`, `UpdateCustomer`, `ActivateCustomer`, `DeactivateCustomer`, `CreateCustomerContact`, `UpdateCustomerContact`) and read queries consumed by the management UI.
 
-## Traceability
+# 4. Trigger
 
-### Domains
-- Customer
+An authenticated Administrator navigates to the Customer Management screen (`SCR-CUST-001`) and invokes create, edit, activate/deactivate, or contact management actions.
 
-### Scenarios
-- SC-CUST-001
+# 5. Preconditions
 
-### Use Cases
-- UC-CUST-001
+- The actor is authenticated.
+- The actor possesses the `Administrator` role (or `Admin`).
+- The Customer domain write services and query endpoints are available.
 
-### User Journeys
-- UJ-CUST-001
+# 6. Operational Flow
 
-### Screens
-- SCR-CUST-001 (Create Customer)
-- SCR-CUST-002 (Edit Customer)
+### 1. View Customer Records and Metrics
+1. The Administrator opens the Customer Management screen.
+2. The system retrieves all Customer records (both active and inactive) along with their status and contact associations.
+3. The system displays summary KPI metric cards (Total Customers, Active Customers, Inactive Customers, Active Maintenance Contracts).
+4. The system presents a high-density, searchable and filterable table displaying Customer Code, Customer Name, Active Maintenance Contract indicator, Status badge, and Management Actions.
 
-## Preconditions
+### 2. Create New Customer Organization
+1. The Administrator clicks "Add Customer" to open the customer creation modal.
+2. The Administrator enters Customer Code, Customer Name, and sets the Active Maintenance Contract flag.
+3. The Administrator submits the form.
+4. The system validates the inputs:
+   - Verifies Customer Code is non-empty, alphanumeric/uppercase, and unique.
+   - Verifies Customer Name is non-empty.
+5. The system persists the new Customer in `ACTIVE` status and refreshes the customer list and metrics.
 
-- The actor is authenticated and authorized to maintain customer data (Administrator).
-- Customer Code specified during creation must be unique across all existing customers.
+### 3. Update Customer Details
+1. The Administrator clicks "Edit" on a Customer row.
+2. The modal displays existing customer attributes.
+3. The Administrator updates Customer Name and/or Active Maintenance Contract status.
+4. The Administrator submits the updates.
+5. The system validates the modified fields, persists the changes, and refreshes the list view.
 
-## Capability
+### 4. Manage Customer Contact Persons
+1. The Administrator clicks "Contacts" on a Customer row.
+2. The system displays the list of contact persons associated with that customer.
+3. The Administrator can add a new contact (Name, Position, Email, Phone Number) or edit an existing contact's details and active/inactive status.
+4. The system validates contact inputs (valid email format if provided, required name) and persists the contact changes linked to the parent Customer.
 
-The system provides structured customer creation and edit forms (or modals) accessible from the Customer Portfolio View (`SCR-CUST-001` / `SCR-CUST-002`), capturing Customer Code, Customer Name, and Maintenance Contract status. Upon submission, the system validates inputs, verifies code uniqueness, executes the command against `CustomerService`, persists changes to `[customer].[Customers]`, and dispatches appropriate domain events (`CustomerCreated`, `CustomerActivated`, `CustomerInactivated`).
+### 5. Deactivate Customer
+1. The Administrator clicks "Deactivate" on an active Customer row.
+2. The system transitions the Customer status from `ACTIVE` to `INACTIVE`.
+3. The Customer is excluded from active operational selection dropdowns while preserving all historical references.
 
-## Business Rules
+### 6. Activate Customer
+1. The Administrator clicks "Activate" on an inactive Customer row.
+2. The system transitions the Customer status from `INACTIVE` to `ACTIVE`.
+3. The Customer becomes available again for new operational demand creation.
 
-- A Customer represents an organization, not an individual person (Customer Domain Rule 1).
-- Every Customer must have a unique identity and Customer Code (Customer Domain Rule 2).
-- Customer identity must remain stable throughout its lifecycle (Customer Domain Rule 4).
-- Customer Status must be either `ACTIVE` or `INACTIVE` (Customer Domain Rule 7).
-- A Customer may become inactive while preserving all historical references (Customer Domain Rule 5).
-- A Customer must not be physically deleted when operational objects reference it (Customer Domain Rule 6).
+# 7. Domain Orchestration
 
-## Success Result
+- **Customer**: Owns the `Customer` and `Customer Contact` aggregates and lifecycles. Executes customer and contact mutations through its application services, enforcing code uniqueness and lifecycle state transitions. Emits domain events (`CustomerCreated`, `CustomerActivated`, `CustomerInactivated`, `CustomerContactAdded`, `CustomerContactActivated`, `CustomerContactInactivated`).
 
-A Customer Master record is created or updated with authoritative details and active/maintenance status, enabling immediate lookup in request forms and customer overview.
+# 8. Constraints
 
-## Failure Conditions
+- Only users holding the `Administrator` role may access Customer Management.
+- Every `Customer` must have a unique `CustomerCode`.
+- A `Customer` must not be physically removed; lifecycle transitions (`ACTIVE` <-> `INACTIVE`) preserve historical integrity.
+- A `Customer Contact` must strictly belong to exactly one Customer organization.
+- Maintenance contract indicator reflects current authoritative status only.
 
-- Customer Code or Customer Name is blank or missing (validation failure).
-- Customer Code matches an existing customer record (conflict failure).
-- Target Customer ID does not exist during update operation (not found failure).
+# 9. Exceptions
 
-## Acceptance Criteria
+- **Unauthorized Access**: If a non-administrator attempts to access Customer Management, access is blocked and redirected.
+- **Duplicate Customer Code**: If a customer creation request uses an existing Customer Code, the system displays a conflict error message.
+- **Target Customer Not Found**: If an update or lifecycle operation targets a nonexistent Customer ID, the system returns a not-found error.
+- **Invalid Contact Data**: If contact information contains malformed email or missing required fields, submission is prevented with inline validation feedback.
 
-- [ ] Administrator can trigger "Add Customer" modal from Customer Portfolio View (`SCR-CUST-001`).
-- [ ] Add Customer form enforces non-empty Customer Code and Customer Name.
-- [ ] Submission with duplicate Customer Code displays a clear error message.
-- [ ] Administrator can trigger "Edit Customer" modal to update Customer Name and Maintenance Contract status (`SCR-CUST-002`).
-- [ ] Deactivating a Customer transitions Status to `INACTIVE` without removing historical data.
-- [ ] Successful save immediately refreshes the Customer Portfolio list view.
+# 10. Acceptance Criteria
 
-## Implementation Notes
-
-Executes `CreateCustomerCommand` or `UpdateCustomerCommand` via `CustomerService` and exposes REST API mutation endpoints in `CustomersController.cs`.
+- [ ] Navigation menu displays "Customer Management" under Administration only when the authenticated user possesses the `Administrator` role.
+- [ ] Direct URL navigation to `/admin/customers` by non-administrators is blocked and redirected to `/feed`.
+- [ ] Administrator can view summary KPI metrics: Total Customers, Active Customers, Inactive Customers, Active Maintenance Contracts.
+- [ ] Administrator can search customers by code and name, and filter by status (All, Active, Inactive).
+- [ ] Administrator can open "Add Customer" modal to create a new customer with code, name, and maintenance contract flag.
+- [ ] Administrator can edit existing customer name and maintenance contract flag.
+- [ ] Administrator can view and manage contact persons (add contact, edit contact, toggle status) for any customer.
+- [ ] Administrator can activate or deactivate a customer with one-click action and confirmation.
+- [ ] All customer state changes immediately update the table and KPI metrics.

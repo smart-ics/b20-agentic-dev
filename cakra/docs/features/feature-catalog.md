@@ -7,6 +7,7 @@
 | FEAT-COL-002 | Search Request History | Search | UC-COL-002 |
 | FEAT-COL-003 | Track Request Progress | Query | UC-COL-003 |
 | FEAT-COL-004 | Review Assigned Requests | Query | UC-COL-004 |
+| FEAT-CUST-001 | Manage Customer Master Data and Contacts | Command & Query | UC-CUST-001 |
 | FEAT-FCOL-001 | Comment on Post | Collaboration | UC-FCOL-001 |
 | FEAT-FCOL-002 | React to Post | Collaboration | UC-FCOL-002 |
 | FEAT-FCOL-003 | Create Operational Post | Command | UC-FCOL-003 |
@@ -23,3 +24,5 @@
 | FEAT-REQ-006 | Escalate Request | Workflow | UC-REQ-006 |
 | FEAT-REQ-007 | Request Management Decision | Workflow | UC-REQ-007 |
 | FEAT-REQ-008 | Review Request Completion | Workflow | UC-REQ-008 |
+| FEAT-USR-001 | Manage User Accounts | Command & Query | UC-USR-001 |
+| FEAT-USR-002 | Register User Account | Command | — |

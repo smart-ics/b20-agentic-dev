@@ -164,6 +164,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/admin/customers',
+    name: 'customer-management',
+    component: () => import('@/views/CustomerManagementView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresRole: 'Administrator',
+      screenId: 'SCR-CUST-001',
+    },
+  },
+  {
     path: '/',
     name: 'home',
     redirect: '/feed',

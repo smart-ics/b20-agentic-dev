@@ -122,6 +122,24 @@ public class AuthenticationServiceTests
     }
 
     [Fact]
+    public async Task Login_with_pending_account_fails_with_ACCOUNT_PENDING_APPROVAL()
+    {
+        // Arrange
+        var user = CreateTestUser("pending.user", "pending@cakra.id", "Password123!");
+        user.Status = UserAccountStatus.Pending;
+        await _userAccountRepository.AddAsync(user);
+
+        // Act
+        var result = await _service.LoginAsync("pending.user", "Password123!");
+
+        // Assert
+        result.Succeeded.Should().BeFalse();
+        result.ErrorCode.Should().Be("ACCOUNT_PENDING_APPROVAL");
+        result.ErrorMessage.Should().Be("Your account is pending administrative approval.");
+        result.SessionToken.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Login_with_inactive_person_fails_when_organization_query_service_configured()
     {
         // Arrange

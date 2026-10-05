@@ -20,8 +20,9 @@ Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios*
 | `CreateRequestModal` | Create Request Modal | Operational Feed / Requests | Implementator, Management, Request Owner | UJ-REQ-001, UJ-AWR-001 | UC-REQ-001, UC-AWR-001 |
 | `SCR-POST-001` | Post Detail | Operational Feed | Implementator, Management, Request Owner | UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-004 | UC-FCOL-001, UC-FCOL-002, UC-FCOL-004 |
 | `SCR-POST-002` | Create Post | Operational Feed | Implementator | UJ-FCOL-003 | UC-FCOL-003 |
-| `SCR-CUST-001` | Create Customer Modal | Customer Master | Administrator, Management | UJ-CUST-001 | UC-CUST-001 |
-| `SCR-CUST-002` | Edit Customer Modal | Customer Master | Administrator, Management | UJ-CUST-001 | UC-CUST-001 |
+| `SCR-CUST-001` | Customer Management | Administration | Administrator, Admin | UJ-CUST-001 | UC-CUST-001 |
+| `SCR-CUST-002` | Customer Modal | Administration | Administrator, Admin | UJ-CUST-001 | UC-CUST-001 |
+| `SCR-CUST-003` | Customer Contact Modal | Administration | Administrator, Admin | UJ-CUST-001 | UC-CUST-001 |
 | `SCR-USR-001` | User Management View | Administration | Administrator, Admin | UJ-USR-001 | UC-USR-001 |
 | `SCR-USR-002` | Add / Edit User Modal | Administration | Administrator, Admin | UJ-USR-001 | UC-USR-001 |
 | `SCR-ORG-001` | Person Management View | Administration | Administrator, Admin | UJ-ORG-001 | UC-ORG-001 |
@@ -398,14 +399,14 @@ Modal dialog interface launched from the Operational Feed (`SCR-FEED-001`) heade
 ### SCR-CUST-001
 
 **Screen Name:**
-Create Customer Modal
+Customer Management View
 
 **Purpose:**
-Modal dialog interface for recording a new Customer Master record and setting initial maintenance contract status.
+Administrative customer management console displaying all customer organizations (active and inactive), operational KPI metrics (Total Customers, Active Customers, Inactive Customers, Active Maintenance Contracts), keyword search across customer code and name, status filtering, and action triggers for adding, editing, managing contacts, and activating or deactivating customer records. Access restricted strictly to users possessing the Administrator or Admin role.
 
 **Primary Actors:**
 * Administrator
-* Management
+* Admin
 
 **Supported Use Cases:**
 * UC-CUST-001: Maintain Customer Master Data
@@ -414,24 +415,25 @@ Modal dialog interface for recording a new Customer Master record and setting in
 * UJ-CUST-001: Customer Master Maintenance
 
 **Entry Points:**
-* Customer Portfolio View (`CustomerPortfolioView.vue`) — "Add Customer" header button action
+* Global Navigation Sidebar (`Administration > Customer Management` — route `/admin/customers`)
 
 **Exit / Destination:**
-* Customer Portfolio View (`CustomerPortfolioView.vue`) — closes modal and reloads portfolio list upon successful save or cancellation
+* `SCR-CUST-002: Customer Modal`
+* `SCR-CUST-003: Customer Contact Modal`
 
 ---
 
 ### SCR-CUST-002
 
 **Screen Name:**
-Edit Customer Modal
+Customer Modal
 
 **Purpose:**
-Modal dialog interface for updating customer attributes, toggling active status, and managing associated customer contacts.
+Modal dialog interface supporting Create and Edit modes for Customer Master records (capturing/updating Customer Code, Customer Name, and Active Maintenance Contract status flag).
 
 **Primary Actors:**
 * Administrator
-* Management
+* Admin
 
 **Supported Use Cases:**
 * UC-CUST-001: Maintain Customer Master Data
@@ -440,10 +442,37 @@ Modal dialog interface for updating customer attributes, toggling active status,
 * UJ-CUST-001: Customer Master Maintenance
 
 **Entry Points:**
-* Customer Portfolio View (`CustomerPortfolioView.vue`) — Customer summary card "Edit Customer" button action
+* Customer Management View (`SCR-CUST-001`) — "Add Customer" button action (`data-testid="add-customer-btn"`)
+* Customer Management View (`SCR-CUST-001`) — Customer table row "Edit" button action (`data-testid="edit-customer-btn"`)
 
 **Exit / Destination:**
-* Customer Portfolio View (`CustomerPortfolioView.vue`) — closes modal and reloads portfolio list upon successful save or cancellation
+* Customer Management View (`SCR-CUST-001`) — closes modal and refreshes customers table upon successful save or cancellation
+
+---
+
+### SCR-CUST-003
+
+**Screen Name:**
+Customer Contact Modal
+
+**Purpose:**
+Modal dialog interface for managing contact persons (view list, create contact, edit contact, and toggle active/inactive status) associated with a selected customer record.
+
+**Primary Actors:**
+* Administrator
+* Admin
+
+**Supported Use Cases:**
+* UC-CUST-001: Maintain Customer Master Data
+
+**Supported User Journeys:**
+* UJ-CUST-001: Customer Master Maintenance
+
+**Entry Points:**
+* Customer Management View (`SCR-CUST-001`) — Customer table row "Contacts" button action (`data-testid="manage-contacts-btn"`)
+
+**Exit / Destination:**
+* Customer Management View (`SCR-CUST-001`) — closes modal upon completion
 
 ---
 
