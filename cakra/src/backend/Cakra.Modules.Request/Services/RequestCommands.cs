@@ -408,3 +408,56 @@ public sealed class RemoveRequestSubTaskCommandValidator : AbstractValidator<Rem
             .WithMessage("Actor person ID cannot be empty.");
     }
 }
+
+/// <summary>
+/// Command to update core attributes (Title, Description, Priority, RequestType) on an active Request (Architecture CR-018 §4 TD-001, TD-004).
+/// </summary>
+public sealed record UpdateRequestCoreAttributesCommand(
+    Guid RequestId,
+    string Title,
+    string Description,
+    string Priority,
+    string RequestType,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class UpdateRequestCoreAttributesCommandValidator : AbstractValidator<UpdateRequestCoreAttributesCommand>
+{
+    private static readonly HashSet<string> ValidPriorities = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "LOW", "NORMAL", "HIGH", "URGENT"
+    };
+
+    private static readonly HashSet<string> ValidRequestTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "GENERAL", "BUG", "FEATURE", "SUPPORT", "CHANGE_REQUEST", "INCIDENT"
+    };
+
+    public UpdateRequestCoreAttributesCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage("Request title is required.")
+            .MaximumLength(255).WithMessage("Request title must not exceed 255 characters.");
+
+        RuleFor(x => x.Description)
+            .NotEmpty().WithMessage("Request description is required.");
+
+        RuleFor(x => x.Priority)
+            .NotEmpty().WithMessage("Priority is required.")
+            .Must(p => !string.IsNullOrWhiteSpace(p) && ValidPriorities.Contains(p.Trim()))
+            .WithMessage("Priority must be one of: LOW, NORMAL, HIGH, URGENT.");
+
+        RuleFor(x => x.RequestType)
+            .NotEmpty().WithMessage("Request type is required.")
+            .Must(t => !string.IsNullOrWhiteSpace(t) && ValidRequestTypes.Contains(t.Trim()))
+            .WithMessage("Request type must be one of: GENERAL, BUG, FEATURE, SUPPORT, CHANGE_REQUEST, INCIDENT.");
+
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
+

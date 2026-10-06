@@ -65,6 +65,25 @@ export interface RequestDto {
 }
 
 export type Request = RequestDto
+export type RequestDetail = RequestDto
+
+export interface UpdateRequestCoreAttributesPayload {
+  title: string
+  description: string
+  priority: string
+  requestType: string
+}
+
+/**
+ * Updates request core attributes (CR-018).
+ */
+export async function updateRequestCoreAttributes(
+  id: string,
+  payload: UpdateRequestCoreAttributesPayload,
+): Promise<RequestDetail> {
+  const response = await httpClient.put<RequestDetail>(`/requests/${id}`, payload)
+  return response.data
+}
 
 /**
  * Starts active work on an assigned or paused request (CR-016 TD-002).
@@ -219,6 +238,7 @@ export const requestService = {
   assignRequestOwner,
   reassignRequestOwner,
   completeRequest,
+  updateRequestCoreAttributes,
   addSubTask,
   completeSubTask,
   reopenSubTask,

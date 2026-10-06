@@ -33,6 +33,7 @@
     <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Organization\Cakra.Modules.Organization.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Product\Cakra.Modules.Product.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Request\Cakra.Modules.Request.csproj" />
+    <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.Post\Cakra.Modules.Post.csproj" />
     <ProjectReference Include="..\..\..\src\backend\Cakra.Modules.WorkPackage\Cakra.Modules.WorkPackage.csproj" />
   </ItemGroup>
 

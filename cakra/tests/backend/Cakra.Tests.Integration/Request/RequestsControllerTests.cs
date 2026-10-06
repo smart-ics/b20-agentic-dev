@@ -167,6 +167,8 @@ public class RequestsControllerTests : IAsyncLifetime
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.DeleteAsync($"/api/v1/requests/{randomId}/subtasks/{randomId}"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PutAsJsonAsync($"/api/v1/requests/{randomId}", new { title = "T", description = "D" }))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.GetAsync("/api/v1/requests/assigned-subtasks"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
@@ -825,6 +827,115 @@ public class RequestsControllerTests : IAsyncLifetime
         var removeForbiddenResp = await ctx.Client.DeleteAsync(
             $"/api/v1/requests/{requestId}/subtasks/{subTaskId}?actorPersonId={unauthorizedPersonId}");
         removeForbiddenResp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Update_request_core_attributes_endpoint_succeeds_and_enforces_lifecycle_and_authorization_guards()
+    {
+        if (!_sqlServerAvailable || _factory is null) return;
+
+        var ctx = await SeedOperationalActorsAndMasterDataAsync();
+
+        // Create an unauthorized person (no roles, not request owner)
+        Guid unauthorizedPersonId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var p = await mediator.Send(new CreatePersonCommand("Unauthorized", "Editor", "unauth.editor@cakra.id"));
+            unauthorizedPersonId = p.Id;
+        }
+
+        // 1. Create a request in CAPTURED state
+        var createResp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "Original Title",
+            description = "Original Description",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id,
+            requestType = "GENERAL",
+            priority = "NORMAL"
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var requestId = created.GetProperty("id").GetGuid();
+
+        // 2. PUT /api/v1/requests/{id} with valid payload -> 200 OK
+        var updateResp = await ctx.Client.PutAsJsonAsync($"/api/v1/requests/{requestId}", new
+        {
+            title = "Refined Title",
+            description = "Refined Description Details",
+            requestType = "BUG",
+            priority = "HIGH"
+        });
+        updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResp.Content.ReadFromJsonAsync<JsonElement>();
+        updated.GetProperty("id").GetGuid().Should().Be(requestId);
+        updated.GetProperty("title").GetString().Should().Be("Refined Title");
+        updated.GetProperty("description").GetString().Should().Be("Refined Description Details");
+        updated.GetProperty("requestType").GetString().Should().Be("BUG");
+        updated.GetProperty("priority").GetString().Should().Be("HIGH");
+
+        // 3. GET /api/v1/requests/{id} confirms persistence
+        var getResp = await ctx.Client.GetAsync($"/api/v1/requests/{requestId}");
+        getResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fetched = await getResp.Content.ReadFromJsonAsync<JsonElement>();
+        fetched.GetProperty("title").GetString().Should().Be("Refined Title");
+        fetched.GetProperty("description").GetString().Should().Be("Refined Description Details");
+        fetched.GetProperty("requestType").GetString().Should().Be("BUG");
+        fetched.GetProperty("priority").GetString().Should().Be("HIGH");
+
+        // 4. Assign request to Programmer1
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
+        {
+            ownerPersonId = ctx.Programmer1Id
+        });
+
+        // 5. Unauthorized actor attempts update on assigned request -> 403 Forbidden
+        var forbiddenResp = await ctx.Client.PutAsJsonAsync($"/api/v1/requests/{requestId}", new
+        {
+            title = "Hacked Title",
+            description = "Hacked Description",
+            requestType = "BUG",
+            priority = "URGENT",
+            actorPersonId = unauthorizedPersonId
+        });
+        forbiddenResp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // 6. Non-existent request -> 404 Not Found
+        var notFoundResp = await ctx.Client.PutAsJsonAsync($"/api/v1/requests/{Guid.NewGuid()}", new
+        {
+            title = "Non-existent",
+            description = "Non-existent",
+            requestType = "BUG",
+            priority = "NORMAL"
+        });
+        notFoundResp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // 7. Invalid validation payload (empty title) -> 400 Bad Request
+        var invalidResp = await ctx.Client.PutAsJsonAsync($"/api/v1/requests/{requestId}", new
+        {
+            title = "",
+            description = "Valid description",
+            requestType = "BUG",
+            priority = "NORMAL"
+        });
+        invalidResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // 8. Cancel request -> transitions to terminal CANCELLED state
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/cancel", new
+        {
+            reason = "Cancelled for test"
+        });
+
+        // 9. Attempt update on closed request -> 400 Bad Request
+        var closedResp = await ctx.Client.PutAsJsonAsync($"/api/v1/requests/{requestId}", new
+        {
+            title = "Post Closure Edit",
+            description = "Should fail",
+            requestType = "BUG",
+            priority = "NORMAL"
+        });
+        closedResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private sealed record SeededContext(

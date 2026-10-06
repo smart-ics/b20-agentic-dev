@@ -16,6 +16,7 @@ import {
   assignRequestOwner as apiAssignRequestOwner,
   reassignRequestOwner as apiReassignRequestOwner,
   completeRequest as apiCompleteRequest,
+  updateRequestCoreAttributes,
 } from '@/api/requests'
 import { useAuthStore } from '@/stores/auth'
 
@@ -185,6 +186,18 @@ const showCancelModal = ref(false)
 const showStartModal = ref(false)
 const showCompleteModal = ref(false)
 const showReassignModal = ref(false)
+const showEditModal = ref(false)
+const isSubmittingEdit = ref(false)
+const editErrorMessage = ref<string | null>(null)
+const editForm = reactive({
+  title: '',
+  description: '',
+  requestType: 'GENERAL',
+  priority: 'NORMAL',
+})
+
+const REQUEST_TYPES = ['GENERAL', 'BUG', 'FEATURE', 'SUPPORT', 'CHANGE_REQUEST', 'INCIDENT'] as const
+const PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const
 
 // Comments & Discussion State
 const associatedPostId = ref<string | null>(null)
@@ -205,6 +218,31 @@ const isCancelled = computed(() => normalizedStatus.value === 'CANCELLED')
 const isClosed = computed(
   () => isCompleted.value || isCancelled.value || normalizedStatus.value === 'REJECTED',
 )
+
+const authStore = useAuthStore()
+
+// Core attributes edit authorization (CR-018)
+const canEditCoreAttributes = computed(() => {
+  if (isClosed.value) {
+    return false
+  }
+  const userRoles = authStore.roles.map((r) => r.toUpperCase())
+  if (userRoles.includes('ADMINISTRATOR') || userRoles.includes('ADMIN') || userRoles.includes('MANAGER')) {
+    return true
+  }
+  if (isCaptured.value && !request.value?.ownerPersonId) {
+    return true
+  }
+  const currentPersonId = authStore.currentUser?.personId
+  if (
+    currentPersonId &&
+    request.value?.ownerPersonId &&
+    currentPersonId.toLowerCase() === request.value.ownerPersonId.toLowerCase()
+  ) {
+    return true
+  }
+  return false
+})
 
 // Owner accountability check (CR-016 TD-002)
 const isAssignedOwner = computed(() => {
@@ -228,8 +266,6 @@ const canReassign = computed(
   () => !isClosed.value && (isAssigned.value || isInProgress.value || isPaused.value),
 )
 const canCancel = computed(() => !isClosed.value)
-
-const authStore = useAuthStore()
 
 const AUTHORIZED_COMPLEXITY_ROLES = [
   'PROGRAMMER',
@@ -602,6 +638,54 @@ async function loadStateHistory(): Promise<void> {
 async function refreshAll(): Promise<void> {
   actionSuccessMessage.value = null
   await Promise.all([loadRequestDetail(), loadStateHistory(), loadRequestComments()])
+}
+
+function openEditModal(): void {
+  if (!request.value) {
+    return
+  }
+  editErrorMessage.value = null
+  editForm.title = request.value.title ?? ''
+  editForm.description = request.value.description ?? ''
+  editForm.requestType = request.value.requestType ?? 'GENERAL'
+  editForm.priority = request.value.priority ?? 'NORMAL'
+  showEditModal.value = true
+}
+
+async function handleSaveEdit(): Promise<void> {
+  const trimmedTitle = editForm.title.trim()
+  const trimmedDescription = editForm.description.trim()
+
+  if (!trimmedTitle) {
+    editErrorMessage.value = 'Title is required.'
+    return
+  }
+  if (!trimmedDescription) {
+    editErrorMessage.value = 'Description is required.'
+    return
+  }
+  if (!requestId.value) {
+    return
+  }
+
+  isSubmittingEdit.value = true
+  editErrorMessage.value = null
+
+  try {
+    const updated = await updateRequestCoreAttributes(requestId.value, {
+      title: trimmedTitle,
+      description: trimmedDescription,
+      requestType: editForm.requestType,
+      priority: editForm.priority,
+    })
+    request.value = { ...request.value, ...updated } as RequestDetail
+    actionSuccessMessage.value = 'Request details updated successfully.'
+    showEditModal.value = false
+  } catch (err: unknown) {
+    editErrorMessage.value = extractErrorMessage(err, 'Failed to update request details.')
+  } finally {
+    isSubmittingEdit.value = false
+  }
 }
 
 async function handleAssign(): Promise<void> {
@@ -1052,8 +1136,17 @@ onMounted(async () => {
       <div class="col-12 col-lg-8">
         <!-- Request Detail Card -->
         <div class="card shadow-none border mb-2" data-testid="request-detail-card">
-          <div class="card-header py-1 px-2 bg-body-tertiary">
+          <div class="card-header py-1 px-2 bg-body-tertiary d-flex align-items-center justify-content-between flex-wrap gap-1">
             <h2 class="h6 mb-0 fw-bold" data-testid="request-detail-title">{{ request.title }}</h2>
+            <button
+              v-if="canEditCoreAttributes"
+              type="button"
+              class="btn btn-sm btn-outline-primary py-0 px-2"
+              data-testid="edit-request-button"
+              @click="openEditModal"
+            >
+              <i class="bi bi-pencil me-1" aria-hidden="true"></i>Edit
+            </button>
           </div>
           <div class="card-body p-2">
             <!-- Description -->
@@ -1836,6 +1929,139 @@ onMounted(async () => {
                   >
                     <span v-if="isSubmittingAction" class="spinner-border spinner-border-sm me-1" role="status"></span>
                     <i v-else class="bi bi-x-circle me-1"></i>Confirm Cancellation
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Edit Request Modal Dialog (CR-018) -->
+        <div
+          v-if="showEditModal"
+          class="modal fade show d-block"
+          tabindex="-1"
+          style="background-color: rgba(0, 0, 0, 0.5)"
+          data-testid="edit-request-modal"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header py-2">
+                <h5 class="modal-title h6 mb-0">
+                  <i class="bi bi-pencil-square me-1 text-primary"></i>Edit Request Details
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  aria-label="Close"
+                  :disabled="isSubmittingEdit"
+                  @click="showEditModal = false"
+                ></button>
+              </div>
+              <form @submit.prevent="handleSaveEdit">
+                <div class="modal-body py-2">
+                  <div
+                    v-if="editErrorMessage"
+                    class="alert alert-danger py-1 px-2 small mb-2"
+                    role="alert"
+                    data-testid="edit-error-alert"
+                  >
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    {{ editErrorMessage }}
+                  </div>
+
+                  <div class="mb-2">
+                    <label for="editTitleInput" class="form-label small fw-medium">
+                      Title <span class="text-danger">*</span>
+                    </label>
+                    <input
+                      id="editTitleInput"
+                      v-model="editForm.title"
+                      type="text"
+                      class="form-control form-control-sm"
+                      placeholder="Request Title"
+                      required
+                      maxlength="255"
+                      :disabled="isSubmittingEdit"
+                      data-testid="edit-title-input"
+                    />
+                  </div>
+
+                  <div class="mb-2">
+                    <label for="editDescriptionInput" class="form-label small fw-medium">
+                      Description <span class="text-danger">*</span>
+                    </label>
+                    <textarea
+                      id="editDescriptionInput"
+                      v-model="editForm.description"
+                      class="form-control form-control-sm"
+                      placeholder="Request Description"
+                      rows="4"
+                      required
+                      :disabled="isSubmittingEdit"
+                      data-testid="edit-description-input"
+                    ></textarea>
+                  </div>
+
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <label for="editTypeSelect" class="form-label small fw-medium">
+                        Request Type <span class="text-danger">*</span>
+                      </label>
+                      <select
+                        id="editTypeSelect"
+                        v-model="editForm.requestType"
+                        class="form-select form-select-sm"
+                        required
+                        :disabled="isSubmittingEdit"
+                        data-testid="edit-type-select"
+                      >
+                        <option v-for="type in REQUEST_TYPES" :key="type" :value="type">
+                          {{ type }}
+                        </option>
+                      </select>
+                    </div>
+
+                    <div class="col-6">
+                      <label for="editPrioritySelect" class="form-label small fw-medium">
+                        Priority <span class="text-danger">*</span>
+                      </label>
+                      <select
+                        id="editPrioritySelect"
+                        v-model="editForm.priority"
+                        class="form-select form-select-sm"
+                        required
+                        :disabled="isSubmittingEdit"
+                        data-testid="edit-priority-select"
+                      >
+                        <option v-for="priority in PRIORITIES" :key="priority" :value="priority">
+                          {{ priority }}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="modal-footer py-1">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="isSubmittingEdit"
+                    data-testid="close-edit-modal-button"
+                    @click="showEditModal = false"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-sm"
+                    :disabled="isSubmittingEdit"
+                    data-testid="save-edit-button"
+                  >
+                    <span v-if="isSubmittingEdit" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <i v-else class="bi bi-check2 me-1"></i>Save Changes
                   </button>
                 </div>
               </form>

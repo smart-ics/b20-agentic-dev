@@ -346,6 +346,30 @@ public sealed class Post : EntityBase
     }
 
     /// <summary>
+    /// Updates the Title and Content of the Post and sets UpdatedAt (CR-018 / P2-S03; Architecture TD-005).
+    /// </summary>
+    public void UpdateContent(string title, string content, DateTime? updatedAtUtc = null)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new PostDomainValidationException("Post title cannot be null or whitespace.", nameof(title));
+        }
+
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            throw new PostDomainValidationException("Post content cannot be null or whitespace.", nameof(content));
+        }
+
+        Title = title.Trim();
+        Content = content.Trim();
+        UpdatedAt = updatedAtUtc ?? DateTime.UtcNow;
+    }
+
+    /// <summary>Convenience alias for <see cref="UpdateContent"/>.</summary>
+    public void UpdateCoreContent(string title, string content, DateTime? updatedAtUtc = null)
+        => UpdateContent(title, content, updatedAtUtc);
+
+    /// <summary>
     /// Transitions the Post lifecycle status from <c>ACTIVE</c> to <c>ARCHIVED</c> while preserving
     /// all discussion comments, reactions, and references (Post Domain §7 Rules 28-30, §8; Architecture §7, §12, §20, §21).
     /// </summary>

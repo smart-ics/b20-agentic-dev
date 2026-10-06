@@ -70,6 +70,11 @@ public sealed class PostModule : IModule
             sp.GetRequiredService<IPostService>(),
             sp.GetService<ILogger<RequestRecordedPostHandler>>()));
 
+        // Request Core Attributes Updated Post Handler (CR-018 / P2-S03 - MediatR INotificationHandler<RequestCoreAttributesUpdated> auto-discovered by AddCakraCore)
+        services.AddScoped<RequestCoreAttributesUpdatedPostHandler>(sp => new RequestCoreAttributesUpdatedPostHandler(
+            sp.GetRequiredService<IPostRepository>(),
+            sp.GetService<ILogger<RequestCoreAttributesUpdatedPostHandler>>()));
+
         // Feed Query Service (Architecture §7, §8, §12, §20 - single-table indexed Dapper queries over post.FeedItems)
         services.AddScoped<FeedQueryService>(sp => new FeedQueryService(
             sp.GetRequiredService<IDbConnectionFactory>(),

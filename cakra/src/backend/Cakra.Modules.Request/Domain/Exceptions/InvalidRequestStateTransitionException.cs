@@ -25,6 +25,20 @@ public class InvalidRequestStateTransitionException : InvalidOperationException
         TargetStatus = targetStatus;
     }
 
+    public InvalidRequestStateTransitionException(
+        string message,
+        RequestStatus currentStatus,
+        RequestStatus? targetStatus = null,
+        Guid? requestId = null,
+        string? operation = null)
+        : base(message)
+    {
+        RequestId = requestId ?? Guid.Empty;
+        CurrentStatus = currentStatus;
+        Operation = operation ?? string.Empty;
+        TargetStatus = targetStatus;
+    }
+
     private static string FormatMessage(
         Guid requestId,
         RequestStatus currentStatus,

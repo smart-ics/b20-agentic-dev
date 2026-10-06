@@ -4,13 +4,16 @@ using Cakra.Modules.Post.Domain;
 namespace Cakra.Modules.Post.Persistence;
 
 /// <summary>
-/// Internal repository contract for the <see cref="Domain.Post"/> aggregate root, its discussion
+/// Repository contract for the <see cref="Domain.Post"/> aggregate root, its discussion
 /// <see cref="Comment"/> entities, <see cref="Reaction"/> entities, and <see cref="PostReference"/> links
-/// (Architecture §6, §7, §17, §19.3, §20, §21).
-/// Internal to the Post module to enforce strict vertical slice boundaries.
+/// (Architecture §6, §7, §17, §19.3, §20, §21; CR-018 / P2-S03).
 /// </summary>
-internal interface IPostRepository : IRepository<Domain.Post>
+public interface IPostRepository : IRepository<Domain.Post>
 {
+    Task<IReadOnlyList<Domain.Post>> GetByRequestIdAsync(
+        Guid requestId,
+        CancellationToken cancellationToken = default);
+
     Task AddCommentAsync(
         Comment comment,
         DateTime postUpdatedAtUtc,

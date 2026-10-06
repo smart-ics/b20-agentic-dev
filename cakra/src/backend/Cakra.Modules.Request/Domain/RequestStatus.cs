@@ -84,3 +84,15 @@ public static class RequestStatusNames
     public static RequestStatus? FromNullableName(string? statusName) =>
         string.IsNullOrWhiteSpace(statusName) ? null : FromName(statusName);
 }
+
+/// <summary>
+/// Extension methods for <see cref="RequestStatus"/>.
+/// </summary>
+public static class RequestStatusExtensions
+{
+    /// <summary>
+    /// Returns true if the status is a terminal closed status (Completed or Cancelled).
+    /// </summary>
+    public static bool IsClosed(this RequestStatus status) =>
+        status is RequestStatus.Completed or RequestStatus.Cancelled;
+}

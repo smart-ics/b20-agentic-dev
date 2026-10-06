@@ -234,6 +234,55 @@ internal sealed class PostRepository : IPostRepository
             .ToList();
     }
 
+    public async Task<IReadOnlyList<Domain.Post>> GetByRequestIdAsync(
+        Guid requestId,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            return Array.Empty<Domain.Post>();
+        }
+
+        const string postsSql = """
+            SELECT
+                [Id],
+                [Title],
+                [Content],
+                [AuthorPersonId],
+                [Source],
+                [SourceEventType],
+                [Status],
+                [Visibility],
+                [IsException],
+                [ExceptionType],
+                [CustomerId],
+                [ProductId],
+                [RequestId],
+                [WorkPackageId],
+                [ArchivedAt],
+                [ArchivedByPersonId],
+                [CreatedAt],
+                [UpdatedAt]
+            FROM [post].[Posts]
+            WHERE [RequestId] = @RequestId
+            ORDER BY [CreatedAt] ASC, [Id] ASC;
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        var postRows = (await connection.QueryAsync<PostRow>(
+            new CommandDefinition(postsSql, new { RequestId = requestId }, cancellationToken: cancellationToken))).AsList();
+
+        if (postRows.Count == 0)
+        {
+            return Array.Empty<Domain.Post>();
+        }
+
+        return postRows
+            .Select(p => p.ToDomain())
+            .ToList();
+    }
+
     public async Task AddAsync(Domain.Post entity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);

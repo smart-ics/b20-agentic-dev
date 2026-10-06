@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.Security.Claims;
 using Cakra.Core;
 using Cakra.Modules.Request;
 using Cakra.Modules.Request.Domain;
 using Cakra.Modules.Request.Domain.Exceptions;
 using Cakra.Modules.Request.Services;
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -163,6 +165,83 @@ public sealed class RequestsController : ApiControllerBase
         }
 
         return Ok(history);
+    }
+
+    /// <summary>
+    /// Updates the core attributes (Title, Description, RequestType, Priority) of an active request
+    /// (<c>RequestService.UpdateRequestCoreAttributes</c>; CR-018 Architecture TD-001, TD-004).
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateRequestCoreAttributes(
+        [FromRoute] Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] UpdateRequestCoreAttributesBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Request ID is required.");
+        }
+
+        var actorPersonId = FirstNonEmptyGuid(request?.ActorPersonId)
+            ?? _currentContextProvider?.CurrentPersonId
+            ?? ResolvePersonIdFromUserClaims(HttpContext?.User);
+
+        var command = new UpdateRequestCoreAttributesCommand(
+            RequestId: id,
+            Title: request?.Title ?? string.Empty,
+            Description: request?.Description ?? string.Empty,
+            Priority: request?.ResolvedPriority ?? request?.Priority ?? string.Empty,
+            RequestType: request?.ResolvedRequestType ?? request?.RequestType ?? string.Empty,
+            ActorPersonId: actorPersonId);
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Updated core attributes for request '{RequestId}' ({Title}).",
+                enriched.Id,
+                enriched.Title);
+
+            return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (RequestNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (RequestDomainValidationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (ValidationException ex)
+        {
+            return CreateValidationProblem(ex);
+        }
+        catch (InvalidRequestStateTransitionException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
     }
 
     /// <summary>
@@ -863,6 +942,51 @@ public sealed class RequestsController : ApiControllerBase
         };
     }
 
+    private ObjectResult CreateValidationProblem(ValidationException ex)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var errors = ex.Errors
+            .GroupBy(e => System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(e.PropertyName))
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(e => e.ErrorMessage).ToArray()
+            );
+
+        var problem = new ValidationProblemDetails(errors)
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Validation Error",
+            Detail = ex.Message,
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+        };
+        problem.Extensions["errorCode"] = "VALIDATION_FAILED";
+        problem.Extensions["traceId"] = traceId;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status400BadRequest,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private static Guid? ResolvePersonIdFromUserClaims(ClaimsPrincipal? user)
+    {
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        var personIdClaim = user.FindFirst("personId")?.Value
+            ?? user.FindFirst("person_id")?.Value
+            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("sub")?.Value;
+
+        return Guid.TryParse(personIdClaim, out var parsed) && parsed != Guid.Empty
+            ? parsed
+            : null;
+    }
+
     private static Guid? FirstNonEmptyGuid(params Guid?[] candidates)
     {
         foreach (var candidate in candidates)
@@ -1055,4 +1179,24 @@ public sealed class RequestsController : ApiControllerBase
     {
         public Guid? ActorPersonId { get; set; }
     }
+
+    /// <summary>
+    /// Request payload for <c>PUT /api/v1/requests/{id}</c> (<c>UpdateRequestCoreAttributes</c>; CR-018 Architecture TD-001).
+    /// </summary>
+    public sealed class UpdateRequestCoreAttributesBody
+    {
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+        public string? RequestType { get; set; }
+        public string? Type { get; set; }
+        public string? Priority { get; set; }
+        public Guid? ActorPersonId { get; set; }
+
+        public string? ResolvedRequestType =>
+            FirstNonWhiteSpace(RequestType, Type);
+
+        public string? ResolvedPriority =>
+            FirstNonWhiteSpace(Priority);
+    }
 }
+

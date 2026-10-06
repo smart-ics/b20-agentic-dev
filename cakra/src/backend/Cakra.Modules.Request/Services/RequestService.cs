@@ -31,7 +31,8 @@ public sealed partial class RequestService :
     IRequestHandler<AddRequestSubTaskCommand, RequestDto>,
     IRequestHandler<CompleteRequestSubTaskCommand, RequestDto>,
     IRequestHandler<ReopenRequestSubTaskCommand, RequestDto>,
-    IRequestHandler<RemoveRequestSubTaskCommand, RequestDto>
+    IRequestHandler<RemoveRequestSubTaskCommand, RequestDto>,
+    IRequestHandler<UpdateRequestCoreAttributesCommand, RequestDto>
 {
     private static readonly HashSet<string> AuthorizedComplexityRoles = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -50,6 +51,13 @@ public sealed partial class RequestService :
         "Admin",
         "Developer",
         "Team Lead",
+        "Manager"
+    };
+
+    private static readonly HashSet<string> AuthorizedCoreAttributesRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Administrator",
+        "Admin",
         "Manager"
     };
 
@@ -137,6 +145,36 @@ public sealed partial class RequestService :
 
         throw new UnauthorizedAccessException(
             $"Actor '{actorPersonId}' does not possess an authorized role, request ownership, or sub-task assignment to complete or reopen sub-task '{subTask.Id}' on request '{request.Id}'.");
+    }
+
+    internal async Task ValidateCoreAttributesAuthorizationAsync(
+        Domain.Request request,
+        Guid actorPersonId,
+        CancellationToken cancellationToken)
+    {
+        if (actorPersonId == SystemActorPersonId)
+        {
+            return;
+        }
+
+        if (request.Status == RequestStatus.Captured && !request.OwnerPersonId.HasValue)
+        {
+            return;
+        }
+
+        if (request.OwnerPersonId.HasValue && request.OwnerPersonId.Value == actorPersonId)
+        {
+            return;
+        }
+
+        var roles = await _organizationQueryService.GetPersonRolesAsync(actorPersonId, cancellationToken);
+        if (roles.Any(r => AuthorizedCoreAttributesRoles.Contains(r)))
+        {
+            return;
+        }
+
+        throw new UnauthorizedAccessException(
+            $"Actor '{actorPersonId}' does not possess an authorized role or request ownership to edit core attributes on request '{request.Id}'.");
     }
 
     public RequestService(
@@ -761,6 +799,63 @@ public sealed partial class RequestService :
         CancellationToken cancellationToken = default)
         => RemoveRequestSubTaskAsync(requestId, subTaskId, actorPersonId, cancellationToken);
 
+    /// <inheritdoc />
+    public async Task<RequestDto> UpdateRequestCoreAttributesAsync(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
+        }
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new RequestDomainValidationException("Title cannot be empty.", nameof(title));
+        }
+
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            throw new RequestDomainValidationException("Description cannot be empty.", nameof(description));
+        }
+
+        var request = await GetRequiredRequestAsync(requestId, cancellationToken);
+
+        var resolvedActorId = ResolveActorPersonId(actorPersonId, fallbackPersonId: request.OwnerPersonId);
+        await ValidateCoreAttributesAuthorizationAsync(request, resolvedActorId, cancellationToken);
+
+        var existingAssignmentIds = SnapshotAssignmentIds(request);
+        var hadResolution = request.Resolution is not null;
+        var now = GetNextMonotonicTimestamp(request);
+
+        request.UpdateCoreAttributes(title, description, priority, requestType, resolvedActorId, now);
+
+        await PersistStateChangesAndDispatchAsync(
+            request,
+            existingAssignmentIds,
+            hadResolution,
+            cancellationToken);
+
+        return RequestDto.FromDomain(request);
+    }
+
+    /// <inheritdoc />
+    public Task<RequestDto> UpdateRequestCoreAttributes(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, cancellationToken);
+
+
     internal DateTime GetNextMonotonicTimestamp(Domain.Request request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -1110,4 +1205,18 @@ public sealed partial class RequestService :
             request.ActorPersonId,
             cancellationToken);
     }
+
+    public Task<RequestDto> Handle(UpdateRequestCoreAttributesCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return UpdateRequestCoreAttributesAsync(
+            request.RequestId,
+            request.Title,
+            request.Description,
+            request.Priority,
+            request.RequestType,
+            request.ActorPersonId,
+            cancellationToken);
+    }
 }
+

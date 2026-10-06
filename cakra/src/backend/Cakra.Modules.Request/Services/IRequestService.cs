@@ -312,4 +312,30 @@ public partial interface IRequestService
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
         => RemoveRequestSubTaskAsync(requestId, subTaskId, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Updates core attributes (Title, Description, Priority, RequestType) on an active Request (Architecture CR-018 §4 TD-001, TD-004).
+    /// </summary>
+    Task<RequestDto> UpdateRequestCoreAttributesAsync(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="UpdateRequestCoreAttributesAsync"/>.
+    /// </summary>
+    Task<RequestDto> UpdateRequestCoreAttributes(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, cancellationToken);
 }
+

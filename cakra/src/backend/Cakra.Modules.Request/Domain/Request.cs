@@ -497,6 +497,59 @@ public sealed class Request : EntityBase
         AssignOwner(newOwnerPersonId, actorPersonId, notes, utcNow);
     }
 
+    /// <summary>
+    /// Updates the core attributes (Title, Description, Priority, RequestType) of the Request (CR-018 TD-002).
+    /// Enforces active lifecycle gating and aggregate invariants.
+    /// </summary>
+    public void UpdateCoreAttributes(
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid actorPersonId,
+        DateTime? utcNow = null)
+    {
+        if (actorPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
+
+        if (Status.IsClosed())
+        {
+            throw new InvalidRequestStateTransitionException(
+                $"Cannot edit core attributes of closed request '{Id}' in status '{Status}'.",
+                Status,
+                Status);
+        }
+
+        if (string.IsNullOrWhiteSpace(title))
+            throw new RequestDomainValidationException("Title cannot be empty.", nameof(title));
+        if (string.IsNullOrWhiteSpace(description))
+            throw new RequestDomainValidationException("Description cannot be empty.", nameof(description));
+
+        var trimmedTitle = title.Trim();
+        if (trimmedTitle.Length > 255)
+            throw new RequestDomainValidationException("Title must not exceed 255 characters.", nameof(title));
+
+        var normalizedType = string.IsNullOrWhiteSpace(requestType) ? "GENERAL" : requestType.Trim().ToUpperInvariant();
+        var normalizedPriority = string.IsNullOrWhiteSpace(priority) ? "NORMAL" : priority.Trim().ToUpperInvariant();
+
+        var now = utcNow ?? DateTime.UtcNow;
+
+        Title = trimmedTitle;
+        Description = description.Trim();
+        Priority = normalizedPriority;
+        RequestType = normalizedType;
+        UpdatedAt = now;
+
+        _domainEvents.Add(new RequestCoreAttributesUpdated(
+            requestId: Id,
+            title: Title,
+            description: Description,
+            priority: Priority,
+            requestType: RequestType,
+            actorPersonId: actorPersonId,
+            occurredAtUtc: now));
+    }
+
     // =========================================================================
     // Sub-Task Checklist Operations (CR-006 Architecture TD-001, TD-003, TD-004, TD-007)
     // =========================================================================
