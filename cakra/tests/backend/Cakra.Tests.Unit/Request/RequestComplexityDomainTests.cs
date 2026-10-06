@@ -134,12 +134,12 @@ public sealed class RequestComplexityDomainTests
     }
 
     [Fact]
-    public void SetComplexity_InEvaluatingState_Succeeds()
+    public void SetComplexity_InAssignedState_Succeeds()
     {
         // Arrange
         var request = CreateRequest(1);
         request.AssignOwner(_ownerId, _actorId);
-        request.Status.Should().Be(RequestStatus.Evaluating);
+        request.Status.Should().Be(RequestStatus.Assigned);
 
         // Act
         request.SetComplexity(3, _actorId);
@@ -149,13 +149,14 @@ public sealed class RequestComplexityDomainTests
     }
 
     [Fact]
-    public void SetComplexity_InAcceptedState_Succeeds()
+    public void SetComplexity_InPausedState_Succeeds()
     {
         // Arrange
         var request = CreateRequest(1);
         request.AssignOwner(_ownerId, _actorId);
-        request.Accept(_ownerId);
-        request.Status.Should().Be(RequestStatus.Accepted);
+        request.StartWork(_ownerId);
+        request.PauseWork(_ownerId, "Pausing");
+        request.Status.Should().Be(RequestStatus.Paused);
 
         // Act
         request.SetComplexity(5, _actorId, "Discovered architecture overhaul needed");
@@ -170,8 +171,7 @@ public sealed class RequestComplexityDomainTests
         // Arrange
         var request = CreateRequest(1);
         request.AssignOwner(_ownerId, _actorId);
-        request.Accept(_ownerId);
-        request.StartProgress(_ownerId);
+        request.StartWork(_ownerId);
         request.Complete("Demand resolved", _ownerId);
         request.Status.Should().Be(RequestStatus.Completed);
 
@@ -184,13 +184,12 @@ public sealed class RequestComplexityDomainTests
     }
 
     [Fact]
-    public void SetComplexity_WhenRejected_ThrowsInvalidRequestStateTransitionException()
+    public void SetComplexity_WhenCancelled_ThrowsInvalidRequestStateTransitionException()
     {
         // Arrange
         var request = CreateRequest(1);
-        request.AssignOwner(_ownerId, _actorId);
-        request.Reject("Out of operational scope", _ownerId);
-        request.Status.Should().Be(RequestStatus.Rejected);
+        request.Cancel("Out of operational scope", _actorId);
+        request.Status.Should().Be(RequestStatus.Cancelled);
 
         // Act
         var act = () => request.SetComplexity(2, _actorId);

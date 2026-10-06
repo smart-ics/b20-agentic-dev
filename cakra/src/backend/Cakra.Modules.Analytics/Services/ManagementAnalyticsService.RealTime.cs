@@ -47,7 +47,7 @@ public sealed partial class ManagementAnalyticsService :
                 END) AS [StalledCount]
             FROM [request].[Requests] r
             WHERE r.[OwnerPersonId] IS NOT NULL
-              AND r.[Status] IN ('CAPTURED', 'EVALUATING', 'ACCEPTED', 'IN_PROGRESS', 'ESCALATED')
+              AND r.[Status] IN ('CAPTURED', 'ASSIGNED', 'IN_PROGRESS', 'PAUSED')
               AND (@PersonId IS NULL OR r.[OwnerPersonId] = @PersonId)
             GROUP BY r.[OwnerPersonId], r.[Status]
             ORDER BY r.[OwnerPersonId] ASC, r.[Status] ASC;
@@ -70,16 +70,15 @@ public sealed partial class ManagementAnalyticsService :
                 r.[UpdatedAt]
             FROM [request].[Requests] r
             WHERE r.[OwnerPersonId] IS NOT NULL
-              AND r.[Status] IN ('CAPTURED', 'EVALUATING', 'ACCEPTED', 'IN_PROGRESS', 'ESCALATED')
+              AND r.[Status] IN ('CAPTURED', 'ASSIGNED', 'IN_PROGRESS', 'PAUSED')
               AND (@PersonId IS NULL OR r.[OwnerPersonId] = @PersonId)
             ORDER BY
                 CASE r.[Status]
-                    WHEN 'ESCALATED' THEN 1
+                    WHEN 'PAUSED' THEN 1
                     WHEN 'IN_PROGRESS' THEN 2
-                    WHEN 'ACCEPTED' THEN 3
-                    WHEN 'EVALUATING' THEN 4
-                    WHEN 'CAPTURED' THEN 5
-                    ELSE 6
+                    WHEN 'ASSIGNED' THEN 3
+                    WHEN 'CAPTURED' THEN 4
+                    ELSE 5
                 END ASC,
                 COALESCE(r.[UpdatedAt], r.[CreatedAt]) DESC;
             """;
@@ -200,10 +199,11 @@ public sealed partial class ManagementAnalyticsService :
             groupedSubStates.TryGetValue(targetPersonId, out var personSubStates);
 
             var capturedCount = 0;
+            var assignedCount = 0;
             var evaluatingCount = 0;
             var acceptedCount = 0;
             var inProgressCount = 0;
-            var escalatedCount = 0;
+            var pausedCount = 0;
             var stalledCount = 0;
 
             if (personSubStates is not null)
@@ -217,30 +217,37 @@ public sealed partial class ManagementAnalyticsService :
                         case "CAPTURED":
                             capturedCount += stateRow.RequestCount;
                             break;
+                        case "ASSIGNED":
+                            assignedCount += stateRow.RequestCount;
+                            break;
                         case "EVALUATING":
                             evaluatingCount += stateRow.RequestCount;
+                            assignedCount += stateRow.RequestCount;
                             break;
                         case "ACCEPTED":
                             acceptedCount += stateRow.RequestCount;
+                            assignedCount += stateRow.RequestCount;
                             break;
                         case "IN_PROGRESS":
                             inProgressCount += stateRow.RequestCount;
                             break;
+                        case "PAUSED":
+                            pausedCount += stateRow.RequestCount;
+                            break;
                         case "ESCALATED":
-                            escalatedCount += stateRow.RequestCount;
+                            pausedCount += stateRow.RequestCount;
                             break;
                     }
                 }
             }
 
-            var totalActive = capturedCount + evaluatingCount + acceptedCount + inProgressCount + escalatedCount;
+            var totalActive = capturedCount + assignedCount + inProgressCount + pausedCount;
             var subStateCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
                 ["CAPTURED"] = capturedCount,
-                ["EVALUATING"] = evaluatingCount,
-                ["ACCEPTED"] = acceptedCount,
+                ["ASSIGNED"] = assignedCount,
                 ["IN_PROGRESS"] = inProgressCount,
-                ["ESCALATED"] = escalatedCount
+                ["PAUSED"] = pausedCount
             };
 
             var activeQueue = enrichedQueueByOwner.TryGetValue(targetPersonId, out var queueList)
@@ -253,10 +260,11 @@ public sealed partial class ManagementAnalyticsService :
                 PersonName = personDto?.FullName ?? string.Empty,
                 Email = personDto?.Email,
                 CapturedCount = capturedCount,
+                AssignedCount = assignedCount,
                 EvaluatingCount = evaluatingCount,
                 AcceptedCount = acceptedCount,
                 InProgressCount = inProgressCount,
-                EscalatedCount = escalatedCount,
+                PausedCount = pausedCount,
                 TotalActiveCount = totalActive,
                 StalledRequestsCount = stalledCount,
                 SubStateCounts = subStateCounts,
@@ -266,7 +274,7 @@ public sealed partial class ManagementAnalyticsService :
 
         var orderedResults = results
             .OrderByDescending(x => x.TotalActiveCount)
-            .ThenByDescending(x => x.EscalatedCount)
+            .ThenByDescending(x => x.PausedCount)
             .ThenBy(x => x.PersonName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -295,19 +303,19 @@ public sealed partial class ManagementAnalyticsService :
             SELECT
                 COUNT(1) AS [TotalRequestsCount],
                 COUNT(CASE
-                    WHEN r.[Status] IN ('CAPTURED', 'EVALUATING', 'ACCEPTED', 'IN_PROGRESS', 'ESCALATED')
+                    WHEN r.[Status] IN ('CAPTURED', 'ASSIGNED', 'IN_PROGRESS', 'PAUSED')
                     THEN 1
                 END) AS [ActiveRequestsCount],
                 COUNT(CASE
-                    WHEN r.[Status] = 'ESCALATED'
+                    WHEN r.[Status] = 'PAUSED'
                     THEN 1
-                END) AS [OpenBlockersCount],
+                END) AS [PausedRequestsCount],
                 COUNT(CASE
                     WHEN r.[Status] = 'COMPLETED'
                     THEN 1
                 END) AS [RecentCompletionsCount],
                 COUNT(CASE
-                    WHEN r.[Status] = 'REJECTED'
+                    WHEN r.[Status] IN ('CANCELLED', 'REJECTED')
                     THEN 1
                 END) AS [RejectedRequestsCount]
             FROM [request].[Requests] r
@@ -338,8 +346,8 @@ public sealed partial class ManagementAnalyticsService :
             WHERE r.[CustomerId] = @CustomerId
             ORDER BY
                 CASE
-                    WHEN r.[Status] = 'ESCALATED' THEN 1
-                    WHEN r.[Status] IN ('CAPTURED', 'EVALUATING', 'ACCEPTED', 'IN_PROGRESS') THEN 2
+                    WHEN r.[Status] = 'PAUSED' THEN 1
+                    WHEN r.[Status] IN ('CAPTURED', 'ASSIGNED', 'IN_PROGRESS') THEN 2
                     WHEN r.[Status] = 'COMPLETED' THEN 3
                     ELSE 4
                 END ASC,
@@ -401,10 +409,10 @@ public sealed partial class ManagementAnalyticsService :
             .ToList();
 
         _logger.LogInformation(
-            "Computed real-time customer request portfolio for CustomerId {CustomerId}: Active={ActiveCount}, OpenBlockers={BlockersCount}, Completed={CompletedCount}",
+            "Computed real-time customer request portfolio for CustomerId {CustomerId}: Active={ActiveCount}, Paused={PausedCount}, Completed={CompletedCount}",
             customerId,
             summary.ActiveRequestsCount,
-            summary.OpenBlockersCount,
+            summary.PausedRequestsCount,
             summary.RecentCompletionsCount);
 
         return new CustomerRequestPortfolioDto
@@ -416,7 +424,7 @@ public sealed partial class ManagementAnalyticsService :
             HasActiveMaintenanceContract = customer?.HasActiveMaintenanceContract ?? false,
             ContractStatus = customer?.ContractStatus ?? "NONE",
             ActiveRequestsCount = summary.ActiveRequestsCount,
-            OpenBlockersCount = summary.OpenBlockersCount,
+            PausedRequestsCount = summary.PausedRequestsCount,
             RecentCompletionsCount = summary.RecentCompletionsCount,
             RejectedRequestsCount = summary.RejectedRequestsCount,
             TotalRequestsCount = summary.TotalRequestsCount,
@@ -461,7 +469,12 @@ public sealed partial class ManagementAnalyticsService :
     {
         public int TotalRequestsCount { get; init; }
         public int ActiveRequestsCount { get; init; }
-        public int OpenBlockersCount { get; init; }
+        public int PausedRequestsCount { get; init; }
+        public int OpenBlockersCount
+        {
+            get => PausedRequestsCount;
+            init => PausedRequestsCount = value;
+        }
         public int RecentCompletionsCount { get; init; }
         public int RejectedRequestsCount { get; init; }
     }

@@ -3,26 +3,29 @@ using Cakra.Core;
 namespace Cakra.Modules.Request.Domain.Events;
 
 /// <summary>
-/// Domain event emitted when a Request is escalated due to authority or capability limits (UC-REQ-006).
+/// Domain event emitted when active work on a Request is suspended (Architecture CR-016 TD-002).
 /// </summary>
-public sealed record RequestEscalated : IDomainEvent
+public sealed record RequestWorkPaused : IDomainEvent
 {
     public Guid RequestId { get; init; }
-    public Guid EscalatedByPersonId { get; init; }
-    public string EscalationReason { get; init; } = string.Empty;
+    public Guid? OwnerPersonId { get; init; }
+    public Guid ActorPersonId { get; init; }
+    public string? Notes { get; init; }
     public Guid EventId { get; init; } = Guid.NewGuid();
     public DateTime OccurredAtUtc { get; init; } = DateTime.UtcNow;
 
-    public RequestEscalated(
+    public RequestWorkPaused(
         Guid requestId,
-        Guid escalatedByPersonId,
-        string escalationReason,
+        Guid? ownerPersonId,
+        Guid actorPersonId,
+        string? notes = null,
         DateTime? occurredAtUtc = null,
         Guid? eventId = null)
     {
         RequestId = requestId;
-        EscalatedByPersonId = escalatedByPersonId;
-        EscalationReason = escalationReason;
+        OwnerPersonId = ownerPersonId;
+        ActorPersonId = actorPersonId;
+        Notes = notes;
         OccurredAtUtc = occurredAtUtc ?? DateTime.UtcNow;
         EventId = eventId ?? Guid.NewGuid();
     }

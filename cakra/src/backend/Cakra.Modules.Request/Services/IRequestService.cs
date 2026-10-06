@@ -78,88 +78,99 @@ public partial interface IRequestService
         => AssignRequestOwnerAsync(requestId, ownerPersonId, notes, actorPersonId, cancellationToken);
 
     /// <summary>
-    /// Records triage evaluation notes on a Request in <c>EVALUATING</c> state and emits
-    /// <c>RequestEvaluated</c> (UC-REQ-003).
+    /// Starts active work on a Request, transitioning <c>ASSIGNED</c> or <c>PAUSED -&gt; IN_PROGRESS</c>,
+    /// enforcing that only the assigned owner can start work, recording state change audit entries in
+    /// <c>request.RequestAssignments</c>, and emitting <c>RequestWorkStarted</c> (Architecture CR-016 TD-002).
     /// </summary>
-    Task<RequestDto> EvaluateRequestAsync(
-        Guid requestId,
-        string evaluationNotes,
-        Guid? actorPersonId = null,
-        int? complexity = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Convenience alias for <see cref="EvaluateRequestAsync"/>.
-    /// </summary>
-    Task<RequestDto> EvaluateRequest(
-        Guid requestId,
-        string evaluationNotes,
-        Guid? actorPersonId = null,
-        int? complexity = null,
-        CancellationToken cancellationToken = default)
-        => EvaluateRequestAsync(requestId, evaluationNotes, actorPersonId, complexity, cancellationToken);
-
-    /// <summary>
-    /// Accepts operational responsibility for a Request in <c>EVALUATING</c> (or <c>ACCEPTED</c>) state,
-    /// transitioning it to <c>IN_PROGRESS</c>, recording state change audit entries in
-    /// <c>request.RequestAssignments</c>, and emitting <c>RequestAccepted</c> (UC-REQ-004).
-    /// </summary>
-    Task<RequestDto> AcceptRequestResponsibilityAsync(
+    Task<RequestDto> StartWorkAsync(
         Guid requestId,
         string? notes = null,
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Convenience alias for <see cref="AcceptRequestResponsibilityAsync"/>.
+    /// Convenience alias for <see cref="StartWorkAsync"/>.
     /// </summary>
-    Task<RequestDto> AcceptRequestResponsibility(
+    Task<RequestDto> StartWork(
         Guid requestId,
         string? notes = null,
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
-        => AcceptRequestResponsibilityAsync(requestId, notes, actorPersonId, cancellationToken);
+        => StartWorkAsync(requestId, notes, actorPersonId, cancellationToken);
 
     /// <summary>
-    /// Convenience alias for <see cref="AcceptRequestResponsibilityAsync"/>.
+    /// Suspends active work on a Request, transitioning <c>IN_PROGRESS -&gt; PAUSED</c>,
+    /// recording state change audit entries in <c>request.RequestAssignments</c>, and emitting
+    /// <c>RequestWorkPaused</c> (Architecture CR-016 TD-002).
     /// </summary>
-    Task<RequestDto> AcceptRequestAsync(
+    Task<RequestDto> PauseWorkAsync(
         Guid requestId,
-        string? notes = null,
+        string? note = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="PauseWorkAsync"/>.
+    /// </summary>
+    Task<RequestDto> PauseWork(
+        Guid requestId,
+        string? note = null,
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
-        => AcceptRequestResponsibilityAsync(requestId, notes, actorPersonId, cancellationToken);
+        => PauseWorkAsync(requestId, note, actorPersonId, cancellationToken);
 
     /// <summary>
-    /// Convenience alias for <see cref="AcceptRequestResponsibilityAsync"/>.
+    /// Cancels a Request in any active state, transitioning it to <c>CANCELLED</c>,
+    /// recording the cancellation resolution in <c>request.RequestResolutions</c> and audit entry in
+    /// <c>request.RequestAssignments</c>, and emitting <c>RequestCancelled</c> (Architecture CR-016 TD-002).
     /// </summary>
-    Task<RequestDto> AcceptRequest(
-        Guid requestId,
-        string? notes = null,
-        Guid? actorPersonId = null,
-        CancellationToken cancellationToken = default)
-        => AcceptRequestResponsibilityAsync(requestId, notes, actorPersonId, cancellationToken);
-
-    /// <summary>
-    /// Rejects a Request in <c>EVALUATING</c> state, transitioning it to <c>REJECTED</c>,
-    /// recording the rejection resolution in <c>request.RequestResolutions</c> and audit entry in
-    /// <c>request.RequestAssignments</c>, and emitting <c>RequestRejected</c> (UC-REQ-005).
-    /// </summary>
-    Task<RequestDto> RejectRequestAsync(
+    Task<RequestDto> CancelRequestAsync(
         Guid requestId,
         string reason,
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Convenience alias for <see cref="RejectRequestAsync"/>.
+    /// Convenience alias for <see cref="CancelRequestAsync"/>.
     /// </summary>
-    Task<RequestDto> RejectRequest(
+    Task<RequestDto> CancelRequest(
         Guid requestId,
         string reason,
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
-        => RejectRequestAsync(requestId, reason, actorPersonId, cancellationToken);
+        => CancelRequestAsync(requestId, reason, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Convenience alias for <see cref="CancelRequestAsync"/>.
+    /// </summary>
+    Task<RequestDto> Cancel(
+        Guid requestId,
+        string reason,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => CancelRequestAsync(requestId, reason, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Reassigns request ownership to a new person (Architecture CR-016 TD-003).
+    /// </summary>
+    Task<RequestDto> ReassignRequestOwnershipAsync(
+        Guid requestId,
+        Guid newOwnerPersonId,
+        string? notes = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => AssignRequestOwnerAsync(requestId, newOwnerPersonId, notes, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Convenience alias for <see cref="ReassignRequestOwnershipAsync"/>.
+    /// </summary>
+    Task<RequestDto> ReassignRequestOwnership(
+        Guid requestId,
+        Guid newOwnerPersonId,
+        string? notes = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => AssignRequestOwnerAsync(requestId, newOwnerPersonId, notes, actorPersonId, cancellationToken);
 
     /// <summary>
     /// Reviews and completes work on a Request in <c>IN_PROGRESS</c> state, transitioning it to

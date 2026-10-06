@@ -34,7 +34,9 @@ public sealed class FeedProjectionHandler :
     INotificationHandler<PostArchived>,
     INotificationHandler<RequestEscalated>,
     INotificationHandler<RequestRejected>,
-    INotificationHandler<RequestStalled>
+    INotificationHandler<RequestStalled>,
+    INotificationHandler<RequestWorkPaused>,
+    INotificationHandler<RequestCancelled>
 {
     static FeedProjectionHandler()
     {
@@ -683,6 +685,58 @@ public sealed class FeedProjectionHandler :
             NormalizeOptionalGuid(notification.ActorPersonId),
             notification.StalledReason,
             nameof(RequestStalled),
+            occurredAt,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Handles <see cref="RequestWorkPaused"/> by marking any associated <c>post.FeedItems</c> and <c>post.Posts</c>
+    /// as exceptional with <c>IsException = 1</c> and <c>ExceptionType = 'ESCALATION'</c>, or recording a
+    /// <c>SYSTEM_GENERATED</c> exception post and feed item when no feed item exists yet for the Request
+    /// (Architecture CR-016 TD-002).
+    /// </summary>
+    public async Task Handle(RequestWorkPaused notification, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        if (notification.RequestId == Guid.Empty)
+        {
+            return;
+        }
+
+        var occurredAt = notification.OccurredAtUtc == default ? UtcNow : notification.OccurredAtUtc;
+        await MarkRequestFeedItemsAsExceptionAsync(
+            notification.RequestId,
+            PostExceptionTypes.Escalation,
+            NormalizeOptionalGuid(notification.ActorPersonId),
+            notification.Notes,
+            nameof(RequestWorkPaused),
+            occurredAt,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Handles <see cref="RequestCancelled"/> by marking any associated <c>post.FeedItems</c> and <c>post.Posts</c>
+    /// as exceptional with <c>IsException = 1</c> and <c>ExceptionType = 'REJECTION'</c>, or recording a
+    /// <c>SYSTEM_GENERATED</c> exception post and feed item when no feed item exists yet for the Request
+    /// (Architecture CR-016 TD-002).
+    /// </summary>
+    public async Task Handle(RequestCancelled notification, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        if (notification.RequestId == Guid.Empty)
+        {
+            return;
+        }
+
+        var occurredAt = notification.OccurredAtUtc == default ? UtcNow : notification.OccurredAtUtc;
+        await MarkRequestFeedItemsAsExceptionAsync(
+            notification.RequestId,
+            PostExceptionTypes.Rejection,
+            NormalizeOptionalGuid(notification.CancelledByPersonId),
+            notification.CancellationReason,
+            nameof(RequestCancelled),
             occurredAt,
             cancellationToken);
     }

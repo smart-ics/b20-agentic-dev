@@ -34,12 +34,11 @@ export interface RequestDto {
   requestType: string
   status:
     | 'CAPTURED'
-    | 'EVALUATING'
-    | 'ACCEPTED'
-    | 'REJECTED'
+    | 'ASSIGNED'
     | 'IN_PROGRESS'
-    | 'ESCALATED'
+    | 'PAUSED'
     | 'COMPLETED'
+    | 'CANCELLED'
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
   complexity?: number
@@ -66,6 +65,88 @@ export interface RequestDto {
 }
 
 export type Request = RequestDto
+
+/**
+ * Starts active work on an assigned or paused request (CR-016 TD-002).
+ */
+export async function startWork(
+  requestId: string,
+  notes?: string | null,
+): Promise<RequestDto> {
+  const response = await httpClient.post<RequestDto>(`/requests/${requestId}/start`, {
+    notes: notes || null,
+  })
+  return response.data
+}
+
+/**
+ * Suspends active work on an in-progress request (CR-016 TD-002).
+ */
+export async function pauseWork(
+  requestId: string,
+  note?: string | null,
+): Promise<RequestDto> {
+  const response = await httpClient.post<RequestDto>(`/requests/${requestId}/pause`, {
+    note: note || null,
+  })
+  return response.data
+}
+
+/**
+ * Cancels a request from any active lifecycle state with mandatory reason (CR-016 TD-002).
+ */
+export async function cancelRequest(
+  requestId: string,
+  reason: string,
+): Promise<RequestDto> {
+  const response = await httpClient.post<RequestDto>(`/requests/${requestId}/cancel`, {
+    reason,
+  })
+  return response.data
+}
+
+/**
+ * Assigns an initial owner to a captured request.
+ */
+export async function assignRequestOwner(
+  requestId: string,
+  ownerPersonId: string,
+  notes?: string | null,
+): Promise<RequestDto> {
+  const response = await httpClient.post<RequestDto>(`/requests/${requestId}/assign`, {
+    ownerPersonId,
+    notes: notes || null,
+  })
+  return response.data
+}
+
+/**
+ * Reassigns request ownership, resetting active state to ASSIGNED (CR-016 TD-003).
+ */
+export async function reassignRequestOwner(
+  requestId: string,
+  newOwnerPersonId: string,
+  notes?: string | null,
+): Promise<RequestDto> {
+  const response = await httpClient.post<RequestDto>(`/requests/${requestId}/reassign`, {
+    newOwnerPersonId,
+    notes: notes || null,
+  })
+  return response.data
+}
+
+/**
+ * Completes an in-progress request with a resolution description.
+ */
+export async function completeRequest(
+  requestId: string,
+  resolutionDescription: string,
+): Promise<RequestDto> {
+  const response = await httpClient.post<RequestDto>(`/requests/${requestId}/complete`, {
+    resolutionDescription,
+  })
+  return response.data
+}
 
 /**
  * Appends a new sub-task to an active request.
@@ -132,6 +213,12 @@ export async function getAssignedSubTasks(personId?: string): Promise<RequestDto
 }
 
 export const requestService = {
+  startWork,
+  pauseWork,
+  cancelRequest,
+  assignRequestOwner,
+  reassignRequestOwner,
+  completeRequest,
   addSubTask,
   completeSubTask,
   reopenSubTask,

@@ -36,7 +36,8 @@ export interface ProgrammerMonthlyPerformanceItemDto {
   completedRequestsCount: number
   rejectedRequestsCount: number
   maxActiveRequestsCount: number
-  escalatedRequestsCount: number
+  pausedRequestsCount?: number
+  escalatedRequestsCount?: number
   avgResolutionHours: number
 }
 
@@ -47,7 +48,8 @@ export interface DailyWorkloadSnapshotDto {
   personId: string
   personName?: string | null
   activeRequestsCount: number
-  escalatedRequestsCount: number
+  pausedRequestsCount?: number
+  escalatedRequestsCount?: number
   stalledRequestsCount: number
   completedRequestsToday: number
   avgAgeHours: number
@@ -440,7 +442,7 @@ onMounted(async () => {
                   <th scope="col" class="text-end" style="width: 110px;">Completed</th>
                   <th scope="col" class="text-end" style="width: 100px;">Rejected</th>
                   <th scope="col" class="text-end" style="width: 120px;">Peak Active</th>
-                  <th scope="col" class="text-end" style="width: 110px;">Escalated</th>
+                  <th scope="col" class="text-end" style="width: 110px;">Paused</th>
                   <th scope="col" class="text-end" style="width: 130px;">Avg Turnaround</th>
                 </tr>
               </thead>
@@ -466,10 +468,12 @@ onMounted(async () => {
                     <span
                       class="badge"
                       :class="
-                        item.escalatedRequestsCount > 0 ? 'text-bg-danger' : 'text-bg-light border'
+                        (item.pausedRequestsCount ?? item.escalatedRequestsCount ?? 0) > 0
+                          ? 'text-bg-warning text-dark'
+                          : 'text-bg-light border'
                       "
                     >
-                      {{ item.escalatedRequestsCount }}
+                      {{ item.pausedRequestsCount ?? item.escalatedRequestsCount ?? 0 }}
                     </span>
                   </td>
                   <td class="text-end font-monospace fs-11">
@@ -508,7 +512,7 @@ onMounted(async () => {
                   <th scope="col" style="width: 105px;">Date</th>
                   <th scope="col">Programmer</th>
                   <th scope="col" class="text-end" style="width: 110px;">Active</th>
-                  <th scope="col" class="text-end" style="width: 100px;">Escalated</th>
+                  <th scope="col" class="text-end" style="width: 100px;">Paused</th>
                   <th scope="col" class="text-end" style="width: 110px;">Stalled (72h+)</th>
                   <th scope="col" class="text-end" style="width: 120px;">Completed Today</th>
                   <th scope="col" class="text-end" style="width: 110px;">Avg Age</th>
@@ -527,10 +531,12 @@ onMounted(async () => {
                     <span
                       class="badge"
                       :class="
-                        snap.escalatedRequestsCount > 0 ? 'text-bg-danger' : 'text-bg-light border'
+                        (snap.pausedRequestsCount ?? snap.escalatedRequestsCount ?? 0) > 0
+                          ? 'text-bg-warning text-dark'
+                          : 'text-bg-light border'
                       "
                     >
-                      {{ snap.escalatedRequestsCount }}
+                      {{ snap.pausedRequestsCount ?? snap.escalatedRequestsCount ?? 0 }}
                     </span>
                   </td>
                   <td class="text-end">

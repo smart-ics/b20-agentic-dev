@@ -159,34 +159,27 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
 
         recorded.Status.Should().Be(RequestStatusNames.Captured);
 
-        // 3. Step 2: AssignRequestOwner -> EVALUATING
+        // 3. Step 2: AssignRequestOwner -> ASSIGNED
         var assigned = await mediator.Send(new AssignRequestOwnerCommand(
             RequestId: recorded.Id,
             OwnerPersonId: programmer.Id,
             Notes: "Assigned to pharmacy module owner"));
 
-        assigned.Status.Should().Be(RequestStatusNames.Evaluating);
+        assigned.Status.Should().Be(RequestStatusNames.Assigned);
         assigned.OwnerPersonId.Should().Be(programmer.Id);
 
-        // 4. Step 3: EvaluateRequest -> EVALUATING with evaluation notes
+        // 4. Step 3: StartWorkCommand -> IN_PROGRESS
         currentContext?.Initialize(Guid.NewGuid(), programmer.Id, new[] { "Programmer" });
 
-        var evaluated = await mediator.Send(new EvaluateRequestCommand(
+        var started = await mediator.Send(new StartWorkCommand(
             RequestId: recorded.Id,
-            EvaluationNotes: "Missing UPDLOCK hint in inventory batch reservation query."));
-
-        evaluated.Status.Should().Be(RequestStatusNames.Evaluating);
-        evaluated.EvaluationNotes.Should().Be("Missing UPDLOCK hint in inventory batch reservation query.");
-
-        // 5. Step 4: AcceptRequestResponsibility -> IN_PROGRESS
-        var accepted = await mediator.Send(new AcceptRequestResponsibilityCommand(
-            RequestId: recorded.Id,
+            ActorPersonId: programmer.Id,
             Notes: "Accepted responsibility and implementing row-level lock fix"));
 
-        accepted.Status.Should().Be(RequestStatusNames.InProgress);
-        accepted.OwnerPersonId.Should().Be(programmer.Id);
+        started.Status.Should().Be(RequestStatusNames.InProgress);
+        started.OwnerPersonId.Should().Be(programmer.Id);
 
-        // 6. Step 5: ReviewRequestCompletion -> COMPLETED
+        // 5. Step 4: ReviewRequestCompletion -> COMPLETED
         var completed = await mediator.Send(new ReviewRequestCompletionCommand(
             RequestId: recorded.Id,
             ResolutionDescription: "Added UPDLOCK, ROWLOCK hints and optimistic concurrency check on stock deduction."));
@@ -197,7 +190,7 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
         completed.Resolution.Description.Should().Be("Added UPDLOCK, ROWLOCK hints and optimistic concurrency check on stock deduction.");
         completed.Resolution.ResolvedBy.Should().Be(programmer.Id);
 
-        // 7. Verify GetRequestById via IRequestQueryService and MediatR query
+        // 6. Verify GetRequestById via IRequestQueryService and MediatR query
         var queriedById = await requestQueryService.GetRequestById(recorded.Id);
         queriedById.Should().NotBeNull();
         queriedById!.Id.Should().Be(recorded.Id);
@@ -210,7 +203,6 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
         queriedById.CustomerName.Should().Be("RSUD Dr. Soetomo");
         queriedById.ProductId.Should().Be(product.Id);
         queriedById.ProductName.Should().Be("PenaElEMR");
-        queriedById.EvaluationNotes.Should().Be("Missing UPDLOCK hint in inventory batch reservation query.");
         queriedById.Resolution.Should().NotBeNull();
         queriedById.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Completed);
         queriedById.Resolution.ResolvedBy.Should().Be(programmer.Id);
@@ -220,9 +212,9 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
         queriedViaMediator.Should().NotBeNull();
         queriedViaMediator!.Status.Should().Be(RequestStatusNames.Completed);
 
-        // 8. Verify GetRequestStateHistory returns ordered audit trail
+        // 7. Verify GetRequestStateHistory returns ordered audit trail
         var history = await requestQueryService.GetRequestStateHistory(recorded.Id);
-        history.Should().HaveCount(5);
+        history.Should().HaveCount(4);
 
         history[0].PreviousStatus.Should().BeNull();
         history[0].NewStatus.Should().Be(RequestStatusNames.Captured);
@@ -230,25 +222,21 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
         history[0].ActorName.Should().Be("Rina Wijaya");
 
         history[1].PreviousStatus.Should().Be(RequestStatusNames.Captured);
-        history[1].NewStatus.Should().Be(RequestStatusNames.Evaluating);
+        history[1].NewStatus.Should().Be(RequestStatusNames.Assigned);
         history[1].AssignedOwnerPersonId.Should().Be(programmer.Id);
         history[1].AssignedOwnerName.Should().Be("Agus Santoso");
 
-        history[2].PreviousStatus.Should().Be(RequestStatusNames.Evaluating);
-        history[2].NewStatus.Should().Be(RequestStatusNames.Accepted);
+        history[2].PreviousStatus.Should().Be(RequestStatusNames.Assigned);
+        history[2].NewStatus.Should().Be(RequestStatusNames.InProgress);
         history[2].ActorPersonId.Should().Be(programmer.Id);
 
-        history[3].PreviousStatus.Should().Be(RequestStatusNames.Accepted);
-        history[3].NewStatus.Should().Be(RequestStatusNames.InProgress);
+        history[3].PreviousStatus.Should().Be(RequestStatusNames.InProgress);
+        history[3].NewStatus.Should().Be(RequestStatusNames.Completed);
         history[3].ActorPersonId.Should().Be(programmer.Id);
-
-        history[4].PreviousStatus.Should().Be(RequestStatusNames.InProgress);
-        history[4].NewStatus.Should().Be(RequestStatusNames.Completed);
-        history[4].ActorPersonId.Should().Be(programmer.Id);
     }
 
     [Fact]
-    public async Task RejectRequest_flow_persists_rejected_resolution_and_state_history_against_SqlServer()
+    public async Task CancelRequest_flow_persists_cancelled_resolution_and_state_history_against_SqlServer()
     {
         _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
         _factory.Should().NotBeNull();
@@ -279,28 +267,28 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
         await mediator.Send(new AssignRequestOwnerCommand(recorded.Id, programmer.Id));
 
         currentContext?.Initialize(Guid.NewGuid(), programmer.Id, new[] { "Programmer" });
-        await mediator.Send(new EvaluateRequestCommand(recorded.Id, "Verified duplicate of existing standard report."));
 
-        var rejected = await mediator.Send(new RejectRequestCommand(
+        var cancelled = await mediator.Send(new CancelRequestCommand(
             RequestId: recorded.Id,
-            Reason: "Duplicate of standard report RPT-FIN-004; no code change required."));
+            Reason: "Duplicate of standard report RPT-FIN-004; no code change required.",
+            ActorPersonId: programmer.Id));
 
-        rejected.Status.Should().Be(RequestStatusNames.Rejected);
-        rejected.Resolution.Should().NotBeNull();
-        rejected.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Rejected);
+        cancelled.Status.Should().Be(RequestStatusNames.Cancelled);
+        cancelled.Resolution.Should().NotBeNull();
+        cancelled.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Cancelled);
 
         var detail = await requestQueryService.GetRequestById(recorded.Id);
         detail.Should().NotBeNull();
-        detail!.Status.Should().Be(RequestStatusNames.Rejected);
+        detail!.Status.Should().Be(RequestStatusNames.Cancelled);
         detail.Resolution.Should().NotBeNull();
-        detail.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Rejected);
+        detail.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Cancelled);
         detail.Resolution.Description.Should().Be("Duplicate of standard report RPT-FIN-004; no code change required.");
         detail.Resolution.ResolvedBy.Should().Be(programmer.Id);
 
         var history = await mediator.Send(new GetRequestStateHistoryQuery(recorded.Id));
         history.Should().HaveCount(3);
-        history.Last().PreviousStatus.Should().Be(RequestStatusNames.Evaluating);
-        history.Last().NewStatus.Should().Be(RequestStatusNames.Rejected);
+        history.Last().PreviousStatus.Should().Be(RequestStatusNames.Assigned);
+        history.Last().NewStatus.Should().Be(RequestStatusNames.Cancelled);
         history.Last().ActorPersonId.Should().Be(programmer.Id);
     }
 
@@ -336,7 +324,7 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
             RequestType: "Bug",
             Priority: "HIGH"));
         await mediator.Send(new AssignRequestOwnerCommand(req1.Id, progA.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(req1.Id, "Working on Req 1"));
+        await mediator.Send(new StartWorkCommand(req1.Id, Notes: "Working on Req 1", ActorPersonId: progA.Id));
 
         // Req 2: Cust1 + Prod2, assigned to progA -> COMPLETED
         var req2 = await mediator.Send(new RecordRequestCommand(
@@ -347,12 +335,12 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
             RequestType: "Feature",
             Priority: "NORMAL"));
         await mediator.Send(new AssignRequestOwnerCommand(req2.Id, progA.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(req2.Id));
+        await mediator.Send(new StartWorkCommand(req2.Id, ActorPersonId: progA.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(req2.Id, "Completed Req 2"));
 
-        // Req 3: Cust2 + Prod1, assigned to progB -> EVALUATING
+        // Req 3: Cust2 + Prod1, assigned to progB -> ASSIGNED
         var req3 = await mediator.Send(new RecordRequestCommand(
-            Title: "Req 3 - Evaluating for ProgB",
+            Title: "Req 3 - Assigned for ProgB",
             Description: "Third request",
             CustomerId: cust2.Id,
             ProductId: prod1.Id,

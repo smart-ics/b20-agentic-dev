@@ -34,7 +34,10 @@ public sealed class RequestCoreCommandsTests
         typeof(RequestAssignmentDto).IsPublic.Should().BeTrue();
         typeof(RecordRequestCommand).IsPublic.Should().BeTrue();
         typeof(AssignRequestOwnerCommand).IsPublic.Should().BeTrue();
-        typeof(EvaluateRequestCommand).IsPublic.Should().BeTrue();
+        typeof(StartWorkCommand).IsPublic.Should().BeTrue();
+        typeof(PauseWorkCommand).IsPublic.Should().BeTrue();
+        typeof(CancelRequestCommand).IsPublic.Should().BeTrue();
+        typeof(ReassignRequestOwnershipCommand).IsPublic.Should().BeTrue();
 
         typeof(IRequestRepository).IsPublic.Should().BeFalse();
         typeof(RequestRepository).IsPublic.Should().BeFalse();
@@ -106,7 +109,7 @@ public sealed class RequestCoreCommandsTests
             .Which.Should().BeOfType<RequestRecorded>()
             .Which.RequestId.Should().Be(recorded.Id);
 
-        // 2. AssignRequestOwner (validates assignee, transitions to EVALUATING, records audit, emits RequestAssigned)
+        // 2. AssignRequestOwner (validates assignee, transitions to ASSIGNED, records audit, emits RequestAssigned)
         clock.AdvanceMinutes(15);
         var assigned = await service.Handle(
             new AssignRequestOwnerCommand(
@@ -115,40 +118,39 @@ public sealed class RequestCoreCommandsTests
                 Notes: "Assigned to hospital integration specialist"),
             CancellationToken.None);
 
-        assigned.Status.Should().Be(RequestStatusNames.Evaluating);
+        assigned.Status.Should().Be(RequestStatusNames.Assigned);
         assigned.OwnerPersonId.Should().Be(ownerId);
         assigned.Assignments.Should().HaveCount(2);
         assigned.Assignments[1].PreviousStatus.Should().Be(RequestStatusNames.Captured);
-        assigned.Assignments[1].NewStatus.Should().Be(RequestStatusNames.Evaluating);
+        assigned.Assignments[1].NewStatus.Should().Be(RequestStatusNames.Assigned);
         assigned.Assignments[1].AssignedOwnerPersonId.Should().Be(ownerId);
         assigned.Assignments[1].ActorPersonId.Should().Be(actorId);
 
         repo.Assignments.Should().HaveCount(2);
-        repo.Assignments.Last().NewStatus.Should().Be(RequestStatus.Evaluating);
+        repo.Assignments.Last().NewStatus.Should().Be(RequestStatus.Assigned);
 
         dispatcher.Events.OfType<RequestAssigned>().Should().ContainSingle(e =>
             e.RequestId == recorded.Id &&
             e.OwnerPersonId == ownerId &&
             e.PreviousStatus == RequestStatus.Captured &&
-            e.NewStatus == RequestStatus.Evaluating);
+            e.NewStatus == RequestStatus.Assigned);
 
-        // 3. EvaluateRequest (records evaluation notes, emits RequestEvaluated)
+        // 3. StartWork (owner starts work, transitions ASSIGNED -> IN_PROGRESS, emits RequestWorkStarted)
         clock.AdvanceMinutes(20);
         contextProvider.CurrentPersonId = ownerId;
 
-        var evaluated = await service.Handle(
-            new EvaluateRequestCommand(
+        var started = await service.Handle(
+            new StartWorkCommand(
                 RequestId: recorded.Id,
-                EvaluationNotes: "Root cause is static HttpClient timeout of 5s; configurable retry policy needed."),
+                Notes: "Root cause investigation started."),
             CancellationToken.None);
 
-        evaluated.Status.Should().Be(RequestStatusNames.Evaluating);
-        evaluated.EvaluationNotes.Should().Be("Root cause is static HttpClient timeout of 5s; configurable retry policy needed.");
+        started.Status.Should().Be(RequestStatusNames.InProgress);
 
-        dispatcher.Events.OfType<RequestEvaluated>().Should().ContainSingle(e =>
+        dispatcher.Events.OfType<RequestWorkStarted>().Should().ContainSingle(e =>
             e.RequestId == recorded.Id &&
-            e.EvaluatedByPersonId == ownerId &&
-            e.EvaluationNotes.Contains("HttpClient timeout"));
+            e.OwnerPersonId == ownerId &&
+            e.Notes!.Contains("investigation started"));
     }
 
     [Fact]
@@ -210,10 +212,9 @@ public sealed class RequestCoreCommandsTests
             created.Id, inactiveAssignee);
         await inactiveAssigneeAct.Should().ThrowAsync<InvalidOperationException>();
 
-        // Evaluate before AssignOwner (still CAPTURED) -> InvalidRequestStateTransitionException
-        var prematureEvaluateAct = async () => await service.EvaluateRequest(
-            created.Id, "Evaluating prematurely");
-        await prematureEvaluateAct.Should().ThrowAsync<InvalidRequestStateTransitionException>();
+        // StartWork before AssignOwner (still CAPTURED, no owner) -> InvalidOperationException
+        var prematureStartAct = async () => await service.StartWorkAsync(created.Id);
+        await prematureStartAct.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
@@ -231,10 +232,18 @@ public sealed class RequestCoreCommandsTests
         assignValidator.Validate(new AssignRequestOwnerCommand(Guid.NewGuid(), Guid.Empty)).IsValid.Should().BeFalse();
         assignValidator.Validate(new AssignRequestOwnerCommand(Guid.NewGuid(), Guid.NewGuid())).IsValid.Should().BeTrue();
 
-        var evaluateValidator = new EvaluateRequestCommandValidator();
-        evaluateValidator.Validate(new EvaluateRequestCommand(Guid.Empty, "Notes")).IsValid.Should().BeFalse();
-        evaluateValidator.Validate(new EvaluateRequestCommand(Guid.NewGuid(), " ")).IsValid.Should().BeFalse();
-        evaluateValidator.Validate(new EvaluateRequestCommand(Guid.NewGuid(), "Valid triage notes")).IsValid.Should().BeTrue();
+        var startValidator = new StartWorkCommandValidator();
+        startValidator.Validate(new StartWorkCommand(Guid.Empty)).IsValid.Should().BeFalse();
+        startValidator.Validate(new StartWorkCommand(Guid.NewGuid())).IsValid.Should().BeTrue();
+
+        var pauseValidator = new PauseWorkCommandValidator();
+        pauseValidator.Validate(new PauseWorkCommand(Guid.Empty)).IsValid.Should().BeFalse();
+        pauseValidator.Validate(new PauseWorkCommand(Guid.NewGuid())).IsValid.Should().BeTrue();
+
+        var cancelValidator = new CancelRequestCommandValidator();
+        cancelValidator.Validate(new CancelRequestCommand(Guid.Empty, "Reason")).IsValid.Should().BeFalse();
+        cancelValidator.Validate(new CancelRequestCommand(Guid.NewGuid(), "")).IsValid.Should().BeFalse();
+        cancelValidator.Validate(new CancelRequestCommand(Guid.NewGuid(), "Valid reason")).IsValid.Should().BeTrue();
     }
 
     private sealed class InMemoryRequestRepository : IRequestRepository
@@ -265,8 +274,6 @@ public sealed class RequestCoreCommandsTests
                 req.ProductId,
                 req.WorkPackageId,
                 req.EvaluationNotes,
-                req.EscalationReason,
-                req.ManagementDecisionNotes,
                 req.CreatedAt,
                 req.UpdatedAt,
                 resolution,

@@ -34,8 +34,8 @@ public sealed class RequestCompletionAndQueriesTests
         typeof(RequestDetailDto).IsPublic.Should().BeTrue();
         typeof(RequestStateHistoryItemDto).IsPublic.Should().BeTrue();
 
-        typeof(AcceptRequestResponsibilityCommand).IsPublic.Should().BeTrue();
-        typeof(RejectRequestCommand).IsPublic.Should().BeTrue();
+        typeof(StartWorkCommand).IsPublic.Should().BeTrue();
+        typeof(CancelRequestCommand).IsPublic.Should().BeTrue();
         typeof(ReviewRequestCompletionCommand).IsPublic.Should().BeTrue();
         typeof(CompleteRequestCommand).IsPublic.Should().BeTrue();
 
@@ -92,7 +92,7 @@ public sealed class RequestCompletionAndQueriesTests
 
         recorded.Status.Should().Be(RequestStatusNames.Captured);
 
-        // 2. Assign -> EVALUATING
+        // 2. Assign -> ASSIGNED
         clock.AdvanceMinutes(10);
         var assigned = await service.Handle(
             new AssignRequestOwnerCommand(
@@ -101,47 +101,29 @@ public sealed class RequestCompletionAndQueriesTests
                 Notes: "Assigned to PACS integration owner"),
             CancellationToken.None);
 
-        assigned.Status.Should().Be(RequestStatusNames.Evaluating);
+        assigned.Status.Should().Be(RequestStatusNames.Assigned);
         assigned.OwnerPersonId.Should().Be(programmerId);
 
-        // 3. Evaluate -> EVALUATING
-        clock.AdvanceMinutes(15);
-        contextProvider.CurrentPersonId = programmerId;
-
-        var evaluated = await service.Handle(
-            new EvaluateRequestCommand(
-                RequestId: recorded.Id,
-                EvaluationNotes: "Buffer size in DICOM tag writer is capped at 64KB; needs dynamic stream allocation."),
-            CancellationToken.None);
-
-        evaluated.Status.Should().Be(RequestStatusNames.Evaluating);
-        evaluated.EvaluationNotes.Should().Contain("DICOM tag writer");
-
-        // 4. AcceptRequestResponsibility -> transitions to IN_PROGRESS, emits RequestAccepted
+        // 3. StartWork -> IN_PROGRESS
         clock.AdvanceMinutes(5);
-        var accepted = await service.Handle(
-            new AcceptRequestResponsibilityCommand(
+        contextProvider.CurrentPersonId = programmerId;
+        var started = await service.Handle(
+            new StartWorkCommand(
                 RequestId: recorded.Id,
-                Notes: "Accepted responsibility and starting fix"),
+                Notes: "Starting fix"),
             CancellationToken.None);
 
-        accepted.Status.Should().Be(RequestStatusNames.InProgress);
-        accepted.OwnerPersonId.Should().Be(programmerId);
+        started.Status.Should().Be(RequestStatusNames.InProgress);
+        started.OwnerPersonId.Should().Be(programmerId);
 
-        dispatcher.Events.OfType<RequestAccepted>().Should().ContainSingle(e =>
+        dispatcher.Events.OfType<RequestWorkStarted>().Should().ContainSingle(e =>
             e.RequestId == recorded.Id &&
             e.OwnerPersonId == programmerId &&
-            e.Notes == "Accepted responsibility and starting fix");
+            e.Notes == "Starting fix");
 
         repo.Assignments.Should().Contain(a =>
             a.RequestId == recorded.Id &&
-            a.PreviousStatus == RequestStatus.Evaluating &&
-            a.NewStatus == RequestStatus.Accepted &&
-            a.ActorPersonId == programmerId);
-
-        repo.Assignments.Should().Contain(a =>
-            a.RequestId == recorded.Id &&
-            a.PreviousStatus == RequestStatus.Accepted &&
+            a.PreviousStatus == RequestStatus.Assigned &&
             a.NewStatus == RequestStatus.InProgress &&
             a.ActorPersonId == programmerId);
 
@@ -177,7 +159,7 @@ public sealed class RequestCompletionAndQueriesTests
     }
 
     [Fact]
-    public async Task RejectRequest_from_Evaluating_transitions_to_Rejected_records_resolution_and_audit_and_emits_RequestRejected()
+    public async Task CancelRequest_transitions_to_Cancelled_records_resolution_and_audit_and_emits_RequestCancelled()
     {
         var recorderId = Guid.NewGuid();
         var programmerId = Guid.NewGuid();
@@ -210,37 +192,35 @@ public sealed class RequestCompletionAndQueriesTests
 
         await service.AssignRequestOwner(recorded.Id, programmerId, "Triage assignment");
 
-        contextProvider.CurrentPersonId = programmerId;
-        await service.EvaluateRequest(recorded.Id, "Out of scope for hospital clinical system; belongs to ERP.");
-
         clock.AdvanceMinutes(10);
-        var rejected = await service.Handle(
-            new RejectRequestCommand(
+        contextProvider.CurrentPersonId = programmerId;
+        var cancelled = await service.Handle(
+            new CancelRequestCommand(
                 RequestId: recorded.Id,
                 Reason: "Out of product scope: HR payroll is excluded from CAKRA HIS boundary."),
             CancellationToken.None);
 
-        rejected.Status.Should().Be(RequestStatusNames.Rejected);
-        rejected.Resolution.Should().NotBeNull();
-        rejected.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Rejected);
-        rejected.Resolution.Description.Should().Be("Out of product scope: HR payroll is excluded from CAKRA HIS boundary.");
-        rejected.Resolution.ResolvedBy.Should().Be(programmerId);
+        cancelled.Status.Should().Be(RequestStatusNames.Cancelled);
+        cancelled.Resolution.Should().NotBeNull();
+        cancelled.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Cancelled);
+        cancelled.Resolution.Description.Should().Be("Out of product scope: HR payroll is excluded from CAKRA HIS boundary.");
+        cancelled.Resolution.ResolvedBy.Should().Be(programmerId);
 
         repo.Resolutions.Should().ContainKey(recorded.Id);
-        repo.Resolutions[recorded.Id].Outcome.Should().Be(ResolutionOutcomeNames.Rejected);
+        repo.Resolutions[recorded.Id].Outcome.Should().Be(ResolutionOutcomeNames.Cancelled);
 
-        repo.Assignments.Last().PreviousStatus.Should().Be(RequestStatus.Evaluating);
-        repo.Assignments.Last().NewStatus.Should().Be(RequestStatus.Rejected);
+        repo.Assignments.Last().PreviousStatus.Should().Be(RequestStatus.Assigned);
+        repo.Assignments.Last().NewStatus.Should().Be(RequestStatus.Cancelled);
         repo.Assignments.Last().ActorPersonId.Should().Be(programmerId);
 
-        dispatcher.Events.OfType<RequestRejected>().Should().ContainSingle(e =>
+        dispatcher.Events.OfType<RequestCancelled>().Should().ContainSingle(e =>
             e.RequestId == recorded.Id &&
-            e.RejectedByPersonId == programmerId &&
-            e.RejectionReason == "Out of product scope: HR payroll is excluded from CAKRA HIS boundary.");
+            e.CancelledByPersonId == programmerId &&
+            e.CancellationReason == "Out of product scope: HR payroll is excluded from CAKRA HIS boundary.");
     }
 
     [Fact]
-    public async Task Invalid_state_transitions_on_Accept_Reject_and_Complete_throw_InvalidRequestStateTransitionException()
+    public async Task Invalid_state_transitions_on_Complete_and_closed_requests_throw_InvalidRequestStateTransitionException()
     {
         var actorId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
@@ -259,34 +239,24 @@ public sealed class RequestCompletionAndQueriesTests
 
         var captured = await service.RecordRequest("Title", "Description");
 
-        // Cannot Accept, Reject, or Complete while CAPTURED
-        var acceptFromCaptured = async () => await service.AcceptRequestResponsibility(captured.Id);
-        await acceptFromCaptured.Should().ThrowAsync<InvalidRequestStateTransitionException>();
-
-        var rejectFromCaptured = async () => await service.RejectRequest(captured.Id, "Reason");
-        await rejectFromCaptured.Should().ThrowAsync<InvalidRequestStateTransitionException>();
-
+        // Cannot Complete while CAPTURED
         var completeFromCaptured = async () => await service.ReviewRequestCompletion(captured.Id, "Done");
         await completeFromCaptured.Should().ThrowAsync<InvalidRequestStateTransitionException>();
 
-        // Transition to EVALUATING
+        // Transition to ASSIGNED
         await service.AssignRequestOwner(captured.Id, ownerId);
 
-        // Cannot Complete directly from EVALUATING
-        var completeFromEvaluating = async () => await service.ReviewRequestCompletion(captured.Id, "Done");
-        await completeFromEvaluating.Should().ThrowAsync<InvalidRequestStateTransitionException>();
+        // Cannot Complete directly from ASSIGNED
+        var completeFromAssigned = async () => await service.ReviewRequestCompletion(captured.Id, "Done");
+        await completeFromAssigned.Should().ThrowAsync<InvalidRequestStateTransitionException>();
 
         // Transition to IN_PROGRESS
-        await service.AcceptRequestResponsibility(captured.Id);
-
-        // Cannot Reject once IN_PROGRESS
-        var rejectFromInProgress = async () => await service.RejectRequest(captured.Id, "Too late to reject");
-        await rejectFromInProgress.Should().ThrowAsync<InvalidRequestStateTransitionException>();
+        await service.StartWorkAsync(captured.Id, actorPersonId: ownerId);
 
         // Transition to COMPLETED
         await service.ReviewRequestCompletion(captured.Id, "Completed successfully");
 
-        // Cannot Complete or Accept once COMPLETED
+        // Cannot Complete once COMPLETED
         var completeAgain = async () => await service.ReviewRequestCompletion(captured.Id, "Again");
         await completeAgain.Should().ThrowAsync<InvalidRequestStateTransitionException>();
     }
@@ -294,20 +264,15 @@ public sealed class RequestCompletionAndQueriesTests
     [Fact]
     public void Completion_command_validators_enforce_required_fields()
     {
-        var acceptValidator = new AcceptRequestResponsibilityCommandValidator();
-        acceptValidator.Validate(new AcceptRequestResponsibilityCommand(Guid.Empty)).IsValid.Should().BeFalse();
-        acceptValidator.Validate(new AcceptRequestResponsibilityCommand(Guid.NewGuid(), ActorPersonId: Guid.Empty)).IsValid.Should().BeFalse();
-        acceptValidator.Validate(new AcceptRequestResponsibilityCommand(Guid.NewGuid(), "Notes")).IsValid.Should().BeTrue();
+        var reviewValidator = new ReviewRequestCompletionCommandValidator();
+        reviewValidator.Validate(new ReviewRequestCompletionCommand(Guid.Empty, "Resolution")).IsValid.Should().BeFalse();
+        reviewValidator.Validate(new ReviewRequestCompletionCommand(Guid.NewGuid(), "   ")).IsValid.Should().BeFalse();
+        reviewValidator.Validate(new ReviewRequestCompletionCommand(Guid.NewGuid(), "Resolved issue")).IsValid.Should().BeTrue();
 
-        var rejectValidator = new RejectRequestCommandValidator();
-        rejectValidator.Validate(new RejectRequestCommand(Guid.Empty, "Reason")).IsValid.Should().BeFalse();
-        rejectValidator.Validate(new RejectRequestCommand(Guid.NewGuid(), "")).IsValid.Should().BeFalse();
-        rejectValidator.Validate(new RejectRequestCommand(Guid.NewGuid(), "Valid reason")).IsValid.Should().BeTrue();
-
-        var completeValidator = new ReviewRequestCompletionCommandValidator();
-        completeValidator.Validate(new ReviewRequestCompletionCommand(Guid.Empty, "Resolution")).IsValid.Should().BeFalse();
-        completeValidator.Validate(new ReviewRequestCompletionCommand(Guid.NewGuid(), "   ")).IsValid.Should().BeFalse();
-        completeValidator.Validate(new ReviewRequestCompletionCommand(Guid.NewGuid(), "Resolved issue")).IsValid.Should().BeTrue();
+        var completeValidator = new CompleteRequestCommandValidator();
+        completeValidator.Validate(new CompleteRequestCommand(Guid.Empty, "Resolution")).IsValid.Should().BeFalse();
+        completeValidator.Validate(new CompleteRequestCommand(Guid.NewGuid(), "   ")).IsValid.Should().BeFalse();
+        completeValidator.Validate(new CompleteRequestCommand(Guid.NewGuid(), "Resolved issue")).IsValid.Should().BeTrue();
     }
 
     private sealed class InMemoryRequestRepository : IRequestRepository
@@ -338,8 +303,6 @@ public sealed class RequestCompletionAndQueriesTests
                 req.ProductId,
                 req.WorkPackageId,
                 req.EvaluationNotes,
-                req.EscalationReason,
-                req.ManagementDecisionNotes,
                 req.CreatedAt,
                 req.UpdatedAt,
                 resolution,

@@ -8,7 +8,7 @@ public partial interface IManagementAnalyticsService
 {
     /// <summary>
     /// Dynamically aggregates active <c>Requests</c> grouped by <c>OwnerPersonId</c> and lifecycle sub-state
-    /// (<c>CAPTURED</c>, <c>EVALUATING</c>, <c>ACCEPTED</c>, <c>IN_PROGRESS</c>, <c>ESCALATED</c>)
+    /// (<c>CAPTURED</c>, <c>ASSIGNED</c>, <c>IN_PROGRESS</c>, <c>PAUSED</c>)
     /// using Dapper parameterized SQL, enriched with person identity from <c>IOrganizationQueryService</c>
     /// for <c>SCR-MGT-003: Programmer Workload Review</c> (Architecture §13, FEAT-MGT-004, UC-MGT-004).
     /// </summary>
@@ -27,7 +27,7 @@ public partial interface IManagementAnalyticsService
         => GetProgrammerActiveWorkloadAsync(personId, cancellationToken);
 
     /// <summary>
-    /// Dynamically queries active requests, open blockers (<c>ESCALATED</c>), and recent completions
+    /// Dynamically queries active requests, open blockers (<c>PAUSED</c>), and recent completions
     /// (<c>COMPLETED</c>) for the specified <paramref name="customerId"/> using Dapper parameterized SQL,
     /// enriched with customer details and maintenance contract status via
     /// <c>ICustomerQueryService.GetCustomerWithContractStatusAsync</c> for

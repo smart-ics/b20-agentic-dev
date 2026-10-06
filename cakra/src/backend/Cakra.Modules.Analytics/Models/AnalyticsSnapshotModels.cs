@@ -30,8 +30,16 @@ public sealed record DailyWorkloadSnapshotDto
     /// <summary>Count of active (non-closed) requests owned by the person as of the snapshot date.</summary>
     public int ActiveRequestsCount { get; init; }
 
-    /// <summary>Count of requests owned by the person in <c>ESCALATED</c> status as of the snapshot date.</summary>
-    public int EscalatedRequestsCount { get; init; }
+    /// <summary>Count of requests owned by the person in <c>PAUSED</c> status as of the snapshot date.</summary>
+    public int PausedRequestsCount { get; init; }
+
+    /// <summary>Deprecated alias for <see cref="PausedRequestsCount"/>.</summary>
+    [Obsolete("Use PausedRequestsCount instead.")]
+    public int EscalatedRequestsCount
+    {
+        get => PausedRequestsCount;
+        init => PausedRequestsCount = value;
+    }
 
     /// <summary>Count of active requests owned by the person that have had no update for 72+ hours.</summary>
     public int StalledRequestsCount { get; init; }
@@ -148,8 +156,16 @@ public sealed record ProgrammerMonthlyPerformanceItemDto
     /// <summary>Peak or latest active request count observed in daily snapshots during the month.</summary>
     public int MaxActiveRequestsCount { get; init; }
 
-    /// <summary>Total escalated request snapshot observations or escalations during the month.</summary>
-    public int EscalatedRequestsCount { get; init; }
+    /// <summary>Total paused request snapshot observations during the month.</summary>
+    public int PausedRequestsCount { get; init; }
+
+    /// <summary>Deprecated alias for <see cref="PausedRequestsCount"/>.</summary>
+    [Obsolete("Use PausedRequestsCount instead.")]
+    public int EscalatedRequestsCount
+    {
+        get => PausedRequestsCount;
+        init => PausedRequestsCount = value;
+    }
 
     /// <summary>Average request age/resolution turnaround in hours during the month.</summary>
     public decimal AvgResolutionHours { get; init; }

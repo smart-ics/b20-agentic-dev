@@ -43,12 +43,11 @@ export interface SearchRequestItem {
   requestType: string
   status:
     | 'CAPTURED'
-    | 'EVALUATING'
-    | 'ACCEPTED'
-    | 'REJECTED'
+    | 'ASSIGNED'
     | 'IN_PROGRESS'
-    | 'ESCALATED'
+    | 'PAUSED'
     | 'COMPLETED'
+    | 'CANCELLED'
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
   ownerPersonId: string | null
@@ -103,12 +102,11 @@ interface ProblemDetailsPayload {
 
 const REQUEST_STATUSES = [
   'CAPTURED',
-  'EVALUATING',
-  'ACCEPTED',
+  'ASSIGNED',
   'IN_PROGRESS',
-  'ESCALATED',
+  'PAUSED',
   'COMPLETED',
-  'REJECTED',
+  'CANCELLED',
 ] as const
 
 const router = useRouter()
@@ -172,16 +170,22 @@ function statusBadgeClass(status: string | null | undefined): string {
   switch ((status ?? '').toUpperCase()) {
     case 'CAPTURED':
       return 'text-bg-secondary'
-    case 'EVALUATING':
-      return 'text-bg-info'
-    case 'ACCEPTED':
-      return 'text-bg-primary'
+    case 'ASSIGNED':
+      return 'text-bg-info text-dark'
     case 'IN_PROGRESS':
       return 'text-bg-primary'
-    case 'ESCALATED':
-      return 'text-bg-warning'
+    case 'PAUSED':
+      return 'text-bg-warning text-dark'
     case 'COMPLETED':
       return 'text-bg-success'
+    case 'CANCELLED':
+      return 'text-bg-danger'
+    case 'EVALUATING':
+      return 'text-bg-info text-dark'
+    case 'ACCEPTED':
+      return 'text-bg-info text-dark'
+    case 'ESCALATED':
+      return 'text-bg-warning text-dark'
     case 'REJECTED':
       return 'text-bg-danger'
     default:
@@ -494,7 +498,7 @@ onMounted(async () => {
             :disabled="isSearching"
             data-testid="search-status-select"
           >
-            <option value="">All Statuses</option>
+            <option value="">ALL</option>
             <option v-for="status in REQUEST_STATUSES" :key="status" :value="status">
               {{ status }}
             </option>

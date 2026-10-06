@@ -21,9 +21,10 @@ public sealed partial class RequestService :
     IRequestService,
     IRequestHandler<RecordRequestCommand, RequestDto>,
     IRequestHandler<AssignRequestOwnerCommand, RequestDto>,
-    IRequestHandler<EvaluateRequestCommand, RequestDto>,
-    IRequestHandler<AcceptRequestResponsibilityCommand, RequestDto>,
-    IRequestHandler<RejectRequestCommand, RequestDto>,
+    IRequestHandler<StartWorkCommand, RequestDto>,
+    IRequestHandler<PauseWorkCommand, RequestDto>,
+    IRequestHandler<CancelRequestCommand, RequestDto>,
+    IRequestHandler<ReassignRequestOwnershipCommand, RequestDto>,
     IRequestHandler<ReviewRequestCompletionCommand, RequestDto>,
     IRequestHandler<CompleteRequestCommand, RequestDto>,
     IRequestHandler<UpdateRequestComplexityCommand, RequestDto>,
@@ -302,21 +303,15 @@ public sealed partial class RequestService :
     }
 
     /// <inheritdoc />
-    public async Task<RequestDto> EvaluateRequestAsync(
+    public async Task<RequestDto> StartWorkAsync(
         Guid requestId,
-        string evaluationNotes,
+        string? notes = null,
         Guid? actorPersonId = null,
-        int? complexity = null,
         CancellationToken cancellationToken = default)
     {
         if (requestId == Guid.Empty)
         {
             throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
-        }
-
-        if (string.IsNullOrWhiteSpace(evaluationNotes))
-        {
-            throw new RequestDomainValidationException("Evaluation notes cannot be empty.", nameof(evaluationNotes));
         }
 
         var request = await GetRequiredRequestAsync(requestId, cancellationToken);
@@ -326,13 +321,7 @@ public sealed partial class RequestService :
         var hadResolution = request.Resolution is not null;
         var now = GetNextMonotonicTimestamp(request);
 
-        request.Evaluate(evaluationNotes, resolvedActorId, now);
-
-        if (complexity.HasValue)
-        {
-            await ValidateComplexityAuthorizationAsync(resolvedActorId, cancellationToken);
-            request.SetComplexity(complexity.Value, resolvedActorId, reason: "Set during evaluation", utcNow: now.AddMilliseconds(5));
-        }
+        request.StartWork(resolvedActorId, notes, now);
 
         await PersistStateChangesAndDispatchAsync(
             request,
@@ -342,6 +331,14 @@ public sealed partial class RequestService :
 
         return RequestDto.FromDomain(request);
     }
+
+    /// <inheritdoc />
+    public Task<RequestDto> StartWork(
+        Guid requestId,
+        string? notes = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => StartWorkAsync(requestId, notes, actorPersonId, cancellationToken);
 
     /// <inheritdoc />
     public Task<RequestDto> RecordRequest(
@@ -379,18 +376,9 @@ public sealed partial class RequestService :
         => AssignRequestOwnerAsync(requestId, ownerPersonId, notes, actorPersonId, cancellationToken);
 
     /// <inheritdoc />
-    public Task<RequestDto> EvaluateRequest(
+    public async Task<RequestDto> PauseWorkAsync(
         Guid requestId,
-        string evaluationNotes,
-        Guid? actorPersonId = null,
-        int? complexity = null,
-        CancellationToken cancellationToken = default)
-        => EvaluateRequestAsync(requestId, evaluationNotes, actorPersonId, complexity, cancellationToken);
-
-    /// <inheritdoc />
-    public async Task<RequestDto> AcceptRequestResponsibilityAsync(
-        Guid requestId,
-        string? notes = null,
+        string? note = null,
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
     {
@@ -404,19 +392,9 @@ public sealed partial class RequestService :
         var resolvedActorId = ResolveActorPersonId(actorPersonId, fallbackPersonId: request.OwnerPersonId);
         var existingAssignmentIds = SnapshotAssignmentIds(request);
         var hadResolution = request.Resolution is not null;
+        var now = GetNextMonotonicTimestamp(request);
 
-        if (request.Status == RequestStatus.Accepted)
-        {
-            var startTime = GetNextMonotonicTimestamp(request);
-            request.StartProgress(resolvedActorId, notes, startTime);
-        }
-        else
-        {
-            var acceptTime = GetNextMonotonicTimestamp(request);
-            request.Accept(resolvedActorId, notes, acceptTime);
-            var startTime = acceptTime.AddMilliseconds(10);
-            request.StartProgress(resolvedActorId, notes, startTime);
-        }
+        request.PauseWork(resolvedActorId, note, now);
 
         await PersistStateChangesAndDispatchAsync(
             request,
@@ -428,31 +406,15 @@ public sealed partial class RequestService :
     }
 
     /// <inheritdoc />
-    public Task<RequestDto> AcceptRequestResponsibility(
+    public Task<RequestDto> PauseWork(
         Guid requestId,
-        string? notes = null,
+        string? note = null,
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
-        => AcceptRequestResponsibilityAsync(requestId, notes, actorPersonId, cancellationToken);
+        => PauseWorkAsync(requestId, note, actorPersonId, cancellationToken);
 
     /// <inheritdoc />
-    public Task<RequestDto> AcceptRequestAsync(
-        Guid requestId,
-        string? notes = null,
-        Guid? actorPersonId = null,
-        CancellationToken cancellationToken = default)
-        => AcceptRequestResponsibilityAsync(requestId, notes, actorPersonId, cancellationToken);
-
-    /// <inheritdoc />
-    public Task<RequestDto> AcceptRequest(
-        Guid requestId,
-        string? notes = null,
-        Guid? actorPersonId = null,
-        CancellationToken cancellationToken = default)
-        => AcceptRequestResponsibilityAsync(requestId, notes, actorPersonId, cancellationToken);
-
-    /// <inheritdoc />
-    public async Task<RequestDto> RejectRequestAsync(
+    public async Task<RequestDto> CancelRequestAsync(
         Guid requestId,
         string reason,
         Guid? actorPersonId = null,
@@ -465,7 +427,7 @@ public sealed partial class RequestService :
 
         if (string.IsNullOrWhiteSpace(reason))
         {
-            throw new RequestDomainValidationException("Rejection reason cannot be empty.", nameof(reason));
+            throw new RequestDomainValidationException("Cancellation reason cannot be empty.", nameof(reason));
         }
 
         var request = await GetRequiredRequestAsync(requestId, cancellationToken);
@@ -475,7 +437,7 @@ public sealed partial class RequestService :
         var hadResolution = request.Resolution is not null;
         var now = GetNextMonotonicTimestamp(request);
 
-        request.Reject(reason, resolvedActorId, now);
+        request.Cancel(reason, resolvedActorId, now);
 
         await PersistStateChangesAndDispatchAsync(
             request,
@@ -487,12 +449,38 @@ public sealed partial class RequestService :
     }
 
     /// <inheritdoc />
-    public Task<RequestDto> RejectRequest(
+    public Task<RequestDto> CancelRequest(
         Guid requestId,
         string reason,
         Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
-        => RejectRequestAsync(requestId, reason, actorPersonId, cancellationToken);
+        => CancelRequestAsync(requestId, reason, actorPersonId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<RequestDto> Cancel(
+        Guid requestId,
+        string reason,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => CancelRequestAsync(requestId, reason, actorPersonId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<RequestDto> ReassignRequestOwnershipAsync(
+        Guid requestId,
+        Guid newOwnerPersonId,
+        string? notes = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => AssignRequestOwnerAsync(requestId, newOwnerPersonId, notes, actorPersonId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<RequestDto> ReassignRequestOwnership(
+        Guid requestId,
+        Guid newOwnerPersonId,
+        string? notes = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => AssignRequestOwnerAsync(requestId, newOwnerPersonId, notes, actorPersonId, cancellationToken);
 
     /// <inheritdoc />
     public async Task<RequestDto> ReviewRequestCompletionAsync(
@@ -1010,33 +998,43 @@ public sealed partial class RequestService :
             cancellationToken);
     }
 
-    public Task<RequestDto> Handle(EvaluateRequestCommand request, CancellationToken cancellationToken)
+    public Task<RequestDto> Handle(StartWorkCommand request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return EvaluateRequestAsync(
-            request.RequestId,
-            request.EvaluationNotes,
-            request.ActorPersonId,
-            request.Complexity,
-            cancellationToken);
-    }
-
-    public Task<RequestDto> Handle(AcceptRequestResponsibilityCommand request, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return AcceptRequestResponsibilityAsync(
+        return StartWorkAsync(
             request.RequestId,
             request.Notes,
             request.ActorPersonId,
             cancellationToken);
     }
 
-    public Task<RequestDto> Handle(RejectRequestCommand request, CancellationToken cancellationToken)
+    public Task<RequestDto> Handle(PauseWorkCommand request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return RejectRequestAsync(
+        return PauseWorkAsync(
+            request.RequestId,
+            request.Note,
+            request.ActorPersonId,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(CancelRequestCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return CancelRequestAsync(
             request.RequestId,
             request.Reason,
+            request.ActorPersonId,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(ReassignRequestOwnershipCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return AssignRequestOwnerAsync(
+            request.RequestId,
+            request.NewOwnerPersonId,
+            request.Notes,
             request.ActorPersonId,
             cancellationToken);
     }

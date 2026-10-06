@@ -28,39 +28,32 @@ public sealed class RequestSubTaskDomainTests
 
         request.AssignOwner(_ownerId, _actorId);
 
-        if (status == RequestStatus.Evaluating)
+        if (status == RequestStatus.Assigned)
         {
             return request;
         }
 
-        if (status == RequestStatus.Rejected)
+        if (status == RequestStatus.Cancelled)
         {
-            request.Reject("Not viable", _ownerId);
+            request.Cancel("Cancelled request", _ownerId);
             return request;
         }
 
-        request.Accept(_ownerId);
-
-        if (status == RequestStatus.Accepted)
-        {
-            return request;
-        }
+        request.StartWork(_ownerId);
 
         if (status == RequestStatus.InProgress)
         {
-            request.StartProgress(_ownerId);
             return request;
         }
 
-        if (status == RequestStatus.Escalated)
+        if (status == RequestStatus.Paused)
         {
-            request.Escalate("Blocker", _ownerId);
+            request.PauseWork(_ownerId, "Paused for testing");
             return request;
         }
 
         if (status == RequestStatus.Completed)
         {
-            request.StartProgress(_ownerId);
             request.Complete("Finished resolution", _ownerId);
             return request;
         }
@@ -196,7 +189,7 @@ public sealed class RequestSubTaskDomainTests
 
     [Theory]
     [InlineData(RequestStatus.Completed)]
-    [InlineData(RequestStatus.Rejected)]
+    [InlineData(RequestStatus.Cancelled)]
     public void AddSubTask_WhenRequestIsClosed_ThrowsInvalidRequestStateTransitionException(RequestStatus closedStatus)
     {
         // Arrange
@@ -277,7 +270,7 @@ public sealed class RequestSubTaskDomainTests
 
     [Theory]
     [InlineData(RequestStatus.Completed)]
-    [InlineData(RequestStatus.Rejected)]
+    [InlineData(RequestStatus.Cancelled)]
     public void CompleteSubTask_WhenRequestIsClosed_ThrowsInvalidRequestStateTransitionException(RequestStatus closedStatus)
     {
         // Arrange
@@ -291,10 +284,9 @@ public sealed class RequestSubTaskDomainTests
         }
         else
         {
-            // Reset to evaluating then reject
-            var rejectRequest = CreateRequest(RequestStatus.Rejected);
-            var actReject = () => rejectRequest.CompleteSubTask(task.Id, _actorId);
-            actReject.Should().Throw<InvalidRequestStateTransitionException>()
+            var cancelRequest = CreateRequest(RequestStatus.Cancelled);
+            var actCancel = () => cancelRequest.CompleteSubTask(task.Id, _actorId);
+            actCancel.Should().Throw<InvalidRequestStateTransitionException>()
                 .WithMessage("*Cannot perform 'CompleteSubTask' on a closed request.*");
             return;
         }

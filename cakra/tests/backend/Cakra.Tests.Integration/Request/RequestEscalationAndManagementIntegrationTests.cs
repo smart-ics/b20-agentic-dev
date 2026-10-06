@@ -117,7 +117,7 @@ public class RequestEscalationAndManagementIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task EscalateRequest_and_RequestManagementDecision_flows_persist_state_and_audit_trail_against_SqlServer()
+    public async Task PauseWork_and_ResumeWork_flows_persist_state_and_audit_trail_against_SqlServer()
     {
         _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
         _factory.Should().NotBeNull();
@@ -155,7 +155,7 @@ public class RequestEscalationAndManagementIntegrationTests : IAsyncLifetime
             "Hospital Billing & Tariff Engine",
             programmer.Id));
 
-        // 2. Record Request -> CAPTURED, Assign Owner -> EVALUATING
+        // 2. Record Request -> CAPTURED, Assign Owner -> ASSIGNED
         currentContext?.Initialize(Guid.NewGuid(), implementator.Id, new[] { "Implementator" });
 
         var recorded = await mediator.Send(new RecordRequestCommand(
@@ -171,49 +171,43 @@ public class RequestEscalationAndManagementIntegrationTests : IAsyncLifetime
             OwnerPersonId: programmer.Id,
             Notes: "Assigned to billing specialist"));
 
-        // 3. EscalateRequest from EVALUATING -> ESCALATED (UC-REQ-006)
+        // 3. StartWork from ASSIGNED -> IN_PROGRESS
         currentContext?.Initialize(Guid.NewGuid(), programmer.Id, new[] { "Programmer" });
 
-        var escalated = await mediator.Send(new EscalateRequestCommand(
+        var started = await mediator.Send(new StartWorkCommand(
             RequestId: recorded.Id,
-            Reason: "Retroactive recalculation affects audited financial period; requires management authorization."));
+            ActorPersonId: programmer.Id,
+            Notes: "Starting investigation on tariff recalculation."));
 
-        escalated.Status.Should().Be(RequestStatusNames.Escalated);
-        escalated.EscalationReason.Should().Be("Retroactive recalculation affects audited financial period; requires management authorization.");
-        escalated.OwnerPersonId.Should().Be(programmer.Id);
+        started.Status.Should().Be(RequestStatusNames.InProgress);
 
-        var persistedAfterEscalate = await requestRepository.GetByIdAsync(recorded.Id);
-        persistedAfterEscalate.Should().NotBeNull();
-        persistedAfterEscalate!.Status.Should().Be(RequestStatus.Escalated);
-        persistedAfterEscalate.EscalationReason.Should().Be("Retroactive recalculation affects audited financial period; requires management authorization.");
-
-        var escalateAudit = persistedAfterEscalate.Assignments.Last();
-        escalateAudit.PreviousStatus.Should().Be(RequestStatus.Evaluating);
-        escalateAudit.NewStatus.Should().Be(RequestStatus.Escalated);
-        escalateAudit.ActorPersonId.Should().Be(programmer.Id);
-
-        // 4. RequestManagementDecision (elevation note while ESCALATED, UC-REQ-007)
-        var decisionRequested = await mediator.Send(new RequestManagementDecisionCommand(
+        // 4. PauseWork from IN_PROGRESS -> PAUSED
+        var paused = await mediator.Send(new PauseWorkCommand(
             RequestId: recorded.Id,
-            DecisionDetails: "Elevated to COO & Finance Director: confirm whether hospital signed audit waiver."));
+            ActorPersonId: programmer.Id,
+            Note: "Retroactive recalculation affects audited financial period; waiting for audit waiver."));
 
-        decisionRequested.Status.Should().Be(RequestStatusNames.Escalated);
-        decisionRequested.ManagementDecisionNotes.Should().Be("Elevated to COO & Finance Director: confirm whether hospital signed audit waiver.");
+        paused.Status.Should().Be(RequestStatusNames.Paused);
+        paused.OwnerPersonId.Should().Be(programmer.Id);
 
-        // 5. RequestManagementDecision with TargetStatus = InProgress (resolving escalation back to active work)
-        currentContext?.Initialize(Guid.NewGuid(), manager.Id, new[] { "Management" });
+        var persistedAfterPause = await requestRepository.GetByIdAsync(recorded.Id);
+        persistedAfterPause.Should().NotBeNull();
+        persistedAfterPause!.Status.Should().Be(RequestStatus.Paused);
 
-        var decisionApplied = await mediator.Send(new RequestManagementDecisionCommand(
+        var pauseAudit = persistedAfterPause.Assignments.Last();
+        pauseAudit.PreviousStatus.Should().Be(RequestStatus.InProgress);
+        pauseAudit.NewStatus.Should().Be(RequestStatus.Paused);
+        pauseAudit.ActorPersonId.Should().Be(programmer.Id);
+
+        // 5. Resume work via StartWorkCommand from PAUSED -> IN_PROGRESS
+        var resumed = await mediator.Send(new StartWorkCommand(
             RequestId: recorded.Id,
-            DecisionDetails: "Hospital Director signed formal waiver; approved to run adjustment script in production.",
-            TargetStatus: RequestStatus.InProgress));
+            ActorPersonId: programmer.Id,
+            Notes: "Hospital Director signed formal waiver; resumed adjustment work."));
 
-        decisionApplied.Status.Should().Be(RequestStatusNames.InProgress);
-        decisionApplied.ManagementDecisionNotes.Should().Be("Hospital Director signed formal waiver; approved to run adjustment script in production.");
+        resumed.Status.Should().Be(RequestStatusNames.InProgress);
 
         // 6. Complete Request and verify full state history via RequestQueryService
-        currentContext?.Initialize(Guid.NewGuid(), programmer.Id, new[] { "Programmer" });
-
         var completed = await mediator.Send(new ReviewRequestCompletionCommand(
             RequestId: recorded.Id,
             ResolutionDescription: "Executed retroactive tariff adjustment batch and verified reconciliation report."));
@@ -223,16 +217,14 @@ public class RequestEscalationAndManagementIntegrationTests : IAsyncLifetime
         var detail = await requestQueryService.GetRequestById(recorded.Id);
         detail.Should().NotBeNull();
         detail!.Status.Should().Be(RequestStatusNames.Completed);
-        detail.EscalationReason.Should().Be("Retroactive recalculation affects audited financial period; requires management authorization.");
-        detail.ManagementDecisionNotes.Should().Be("Hospital Director signed formal waiver; approved to run adjustment script in production.");
 
         var history = await requestQueryService.GetRequestStateHistory(recorded.Id);
         history.Should().HaveCount(6);
         history.Select(h => h.NewStatus).Should().ContainInOrder(
             RequestStatusNames.Captured,
-            RequestStatusNames.Evaluating,
-            RequestStatusNames.Escalated,
-            RequestStatusNames.Escalated,
+            RequestStatusNames.Assigned,
+            RequestStatusNames.InProgress,
+            RequestStatusNames.Paused,
             RequestStatusNames.InProgress,
             RequestStatusNames.Completed);
     }
@@ -277,7 +269,7 @@ public class RequestEscalationAndManagementIntegrationTests : IAsyncLifetime
 
         currentContext?.Initialize(Guid.NewGuid(), implementator.Id, new[] { "Implementator" });
 
-        // 1. Record -> Assign to juniorProg -> Accept (IN_PROGRESS) -> Escalate (ESCALATED)
+        // 1. Record -> Assign to juniorProg -> Start (IN_PROGRESS)
         var recorded = await mediator.Send(new RecordRequestCommand(
             Title: "SATUSEHAT FHIR Encounter Sync Deadlock",
             Description: "Deadlock on concurrent outpatient encounter bundle submissions.",
@@ -287,13 +279,7 @@ public class RequestEscalationAndManagementIntegrationTests : IAsyncLifetime
         await mediator.Send(new AssignRequestOwnerCommand(recorded.Id, juniorProg.Id));
 
         currentContext?.Initialize(Guid.NewGuid(), juniorProg.Id, new[] { "Programmer" });
-        await mediator.Send(new AcceptRequestResponsibilityCommand(recorded.Id, "Investigating SQL deadlock graph"));
-
-        var escalatedFromInProgress = await mediator.Send(new EscalateRequestCommand(
-            RequestId: recorded.Id,
-            Reason: "Complex SQL Server lock escalation in FHIR outbox table requires senior DBA/architect."));
-
-        escalatedFromInProgress.Status.Should().Be(RequestStatusNames.Escalated);
+        await mediator.Send(new StartWorkCommand(recorded.Id, Notes: "Investigating SQL deadlock graph", ActorPersonId: juniorProg.Id));
 
         // 2. Validate cross-module rules on ReassignRequestOwnership (UC-MGT-001)
         currentContext?.Initialize(Guid.NewGuid(), manager.Id, new[] { "Management" });
@@ -316,26 +302,26 @@ public class RequestEscalationAndManagementIntegrationTests : IAsyncLifetime
             NewOwnerPersonId: juniorProg.Id));
         await sameOwnerAct.Should().ThrowAsync<InvalidOperationException>();
 
-        // 3. ReassignRequestOwnership from ESCALATED to seniorProg -> transitions to EVALUATING
+        // 3. ReassignRequestOwnership from IN_PROGRESS to seniorProg -> resets to ASSIGNED
         var reassigned = await mediator.Send(new ReassignRequestOwnershipCommand(
             RequestId: recorded.Id,
             NewOwnerPersonId: seniorProg.Id,
             Notes: "Reassigned by management to principal integration architect"));
 
-        reassigned.Status.Should().Be(RequestStatusNames.Evaluating);
+        reassigned.Status.Should().Be(RequestStatusNames.Assigned);
         reassigned.OwnerPersonId.Should().Be(seniorProg.Id);
 
         var persisted = await requestRepository.GetByIdAsync(recorded.Id);
         persisted.Should().NotBeNull();
         persisted!.OwnerPersonId.Should().Be(seniorProg.Id);
-        persisted.Status.Should().Be(RequestStatus.Evaluating);
+        persisted.Status.Should().Be(RequestStatus.Assigned);
 
         var reassignAudit = persisted.Assignments.Last();
         reassignAudit.PreviousOwnerPersonId.Should().Be(juniorProg.Id);
         reassignAudit.AssignedOwnerPersonId.Should().Be(seniorProg.Id);
         reassignAudit.ActorPersonId.Should().Be(manager.Id);
-        reassignAudit.PreviousStatus.Should().Be(RequestStatus.Escalated);
-        reassignAudit.NewStatus.Should().Be(RequestStatus.Evaluating);
+        reassignAudit.PreviousStatus.Should().Be(RequestStatus.InProgress);
+        reassignAudit.NewStatus.Should().Be(RequestStatus.Assigned);
         reassignAudit.Notes.Should().Be("Reassigned by management to principal integration architect");
 
         // 4. Verify ListMyAssignedRequests reflects ownership transfer

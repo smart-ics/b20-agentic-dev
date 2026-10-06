@@ -554,8 +554,7 @@ public sealed class RequestSubTaskCommandServiceTests
             utcNow: TestNow);
 
         request.AssignOwner(ownerPersonId, ownerPersonId, "Assigned owner", TestNow.AddMinutes(1));
-        request.AcceptResponsibility(ownerPersonId, "Accepted", TestNow.AddMinutes(2));
-        request.StartProgress(ownerPersonId, "Started progress", TestNow.AddMinutes(3));
+        request.StartWork(ownerPersonId, "Started work", TestNow.AddMinutes(2));
         return request;
     }
 

@@ -26,12 +26,11 @@ export interface RequestListItem {
   requestType: string
   status:
     | 'CAPTURED'
-    | 'EVALUATING'
-    | 'ACCEPTED'
-    | 'REJECTED'
+    | 'ASSIGNED'
     | 'IN_PROGRESS'
-    | 'ESCALATED'
+    | 'PAUSED'
     | 'COMPLETED'
+    | 'CANCELLED'
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
   complexity?: number
@@ -82,12 +81,21 @@ interface ProblemDetailsPayload {
 
 const REQUEST_STATUSES = [
   'CAPTURED',
-  'EVALUATING',
-  'ACCEPTED',
+  'ASSIGNED',
   'IN_PROGRESS',
-  'ESCALATED',
+  'PAUSED',
   'COMPLETED',
-  'REJECTED',
+  'CANCELLED',
+] as const
+
+const STATUS_FILTER_TABS = [
+  { value: '', label: 'ALL' },
+  { value: 'CAPTURED', label: 'CAPTURED' },
+  { value: 'ASSIGNED', label: 'ASSIGNED' },
+  { value: 'IN_PROGRESS', label: 'IN_PROGRESS' },
+  { value: 'PAUSED', label: 'PAUSED' },
+  { value: 'COMPLETED', label: 'COMPLETED' },
+  { value: 'CANCELLED', label: 'CANCELLED' },
 ] as const
 
 const router = useRouter()
@@ -145,19 +153,25 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 }
 
 function statusBadgeClass(status: string): string {
-  switch (status.toUpperCase()) {
+  switch ((status ?? '').toUpperCase()) {
     case 'CAPTURED':
       return 'text-bg-secondary'
-    case 'EVALUATING':
-      return 'text-bg-info'
-    case 'ACCEPTED':
-      return 'text-bg-primary'
+    case 'ASSIGNED':
+      return 'text-bg-info text-dark'
     case 'IN_PROGRESS':
       return 'text-bg-primary'
-    case 'ESCALATED':
-      return 'text-bg-warning'
+    case 'PAUSED':
+      return 'text-bg-warning text-dark'
     case 'COMPLETED':
       return 'text-bg-success'
+    case 'CANCELLED':
+      return 'text-bg-danger'
+    case 'EVALUATING':
+      return 'text-bg-info text-dark'
+    case 'ACCEPTED':
+      return 'text-bg-info text-dark'
+    case 'ESCALATED':
+      return 'text-bg-warning text-dark'
     case 'REJECTED':
       return 'text-bg-danger'
     default:
@@ -312,6 +326,12 @@ async function loadRequests(): Promise<void> {
   }
 }
 
+async function handleStatusTabSelect(status: string): Promise<void> {
+  filters.status = status
+  filters.page = 1
+  await loadRequests()
+}
+
 async function handleFilterChange(): Promise<void> {
   filters.page = 1
   await loadRequests()
@@ -401,6 +421,21 @@ onMounted(async () => {
       ></button>
     </div>
 
+    <!-- Status Filter Tabs / Quick Filter Groupings (CR-016 TD-001) -->
+    <ul class="nav nav-pills mb-2 gap-1" data-testid="request-status-tabs">
+      <li v-for="tab in STATUS_FILTER_TABS" :key="tab.value" class="nav-item">
+        <button
+          type="button"
+          class="nav-link py-1 px-2.5 btn-sm font-monospace fs-11"
+          :class="{ active: filters.status === tab.value }"
+          :data-testid="`status-tab-${tab.value || 'ALL'}`"
+          @click="handleStatusTabSelect(tab.value)"
+        >
+          {{ tab.label }}
+        </button>
+      </li>
+    </ul>
+
     <!-- Compact Inline Filter Toolbar -->
     <div class="op-toolbar">
       <div class="d-flex flex-wrap align-items-center gap-2 w-100">
@@ -416,7 +451,7 @@ onMounted(async () => {
             data-testid="status-filter-select"
             @change="handleFilterChange"
           >
-            <option value="">All Statuses</option>
+            <option value="">ALL</option>
             <option v-for="status in REQUEST_STATUSES" :key="status" :value="status">
               {{ status }}
             </option>

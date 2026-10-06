@@ -147,15 +147,11 @@ public class RequestsControllerTests : IAsyncLifetime
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/assign", new { ownerPersonId = randomId }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/evaluate", new { evaluationNotes = "Notes" }))
+        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/start", new { notes = "Start" }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/accept", new { notes = "Accept" }))
+        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/pause", new { note = "Pause" }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/reject", new { reason = "Reject" }))
-            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/escalate", new { reason = "Escalate" }))
-            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/management-decision", new { decisionDetails = "Decision" }))
+        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/cancel", new { reason = "Cancel" }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/complete", new { resolutionDescription = "Done" }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -238,7 +234,7 @@ public class RequestsControllerTests : IAsyncLifetime
         created.GetProperty("productName").GetString().Should().Be("MyHospital Core");
         created.GetProperty("complexity").GetInt32().Should().Be(1);
 
-        // 2. POST /api/v1/requests/{id}/assign -> 200 OK (EVALUATING)
+        // 2. POST /api/v1/requests/{id}/assign -> 200 OK (ASSIGNED)
         var assignResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
         {
             ownerPersonId = ctx.Programmer1Id,
@@ -246,21 +242,11 @@ public class RequestsControllerTests : IAsyncLifetime
         });
         assignResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var assigned = await assignResp.Content.ReadFromJsonAsync<JsonElement>();
-        assigned.GetProperty("status").GetString().Should().Be(RequestStatusNames.Evaluating);
+        assigned.GetProperty("status").GetString().Should().Be(RequestStatusNames.Assigned);
         assigned.GetProperty("ownerPersonId").GetGuid().Should().Be(ctx.Programmer1Id);
         assigned.GetProperty("ownerName").GetString().Should().Be("Budi Santoso");
 
-        // 3. POST /api/v1/requests/{id}/evaluate -> 200 OK (EVALUATING with evaluationNotes)
-        var evaluateResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/evaluate", new
-        {
-            evaluationNotes = "HttpClient socket exhaustion due to per-call HttpClient instantiation."
-        });
-        evaluateResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var evaluated = await evaluateResp.Content.ReadFromJsonAsync<JsonElement>();
-        evaluated.GetProperty("status").GetString().Should().Be(RequestStatusNames.Evaluating);
-        evaluated.GetProperty("evaluationNotes").GetString().Should().Be("HttpClient socket exhaustion due to per-call HttpClient instantiation.");
-
-        // 3b. PATCH /api/v1/requests/{requestId}/complexity -> 200 OK
+        // 3. PATCH /api/v1/requests/{requestId}/complexity -> 200 OK
         var patchComplexityResp = await ctx.Client.PatchAsJsonAsync($"/api/v1/requests/{requestId}/complexity", new
         {
             complexity = 4,
@@ -277,14 +263,32 @@ public class RequestsControllerTests : IAsyncLifetime
         });
         invalidPatchResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        // 4. POST /api/v1/requests/{id}/accept -> 200 OK (IN_PROGRESS)
-        var acceptResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/accept", new
+        // 4. POST /api/v1/requests/{id}/start -> 200 OK (IN_PROGRESS)
+        var startResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new
         {
             notes = "Refactoring to IHttpClientFactory with Polly retry policy"
         });
-        acceptResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var accepted = await acceptResp.Content.ReadFromJsonAsync<JsonElement>();
-        accepted.GetProperty("status").GetString().Should().Be(RequestStatusNames.InProgress);
+        startResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var started = await startResp.Content.ReadFromJsonAsync<JsonElement>();
+        started.GetProperty("status").GetString().Should().Be(RequestStatusNames.InProgress);
+
+        // 4b. POST /api/v1/requests/{id}/pause -> 200 OK (PAUSED)
+        var pauseResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/pause", new
+        {
+            note = "Waiting on test credentials"
+        });
+        pauseResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var paused = await pauseResp.Content.ReadFromJsonAsync<JsonElement>();
+        paused.GetProperty("status").GetString().Should().Be(RequestStatusNames.Paused);
+
+        // 4c. POST /api/v1/requests/{id}/start -> 200 OK (IN_PROGRESS, resumed)
+        var resumeResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new
+        {
+            notes = "Resumed work after credentials received"
+        });
+        resumeResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resumed = await resumeResp.Content.ReadFromJsonAsync<JsonElement>();
+        resumed.GetProperty("status").GetString().Should().Be(RequestStatusNames.InProgress);
 
         // 5. POST /api/v1/requests/{id}/complete -> 200 OK (COMPLETED)
         var completeResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/complete", new
@@ -313,15 +317,16 @@ public class RequestsControllerTests : IAsyncLifetime
         var historyResp = await ctx.Client.GetAsync($"/api/v1/requests/{requestId}/history");
         historyResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var history = await historyResp.Content.ReadFromJsonAsync<JsonElement>();
-        history.GetArrayLength().Should().Be(5);
+        history.GetArrayLength().Should().Be(6);
 
         var statuses = history.EnumerateArray()
             .Select(h => h.GetProperty("newStatus").GetString())
             .ToList();
         statuses.Should().ContainInOrder(
             RequestStatusNames.Captured,
-            RequestStatusNames.Evaluating,
-            RequestStatusNames.Accepted,
+            RequestStatusNames.Assigned,
+            RequestStatusNames.InProgress,
+            RequestStatusNames.Paused,
             RequestStatusNames.InProgress,
             RequestStatusNames.Completed);
 
@@ -334,13 +339,13 @@ public class RequestsControllerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Escalate_management_decision_reassign_and_reject_HTTP_endpoints_succeed_and_record_audit_entries()
+    public async Task Cancel_reassign_and_obsolete_HTTP_endpoints_verification()
     {
         if (!_sqlServerAvailable || _factory is null) return;
 
         var ctx = await SeedOperationalActorsAndMasterDataAsync();
 
-        // Create Request 1 for Escalate -> Management Decision -> Reassign flow
+        // 1. Create Request 1 and Cancel -> CANCELLED
         var create1Resp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
         {
             title = "Inpatient Pharmacy Narcotics Ledger Audit Lock",
@@ -353,54 +358,58 @@ public class RequestsControllerTests : IAsyncLifetime
         create1Resp.StatusCode.Should().Be(HttpStatusCode.Created);
         var req1Id = (await create1Resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        // Assign to Programmer1 -> EVALUATING
         (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req1Id}/assign", new
         {
             ownerPersonId = ctx.Programmer1Id
         })).StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Escalate -> ESCALATED
-        var escalateResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req1Id}/escalate", new
-        {
-            reason = "Requires management approval and hospital compliance letter."
-        });
-        escalateResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var escalated = await escalateResp.Content.ReadFromJsonAsync<JsonElement>();
-        escalated.GetProperty("status").GetString().Should().Be(RequestStatusNames.Escalated);
-        escalated.GetProperty("escalationReason").GetString().Should().Be("Requires management approval and hospital compliance letter.");
-
-        // Management Decision -> records managementDecisionNotes
-        var decisionResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req1Id}/management-decision", new
-        {
-            decisionDetails = "Compliance letter received; approved for senior architect execution."
-        });
-        decisionResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var decided = await decisionResp.Content.ReadFromJsonAsync<JsonElement>();
-        decided.GetProperty("status").GetString().Should().Be(RequestStatusNames.Escalated);
-        decided.GetProperty("managementDecisionNotes").GetString()
-            .Should().Be("Compliance letter received; approved for senior architect execution.");
-
-        // Reassign to Programmer2 -> transitions ESCALATED -> EVALUATING and updates OwnerPersonId
-        var reassignResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req1Id}/reassign", new
-        {
-            newOwnerPersonId = ctx.Programmer2Id,
-            notes = "Reassigned to Rina Wijaya for ledger adjustment"
-        });
-        reassignResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var reassigned = await reassignResp.Content.ReadFromJsonAsync<JsonElement>();
-        reassigned.GetProperty("status").GetString().Should().Be(RequestStatusNames.Evaluating);
-        reassigned.GetProperty("ownerPersonId").GetGuid().Should().Be(ctx.Programmer2Id);
-        reassigned.GetProperty("ownerName").GetString().Should().Be("Rina Wijaya");
-
-        // Reject Request -> transitions EVALUATING -> REJECTED
-        var rejectResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req1Id}/reject", new
+        // Cancel Request -> transitions to CANCELLED
+        var cancelResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req1Id}/cancel", new
         {
             reason = "Hospital withdrew request after internal audit reconciliation."
         });
-        rejectResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var rejected = await rejectResp.Content.ReadFromJsonAsync<JsonElement>();
-        rejected.GetProperty("status").GetString().Should().Be(RequestStatusNames.Rejected);
-        rejected.GetProperty("resolution").GetProperty("outcome").GetString().Should().Be(ResolutionOutcomeNames.Rejected);
+        cancelResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cancelled = await cancelResp.Content.ReadFromJsonAsync<JsonElement>();
+        cancelled.GetProperty("status").GetString().Should().Be(RequestStatusNames.Cancelled);
+        cancelled.GetProperty("resolution").GetProperty("outcome").GetString().Should().Be(ResolutionOutcomeNames.Cancelled);
+
+        // 2. Create Request 2, start work, then reassign to Programmer2 -> resets to ASSIGNED
+        var create2Resp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "Billing integration queue backlog",
+            description = "Investigation required on queue backlog.",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id,
+            requestType = "Bug",
+            priority = "HIGH"
+        });
+        var req2Id = (await create2Resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/assign", new { ownerPersonId = ctx.Programmer1Id });
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/start", new { notes = "Started" });
+
+        var reassignResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/reassign", new
+        {
+            newOwnerPersonId = ctx.Programmer2Id,
+            notes = "Reassigned to Rina Wijaya"
+        });
+        reassignResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var reassigned = await reassignResp.Content.ReadFromJsonAsync<JsonElement>();
+        reassigned.GetProperty("status").GetString().Should().Be(RequestStatusNames.Assigned);
+        reassigned.GetProperty("ownerPersonId").GetGuid().Should().Be(ctx.Programmer2Id);
+
+        // 3. Verify obsolete endpoints are not accessible (404 Not Found or 405 Method Not Allowed)
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/evaluate", new { evaluationNotes = "Notes" }))
+            .StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/accept", new { notes = "Accept" }))
+            .StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/reject", new { reason = "Reject" }))
+            .StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/escalate", new { reason = "Escalate" }))
+            .StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/management-decision", new { decisionDetails = "Decision" }))
+            .StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/management-decision/apply", new { targetStatus = "IN_PROGRESS" }))
+            .StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
     }
 
     [Fact]
@@ -434,7 +443,9 @@ public class RequestsControllerTests : IAsyncLifetime
         });
         var req2Id = (await r2Resp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/assign", new { ownerPersonId = ctx.Programmer2Id });
-        await ctx.Client.PostAsync($"/api/v1/requests/{req2Id}/accept", null);
+
+        // Start req1 by Programmer1 (owner) -> IN_PROGRESS
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req1Id}/start", new { notes = "Starting req1" });
 
         // 1. GET /api/v1/requests/my returns only requests assigned to authenticated Programmer1
         var myResp = await ctx.Client.GetAsync("/api/v1/requests/my");
@@ -454,7 +465,7 @@ public class RequestsControllerTests : IAsyncLifetime
         statusFilterResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var statusGrid = await statusFilterResp.Content.ReadFromJsonAsync<JsonElement>();
         statusGrid.GetProperty("totalCount").GetInt32().Should().Be(1);
-        statusGrid.GetProperty("items")[0].GetProperty("id").GetGuid().Should().Be(req2Id);
+        statusGrid.GetProperty("items")[0].GetProperty("id").GetGuid().Should().Be(req1Id);
 
         var assigneeFilterResp = await ctx.Client.GetAsync($"/api/v1/requests?assigneeId={ctx.Programmer1Id}&customerId={ctx.Customer1Id}&productId={ctx.Product1Id}");
         assigneeFilterResp.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -471,8 +482,8 @@ public class RequestsControllerTests : IAsyncLifetime
         invalidCreateResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         invalidCreateResp.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
 
-        // 4. Invalid state transition (completing an EVALUATING request directly) -> 400 Bad Request ProblemDetails
-        var invalidTransitionResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req1Id}/complete", new
+        // 4. Invalid state transition (completing an ASSIGNED request directly) -> 400 Bad Request ProblemDetails
+        var invalidTransitionResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{req2Id}/complete", new
         {
             resolutionDescription = "Premature completion"
         });
@@ -486,7 +497,7 @@ public class RequestsControllerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Request_complexity_endpoints_support_creation_evaluation_patch_and_role_authorization()
+    public async Task Request_complexity_endpoints_support_creation_patch_and_role_authorization()
     {
         if (!_sqlServerAvailable || _factory is null) return;
 
@@ -517,20 +528,11 @@ public class RequestsControllerTests : IAsyncLifetime
         var requestId = created.GetProperty("id").GetGuid();
         created.GetProperty("complexity").GetInt32().Should().Be(3);
 
-        // 2. Evaluate with updated complexity (5) -> 200 OK
+        // 2. Assign owner -> 200 OK
         await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
         {
             ownerPersonId = ctx.Programmer1Id
         });
-
-        var evaluateResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/evaluate", new
-        {
-            evaluationNotes = "Very high complexity discovered during technical analysis.",
-            complexity = 5
-        });
-        evaluateResp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var evaluated = await evaluateResp.Content.ReadFromJsonAsync<JsonElement>();
-        evaluated.GetProperty("complexity").GetInt32().Should().Be(5);
 
         // 3. Patch complexity with authorized actor (2) -> 200 OK
         var patchResp = await ctx.Client.PatchAsJsonAsync($"/api/v1/requests/{requestId}/complexity", new
@@ -628,16 +630,16 @@ public class RequestsControllerTests : IAsyncLifetime
         createResp.StatusCode.Should().Be(HttpStatusCode.Created);
         var requestId = (await createResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        // Assign to Programmer1 -> EVALUATING
+        // Assign to Programmer1 -> ASSIGNED
         (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
         {
             ownerPersonId = ctx.Programmer1Id
         })).StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Accept -> IN_PROGRESS
-        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/accept", new
+        // Start -> IN_PROGRESS
+        (await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new
         {
-            notes = "Accepted"
+            notes = "Started"
         })).StatusCode.Should().Be(HttpStatusCode.OK);
 
         // 2. POST /api/v1/requests/{id}/subtasks -> 200 OK
@@ -717,11 +719,11 @@ public class RequestsControllerTests : IAsyncLifetime
         });
         var requestId = (await createResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        // Assign to Programmer1 -> EVALUATING
+        // Assign to Programmer1 -> ASSIGNED
         await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new { ownerPersonId = ctx.Programmer1Id });
 
-        // Accept -> IN_PROGRESS
-        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/accept", new { notes = "Accepted" });
+        // Start -> IN_PROGRESS
+        await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new { notes = "Started" });
 
         // Add an unfinished sub-task
         var addResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/subtasks", new

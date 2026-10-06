@@ -10,22 +10,31 @@ import {
   completeSubTask as apiCompleteSubTask,
   reopenSubTask as apiReopenSubTask,
   removeSubTask as apiRemoveSubTask,
+  startWork as apiStartWork,
+  pauseWork as apiPauseWork,
+  cancelRequest as apiCancelRequest,
+  assignRequestOwner as apiAssignRequestOwner,
+  reassignRequestOwner as apiReassignRequestOwner,
+  completeRequest as apiCompleteRequest,
 } from '@/api/requests'
 import { useAuthStore } from '@/stores/auth'
 
 /**
  * SCR-REQ-003: Request Detail Screen
- * (Architecture §7, §8 — UC-REQ-002..008, UC-COL-003, UC-MGT-001, §9 — FEAT-REQ-001..008, §18, §19.4, §20, §21).
+ * (Architecture §7, §8 — UC-REQ-002..008, UC-COL-003, UC-MGT-001, §9 — FEAT-REQ-001..008, CR-016 TD-001..005).
  *
  * - Renders a Bootstrap 5 card displaying authoritative request details:
  *   Title, Description, Customer, Product, Status, Assignee, CreatedAt, UpdatedAt,
- *   plus EvaluationNotes, EscalationReason, ManagementDecisionNotes, and Resolution when present.
- * - Renders conditional lifecycle action controls based on current request state:
- *   * CAPTURED: Assign (with active person dropdown from `GET /api/v1/organization/persons/active`)
- *   * EVALUATING: Evaluate, Accept, Reject, Escalate
- *   * IN_PROGRESS: Complete, Escalate
- *   * Active / ESCALATED: Management Decision, Reassign
- * - Renders the chronological state history timeline below the card (`GET /api/v1/requests/${id}/history`).
+ *   plus Resolution when present.
+ * - Renders simplified lifecycle actions card and contextual buttons:
+ *   * CAPTURED: Assign Owner, Cancel Request
+ *   * ASSIGNED: Start Work (enabled for assigned owner), Reassign Owner, Cancel Request
+ *   * IN_PROGRESS: Pause Work, Complete Request, Reassign Owner, Cancel Request
+ *   * PAUSED: Start / Resume Work (enabled for assigned owner), Reassign Owner, Cancel Request
+ *   * COMPLETED / CANCELLED: Closed terminal badge
+ * - Renders dedicated Pause Work and Cancel Request modals/forms.
+ * - Embeds a dedicated Comments & Discussion thread directly on the screen linked to the request's post.
+ * - Renders chronological state history timeline below the card.
  */
 
 export interface RequestResolutionDetail {
@@ -58,6 +67,18 @@ export interface RequestAssignmentHistoryItem {
   updatedAt?: string | null
 }
 
+export interface RequestCommentItem {
+  id: string
+  postId: string
+  authorPersonId: string
+  authorName?: string | null
+  author?: string | null
+  content: string
+  status?: string
+  createdAt: string
+  updatedAt?: string | null
+}
+
 export interface RequestDetail {
   id: string
   requestId?: string
@@ -66,12 +87,11 @@ export interface RequestDetail {
   requestType: string
   status:
     | 'CAPTURED'
-    | 'EVALUATING'
-    | 'ACCEPTED'
-    | 'REJECTED'
+    | 'ASSIGNED'
     | 'IN_PROGRESS'
-    | 'ESCALATED'
+    | 'PAUSED'
     | 'COMPLETED'
+    | 'CANCELLED'
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
   complexity?: number
@@ -131,66 +151,83 @@ const isSubmittingAction = ref(false)
 const errorMessage = ref<string | null>(null)
 const actionSuccessMessage = ref<string | null>(null)
 
+// Action Forms State
 const assignForm = reactive({
   ownerPersonId: '',
   notes: '',
 })
 
-const evaluateForm = reactive({
-  evaluationNotes: '',
-})
-
-const acceptForm = reactive({
+const startForm = reactive({
   notes: '',
 })
 
-const rejectForm = reactive({
-  reason: '',
-})
-
-const escalateForm = reactive({
-  reason: '',
+const pauseForm = reactive({
+  note: '',
 })
 
 const completeForm = reactive({
   resolutionDescription: '',
 })
 
-const managementDecisionForm = reactive({
-  decisionDetails: '',
-  targetStatus: '',
-})
-
 const reassignForm = reactive({
   newOwnerPersonId: '',
   notes: '',
-  targetStatusForEscalated: 'EVALUATING',
 })
+
+const cancelForm = reactive({
+  reason: '',
+})
+
+// Modal visibility toggles
+const showAssignModal = ref(false)
+const showPauseModal = ref(false)
+const showCancelModal = ref(false)
+const showStartModal = ref(false)
+const showCompleteModal = ref(false)
+const showReassignModal = ref(false)
+
+// Comments & Discussion State
+const associatedPostId = ref<string | null>(null)
+const comments = ref<RequestCommentItem[]>([])
+const isCommentsLoading = ref(false)
+const isSubmittingComment = ref(false)
+const commentErrorMessage = ref<string | null>(null)
+const newCommentContent = ref('')
 
 const normalizedStatus = computed(() => (request.value?.status ?? '').toUpperCase())
 
 const isCaptured = computed(() => normalizedStatus.value === 'CAPTURED')
-const isEvaluating = computed(() => normalizedStatus.value === 'EVALUATING')
-const isAccepted = computed(() => normalizedStatus.value === 'ACCEPTED')
+const isAssigned = computed(() => normalizedStatus.value === 'ASSIGNED')
 const isInProgress = computed(() => normalizedStatus.value === 'IN_PROGRESS')
-const isEscalated = computed(() => normalizedStatus.value === 'ESCALATED')
+const isPaused = computed(() => normalizedStatus.value === 'PAUSED')
+const isCompleted = computed(() => normalizedStatus.value === 'COMPLETED')
+const isCancelled = computed(() => normalizedStatus.value === 'CANCELLED')
 const isClosed = computed(
-  () => normalizedStatus.value === 'COMPLETED' || normalizedStatus.value === 'REJECTED',
+  () => isCompleted.value || isCancelled.value || normalizedStatus.value === 'REJECTED',
 )
 
-// Visibility rules for conditional lifecycle actions
+// Owner accountability check (CR-016 TD-002)
+const isAssignedOwner = computed(() => {
+  const ownerId = request.value?.ownerPersonId ?? request.value?.assigneePersonId
+  if (!ownerId) {
+    return false
+  }
+  const currentPersonId = authStore.currentUser?.personId
+  if (!currentPersonId) {
+    return true
+  }
+  return currentPersonId.toLowerCase() === ownerId.toLowerCase()
+})
+
+// Visibility rules for conditional lifecycle actions (CR-016 TD-001..003)
 const canAssign = computed(() => isCaptured.value)
-const canEvaluate = computed(() => isEvaluating.value)
-const canAccept = computed(() => isEvaluating.value || isAccepted.value)
-const canReject = computed(() => isEvaluating.value)
-const canEscalate = computed(() => isEvaluating.value || isInProgress.value)
+const canStartWork = computed(() => isAssigned.value || isPaused.value)
+const canPauseWork = computed(() => isInProgress.value)
 const canComplete = computed(() => isInProgress.value)
-const canManagementDecision = computed(
-  () => !isClosed.value && (isEscalated.value || isEvaluating.value || isAccepted.value || isInProgress.value),
-)
 const canReassign = computed(
-  () => !isClosed.value && (isEscalated.value || isEvaluating.value || isAccepted.value || isInProgress.value),
+  () => !isClosed.value && (isAssigned.value || isInProgress.value || isPaused.value),
 )
+const canCancel = computed(() => !isClosed.value)
 
 const authStore = useAuthStore()
 
@@ -302,16 +339,22 @@ function statusBadgeClass(status: string | null | undefined): string {
   switch ((status ?? '').toUpperCase()) {
     case 'CAPTURED':
       return 'text-bg-secondary'
-    case 'EVALUATING':
-      return 'text-bg-info'
-    case 'ACCEPTED':
-      return 'text-bg-primary'
+    case 'ASSIGNED':
+      return 'text-bg-info text-dark'
     case 'IN_PROGRESS':
       return 'text-bg-primary'
-    case 'ESCALATED':
-      return 'text-bg-warning'
+    case 'PAUSED':
+      return 'text-bg-warning text-dark'
     case 'COMPLETED':
       return 'text-bg-success'
+    case 'CANCELLED':
+      return 'text-bg-danger'
+    case 'EVALUATING':
+      return 'text-bg-info text-dark'
+    case 'ACCEPTED':
+      return 'text-bg-info text-dark'
+    case 'ESCALATED':
+      return 'text-bg-warning text-dark'
     case 'REJECTED':
       return 'text-bg-danger'
     default:
@@ -452,13 +495,86 @@ async function loadRequestDetail(): Promise<void> {
   try {
     const response = await httpClient.get<RequestDetail>(`/requests/${requestId.value}`)
     request.value = response.data
-    if (response.data.evaluationNotes && !evaluateForm.evaluationNotes) {
-      evaluateForm.evaluationNotes = response.data.evaluationNotes
-    }
   } catch (err) {
     errorMessage.value = extractErrorMessage(err, 'Failed to load request details.')
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadRequestComments(): Promise<void> {
+  if (!requestId.value) {
+    return
+  }
+
+  isCommentsLoading.value = true
+  commentErrorMessage.value = null
+
+  try {
+    const response = await httpClient.get<Array<{ id: string; comments?: RequestCommentItem[] }>>(
+      '/posts/by-reference',
+      {
+        params: { requestId: requestId.value },
+      },
+    )
+
+    if (Array.isArray(response.data) && response.data.length > 0) {
+      const post = response.data[0]
+      associatedPostId.value = post.id
+
+      try {
+        const commentsResponse = await httpClient.get<RequestCommentItem[]>(
+          `/posts/${post.id}/comments`,
+        )
+        if (Array.isArray(commentsResponse.data)) {
+          comments.value = commentsResponse.data
+        } else if (Array.isArray(post.comments)) {
+          comments.value = post.comments
+        }
+      } catch {
+        if (Array.isArray(post.comments)) {
+          comments.value = post.comments
+        }
+      }
+    } else {
+      associatedPostId.value = null
+      comments.value = []
+    }
+  } catch (err) {
+    commentErrorMessage.value = extractErrorMessage(err, 'Failed to load comments.')
+  } finally {
+    isCommentsLoading.value = false
+  }
+}
+
+async function handleAddComment(): Promise<void> {
+  const content = newCommentContent.value.trim()
+  if (!content || !associatedPostId.value || isSubmittingComment.value) {
+    return
+  }
+
+  isSubmittingComment.value = true
+  commentErrorMessage.value = null
+
+  try {
+    const response = await httpClient.post<RequestCommentItem>(
+      `/posts/${associatedPostId.value}/comments`,
+      {
+        content,
+        authorPersonId: authStore.currentUser?.personId || null,
+      },
+    )
+
+    if (response.data) {
+      comments.value.push(response.data)
+    } else {
+      await loadRequestComments()
+    }
+    newCommentContent.value = ''
+  } catch (err) {
+    commentErrorMessage.value = extractErrorMessage(err, 'Failed to post comment.')
+  } finally {
+    isSubmittingComment.value = false
   }
 }
 
@@ -485,7 +601,7 @@ async function loadStateHistory(): Promise<void> {
 
 async function refreshAll(): Promise<void> {
   actionSuccessMessage.value = null
-  await Promise.all([loadRequestDetail(), loadStateHistory()])
+  await Promise.all([loadRequestDetail(), loadStateHistory(), loadRequestComments()])
 }
 
 async function handleAssign(): Promise<void> {
@@ -504,14 +620,16 @@ async function handleAssign(): Promise<void> {
   actionSuccessMessage.value = null
 
   try {
-    const response = await httpClient.post<RequestDetail>(`/requests/${requestId.value}/assign`, {
+    const response = await apiAssignRequestOwner(
+      requestId.value,
       ownerPersonId,
-      notes: assignForm.notes.trim() || null,
-    })
-    request.value = response.data
+      assignForm.notes.trim() || null,
+    )
+    request.value = { ...request.value, ...response } as RequestDetail
     assignForm.ownerPersonId = ''
     assignForm.notes = ''
-    actionSuccessMessage.value = 'Request assigned and transitioned to EVALUATING.'
+    showAssignModal.value = false
+    actionSuccessMessage.value = 'Request assigned to owner.'
     await loadStateHistory()
   } catch (err) {
     errorMessage.value = extractErrorMessage(err, 'Failed to assign request owner.')
@@ -520,14 +638,8 @@ async function handleAssign(): Promise<void> {
   }
 }
 
-async function handleEvaluate(): Promise<void> {
+async function handleStartWork(): Promise<void> {
   if (!requestId.value) {
-    return
-  }
-
-  const evaluationNotes = evaluateForm.evaluationNotes.trim()
-  if (!evaluationNotes) {
-    errorMessage.value = 'Evaluation notes are required.'
     return
   }
 
@@ -536,20 +648,25 @@ async function handleEvaluate(): Promise<void> {
   actionSuccessMessage.value = null
 
   try {
-    const response = await httpClient.post<RequestDetail>(`/requests/${requestId.value}/evaluate`, {
-      evaluationNotes,
-    })
-    request.value = response.data
-    actionSuccessMessage.value = 'Evaluation notes recorded.'
+    const response = await apiStartWork(
+      requestId.value,
+      startForm.notes.trim() || null,
+    )
+    request.value = { ...request.value, ...response } as RequestDetail
+    actionSuccessMessage.value = isPaused.value
+      ? 'Work resumed on request.'
+      : 'Work started on request.'
+    startForm.notes = ''
+    showStartModal.value = false
     await loadStateHistory()
   } catch (err) {
-    errorMessage.value = extractErrorMessage(err, 'Failed to record evaluation notes.')
+    errorMessage.value = extractErrorMessage(err, 'Failed to start work on request.')
   } finally {
     isSubmittingAction.value = false
   }
 }
 
-async function handleAccept(): Promise<void> {
+async function handlePauseWork(): Promise<void> {
   if (!requestId.value) {
     return
   }
@@ -559,75 +676,17 @@ async function handleAccept(): Promise<void> {
   actionSuccessMessage.value = null
 
   try {
-    const response = await httpClient.post<RequestDetail>(`/requests/${requestId.value}/accept`, {
-      notes: acceptForm.notes.trim() || null,
-    })
-    request.value = response.data
-    acceptForm.notes = ''
-    actionSuccessMessage.value = 'Request accepted and transitioned to IN_PROGRESS.'
+    const response = await apiPauseWork(
+      requestId.value,
+      pauseForm.note.trim() || null,
+    )
+    request.value = { ...request.value, ...response } as RequestDetail
+    pauseForm.note = ''
+    showPauseModal.value = false
+    actionSuccessMessage.value = 'Work paused on request.'
     await loadStateHistory()
   } catch (err) {
-    errorMessage.value = extractErrorMessage(err, 'Failed to accept request.')
-  } finally {
-    isSubmittingAction.value = false
-  }
-}
-
-async function handleReject(): Promise<void> {
-  if (!requestId.value) {
-    return
-  }
-
-  const reason = rejectForm.reason.trim()
-  if (!reason) {
-    errorMessage.value = 'Rejection reason is required.'
-    return
-  }
-
-  isSubmittingAction.value = true
-  errorMessage.value = null
-  actionSuccessMessage.value = null
-
-  try {
-    const response = await httpClient.post<RequestDetail>(`/requests/${requestId.value}/reject`, {
-      reason,
-    })
-    request.value = response.data
-    rejectForm.reason = ''
-    actionSuccessMessage.value = 'Request rejected.'
-    await loadStateHistory()
-  } catch (err) {
-    errorMessage.value = extractErrorMessage(err, 'Failed to reject request.')
-  } finally {
-    isSubmittingAction.value = false
-  }
-}
-
-async function handleEscalate(): Promise<void> {
-  if (!requestId.value) {
-    return
-  }
-
-  const reason = escalateForm.reason.trim()
-  if (!reason) {
-    errorMessage.value = 'Escalation reason is required.'
-    return
-  }
-
-  isSubmittingAction.value = true
-  errorMessage.value = null
-  actionSuccessMessage.value = null
-
-  try {
-    const response = await httpClient.post<RequestDetail>(`/requests/${requestId.value}/escalate`, {
-      reason,
-    })
-    request.value = response.data
-    escalateForm.reason = ''
-    actionSuccessMessage.value = 'Request escalated.'
-    await loadStateHistory()
-  } catch (err) {
-    errorMessage.value = extractErrorMessage(err, 'Failed to escalate request.')
+    errorMessage.value = extractErrorMessage(err, 'Failed to pause work on request.')
   } finally {
     isSubmittingAction.value = false
   }
@@ -649,54 +708,17 @@ async function handleComplete(): Promise<void> {
   actionSuccessMessage.value = null
 
   try {
-    const response = await httpClient.post<RequestDetail>(`/requests/${requestId.value}/complete`, {
+    const response = await apiCompleteRequest(
+      requestId.value,
       resolutionDescription,
-    })
-    request.value = response.data
+    )
+    request.value = { ...request.value, ...response } as RequestDetail
     completeForm.resolutionDescription = ''
-    actionSuccessMessage.value = 'Request completed.'
+    showCompleteModal.value = false
+    actionSuccessMessage.value = 'Request completed successfully.'
     await loadStateHistory()
   } catch (err) {
     errorMessage.value = extractErrorMessage(err, 'Failed to complete request.')
-  } finally {
-    isSubmittingAction.value = false
-  }
-}
-
-async function handleManagementDecision(): Promise<void> {
-  if (!requestId.value) {
-    return
-  }
-
-  const decisionDetails = managementDecisionForm.decisionDetails.trim()
-  if (!decisionDetails) {
-    errorMessage.value = 'Management decision details are required.'
-    return
-  }
-
-  isSubmittingAction.value = true
-  errorMessage.value = null
-  actionSuccessMessage.value = null
-
-  try {
-    const payload: Record<string, string | null> = {
-      decisionDetails,
-    }
-    if (isEscalated.value && managementDecisionForm.targetStatus.trim().length > 0) {
-      payload.targetStatus = managementDecisionForm.targetStatus.trim()
-    }
-
-    const response = await httpClient.post<RequestDetail>(
-      `/requests/${requestId.value}/management-decision`,
-      payload,
-    )
-    request.value = response.data
-    managementDecisionForm.decisionDetails = ''
-    managementDecisionForm.targetStatus = ''
-    actionSuccessMessage.value = 'Management decision recorded.'
-    await loadStateHistory()
-  } catch (err) {
-    errorMessage.value = extractErrorMessage(err, 'Failed to record management decision.')
   } finally {
     isSubmittingAction.value = false
   }
@@ -718,25 +740,51 @@ async function handleReassign(): Promise<void> {
   actionSuccessMessage.value = null
 
   try {
-    const payload: Record<string, string | null> = {
+    const response = await apiReassignRequestOwner(
+      requestId.value,
       newOwnerPersonId,
-      notes: reassignForm.notes.trim() || null,
-    }
-    if (isEscalated.value && reassignForm.targetStatusForEscalated.trim().length > 0) {
-      payload.targetStatusForEscalated = reassignForm.targetStatusForEscalated.trim()
-    }
-
-    const response = await httpClient.post<RequestDetail>(
-      `/requests/${requestId.value}/reassign`,
-      payload,
+      reassignForm.notes.trim() || null,
     )
-    request.value = response.data
+    request.value = { ...request.value, ...response } as RequestDetail
     reassignForm.newOwnerPersonId = ''
     reassignForm.notes = ''
+    showReassignModal.value = false
     actionSuccessMessage.value = 'Request ownership reassigned.'
     await loadStateHistory()
   } catch (err) {
     errorMessage.value = extractErrorMessage(err, 'Failed to reassign request ownership.')
+  } finally {
+    isSubmittingAction.value = false
+  }
+}
+
+async function handleCancelRequest(): Promise<void> {
+  if (!requestId.value) {
+    return
+  }
+
+  const reason = cancelForm.reason.trim()
+  if (!reason) {
+    errorMessage.value = 'Cancellation reason is required.'
+    return
+  }
+
+  isSubmittingAction.value = true
+  errorMessage.value = null
+  actionSuccessMessage.value = null
+
+  try {
+    const response = await apiCancelRequest(
+      requestId.value,
+      reason,
+    )
+    request.value = { ...request.value, ...response } as RequestDetail
+    cancelForm.reason = ''
+    showCancelModal.value = false
+    actionSuccessMessage.value = 'Request cancelled.'
+    await loadStateHistory()
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(err, 'Failed to cancel request.')
   } finally {
     isSubmittingAction.value = false
   }
@@ -851,13 +899,13 @@ watch(
   () => route.params.id,
   async (newId, oldId) => {
     if (newId && newId !== oldId) {
-      await Promise.all([loadRequestDetail(), loadStateHistory()])
+      await Promise.all([loadRequestDetail(), loadStateHistory(), loadRequestComments()])
     }
   },
 )
 
 onMounted(async () => {
-  await Promise.all([loadActivePersons(), loadRequestDetail(), loadStateHistory()])
+  await Promise.all([loadActivePersons(), loadRequestDetail(), loadStateHistory(), loadRequestComments()])
 })
 </script>
 
@@ -1051,7 +1099,7 @@ onMounted(async () => {
               v-if="request.resolution"
               class="p-2 rounded border mb-2 small"
               :class="
-                request.resolution.outcome === 'REJECTED'
+                request.resolution.outcome === 'REJECTED' || request.resolution.outcome === 'CANCELLED'
                   ? 'bg-danger-subtle border-danger-subtle'
                   : 'bg-success-subtle border-success-subtle'
               "
@@ -1245,12 +1293,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Conditional Lifecycle Actions Card -->
-        <div
-          v-if="!isClosed"
-          class="card shadow-none border mb-2"
-          data-testid="request-actions-card"
-        >
+        <!-- Lifecycle Actions Card (CR-016 TD-001..003) -->
+        <div class="card shadow-none border mb-2" data-testid="request-actions-card">
           <div class="card-header py-1 px-2 bg-body-tertiary d-flex align-items-center justify-content-between">
             <span class="fw-semibold small">
               <i class="bi bi-sliders me-1 text-primary" aria-hidden="true"></i>
@@ -1261,159 +1305,300 @@ onMounted(async () => {
             </span>
           </div>
 
-          <div class="card-body p-2">
-            <!-- CAPTURED: Assign Request Owner -->
-            <div v-if="canAssign" data-testid="assign-action-section">
-              <form class="border rounded p-2 bg-body-tertiary" @submit.prevent="handleAssign">
-                <div class="small fw-bold mb-1">Assign Request Owner</div>
-                <div class="row g-1 align-items-end">
-                  <div class="col-12 col-md-5">
-                    <label for="assignOwnerSelect" class="form-label mb-0 small fw-medium" style="font-size: 11px">
-                      Assignee <span class="text-danger">*</span>
-                    </label>
-                    <select
-                      id="assignOwnerSelect"
-                      v-model="assignForm.ownerPersonId"
-                      class="form-select form-select-sm"
-                      required
-                      :disabled="isSubmittingAction"
-                      data-testid="assign-owner-select"
-                    >
-                      <option value="">Select active person...</option>
-                      <option
-                        v-for="person in activePersons"
-                        :key="person.id"
-                        :value="person.id"
-                      >
-                        {{ person.fullName }} ({{ person.email }})
-                      </option>
-                    </select>
-                  </div>
-                  <div class="col-12 col-md-5">
-                    <label for="assignNotesInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
-                      Assignment Notes
-                    </label>
-                    <input
-                      id="assignNotesInput"
-                      v-model="assignForm.notes"
-                      type="text"
-                      class="form-control form-control-sm"
-                      placeholder="Optional instructions"
-                      :disabled="isSubmittingAction"
-                      data-testid="assign-notes-input"
-                    />
-                  </div>
-                  <div class="col-12 col-md-2">
-                    <button
-                      type="submit"
-                      class="btn btn-primary btn-sm w-100"
-                      :disabled="isSubmittingAction || !assignForm.ownerPersonId"
-                      data-testid="assign-request-button"
-                    >
-                      <i class="bi bi-person-check me-1" aria-hidden="true"></i>Assign
-                    </button>
-                  </div>
-                </div>
-              </form>
+          <!-- When Closed: Terminal Closed Badge -->
+          <div v-if="isClosed" class="card-body p-2" data-testid="closed-actions-section">
+            <div
+              class="alert alert-secondary py-2 px-3 small d-flex align-items-center gap-2 mb-0"
+              data-testid="request-closed-badge"
+            >
+              <i class="bi bi-lock-fill text-secondary flex-shrink-0" aria-hidden="true"></i>
+              <span>
+                This request is closed (<strong class="font-monospace">{{ request.status }}</strong>). No further lifecycle actions are available.
+              </span>
+            </div>
+          </div>
+
+          <!-- When Active: Contextual Action Buttons & Forms -->
+          <div v-else class="card-body p-2">
+            <!-- Contextual Action Buttons Bar -->
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 pb-2 border-bottom" data-testid="lifecycle-action-buttons-bar">
+              <!-- When CAPTURED: [Assign Owner], [Cancel Request] -->
+              <template v-if="isCaptured">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="open-assign-button"
+                  @click="showAssignModal = true"
+                >
+                  <i class="bi bi-person-check me-1" aria-hidden="true"></i>Assign Owner
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="open-cancel-button"
+                  @click="showCancelModal = true"
+                >
+                  <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Cancel Request
+                </button>
+              </template>
+
+              <!-- When ASSIGNED: [Start Work] (enabled for assigned owner), [Reassign Owner], [Cancel Request] -->
+              <template v-else-if="isAssigned">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm py-1 px-2.5"
+                  :disabled="!isAssignedOwner || isSubmittingAction"
+                  :title="!isAssignedOwner ? 'Only the assigned owner can start work on this request.' : 'Start work'"
+                  data-testid="start-work-action-button"
+                  @click="handleStartWork"
+                >
+                  <i class="bi bi-play-circle me-1" aria-hidden="true"></i>Start Work
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="open-reassign-button"
+                  @click="showReassignModal = true"
+                >
+                  <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Reassign Owner
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="open-cancel-button"
+                  @click="showCancelModal = true"
+                >
+                  <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Cancel Request
+                </button>
+              </template>
+
+              <!-- When IN_PROGRESS: [Pause Work], [Complete Request], [Reassign Owner], [Cancel Request] -->
+              <template v-else-if="isInProgress">
+                <button
+                  type="button"
+                  class="btn btn-warning btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="pause-work-action-button"
+                  @click="showPauseModal = true"
+                >
+                  <i class="bi bi-pause-circle me-1" aria-hidden="true"></i>Pause Work
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-success btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction || hasUnfinishedSubTasks"
+                  :title="hasUnfinishedSubTasks ? 'All sub-tasks must be completed or removed before completing the request' : 'Complete request'"
+                  data-testid="complete-request-action-button"
+                  @click="showCompleteModal = true"
+                >
+                  <i class="bi bi-check2-all me-1" aria-hidden="true"></i>Complete Request
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="open-reassign-button"
+                  @click="showReassignModal = true"
+                >
+                  <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Reassign Owner
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="open-cancel-button"
+                  @click="showCancelModal = true"
+                >
+                  <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Cancel Request
+                </button>
+              </template>
+
+              <!-- When PAUSED: [Start / Resume Work] (enabled for assigned owner), [Reassign Owner], [Cancel Request] -->
+              <template v-else-if="isPaused">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm py-1 px-2.5"
+                  :disabled="!isAssignedOwner || isSubmittingAction"
+                  :title="!isAssignedOwner ? 'Only the assigned owner can resume work on this request.' : 'Resume work'"
+                  data-testid="start-work-action-button"
+                  @click="handleStartWork"
+                >
+                  <i class="bi bi-play-circle me-1" aria-hidden="true"></i>Start / Resume Work
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="open-reassign-button"
+                  @click="showReassignModal = true"
+                >
+                  <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>Reassign Owner
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm py-1 px-2.5"
+                  :disabled="isSubmittingAction"
+                  data-testid="open-cancel-button"
+                  @click="showCancelModal = true"
+                >
+                  <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Cancel Request
+                </button>
+              </template>
             </div>
 
-            <!-- Other Lifecycle States Action Forms Grid -->
+            <!-- Warning if In Progress and unfinished subtasks remain -->
+            <div
+              v-if="isInProgress && hasUnfinishedSubTasks"
+              class="alert alert-warning py-1 px-2 mb-2 small d-flex align-items-center gap-1"
+              data-testid="complete-subtasks-warning"
+            >
+              <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0" aria-hidden="true"></i>
+              <span>
+                Cannot complete request: <strong>{{ unfinishedSubTasksCount }} unfinished sub-task(s)</strong> remain. All sub-tasks must be completed or removed before completion.
+              </span>
+            </div>
+
+            <!-- Active Lifecycle Forms Grid -->
             <div class="row g-2">
-              <!-- EVALUATING: Evaluate Request -->
-              <div v-if="canEvaluate" class="col-12 col-md-6" data-testid="evaluate-action-section">
-                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleEvaluate">
-                  <div class="small fw-bold mb-1">Evaluate Request</div>
+              <!-- CAPTURED: Assign Request Owner Form Section -->
+              <div v-if="canAssign" class="col-12" data-testid="assign-action-section">
+                <form class="border rounded p-2 bg-body-tertiary" @submit.prevent="handleAssign">
+                  <div class="small fw-bold mb-1">
+                    <i class="bi bi-person-plus me-1 text-primary"></i>Assign Request Owner
+                  </div>
+                  <div class="row g-1 align-items-end">
+                    <div class="col-12 col-md-5">
+                      <label for="assignOwnerSelect" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                        Assignee <span class="text-danger">*</span>
+                      </label>
+                      <select
+                        id="assignOwnerSelect"
+                        v-model="assignForm.ownerPersonId"
+                        class="form-select form-select-sm"
+                        required
+                        :disabled="isSubmittingAction"
+                        data-testid="assign-owner-select"
+                      >
+                        <option value="">Select active person...</option>
+                        <option
+                          v-for="person in activePersons"
+                          :key="person.id"
+                          :value="person.id"
+                        >
+                          {{ person.fullName }} ({{ person.email }})
+                        </option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-5">
+                      <label for="assignNotesInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                        Assignment Notes
+                      </label>
+                      <input
+                        id="assignNotesInput"
+                        v-model="assignForm.notes"
+                        type="text"
+                        class="form-control form-control-sm"
+                        placeholder="Optional instructions"
+                        :disabled="isSubmittingAction"
+                        data-testid="assign-notes-input"
+                      />
+                    </div>
+                    <div class="col-12 col-md-2">
+                      <button
+                        type="submit"
+                        class="btn btn-primary btn-sm w-100"
+                        :disabled="isSubmittingAction || !assignForm.ownerPersonId"
+                        data-testid="assign-request-button"
+                      >
+                        <i class="bi bi-person-check me-1" aria-hidden="true"></i>Assign
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <!-- ASSIGNED / PAUSED: Start / Resume Work Section -->
+              <div v-if="canStartWork" class="col-12 col-md-6" data-testid="start-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleStartWork">
+                  <div class="small fw-bold mb-1">
+                    <i class="bi bi-play-circle me-1 text-primary"></i>
+                    {{ isPaused ? 'Resume Work' : 'Start Work' }}
+                  </div>
                   <div class="mb-1">
-                    <textarea
-                      id="evaluateNotesInput"
-                      v-model="evaluateForm.evaluationNotes"
+                    <label for="startNotesInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                      Work Notes <span class="text-body-secondary">(Optional)</span>
+                    </label>
+                    <input
+                      id="startNotesInput"
+                      v-model="startForm.notes"
+                      type="text"
                       class="form-control form-control-sm"
-                      rows="2"
-                      placeholder="Record triage findings..."
-                      required
-                      :disabled="isSubmittingAction"
-                      data-testid="evaluate-notes-input"
-                    ></textarea>
+                      placeholder="Optional notes..."
+                      :disabled="isSubmittingAction || !isAssignedOwner"
+                      data-testid="start-notes-input"
+                    />
+                  </div>
+                  <div v-if="!isAssignedOwner" class="alert alert-warning py-1 px-2 mb-1 small" style="font-size: 11px">
+                    <i class="bi bi-shield-lock me-1"></i>Only the assigned owner can start work on this request.
                   </div>
                   <button
                     type="submit"
-                    class="btn btn-info text-white btn-sm"
-                    :disabled="isSubmittingAction || !evaluateForm.evaluationNotes.trim()"
-                    data-testid="evaluate-request-button"
+                    class="btn btn-primary btn-sm"
+                    :disabled="isSubmittingAction || !isAssignedOwner"
+                    :title="!isAssignedOwner ? 'Only the assigned owner can start work on this request.' : 'Start Work'"
+                    data-testid="start-work-button"
                   >
-                    <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>Evaluate
+                    <i class="bi bi-play-circle me-1" aria-hidden="true"></i>
+                    {{ isPaused ? 'Resume Work' : 'Start Work' }}
                   </button>
                 </form>
               </div>
 
-              <!-- EVALUATING / ACCEPTED: Accept Responsibility -->
-              <div v-if="canAccept" class="col-12 col-md-6" data-testid="accept-action-section">
-                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleAccept">
-                  <div class="small fw-bold mb-1">Accept Responsibility</div>
+              <!-- IN_PROGRESS: Pause Work Section -->
+              <div v-if="canPauseWork" class="col-12 col-md-6" data-testid="pause-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handlePauseWork">
+                  <div class="small fw-bold mb-1">
+                    <i class="bi bi-pause-circle me-1 text-warning"></i>Pause Work
+                  </div>
                   <div class="mb-1">
+                    <label for="pauseNoteInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                      Pause Note <span class="text-body-secondary">(Optional)</span>
+                    </label>
                     <textarea
-                      id="acceptNotesInput"
-                      v-model="acceptForm.notes"
+                      id="pauseNoteInput"
+                      v-model="pauseForm.note"
                       class="form-control form-control-sm"
                       rows="2"
-                      placeholder="Optional acceptance notes..."
+                      placeholder="Document reason for suspension or external blocker..."
                       :disabled="isSubmittingAction"
-                      data-testid="accept-notes-input"
+                      data-testid="pause-note-input"
                     ></textarea>
                   </div>
                   <button
                     type="submit"
-                    class="btn btn-success btn-sm"
+                    class="btn btn-warning btn-sm"
                     :disabled="isSubmittingAction"
-                    data-testid="accept-request-button"
+                    data-testid="pause-work-button"
                   >
-                    <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Accept
+                    <i class="bi bi-pause-circle me-1" aria-hidden="true"></i>Pause Work
                   </button>
                 </form>
               </div>
 
-              <!-- EVALUATING: Reject Request -->
-              <div v-if="canReject" class="col-12 col-md-6" data-testid="reject-action-section">
-                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleReject">
-                  <div class="small fw-bold mb-1">Reject Request</div>
-                  <div class="mb-1">
-                    <textarea
-                      id="rejectReasonInput"
-                      v-model="rejectForm.reason"
-                      class="form-control form-control-sm"
-                      rows="2"
-                      placeholder="Reason for rejecting..."
-                      required
-                      :disabled="isSubmittingAction"
-                      data-testid="reject-reason-input"
-                    ></textarea>
-                  </div>
-                  <button
-                    type="submit"
-                    class="btn btn-danger btn-sm"
-                    :disabled="isSubmittingAction || !rejectForm.reason.trim()"
-                    data-testid="reject-request-button"
-                  >
-                    <i class="bi bi-x-octagon me-1" aria-hidden="true"></i>Reject
-                  </button>
-                </form>
-              </div>
-
-              <!-- IN_PROGRESS: Complete Request (Guarded by sub-tasks completion invariant TD-002) -->
+              <!-- IN_PROGRESS: Complete Request Section -->
               <div v-if="canComplete" class="col-12 col-md-6" data-testid="complete-action-section">
                 <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleComplete">
-                  <div class="small fw-bold mb-1">Complete Request</div>
-                  <div
-                    v-if="hasUnfinishedSubTasks"
-                    class="alert alert-warning py-1 px-2 mb-2 small d-flex align-items-center gap-1"
-                    data-testid="complete-subtasks-warning"
-                  >
-                    <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0" aria-hidden="true"></i>
-                    <span>
-                      Cannot complete request: <strong>{{ unfinishedSubTasksCount }} unfinished sub-task(s)</strong> remain. All sub-tasks must be completed or removed before completion.
-                    </span>
+                  <div class="small fw-bold mb-1">
+                    <i class="bi bi-check2-all me-1 text-success"></i>Complete Request
                   </div>
                   <div class="mb-1">
+                    <label for="completeResolutionInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                      Resolution Description <span class="text-danger">*</span>
+                    </label>
                     <textarea
                       id="completeResolutionInput"
                       v-model="completeForm.resolutionDescription"
@@ -1437,84 +1622,12 @@ onMounted(async () => {
                 </form>
               </div>
 
-              <!-- EVALUATING / IN_PROGRESS: Escalate Request -->
-              <div v-if="canEscalate" class="col-12 col-md-6" data-testid="escalate-action-section">
-                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleEscalate">
-                  <div class="small fw-bold mb-1">Escalate Request</div>
-                  <div class="mb-1">
-                    <textarea
-                      id="escalateReasonInput"
-                      v-model="escalateForm.reason"
-                      class="form-control form-control-sm"
-                      rows="2"
-                      placeholder="Document blocker or need for management..."
-                      required
-                      :disabled="isSubmittingAction"
-                      data-testid="escalate-reason-input"
-                    ></textarea>
-                  </div>
-                  <button
-                    type="submit"
-                    class="btn btn-warning btn-sm"
-                    :disabled="isSubmittingAction || !escalateForm.reason.trim()"
-                    data-testid="escalate-request-button"
-                  >
-                    <i class="bi bi-arrow-up-circle me-1" aria-hidden="true"></i>Escalate
-                  </button>
-                </form>
-              </div>
-
-              <!-- Active / ESCALATED: Management Decision -->
-              <div
-                v-if="canManagementDecision"
-                class="col-12 col-md-6"
-                data-testid="management-decision-action-section"
-              >
-                <form
-                  class="border rounded p-2 h-100 bg-body-tertiary"
-                  @submit.prevent="handleManagementDecision"
-                >
-                  <div class="small fw-bold mb-1">Management Decision</div>
-                  <div class="mb-1">
-                    <textarea
-                      id="managementDecisionInput"
-                      v-model="managementDecisionForm.decisionDetails"
-                      class="form-control form-control-sm"
-                      rows="2"
-                      placeholder="Determination or guidance..."
-                      required
-                      :disabled="isSubmittingAction"
-                      data-testid="management-decision-input"
-                    ></textarea>
-                  </div>
-                  <div v-if="isEscalated" class="mb-1">
-                    <select
-                      id="managementDecisionTargetStatus"
-                      v-model="managementDecisionForm.targetStatus"
-                      class="form-select form-select-sm"
-                      :disabled="isSubmittingAction"
-                      data-testid="management-decision-target-status-select"
-                    >
-                      <option value="">Remain ESCALATED</option>
-                      <option value="EVALUATING">Return to EVALUATING</option>
-                      <option value="IN_PROGRESS">Resume IN_PROGRESS</option>
-                    </select>
-                  </div>
-                  <button
-                    type="submit"
-                    class="btn btn-outline-primary btn-sm"
-                    :disabled="isSubmittingAction || !managementDecisionForm.decisionDetails.trim()"
-                    data-testid="management-decision-button"
-                  >
-                    <i class="bi bi-briefcase me-1" aria-hidden="true"></i>Submit Decision
-                  </button>
-                </form>
-              </div>
-
-              <!-- Active / ESCALATED: Reassign Ownership -->
+              <!-- ASSIGNED / IN_PROGRESS / PAUSED: Reassign Ownership Section -->
               <div v-if="canReassign" class="col-12 col-md-6" data-testid="reassign-action-section">
                 <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleReassign">
-                  <div class="small fw-bold mb-1">Reassign Ownership</div>
+                  <div class="small fw-bold mb-1">
+                    <i class="bi bi-arrow-left-right me-1 text-secondary"></i>Reassign Ownership
+                  </div>
                   <div class="row g-1 mb-1">
                     <div class="col-12">
                       <select
@@ -1533,18 +1646,6 @@ onMounted(async () => {
                         >
                           {{ person.fullName }} ({{ person.email }})
                         </option>
-                      </select>
-                    </div>
-                    <div v-if="isEscalated" class="col-12">
-                      <select
-                        id="reassignTargetStatus"
-                        v-model="reassignForm.targetStatusForEscalated"
-                        class="form-select form-select-sm"
-                        :disabled="isSubmittingAction"
-                        data-testid="reassign-target-status-select"
-                      >
-                        <option value="EVALUATING">Target: EVALUATING</option>
-                        <option value="IN_PROGRESS">Target: IN_PROGRESS</option>
                       </select>
                     </div>
                     <div class="col-12">
@@ -1569,6 +1670,171 @@ onMounted(async () => {
                   </button>
                 </form>
               </div>
+
+              <!-- ALL ACTIVE: Cancel Request Section -->
+              <div v-if="canCancel" class="col-12 col-md-6" data-testid="cancel-action-section">
+                <form class="border rounded p-2 h-100 bg-body-tertiary" @submit.prevent="handleCancelRequest">
+                  <div class="small fw-bold mb-1 text-danger">
+                    <i class="bi bi-x-circle me-1 text-danger"></i>Cancel Request
+                  </div>
+                  <div class="mb-1">
+                    <label for="cancelReasonInput" class="form-label mb-0 small fw-medium text-danger" style="font-size: 11px">
+                      Cancellation Reason <span class="text-danger">*</span>
+                    </label>
+                    <textarea
+                      id="cancelReasonInput"
+                      v-model="cancelForm.reason"
+                      class="form-control form-control-sm"
+                      rows="2"
+                      placeholder="Mandatory cancellation reason..."
+                      required
+                      :disabled="isSubmittingAction"
+                      data-testid="cancel-reason-input"
+                    ></textarea>
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-danger btn-sm"
+                    :disabled="isSubmittingAction || !cancelForm.reason.trim()"
+                    data-testid="cancel-request-button"
+                  >
+                    <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Cancel Request
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pause Work Modal Dialog -->
+        <div
+          v-if="showPauseModal"
+          class="modal fade show d-block"
+          tabindex="-1"
+          style="background-color: rgba(0, 0, 0, 0.5)"
+          data-testid="pause-work-modal"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header py-2">
+                <h5 class="modal-title h6 mb-0">
+                  <i class="bi bi-pause-circle me-1 text-warning"></i>Pause Work
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  aria-label="Close"
+                  data-testid="close-pause-modal-button"
+                  @click="showPauseModal = false"
+                ></button>
+              </div>
+              <form @submit.prevent="handlePauseWork">
+                <div class="modal-body py-2">
+                  <p class="small text-body-secondary mb-2">
+                    Suspend active progress on this request. You can resume work at any time or discuss blockers in the comments thread.
+                  </p>
+                  <label for="modalPauseNote" class="form-label small fw-medium">
+                    Pause Note <span class="text-body-secondary">(Optional)</span>
+                  </label>
+                  <textarea
+                    id="modalPauseNote"
+                    v-model="pauseForm.note"
+                    class="form-control form-control-sm"
+                    rows="3"
+                    placeholder="Document reason for pause or external blocker..."
+                    :disabled="isSubmittingAction"
+                    data-testid="modal-pause-note-input"
+                  ></textarea>
+                </div>
+                <div class="modal-footer py-1">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="isSubmittingAction"
+                    @click="showPauseModal = false"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="btn btn-warning btn-sm"
+                    :disabled="isSubmittingAction"
+                    data-testid="modal-submit-pause-button"
+                  >
+                    <span v-if="isSubmittingAction" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <i v-else class="bi bi-pause-circle me-1"></i>Pause Work
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cancel Request Modal Dialog -->
+        <div
+          v-if="showCancelModal"
+          class="modal fade show d-block"
+          tabindex="-1"
+          style="background-color: rgba(0, 0, 0, 0.5)"
+          data-testid="cancel-request-modal"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header py-2">
+                <h5 class="modal-title h6 mb-0 text-danger">
+                  <i class="bi bi-x-circle me-1 text-danger"></i>Cancel Request
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  aria-label="Close"
+                  data-testid="close-cancel-modal-button"
+                  @click="showCancelModal = false"
+                ></button>
+              </div>
+              <form @submit.prevent="handleCancelRequest">
+                <div class="modal-body py-2">
+                  <p class="small text-body-secondary mb-2">
+                    Cancelling will move this request into terminal <strong class="text-danger">CANCELLED</strong> state. A cancellation reason is mandatory.
+                  </p>
+                  <label for="modalCancelReason" class="form-label small fw-medium">
+                    Cancellation Reason <span class="text-danger">*</span>
+                  </label>
+                  <textarea
+                    id="modalCancelReason"
+                    v-model="cancelForm.reason"
+                    class="form-control form-control-sm"
+                    rows="3"
+                    placeholder="Explain why this request is being cancelled..."
+                    required
+                    :disabled="isSubmittingAction"
+                    data-testid="modal-cancel-reason-input"
+                  ></textarea>
+                </div>
+                <div class="modal-footer py-1">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="isSubmittingAction"
+                    @click="showCancelModal = false"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    class="btn btn-danger btn-sm"
+                    :disabled="isSubmittingAction || !cancelForm.reason.trim()"
+                    data-testid="modal-submit-cancel-button"
+                  >
+                    <span v-if="isSubmittingAction" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <i v-else class="bi bi-x-circle me-1"></i>Confirm Cancellation
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -1786,6 +2052,129 @@ onMounted(async () => {
                 </div>
               </li>
             </ul>
+          </div>
+        </div>
+
+        <!-- Embedded Comments & Discussion Card (CR-016 TD-005) -->
+        <div class="card shadow-none border mb-2" data-testid="request-comments-card">
+          <div class="card-header py-1 px-2 bg-body-tertiary d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small">
+              <i class="bi bi-chat-left-text me-1 text-primary" aria-hidden="true"></i>
+              Comments &amp; Discussion
+            </span>
+            <div class="d-flex align-items-center gap-1">
+              <span class="badge text-bg-secondary" style="font-size: 11px" data-testid="request-comments-count">
+                {{ comments.length }}
+              </span>
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm py-0 px-1"
+                style="font-size: 11px; height: 22px; line-height: 20px"
+                title="Refresh comments"
+                :disabled="isCommentsLoading"
+                data-testid="refresh-comments-button"
+                @click="loadRequestComments"
+              >
+                <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="card-body p-2">
+            <!-- Comment Error Alert -->
+            <div
+              v-if="commentErrorMessage"
+              role="alert"
+              class="alert alert-danger py-1 px-2 mb-2 small d-flex align-items-center gap-1"
+              data-testid="comment-error-alert"
+            >
+              <i class="bi bi-exclamation-triangle-fill flex-shrink-0" aria-hidden="true"></i>
+              <div class="flex-grow-1">{{ commentErrorMessage }}</div>
+              <button
+                type="button"
+                class="btn-close py-1 px-2"
+                aria-label="Close"
+                @click="commentErrorMessage = null"
+              ></button>
+            </div>
+
+            <!-- Loading Comments Indicator -->
+            <div v-if="isCommentsLoading && comments.length === 0" class="text-center py-3 text-body-secondary small">
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              Loading discussion...
+            </div>
+
+            <!-- Empty Comments State -->
+            <div
+              v-else-if="comments.length === 0"
+              class="text-center py-3 text-body-secondary small"
+              data-testid="empty-comments-message"
+            >
+              No comments yet. Start a discussion or coordinate blockers.
+            </div>
+
+            <!-- Chronological Comments Thread -->
+            <div
+              v-else
+              class="comments-list mb-2"
+              style="max-height: 380px; overflow-y: auto"
+              data-testid="request-comments-list"
+            >
+              <div
+                v-for="c in comments"
+                :key="c.id"
+                class="p-2 border rounded mb-1 bg-body-subtle"
+                data-testid="request-comment-item"
+              >
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-semibold small text-primary" style="font-size: 11.5px">
+                    <i class="bi bi-person-fill me-1" aria-hidden="true"></i>{{ c.authorName || c.author || 'User' }}
+                  </span>
+                  <span class="text-body-secondary font-monospace" style="font-size: 10px">
+                    {{ formatTimestamp(c.createdAt) }}
+                  </span>
+                </div>
+                <div
+                  class="small text-body"
+                  style="white-space: pre-wrap; font-size: 12px; line-height: 1.4"
+                  data-testid="request-comment-content"
+                >
+                  {{ c.content }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Add Comment Form -->
+            <form class="mt-2" data-testid="add-comment-form" @submit.prevent="handleAddComment">
+              <div class="mb-1">
+                <textarea
+                  v-model="newCommentContent"
+                  class="form-control form-control-sm"
+                  rows="2"
+                  placeholder="Write a comment or discuss blocker..."
+                  required
+                  :disabled="isSubmittingComment"
+                  data-testid="add-comment-input"
+                ></textarea>
+              </div>
+              <div class="d-flex justify-content-end">
+                <button
+                  type="submit"
+                  class="btn btn-primary btn-sm py-0 px-2"
+                  style="font-size: 12px; height: 26px"
+                  :disabled="isSubmittingComment || !newCommentContent.trim()"
+                  data-testid="add-comment-button"
+                >
+                  <span
+                    v-if="isSubmittingComment"
+                    class="spinner-border spinner-border-sm me-1"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  <i v-else class="bi bi-send me-1" aria-hidden="true"></i>Add Comment
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>

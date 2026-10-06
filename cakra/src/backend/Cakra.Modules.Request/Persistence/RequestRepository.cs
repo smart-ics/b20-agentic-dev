@@ -8,7 +8,7 @@ namespace Cakra.Modules.Request.Persistence;
 /// <summary>
 /// Dapper implementation of <see cref="IRequestRepository"/> using explicit parameterized SQL
 /// exclusively against <c>request.Requests</c>, <c>request.RequestResolutions</c>, and
-/// <c>request.RequestAssignments</c> (Architecture §6, §17, §18, §19.3, §20, §21).
+/// <c>request.RequestAssignments</c> (Architecture §6, §17, §18, §19.3, §20, §21, CR-016).
 /// </summary>
 internal sealed class RequestRepository : IRequestRepository
 {
@@ -44,8 +44,6 @@ internal sealed class RequestRepository : IRequestRepository
                 [ProductId],
                 [WorkPackageId],
                 [EvaluationNotes],
-                [EscalationReason],
-                [ManagementDecisionNotes],
                 [CreatedAt],
                 [UpdatedAt]
             FROM [request].[Requests]
@@ -146,8 +144,6 @@ internal sealed class RequestRepository : IRequestRepository
                 [ProductId],
                 [WorkPackageId],
                 [EvaluationNotes],
-                [EscalationReason],
-                [ManagementDecisionNotes],
                 [CreatedAt],
                 [UpdatedAt]
             FROM [request].[Requests]
@@ -192,8 +188,6 @@ internal sealed class RequestRepository : IRequestRepository
                 [ProductId],
                 [WorkPackageId],
                 [EvaluationNotes],
-                [EscalationReason],
-                [ManagementDecisionNotes],
                 [CreatedAt],
                 [UpdatedAt]
             ) VALUES (
@@ -212,8 +206,6 @@ internal sealed class RequestRepository : IRequestRepository
                 @ProductId,
                 @WorkPackageId,
                 @EvaluationNotes,
-                @EscalationReason,
-                @ManagementDecisionNotes,
                 @CreatedAt,
                 @UpdatedAt
             );
@@ -254,27 +246,25 @@ internal sealed class RequestRepository : IRequestRepository
         using var transaction = connection.BeginTransaction();
 
         await connection.ExecuteAsync(new CommandDefinition(sql, new
-        {
-            entity.Id,
-            entity.Title,
-            entity.Description,
-            entity.RequestType,
-            Status = entity.Status.ToName(),
-            entity.Priority,
-            entity.Complexity,
-            entity.TotalSubTasksCount,
-            entity.CompletedSubTasksCount,
-            entity.CompletionPercentage,
-            entity.OwnerPersonId,
-            entity.CustomerId,
-            entity.ProductId,
-            entity.WorkPackageId,
-            entity.EvaluationNotes,
-            entity.EscalationReason,
-            entity.ManagementDecisionNotes,
-            entity.CreatedAt,
-            entity.UpdatedAt
-        }, transaction: transaction, cancellationToken: cancellationToken));
+            {
+                entity.Id,
+                entity.Title,
+                entity.Description,
+                entity.RequestType,
+                Status = entity.Status.ToName(),
+                entity.Priority,
+                entity.Complexity,
+                entity.TotalSubTasksCount,
+                entity.CompletedSubTasksCount,
+                entity.CompletionPercentage,
+                entity.OwnerPersonId,
+                entity.CustomerId,
+                entity.ProductId,
+                entity.WorkPackageId,
+                entity.EvaluationNotes,
+                entity.CreatedAt,
+                entity.UpdatedAt
+            }, transaction: transaction, cancellationToken: cancellationToken));
 
         foreach (var subTask in entity.SubTasks)
         {
@@ -319,8 +309,6 @@ internal sealed class RequestRepository : IRequestRepository
                 [ProductId] = @ProductId,
                 [WorkPackageId] = @WorkPackageId,
                 [EvaluationNotes] = @EvaluationNotes,
-                [EscalationReason] = @EscalationReason,
-                [ManagementDecisionNotes] = @ManagementDecisionNotes,
                 [UpdatedAt] = @UpdatedAt
             WHERE [Id] = @Id;
             """;
@@ -400,8 +388,6 @@ internal sealed class RequestRepository : IRequestRepository
             entity.ProductId,
             entity.WorkPackageId,
             entity.EvaluationNotes,
-            entity.EscalationReason,
-            entity.ManagementDecisionNotes,
             entity.UpdatedAt
         }, transaction: transaction, cancellationToken: cancellationToken));
 
@@ -649,8 +635,6 @@ internal sealed class RequestRepository : IRequestRepository
         public Guid? ProductId { get; init; }
         public Guid? WorkPackageId { get; init; }
         public string? EvaluationNotes { get; init; }
-        public string? EscalationReason { get; init; }
-        public string? ManagementDecisionNotes { get; init; }
         public DateTime CreatedAt { get; init; }
         public DateTime? UpdatedAt { get; init; }
 
@@ -671,8 +655,6 @@ internal sealed class RequestRepository : IRequestRepository
                 ProductId,
                 WorkPackageId,
                 EvaluationNotes,
-                EscalationReason,
-                ManagementDecisionNotes,
                 CreatedAt,
                 UpdatedAt,
                 resolution,

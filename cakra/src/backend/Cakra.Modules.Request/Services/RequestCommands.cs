@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Cakra.Modules.Request.Domain;
 
 namespace Cakra.Modules.Request.Services;
 
@@ -111,29 +112,43 @@ public sealed class AssignRequestOwnerCommandValidator : AbstractValidator<Assig
 }
 
 /// <summary>
-/// Command to record triage evaluation notes on a Request in <c>EVALUATING</c> state
-/// (Architecture §7, §8 — UC-REQ-003).
+/// Command to start active work on a Request, transitioning <c>ASSIGNED</c> or <c>PAUSED</c> to <c>IN_PROGRESS</c>
+/// (Architecture CR-016 TD-002). Strictly executable by the assigned owner.
 /// </summary>
-public sealed record EvaluateRequestCommand(
+public sealed record StartWorkCommand(
     Guid RequestId,
-    string EvaluationNotes,
-    Guid? ActorPersonId = null,
-    int? Complexity = null) : IRequest<RequestDto>;
+    string? Notes = null,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
 
-public sealed class EvaluateRequestCommandValidator : AbstractValidator<EvaluateRequestCommand>
+public sealed class StartWorkCommandValidator : AbstractValidator<StartWorkCommand>
 {
-    public EvaluateRequestCommandValidator()
+    public StartWorkCommandValidator()
     {
         RuleFor(x => x.RequestId)
             .NotEmpty().WithMessage("Request ID is required.");
 
-        RuleFor(x => x.EvaluationNotes)
-            .NotEmpty().WithMessage("Evaluation notes are required.");
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
 
-        RuleFor(x => x.Complexity)
-            .InclusiveBetween(1, 5)
-            .When(x => x.Complexity.HasValue)
-            .WithMessage("Complexity must be an integer between 1 and 5.");
+/// <summary>
+/// Command to pause active work on a Request, transitioning <c>IN_PROGRESS</c> to <c>PAUSED</c>
+/// (Architecture CR-016 TD-002).
+/// </summary>
+public sealed record PauseWorkCommand(
+    Guid RequestId,
+    string? Note = null,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class PauseWorkCommandValidator : AbstractValidator<PauseWorkCommand>
+{
+    public PauseWorkCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
 
         RuleFor(x => x.ActorPersonId)
             .Must(id => id != Guid.Empty)
@@ -172,20 +187,27 @@ public sealed class UpdateRequestComplexityCommandValidator : AbstractValidator<
 }
 
 /// <summary>
-/// Command to accept operational responsibility for a Request, transitioning it to <c>IN_PROGRESS</c>
-/// and emitting <c>RequestAccepted</c> (Architecture §7, §8 — UC-REQ-004).
+/// Command to cancel a Request, transitioning any non-terminal state to <c>CANCELLED</c>
+/// (Architecture CR-016 TD-002).
 /// </summary>
-public sealed record AcceptRequestResponsibilityCommand(
+public sealed record CancelRequestCommand(
     Guid RequestId,
-    string? Notes = null,
-    Guid? ActorPersonId = null) : IRequest<RequestDto>;
-
-public sealed class AcceptRequestResponsibilityCommandValidator : AbstractValidator<AcceptRequestResponsibilityCommand>
+    string Reason,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>
 {
-    public AcceptRequestResponsibilityCommandValidator()
+    /// <summary>Convenience alias for <see cref="Reason"/>.</summary>
+    public string CancellationReason => Reason;
+}
+
+public sealed class CancelRequestCommandValidator : AbstractValidator<CancelRequestCommand>
+{
+    public CancelRequestCommandValidator()
     {
         RuleFor(x => x.RequestId)
             .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.Reason)
+            .NotEmpty().WithMessage("Cancellation reason is required.");
 
         RuleFor(x => x.ActorPersonId)
             .Must(id => id != Guid.Empty)
@@ -195,27 +217,24 @@ public sealed class AcceptRequestResponsibilityCommandValidator : AbstractValida
 }
 
 /// <summary>
-/// Command to reject a Request during evaluation, transitioning <c>EVALUATING -&gt; REJECTED</c>,
-/// recording the rejection reason, and emitting <c>RequestRejected</c> (Architecture §7, §8 — UC-REQ-005).
+/// Command to reassign request ownership to a new person (Architecture CR-016 TD-003).
 /// </summary>
-public sealed record RejectRequestCommand(
+public sealed record ReassignRequestOwnershipCommand(
     Guid RequestId,
-    string Reason,
-    Guid? ActorPersonId = null) : IRequest<RequestDto>
-{
-    /// <summary>Convenience alias for <see cref="Reason"/>.</summary>
-    public string RejectionReason => Reason;
-}
+    Guid NewOwnerPersonId,
+    string? Notes = null,
+    Guid? ActorPersonId = null,
+    RequestStatus? TargetStatusForEscalated = null) : IRequest<RequestDto>;
 
-public sealed class RejectRequestCommandValidator : AbstractValidator<RejectRequestCommand>
+public sealed class ReassignRequestOwnershipCommandValidator : AbstractValidator<ReassignRequestOwnershipCommand>
 {
-    public RejectRequestCommandValidator()
+    public ReassignRequestOwnershipCommandValidator()
     {
         RuleFor(x => x.RequestId)
             .NotEmpty().WithMessage("Request ID is required.");
 
-        RuleFor(x => x.Reason)
-            .NotEmpty().WithMessage("Rejection reason is required.");
+        RuleFor(x => x.NewOwnerPersonId)
+            .NotEmpty().WithMessage("New owner person ID is required.");
 
         RuleFor(x => x.ActorPersonId)
             .Must(id => id != Guid.Empty)
@@ -223,6 +242,7 @@ public sealed class RejectRequestCommandValidator : AbstractValidator<RejectRequ
             .WithMessage("Actor person ID cannot be empty.");
     }
 }
+
 
 /// <summary>
 /// Command to review and complete work on a Request, transitioning <c>IN_PROGRESS -&gt; COMPLETED</c>,

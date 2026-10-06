@@ -6,7 +6,7 @@ namespace Cakra.Modules.Request.Domain;
 
 /// <summary>
 /// Authoritative Request aggregate root managing the operational demand lifecycle,
-/// state transitions, ownership assignments, and resolution (Architecture §7, §8).
+/// state transitions, ownership assignments, and resolution (Architecture §7, §8, CR-016).
 /// </summary>
 public sealed class Request : EntityBase
 {
@@ -59,13 +59,7 @@ public sealed class Request : EntityBase
     /// <summary>Evaluation notes recorded during triage assessment.</summary>
     public string? EvaluationNotes { get; private set; }
 
-    /// <summary>Documented justification and needed assistance when escalated.</summary>
-    public string? EscalationReason { get; private set; }
-
-    /// <summary>Decision details, docket, or determination recorded during management elevation.</summary>
-    public string? ManagementDecisionNotes { get; private set; }
-
-    /// <summary>Recorded resolution outcome when the request is closed (rejected or completed).</summary>
+    /// <summary>Recorded resolution outcome when the request is closed (completed or cancelled).</summary>
     public RequestResolution? Resolution { get; private set; }
 
     /// <summary>Audit trail of ownership and lifecycle state transitions.</summary>
@@ -157,8 +151,8 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Assigns or reassigns the operational owner of the Request (UC-REQ-002, UC-MGT-001).
-    /// Transitions CAPTURED -> EVALUATING, ESCALATED -> EVALUATING, or preserves active status.
+    /// Assigns or reassigns the operational owner of the Request (Architecture CR-016 TD-003).
+    /// Transitions CAPTURED -> ASSIGNED, preserves ASSIGNED, or resets IN_PROGRESS / PAUSED -> ASSIGNED.
     /// </summary>
     public void AssignOwner(
         Guid ownerPersonId,
@@ -171,7 +165,7 @@ public sealed class Request : EntityBase
         if (actorPersonId == Guid.Empty)
             throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
 
-        if (Status == RequestStatus.Rejected || Status == RequestStatus.Completed)
+        if (Status == RequestStatus.Completed || Status == RequestStatus.Cancelled)
         {
             throw new InvalidRequestStateTransitionException(
                 Id, Status, nameof(AssignOwner), reason: "Closed requests cannot be assigned or reassigned.");
@@ -186,21 +180,25 @@ public sealed class Request : EntityBase
         switch (Status)
         {
             case RequestStatus.Captured:
-                newStatus = RequestStatus.Evaluating;
+                newStatus = RequestStatus.Assigned;
                 break;
 
-            case RequestStatus.Escalated:
-                newStatus = RequestStatus.Evaluating;
-                break;
-
-            case RequestStatus.Evaluating:
-            case RequestStatus.Accepted:
-            case RequestStatus.InProgress:
+            case RequestStatus.Assigned:
                 if (OwnerPersonId.HasValue && OwnerPersonId.Value == ownerPersonId)
                 {
                     throw new InvalidOperationException("Request is already assigned to this person.");
                 }
-                newStatus = Status;
+                newStatus = RequestStatus.Assigned;
+                break;
+
+            case RequestStatus.InProgress:
+            case RequestStatus.Paused:
+                if (OwnerPersonId.HasValue && OwnerPersonId.Value == ownerPersonId)
+                {
+                    throw new InvalidOperationException("Request is already assigned to this person.");
+                }
+                // TD-003: Active work reassignment resets status to ASSIGNED
+                newStatus = RequestStatus.Assigned;
                 break;
 
             default:
@@ -221,9 +219,9 @@ public sealed class Request : EntityBase
             newStatus: newStatus,
             assignedAtUtc: now,
             notes: notes ?? (prevStatus == RequestStatus.Captured
-                ? "Initial owner assignment -> EVALUATING"
-                : prevStatus == RequestStatus.Escalated
-                    ? "Escalation reassignment -> EVALUATING"
+                ? "Initial owner assignment -> ASSIGNED"
+                : prevStatus == RequestStatus.InProgress || prevStatus == RequestStatus.Paused
+                    ? "Active owner reassignment -> ASSIGNED"
                     : "Owner reassigned"));
 
         _assignments.Add(assignment);
@@ -240,79 +238,10 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Records triage evaluation notes while in EVALUATING state (UC-REQ-003).
-    /// Lifecycle state remains EVALUATING.
+    /// Starts active work on the Request, transitioning ASSIGNED -> IN_PROGRESS or PAUSED -> IN_PROGRESS (CR-016 TD-002).
+    /// Strictly executable by the assigned owner.
     /// </summary>
-    public void Evaluate(
-        string evaluationNotes,
-        Guid actorPersonId,
-        DateTime? utcNow = null)
-    {
-        if (string.IsNullOrWhiteSpace(evaluationNotes))
-            throw new RequestDomainValidationException("Evaluation notes cannot be empty.", nameof(evaluationNotes));
-        if (actorPersonId == Guid.Empty)
-            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
-
-        if (Status != RequestStatus.Evaluating)
-        {
-            throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(Evaluate), reason: "Request must be in EVALUATING state to record an evaluation.");
-        }
-
-        var now = utcNow ?? DateTime.UtcNow;
-        EvaluationNotes = evaluationNotes.Trim();
-        UpdatedAt = now;
-
-        _domainEvents.Add(new RequestEvaluated(
-            requestId: Id,
-            evaluatedByPersonId: actorPersonId,
-            evaluationNotes: EvaluationNotes,
-            occurredAtUtc: now));
-    }
-
-    /// <summary>
-    /// Updates the complexity rating while the request is in an active lifecycle state (Architecture CR-005).
-    /// </summary>
-    public void SetComplexity(
-        int newComplexity,
-        Guid actorPersonId,
-        string? reason = null,
-        DateTime? utcNow = null)
-    {
-        if (newComplexity < 1 || newComplexity > 5)
-            throw new RequestDomainValidationException("Complexity must be an integer between 1 and 5.", nameof(newComplexity));
-
-        if (actorPersonId == Guid.Empty)
-            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
-
-        if (Status == RequestStatus.Completed || Status == RequestStatus.Rejected)
-        {
-            throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(SetComplexity), reason: "Cannot change complexity on a closed request.");
-        }
-
-        if (Complexity == newComplexity)
-            return;
-
-        var previousComplexity = Complexity;
-        var now = utcNow ?? DateTime.UtcNow;
-
-        Complexity = newComplexity;
-        UpdatedAt = now;
-
-        _domainEvents.Add(new RequestComplexityUpdated(
-            requestId: Id,
-            previousComplexity: previousComplexity,
-            newComplexity: newComplexity,
-            actorPersonId: actorPersonId,
-            reason: reason?.Trim(),
-            occurredAtUtc: now));
-    }
-
-    /// <summary>
-    /// Accepts operational responsibility for the Request, transitioning EVALUATING -> ACCEPTED (UC-REQ-004).
-    /// </summary>
-    public void Accept(
+    public void StartWork(
         Guid actorPersonId,
         string? notes = null,
         DateTime? utcNow = null)
@@ -320,157 +249,16 @@ public sealed class Request : EntityBase
         if (actorPersonId == Guid.Empty)
             throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
 
-        if (Status != RequestStatus.Evaluating)
+        if (!OwnerPersonId.HasValue || actorPersonId != OwnerPersonId.Value)
         {
-            throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(Accept), RequestStatus.Accepted, reason: "Request must be in EVALUATING state to be accepted.");
+            throw new InvalidOperationException("Only the assigned owner can start work on this request.");
         }
 
-        var now = utcNow ?? DateTime.UtcNow;
-        var prevStatus = Status;
-
-        Status = RequestStatus.Accepted;
-        UpdatedAt = now;
-
-        var assignment = RequestAssignment.Create(
-            requestId: Id,
-            previousOwnerPersonId: OwnerPersonId,
-            assignedOwnerPersonId: OwnerPersonId,
-            actorPersonId: actorPersonId,
-            previousStatus: prevStatus,
-            newStatus: RequestStatus.Accepted,
-            assignedAtUtc: now,
-            notes: notes ?? "Request accepted");
-
-        _assignments.Add(assignment);
-
-        _domainEvents.Add(new RequestAccepted(
-            requestId: Id,
-            ownerPersonId: OwnerPersonId ?? actorPersonId,
-            notes: notes,
-            occurredAtUtc: now));
-    }
-
-    /// <summary>
-    /// Alias for <see cref="Accept(Guid, string?, DateTime?)"/> to support UC-REQ-004 terminology.
-    /// </summary>
-    public void AcceptResponsibility(
-        Guid actorPersonId,
-        string? notes = null,
-        DateTime? utcNow = null) => Accept(actorPersonId, notes, utcNow);
-
-    /// <summary>
-    /// Declines responsibility during evaluation, closing the Request with outcome REJECTED (UC-REQ-005).
-    /// Transitions EVALUATING -> REJECTED.
-    /// </summary>
-    public void Reject(
-        string reason,
-        Guid actorPersonId,
-        DateTime? utcNow = null)
-    {
-        if (string.IsNullOrWhiteSpace(reason))
-            throw new RequestDomainValidationException("Rejection reason cannot be empty.", nameof(reason));
-        if (actorPersonId == Guid.Empty)
-            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
-
-        if (Status != RequestStatus.Evaluating)
+        if (Status != RequestStatus.Assigned && Status != RequestStatus.Paused)
         {
             throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(Reject), RequestStatus.Rejected, reason: "Request must be in EVALUATING state to be rejected.");
-        }
-
-        var now = utcNow ?? DateTime.UtcNow;
-        var prevStatus = Status;
-
-        Status = RequestStatus.Rejected;
-        Resolution = RequestResolution.Create(
-            requestId: Id,
-            outcome: ResolutionOutcomeNames.Rejected,
-            description: reason,
-            resolvedBy: actorPersonId,
-            resolvedAt: now);
-        UpdatedAt = now;
-
-        var assignment = RequestAssignment.Create(
-            requestId: Id,
-            previousOwnerPersonId: OwnerPersonId,
-            assignedOwnerPersonId: OwnerPersonId,
-            actorPersonId: actorPersonId,
-            previousStatus: prevStatus,
-            newStatus: RequestStatus.Rejected,
-            assignedAtUtc: now,
-            notes: $"Request rejected: {reason.Trim()}");
-
-        _assignments.Add(assignment);
-
-        _domainEvents.Add(new RequestRejected(
-            requestId: Id,
-            rejectedByPersonId: actorPersonId,
-            rejectionReason: reason.Trim(),
-            occurredAtUtc: now));
-    }
-
-    /// <summary>
-    /// Escalates the Request due to authority, technical, or resource barriers (UC-REQ-006).
-    /// Valid transitions: EVALUATING -> ESCALATED or IN_PROGRESS -> ESCALATED.
-    /// </summary>
-    public void Escalate(
-        string reason,
-        Guid actorPersonId,
-        DateTime? utcNow = null)
-    {
-        if (string.IsNullOrWhiteSpace(reason))
-            throw new RequestDomainValidationException("Escalation reason cannot be empty.", nameof(reason));
-        if (actorPersonId == Guid.Empty)
-            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
-
-        if (Status != RequestStatus.Evaluating && Status != RequestStatus.InProgress)
-        {
-            throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(Escalate), RequestStatus.Escalated, reason: "Request can only be escalated from EVALUATING or IN_PROGRESS state.");
-        }
-
-        var now = utcNow ?? DateTime.UtcNow;
-        var prevStatus = Status;
-
-        Status = RequestStatus.Escalated;
-        EscalationReason = reason.Trim();
-        UpdatedAt = now;
-
-        var assignment = RequestAssignment.Create(
-            requestId: Id,
-            previousOwnerPersonId: OwnerPersonId,
-            assignedOwnerPersonId: OwnerPersonId,
-            actorPersonId: actorPersonId,
-            previousStatus: prevStatus,
-            newStatus: RequestStatus.Escalated,
-            assignedAtUtc: now,
-            notes: $"Request escalated: {reason.Trim()}");
-
-        _assignments.Add(assignment);
-
-        _domainEvents.Add(new RequestEscalated(
-            requestId: Id,
-            escalatedByPersonId: actorPersonId,
-            escalationReason: reason.Trim(),
-            occurredAtUtc: now));
-    }
-
-    /// <summary>
-    /// Starts active work on the Request, transitioning ACCEPTED -> IN_PROGRESS or ESCALATED -> IN_PROGRESS.
-    /// </summary>
-    public void StartProgress(
-        Guid actorPersonId,
-        string? notes = null,
-        DateTime? utcNow = null)
-    {
-        if (actorPersonId == Guid.Empty)
-            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
-
-        if (Status != RequestStatus.Accepted && Status != RequestStatus.Escalated)
-        {
-            throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(StartProgress), RequestStatus.InProgress, reason: "Request can only transition to IN_PROGRESS from ACCEPTED or ESCALATED state.");
+                Id, Status, nameof(StartWork), RequestStatus.InProgress,
+                reason: "Request can only transition to IN_PROGRESS from ASSIGNED or PAUSED state.");
         }
 
         var now = utcNow ?? DateTime.UtcNow;
@@ -487,30 +275,118 @@ public sealed class Request : EntityBase
             previousStatus: prevStatus,
             newStatus: RequestStatus.InProgress,
             assignedAtUtc: now,
-            notes: notes ?? (prevStatus == RequestStatus.Escalated ? "Resumed progress from ESCALATED" : "Work started on request"));
+            notes: notes ?? (prevStatus == RequestStatus.Paused ? "Resumed work from PAUSED" : "Started work on request"));
 
         _assignments.Add(assignment);
+
+        _domainEvents.Add(new RequestWorkStarted(
+            requestId: Id,
+            ownerPersonId: OwnerPersonId.Value,
+            actorPersonId: actorPersonId,
+            previousStatus: prevStatus,
+            notes: notes,
+            occurredAtUtc: now));
     }
 
     /// <summary>
-    /// Resumes active work from ESCALATED state, transitioning ESCALATED -> IN_PROGRESS.
+    /// Suspends active work on the Request, transitioning IN_PROGRESS -> PAUSED (CR-016 TD-002).
     /// </summary>
-    public void ResumeProgress(
+    public void PauseWork(
         Guid actorPersonId,
-        string? notes = null,
+        string? note = null,
         DateTime? utcNow = null)
     {
-        if (Status != RequestStatus.Escalated)
+        if (actorPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
+
+        if (Status != RequestStatus.InProgress)
         {
             throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(ResumeProgress), RequestStatus.InProgress, reason: "Request can only be resumed from ESCALATED state.");
+                Id, Status, nameof(PauseWork), RequestStatus.Paused,
+                reason: "Request can only transition to PAUSED from IN_PROGRESS state.");
         }
 
-        StartProgress(actorPersonId, notes ?? "Progress resumed from ESCALATED", utcNow);
+        var now = utcNow ?? DateTime.UtcNow;
+        var prevStatus = Status;
+
+        Status = RequestStatus.Paused;
+        UpdatedAt = now;
+
+        var assignment = RequestAssignment.Create(
+            requestId: Id,
+            previousOwnerPersonId: OwnerPersonId,
+            assignedOwnerPersonId: OwnerPersonId,
+            actorPersonId: actorPersonId,
+            previousStatus: prevStatus,
+            newStatus: RequestStatus.Paused,
+            assignedAtUtc: now,
+            notes: note ?? "Work paused on request");
+
+        _assignments.Add(assignment);
+
+        _domainEvents.Add(new RequestWorkPaused(
+            requestId: Id,
+            ownerPersonId: OwnerPersonId,
+            actorPersonId: actorPersonId,
+            notes: note,
+            occurredAtUtc: now));
     }
 
     /// <summary>
-    /// Concludes work on the Request, transitioning IN_PROGRESS -> COMPLETED (UC-REQ-008).
+    /// Cancels the Request, transitioning any non-terminal state -> CANCELLED (CR-016 TD-002).
+    /// Permitted regardless of unfinished subtasks.
+    /// </summary>
+    public void Cancel(
+        string reason,
+        Guid actorPersonId,
+        DateTime? utcNow = null)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new RequestDomainValidationException("Cancellation reason cannot be empty.", nameof(reason));
+        if (actorPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
+
+        if (Status == RequestStatus.Completed || Status == RequestStatus.Cancelled)
+        {
+            throw new InvalidRequestStateTransitionException(
+                Id, Status, nameof(Cancel), RequestStatus.Cancelled,
+                reason: "Closed requests cannot be cancelled.");
+        }
+
+        var now = utcNow ?? DateTime.UtcNow;
+        var prevStatus = Status;
+
+        Status = RequestStatus.Cancelled;
+        Resolution = RequestResolution.Create(
+            requestId: Id,
+            outcome: ResolutionOutcomeNames.Cancelled,
+            description: reason.Trim(),
+            resolvedBy: actorPersonId,
+            resolvedAt: now);
+        UpdatedAt = now;
+
+        var assignment = RequestAssignment.Create(
+            requestId: Id,
+            previousOwnerPersonId: OwnerPersonId,
+            assignedOwnerPersonId: OwnerPersonId,
+            actorPersonId: actorPersonId,
+            previousStatus: prevStatus,
+            newStatus: RequestStatus.Cancelled,
+            assignedAtUtc: now,
+            notes: $"Request cancelled: {reason.Trim()}");
+
+        _assignments.Add(assignment);
+
+        _domainEvents.Add(new RequestCancelled(
+            requestId: Id,
+            cancelledByPersonId: actorPersonId,
+            cancellationReason: reason.Trim(),
+            occurredAtUtc: now));
+    }
+
+    /// <summary>
+    /// Concludes work on the Request, transitioning IN_PROGRESS -> COMPLETED (UC-REQ-008, CR-016 TD-002).
+    /// Requires all checklist sub-tasks to be completed.
     /// </summary>
     public void Complete(
         string resolutionDescription,
@@ -545,7 +421,7 @@ public sealed class Request : EntityBase
         Resolution = RequestResolution.Create(
             requestId: Id,
             outcome: ResolutionOutcomeNames.Completed,
-            description: resolutionDescription,
+            description: resolutionDescription.Trim(),
             resolvedBy: actorPersonId,
             resolvedAt: now);
         UpdatedAt = now;
@@ -570,87 +446,46 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Elevates an active or escalated request for a management decision (UC-REQ-007).
-    /// Does not change lifecycle status; emits <see cref="ManagementDecisionRequested"/>.
+    /// Updates the complexity rating while the request is in an active lifecycle state.
     /// </summary>
-    public void RequestManagementDecision(
-        string decisionDetails,
+    public void SetComplexity(
+        int newComplexity,
         Guid actorPersonId,
+        string? reason = null,
         DateTime? utcNow = null)
     {
-        if (string.IsNullOrWhiteSpace(decisionDetails))
-            throw new RequestDomainValidationException("Decision details cannot be empty.", nameof(decisionDetails));
+        if (newComplexity < 1 || newComplexity > 5)
+            throw new RequestDomainValidationException("Complexity must be an integer between 1 and 5.", nameof(newComplexity));
+
         if (actorPersonId == Guid.Empty)
             throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
 
-        if (Status == RequestStatus.Rejected || Status == RequestStatus.Completed)
+        if (Status == RequestStatus.Completed || Status == RequestStatus.Cancelled)
         {
             throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(RequestManagementDecision), reason: "Cannot request management decision on a closed request.");
+                Id, Status, nameof(SetComplexity), reason: "Cannot change complexity on a closed request.");
         }
 
+        if (Complexity == newComplexity)
+            return;
+
+        var previousComplexity = Complexity;
         var now = utcNow ?? DateTime.UtcNow;
-        ManagementDecisionNotes = decisionDetails.Trim();
+
+        Complexity = newComplexity;
         UpdatedAt = now;
 
-        _domainEvents.Add(new ManagementDecisionRequested(
+        _domainEvents.Add(new RequestComplexityUpdated(
             requestId: Id,
-            requestedByPersonId: actorPersonId,
-            decisionDetails: decisionDetails.Trim(),
+            previousComplexity: previousComplexity,
+            newComplexity: newComplexity,
+            actorPersonId: actorPersonId,
+            reason: reason?.Trim(),
             occurredAtUtc: now));
     }
 
     /// <summary>
-    /// Applies a management determination to an ESCALATED request, transitioning to EVALUATING or IN_PROGRESS.
-    /// </summary>
-    public void ApplyManagementDecision(
-        RequestStatus targetStatus,
-        string decisionNotes,
-        Guid actorPersonId,
-        DateTime? utcNow = null)
-    {
-        if (string.IsNullOrWhiteSpace(decisionNotes))
-            throw new RequestDomainValidationException("Decision notes cannot be empty.", nameof(decisionNotes));
-        if (actorPersonId == Guid.Empty)
-            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
-
-        if (Status != RequestStatus.Escalated)
-        {
-            throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(ApplyManagementDecision), targetStatus, reason: "Management decision can only be applied to a request in ESCALATED state.");
-        }
-
-        if (targetStatus != RequestStatus.Evaluating && targetStatus != RequestStatus.InProgress)
-        {
-            throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(ApplyManagementDecision), targetStatus, reason: "Management decision on ESCALATED request can only transition to EVALUATING or IN_PROGRESS.");
-        }
-
-        var now = utcNow ?? DateTime.UtcNow;
-        var prevStatus = Status;
-
-        Status = targetStatus;
-        ManagementDecisionNotes = decisionNotes.Trim();
-        UpdatedAt = now;
-
-        var assignment = RequestAssignment.Create(
-            requestId: Id,
-            previousOwnerPersonId: OwnerPersonId,
-            assignedOwnerPersonId: OwnerPersonId,
-            actorPersonId: actorPersonId,
-            previousStatus: prevStatus,
-            newStatus: targetStatus,
-            assignedAtUtc: now,
-            notes: $"Management decision applied -> {targetStatus}: {decisionNotes.Trim()}");
-
-        _assignments.Add(assignment);
-    }
-
-    /// <summary>
-    /// Reassigns ownership to a new person (UC-MGT-001).
-    /// From ESCALATED, transitions to EVALUATING (default) or IN_PROGRESS.
-    /// From CAPTURED, transitions to EVALUATING.
-    /// From EVALUATING, ACCEPTED, or IN_PROGRESS, preserves status.
+    /// Reassigns ownership to a new person (Architecture CR-016 TD-003).
     /// </summary>
     public void ReassignOwner(
         Guid newOwnerPersonId,
@@ -659,71 +494,7 @@ public sealed class Request : EntityBase
         string? notes = null,
         DateTime? utcNow = null)
     {
-        if (newOwnerPersonId == Guid.Empty)
-            throw new RequestDomainValidationException("NewOwnerPersonId cannot be empty.", nameof(newOwnerPersonId));
-        if (actorPersonId == Guid.Empty)
-            throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
-
-        if (Status == RequestStatus.Rejected || Status == RequestStatus.Completed)
-        {
-            throw new InvalidRequestStateTransitionException(
-                Id, Status, nameof(ReassignOwner), reason: "Closed requests cannot be reassigned.");
-        }
-
-        if (OwnerPersonId.HasValue && OwnerPersonId.Value == newOwnerPersonId)
-        {
-            throw new InvalidOperationException("Proposed owner is identical to current owner.");
-        }
-
-        var now = utcNow ?? DateTime.UtcNow;
-        var prevOwner = OwnerPersonId;
-        var prevStatus = Status;
-
-        RequestStatus newStatus;
-
-        if (Status == RequestStatus.Escalated)
-        {
-            newStatus = targetStatusForEscalated ?? RequestStatus.Evaluating;
-            if (newStatus != RequestStatus.Evaluating && newStatus != RequestStatus.InProgress)
-            {
-                throw new InvalidRequestStateTransitionException(
-                    Id, Status, nameof(ReassignOwner), newStatus, reason: "Reassigning an ESCALATED request can only transition to EVALUATING or IN_PROGRESS.");
-            }
-        }
-        else if (Status == RequestStatus.Captured)
-        {
-            newStatus = RequestStatus.Evaluating;
-        }
-        else
-        {
-            newStatus = Status;
-        }
-
-        OwnerPersonId = newOwnerPersonId;
-        Status = newStatus;
-        UpdatedAt = now;
-
-        var assignment = RequestAssignment.Create(
-            requestId: Id,
-            previousOwnerPersonId: prevOwner,
-            assignedOwnerPersonId: newOwnerPersonId,
-            actorPersonId: actorPersonId,
-            previousStatus: prevStatus,
-            newStatus: newStatus,
-            assignedAtUtc: now,
-            notes: notes ?? $"Owner reassigned to {newOwnerPersonId}");
-
-        _assignments.Add(assignment);
-
-        _domainEvents.Add(new RequestAssigned(
-            requestId: Id,
-            ownerPersonId: newOwnerPersonId,
-            previousOwnerPersonId: prevOwner,
-            actorPersonId: actorPersonId,
-            previousStatus: prevStatus,
-            newStatus: newStatus,
-            notes: notes,
-            occurredAtUtc: now));
+        AssignOwner(newOwnerPersonId, actorPersonId, notes, utcNow);
     }
 
     // =========================================================================
@@ -732,7 +503,7 @@ public sealed class Request : EntityBase
 
     private void EnsureActiveStateForSubTaskMutation(string operation)
     {
-        if (Status == RequestStatus.Completed || Status == RequestStatus.Rejected)
+        if (Status == RequestStatus.Completed || Status == RequestStatus.Cancelled)
         {
             throw new InvalidRequestStateTransitionException(
                 Id,
@@ -758,7 +529,7 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Adds a new operational sub-task checklist item to the Request (Architecture CR-006 TD-001, TD-003, TD-004, TD-007).
+    /// Adds a new operational sub-task checklist item to the Request.
     /// </summary>
     public RequestSubTask AddSubTask(
         string title,
@@ -802,7 +573,7 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Marks an existing sub-task checklist item completed on the Request (Architecture CR-006 TD-001, TD-003, TD-004, TD-007).
+    /// Marks an existing sub-task checklist item completed on the Request.
     /// </summary>
     public void CompleteSubTask(
         Guid subTaskId,
@@ -834,7 +605,7 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Reopens a completed sub-task checklist item back to pending on the Request (Architecture CR-006 TD-001, TD-003, TD-004, TD-007).
+    /// Reopens a completed sub-task checklist item back to pending on the Request.
     /// </summary>
     public void ReopenSubTask(
         Guid subTaskId,
@@ -866,7 +637,7 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Removes a sub-task checklist item from the Request (Architecture CR-006 TD-001, TD-003, TD-004, TD-007).
+    /// Removes a sub-task checklist item from the Request.
     /// </summary>
     public void RemoveSubTask(
         Guid subTaskId,
@@ -912,8 +683,6 @@ public sealed class Request : EntityBase
         Guid? productId,
         Guid? workPackageId,
         string? evaluationNotes,
-        string? escalationReason,
-        string? managementDecisionNotes,
         DateTime createdAt,
         DateTime? updatedAt,
         RequestResolution? resolution = null,
@@ -938,8 +707,6 @@ public sealed class Request : EntityBase
             ProductId = productId,
             WorkPackageId = workPackageId,
             EvaluationNotes = evaluationNotes,
-            EscalationReason = escalationReason,
-            ManagementDecisionNotes = managementDecisionNotes,
             Resolution = resolution,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt,
@@ -963,5 +730,56 @@ public sealed class Request : EntityBase
         }
 
         return request;
+    }
+
+    /// <summary>
+    /// Legacy overload of <see cref="Rehydrate"/> supporting obsolete escalation and management decision parameters.
+    /// </summary>
+    [Obsolete("Use the overload without escalationReason and managementDecisionNotes.")]
+    public static Request Rehydrate(
+        Guid id,
+        string title,
+        string description,
+        string requestType,
+        RequestStatus status,
+        string priority,
+        Guid? ownerPersonId,
+        Guid? customerId,
+        Guid? productId,
+        Guid? workPackageId,
+        string? evaluationNotes,
+        string? escalationReason,
+        string? managementDecisionNotes,
+        DateTime createdAt,
+        DateTime? updatedAt,
+        RequestResolution? resolution = null,
+        IEnumerable<RequestAssignment>? assignments = null,
+        int complexity = 1,
+        IEnumerable<RequestSubTask>? subTasks = null,
+        int totalSubTasksCount = 0,
+        int completedSubTasksCount = 0,
+        int completionPercentage = 0)
+    {
+        return Rehydrate(
+            id,
+            title,
+            description,
+            requestType,
+            status,
+            priority,
+            ownerPersonId,
+            customerId,
+            productId,
+            workPackageId,
+            evaluationNotes,
+            createdAt,
+            updatedAt,
+            resolution,
+            assignments,
+            complexity,
+            subTasks,
+            totalSubTasksCount,
+            completedSubTasksCount,
+            completionPercentage);
     }
 }

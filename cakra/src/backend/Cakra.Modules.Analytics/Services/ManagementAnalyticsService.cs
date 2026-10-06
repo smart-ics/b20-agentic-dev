@@ -157,6 +157,7 @@ public partial class ManagementAnalyticsService :
                 s.[SnapshotDate],
                 s.[PersonId],
                 s.[ActiveRequestsCount],
+                s.[EscalatedRequestsCount] AS [PausedRequestsCount],
                 s.[EscalatedRequestsCount],
                 s.[StalledRequestsCount],
                 s.[CompletedRequestsToday],
@@ -312,7 +313,7 @@ public partial class ManagementAnalyticsService :
                 CompletedRequestsCount = g.Sum(x => x.CompletedRequestsToday),
                 RejectedRequestsCount = 0,
                 MaxActiveRequestsCount = g.Max(x => x.ActiveRequestsCount),
-                EscalatedRequestsCount = g.Max(x => x.EscalatedRequestsCount),
+                PausedRequestsCount = g.Max(x => x.PausedRequestsCount),
                 AvgResolutionHours = Math.Round(g.Average(x => x.AvgAgeHours), 2)
             })
             .ToList();
@@ -432,6 +433,7 @@ public partial class ManagementAnalyticsService :
                 [SnapshotDate],
                 [PersonId],
                 [ActiveRequestsCount],
+                [EscalatedRequestsCount] AS [PausedRequestsCount],
                 [EscalatedRequestsCount],
                 [StalledRequestsCount],
                 [CompletedRequestsToday],
@@ -445,22 +447,22 @@ public partial class ManagementAnalyticsService :
         const string computeMetricsSql = """
             SELECT
                 COUNT(CASE
-                    WHEN r.[Status] IN ('CAPTURED', 'EVALUATING', 'ACCEPTED', 'IN_PROGRESS', 'ESCALATED')
+                    WHEN r.[Status] IN ('CAPTURED', 'ASSIGNED', 'IN_PROGRESS', 'PAUSED')
                          OR (
-                             r.[Status] IN ('COMPLETED', 'REJECTED')
+                             r.[Status] IN ('COMPLETED', 'CANCELLED', 'REJECTED')
                              AND COALESCE(res.[ResolvedAt], r.[UpdatedAt], r.[CreatedAt]) >= @NextDayStartUtc
                          )
                     THEN 1
                 END) AS [ActiveRequestsCount],
                 COUNT(CASE
-                    WHEN r.[Status] = 'ESCALATED'
+                    WHEN r.[Status] = 'PAUSED'
                     THEN 1
-                END) AS [EscalatedRequestsCount],
+                END) AS [PausedRequestsCount],
                 COUNT(CASE
                     WHEN (
-                             r.[Status] IN ('CAPTURED', 'EVALUATING', 'ACCEPTED', 'IN_PROGRESS', 'ESCALATED')
+                             r.[Status] IN ('CAPTURED', 'ASSIGNED', 'IN_PROGRESS', 'PAUSED')
                              OR (
-                                 r.[Status] IN ('COMPLETED', 'REJECTED')
+                                 r.[Status] IN ('COMPLETED', 'CANCELLED', 'REJECTED')
                                  AND COALESCE(res.[ResolvedAt], r.[UpdatedAt], r.[CreatedAt]) >= @NextDayStartUtc
                              )
                          )
@@ -474,9 +476,9 @@ public partial class ManagementAnalyticsService :
                     THEN 1
                 END) AS [CompletedRequestsToday],
                 CAST(COALESCE(AVG(CASE
-                    WHEN r.[Status] IN ('CAPTURED', 'EVALUATING', 'ACCEPTED', 'IN_PROGRESS', 'ESCALATED')
+                    WHEN r.[Status] IN ('CAPTURED', 'ASSIGNED', 'IN_PROGRESS', 'PAUSED')
                          OR (
-                             r.[Status] IN ('COMPLETED', 'REJECTED')
+                             r.[Status] IN ('COMPLETED', 'CANCELLED', 'REJECTED')
                              AND COALESCE(res.[ResolvedAt], r.[UpdatedAt], r.[CreatedAt]) >= @NextDayStartUtc
                          )
                     THEN CASE
@@ -573,7 +575,7 @@ public partial class ManagementAnalyticsService :
                 PersonId = person.Id,
                 PersonName = person.FullName,
                 ActiveRequestsCount = metrics.ActiveRequestsCount,
-                EscalatedRequestsCount = metrics.EscalatedRequestsCount,
+                PausedRequestsCount = metrics.PausedRequestsCount,
                 StalledRequestsCount = metrics.StalledRequestsCount,
                 CompletedRequestsToday = metrics.CompletedRequestsToday,
                 AvgAgeHours = metrics.AvgAgeHours,
@@ -589,7 +591,7 @@ public partial class ManagementAnalyticsService :
                         snapshot.SnapshotDate,
                         snapshot.PersonId,
                         snapshot.ActiveRequestsCount,
-                        snapshot.EscalatedRequestsCount,
+                        EscalatedRequestsCount = snapshot.PausedRequestsCount,
                         snapshot.StalledRequestsCount,
                         snapshot.CompletedRequestsToday,
                         snapshot.AvgAgeHours,
@@ -661,7 +663,7 @@ public partial class ManagementAnalyticsService :
                     THEN 1
                 END) AS [ResolvedRequestsCount],
                 COUNT(CASE
-                    WHEN r.[Status] = 'REJECTED'
+                    WHEN r.[Status] IN ('CANCELLED', 'REJECTED')
                          AND COALESCE(res.[ResolvedAt], r.[UpdatedAt], r.[CreatedAt]) >= @MonthStartUtc
                          AND COALESCE(res.[ResolvedAt], r.[UpdatedAt], r.[CreatedAt]) < @NextMonthStartUtc
                     THEN 1
@@ -845,7 +847,12 @@ public partial class ManagementAnalyticsService :
     private sealed class DailyMetricsRow
     {
         public int ActiveRequestsCount { get; init; }
-        public int EscalatedRequestsCount { get; init; }
+        public int PausedRequestsCount { get; init; }
+        public int EscalatedRequestsCount
+        {
+            get => PausedRequestsCount;
+            init => PausedRequestsCount = value;
+        }
         public int StalledRequestsCount { get; init; }
         public int CompletedRequestsToday { get; init; }
         public decimal AvgAgeHours { get; init; }

@@ -3,26 +3,26 @@ using Cakra.Core;
 namespace Cakra.Modules.Request.Domain.Events;
 
 /// <summary>
-/// Domain event emitted when a Request is rejected during evaluation and closed (UC-REQ-005).
+/// Domain event emitted when a Request is cancelled (Architecture CR-016 TD-002).
 /// </summary>
-public sealed record RequestRejected : IDomainEvent
+public sealed record RequestCancelled : IDomainEvent
 {
     public Guid RequestId { get; init; }
-    public Guid RejectedByPersonId { get; init; }
-    public string RejectionReason { get; init; } = string.Empty;
+    public Guid CancelledByPersonId { get; init; }
+    public string CancellationReason { get; init; } = string.Empty;
     public Guid EventId { get; init; } = Guid.NewGuid();
     public DateTime OccurredAtUtc { get; init; } = DateTime.UtcNow;
 
-    public RequestRejected(
+    public RequestCancelled(
         Guid requestId,
-        Guid rejectedByPersonId,
-        string rejectionReason,
+        Guid cancelledByPersonId,
+        string cancellationReason,
         DateTime? occurredAtUtc = null,
         Guid? eventId = null)
     {
         RequestId = requestId;
-        RejectedByPersonId = rejectedByPersonId;
-        RejectionReason = rejectionReason;
+        CancelledByPersonId = cancelledByPersonId;
+        CancellationReason = cancellationReason;
         OccurredAtUtc = occurredAtUtc ?? DateTime.UtcNow;
         EventId = eventId ?? Guid.NewGuid();
     }

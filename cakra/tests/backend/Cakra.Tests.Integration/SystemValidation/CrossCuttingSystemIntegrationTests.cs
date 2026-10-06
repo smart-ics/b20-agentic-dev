@@ -300,11 +300,11 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Criterion 4: Escalate a request via <c>POST /api/v1/requests/{id}/escalate</c> -&gt; query <c>post.FeedItems</c> -&gt;
-    /// assert <c>IsException = TRUE</c> and <c>ExceptionType = 'ESCALATION'</c> (Architecture §12).
+    /// Criterion 4: Pause a request via <c>POST /api/v1/requests/{id}/pause</c> -&gt; query <c>post.FeedItems</c> -&gt;
+    /// assert <c>IsException = TRUE</c> and <c>ExceptionType = 'ESCALATION'</c> (Architecture §12; CR-016 TD-002).
     /// </summary>
     [Fact]
-    public async Task Escalate_request_via_Post_requests_id_escalate_sets_FeedItems_IsException_true_and_ExceptionType_ESCALATION()
+    public async Task Pause_request_via_Post_requests_id_pause_sets_FeedItems_IsException_true_and_ExceptionType_ESCALATION()
     {
         _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
         _factory.Should().NotBeNull();
@@ -325,7 +325,7 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
         createReqResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var requestId = (await createReqResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        // 2. Assign Request Owner -> EVALUATING
+        // 2. Assign Request Owner -> ASSIGNED
         var assignResponse = await client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
         {
             ownerPersonId = ctx.ProgrammerPersonId,
@@ -333,12 +333,19 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
         });
         assignResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // 3. Escalate Request via POST /api/v1/requests/{id}/escalate
-        var escalateResponse = await client.PostAsJsonAsync($"/api/v1/requests/{requestId}/escalate", new
+        // 3. Start Work -> IN_PROGRESS
+        var startResponse = await client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new
         {
-            reason = "Requires vendor SDK firmware patch approval from hospital IT director."
+            notes = "Starting triage"
         });
-        escalateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        startResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 4. Pause Request via POST /api/v1/requests/{id}/pause
+        var pauseResponse = await client.PostAsJsonAsync($"/api/v1/requests/{requestId}/pause", new
+        {
+            note = "Requires vendor SDK firmware patch approval from hospital IT director."
+        });
+        pauseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // 4. Query post.FeedItems and assert IsException = TRUE and ExceptionType = 'ESCALATION'
         await using var conn = new SqlConnection(_connectionString);

@@ -304,10 +304,10 @@ public class AnalyticsControllerTests : IAsyncLifetime
                 RequestType: "Bug",
                 Priority: "HIGH"));
             await mediator.Send(new AssignRequestOwnerCommand(reqActive.Id, programmerPersonId));
-            await mediator.Send(new AcceptRequestResponsibilityCommand(reqActive.Id));
+            await mediator.Send(new StartWorkCommand(reqActive.Id, ActorPersonId: programmerPersonId));
             activeRequestId = reqActive.Id;
 
-            // Open blocker (ESCALATED)
+            // Open blocker (PAUSED)
             var reqBlocker = await mediator.Send(new RecordRequestCommand(
                 Title: "BPJS Bridging TLS Handshake Failure",
                 Description: "Requires hospital firewall whitelist update",
@@ -316,7 +316,8 @@ public class AnalyticsControllerTests : IAsyncLifetime
                 RequestType: "Support",
                 Priority: "URGENT"));
             await mediator.Send(new AssignRequestOwnerCommand(reqBlocker.Id, programmerPersonId));
-            await mediator.Send(new EscalateRequestCommand(reqBlocker.Id, "Waiting on hospital network team"));
+            await mediator.Send(new StartWorkCommand(reqBlocker.Id, ActorPersonId: programmerPersonId));
+            await mediator.Send(new PauseWorkCommand(reqBlocker.Id, Note: "Waiting on hospital network team", ActorPersonId: programmerPersonId));
             blockerRequestId = reqBlocker.Id;
 
             // Completed request (COMPLETED)
@@ -328,7 +329,7 @@ public class AnalyticsControllerTests : IAsyncLifetime
                 RequestType: "Bug",
                 Priority: "NORMAL"));
             await mediator.Send(new AssignRequestOwnerCommand(reqCompleted.Id, programmerPersonId));
-            await mediator.Send(new AcceptRequestResponsibilityCommand(reqCompleted.Id));
+            await mediator.Send(new StartWorkCommand(reqCompleted.Id, ActorPersonId: programmerPersonId));
             await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted.Id, "Updated report template v2.1"));
             completedRequestId = reqCompleted.Id;
 
@@ -392,6 +393,7 @@ public class AnalyticsControllerTests : IAsyncLifetime
         rinaWorkload.GetProperty("personId").GetGuid().Should().Be(programmerPersonId);
         rinaWorkload.GetProperty("personName").GetString().Should().Be("Rina Wijaya");
         rinaWorkload.GetProperty("inProgressCount").GetInt32().Should().Be(1);
+        rinaWorkload.GetProperty("pausedCount").GetInt32().Should().Be(1);
         rinaWorkload.GetProperty("escalatedCount").GetInt32().Should().Be(1);
         rinaWorkload.GetProperty("totalActiveCount").GetInt32().Should().Be(2);
         rinaWorkload.GetProperty("activeRequests").GetArrayLength().Should().Be(2);

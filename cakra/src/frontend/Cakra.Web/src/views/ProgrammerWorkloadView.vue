@@ -65,10 +65,12 @@ export interface ProgrammerActiveWorkloadDto {
   fullName: string
   email?: string | null
   capturedCount: number
-  evaluatingCount: number
-  acceptedCount: number
+  assignedCount: number
+  evaluatingCount?: number
+  acceptedCount?: number
   inProgressCount: number
-  escalatedCount: number
+  pausedCount: number
+  escalatedCount?: number
   totalActiveCount: number
   activeRequestsCount: number
   stalledRequestsCount: number
@@ -99,8 +101,8 @@ const totalActiveRequestsAcrossTeam = computed<number>(() =>
   workloads.value.reduce((acc, w) => acc + (w.totalActiveCount ?? 0), 0),
 )
 
-const totalEscalatedAcrossTeam = computed<number>(() =>
-  workloads.value.reduce((acc, w) => acc + (w.escalatedCount ?? 0), 0),
+const totalPausedAcrossTeam = computed<number>(() =>
+  workloads.value.reduce((acc, w) => acc + (w.pausedCount ?? w.escalatedCount ?? 0), 0),
 )
 
 const overloadedProgrammersCount = computed<number>(
@@ -164,16 +166,22 @@ function statusBadgeClass(status: string): string {
   switch (status?.toUpperCase()) {
     case 'CAPTURED':
       return 'text-bg-secondary'
-    case 'EVALUATING':
-      return 'text-bg-info'
-    case 'ACCEPTED':
-      return 'text-bg-primary'
+    case 'ASSIGNED':
+      return 'text-bg-info text-dark'
     case 'IN_PROGRESS':
       return 'text-bg-primary'
-    case 'ESCALATED':
-      return 'text-bg-danger'
+    case 'PAUSED':
+      return 'text-bg-warning text-dark'
     case 'COMPLETED':
       return 'text-bg-success'
+    case 'CANCELLED':
+      return 'text-bg-danger'
+    case 'EVALUATING':
+      return 'text-bg-info text-dark'
+    case 'ACCEPTED':
+      return 'text-bg-info text-dark'
+    case 'ESCALATED':
+      return 'text-bg-warning text-dark'
     case 'REJECTED':
       return 'text-bg-dark'
     default:
@@ -372,9 +380,9 @@ onMounted(async () => {
         </span>
       </div>
       <div class="op-stat-item">
-        <span class="op-stat-label">Escalated Blockers</span>
-        <span class="op-stat-val text-danger" data-testid="summary-total-escalated">
-          {{ totalEscalatedAcrossTeam }}
+        <span class="op-stat-label">Paused Requests</span>
+        <span class="op-stat-val text-warning-emphasis" data-testid="summary-total-paused" data-testid-alias="summary-total-escalated">
+          {{ totalPausedAcrossTeam }}
         </span>
       </div>
       <div class="op-stat-item">
@@ -415,10 +423,9 @@ onMounted(async () => {
               <tr>
                 <th scope="col">Programmer</th>
                 <th scope="col" class="text-center">Captured</th>
-                <th scope="col" class="text-center">Evaluating</th>
-                <th scope="col" class="text-center">Accepted</th>
+                <th scope="col" class="text-center">Assigned</th>
                 <th scope="col" class="text-center">In Prog</th>
-                <th scope="col" class="text-center">Escalated</th>
+                <th scope="col" class="text-center">Paused</th>
                 <th scope="col" class="text-center">Active</th>
                 <th scope="col" class="text-center">Stalled (&gt;72h)</th>
                 <th scope="col" class="text-center">Capacity</th>
@@ -439,10 +446,7 @@ onMounted(async () => {
                   <span class="badge text-bg-secondary" style="font-size: 11px">{{ item.capturedCount }}</span>
                 </td>
                 <td class="text-center">
-                  <span class="badge text-bg-info" style="font-size: 11px">{{ item.evaluatingCount }}</span>
-                </td>
-                <td class="text-center">
-                  <span class="badge text-bg-primary" style="font-size: 11px">{{ item.acceptedCount }}</span>
+                  <span class="badge text-bg-info text-dark" style="font-size: 11px">{{ item.assignedCount ?? ((item.evaluatingCount ?? 0) + (item.acceptedCount ?? 0)) }}</span>
                 </td>
                 <td class="text-center">
                   <span class="badge text-bg-primary" style="font-size: 11px">{{ item.inProgressCount }}</span>
@@ -451,9 +455,9 @@ onMounted(async () => {
                   <span
                     class="badge"
                     style="font-size: 11px"
-                    :class="item.escalatedCount > 0 ? 'text-bg-danger' : 'text-bg-light border text-body-secondary'"
+                    :class="(item.pausedCount ?? item.escalatedCount ?? 0) > 0 ? 'text-bg-warning text-dark' : 'text-bg-light border text-body-secondary'"
                   >
-                    {{ item.escalatedCount }}
+                    {{ item.pausedCount ?? item.escalatedCount ?? 0 }}
                   </span>
                 </td>
                 <td class="text-center">
@@ -556,7 +560,7 @@ onMounted(async () => {
                 <th scope="col" class="text-center">Type</th>
                 <th scope="col" class="text-center">Priority</th>
                 <th scope="col" class="text-center">Status</th>
-                <th scope="col">Escalation / Blocker Note</th>
+                <th scope="col">Blocker / Paused Note</th>
                 <th scope="col" class="text-nowrap">Updated</th>
                 <th scope="col" class="text-end text-nowrap">Action</th>
               </tr>
@@ -598,7 +602,7 @@ onMounted(async () => {
                   </span>
                 </td>
                 <td>
-                  <span v-if="req.escalationReason" class="text-danger small text-truncate d-inline-block" style="max-width: 260px">
+                  <span v-if="req.escalationReason" class="text-warning-emphasis small text-truncate d-inline-block" style="max-width: 260px">
                     {{ req.escalationReason }}
                   </span>
                   <span v-else class="text-body-secondary">—</span>

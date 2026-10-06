@@ -270,17 +270,19 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
             RequestType: "Bug",
             Priority: "HIGH"));
         await mediator.Send(new AssignRequestOwnerCommand(req1.Id, progA.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(req1.Id, "Working on fix"));
+        await mediator.Send(new StartWorkCommand(req1.Id, Notes: "Working on fix", ActorPersonId: progA.Id));
 
-        // Req 2 for progA: ESCALATED and stalled (created & last updated 80 hours ago >= 72h threshold)
+        // Req 2 for progA: PAUSED and stalled (created & last updated 80 hours ago >= 72h threshold)
         var req2 = await mediator.Send(new RecordRequestCommand(
-            Title: "Escalated stalled request",
+            Title: "Paused stalled request",
             Description: "Blocked on third-party HL7 gateway specification",
             CustomerId: customer.Id,
             ProductId: product.Id,
             RequestType: "Integration",
             Priority: "URGENT"));
         await mediator.Send(new AssignRequestOwnerCommand(req2.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(req2.Id, ActorPersonId: progA.Id));
+        await mediator.Send(new PauseWorkCommand(req2.Id, Note: "Waiting for vendor spec", ActorPersonId: progA.Id));
 
         // Req 3 for progA: COMPLETED today
         var req3 = await mediator.Send(new RecordRequestCommand(
@@ -291,12 +293,12 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
             RequestType: "Bug",
             Priority: "NORMAL"));
         await mediator.Send(new AssignRequestOwnerCommand(req3.Id, progA.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(req3.Id));
+        await mediator.Send(new StartWorkCommand(req3.Id, ActorPersonId: progA.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(req3.Id, "Fixed sorting order in query"));
 
-        // Req 4 for progB: EVALUATING (active, not stalled)
+        // Req 4 for progB: ASSIGNED (active, not stalled)
         var req4 = await mediator.Send(new RecordRequestCommand(
-            Title: "Evaluating request for progB",
+            Title: "Assigned request for progB",
             Description: "Triage laboratory barcode label alignment",
             CustomerId: customer.Id,
             ProductId: product.Id,
@@ -307,7 +309,7 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
         var nowUtc = DateTime.UtcNow;
         var todayDate = nowUtc.Date;
 
-        // Backdate req1 (10h old, updated 2h ago) and set req2 to ESCALATED + stalled (80h old)
+        // Backdate req1 (10h old, updated 2h ago) and set req2 to PAUSED + stalled (80h old)
         using (var db = connectionFactory.CreateConnection())
         {
             await db.ExecuteAsync(
@@ -327,8 +329,7 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
             await db.ExecuteAsync(
                 """
                 UPDATE [request].[Requests]
-                SET [Status] = 'ESCALATED',
-                    [EscalationReason] = 'Waiting for vendor spec',
+                SET [Status] = 'PAUSED',
                     [CreatedAt] = @StalledTimestamp,
                     [UpdatedAt] = @StalledTimestamp
                 WHERE [Id] = @Id;
@@ -361,8 +362,9 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
         var progASnapshot = snapshots.Single(s => s.PersonId == progA.Id);
         progASnapshot.SnapshotDate.Should().Be(todayDate);
         progASnapshot.PersonName.Should().Be("Dian Kusuma");
-        progASnapshot.ActiveRequestsCount.Should().Be(2, "req1 (IN_PROGRESS) and req2 (ESCALATED) are active");
-        progASnapshot.EscalatedRequestsCount.Should().Be(1, "req2 is in ESCALATED status");
+        progASnapshot.ActiveRequestsCount.Should().Be(2, "req1 (IN_PROGRESS) and req2 (PAUSED) are active");
+        progASnapshot.PausedRequestsCount.Should().Be(1, "req2 is in PAUSED status");
+        progASnapshot.EscalatedRequestsCount.Should().Be(1, "backward-compatible alias");
         progASnapshot.StalledRequestsCount.Should().Be(1, "req2 has been un-updated for 80 hours (>= 72h)");
         progASnapshot.CompletedRequestsToday.Should().Be(1, "req3 was completed today");
         progASnapshot.AvgAgeHours.Should().BeGreaterThanOrEqualTo(44.5m);
@@ -370,7 +372,8 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
         var progBSnapshot = snapshots.Single(s => s.PersonId == progB.Id);
         progBSnapshot.SnapshotDate.Should().Be(todayDate);
         progBSnapshot.PersonName.Should().Be("Fajar Hidayat");
-        progBSnapshot.ActiveRequestsCount.Should().Be(1, "req4 (EVALUATING) is active");
+        progBSnapshot.ActiveRequestsCount.Should().Be(1, "req4 (ASSIGNED) is active");
+        progBSnapshot.PausedRequestsCount.Should().Be(0);
         progBSnapshot.EscalatedRequestsCount.Should().Be(0);
         progBSnapshot.StalledRequestsCount.Should().Be(0);
         progBSnapshot.CompletedRequestsToday.Should().Be(0);
@@ -437,7 +440,7 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
             CustomerId: customer.Id,
             ProductId: product.Id));
         await mediator.Send(new AssignRequestOwnerCommand(reqSlaMet.Id, programmer.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqSlaMet.Id));
+        await mediator.Send(new StartWorkCommand(reqSlaMet.Id, ActorPersonId: programmer.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(reqSlaMet.Id, "Resolved in 12h"));
 
         // 2. Completed in 96 hours (SLA Breached > 72h)
@@ -447,7 +450,7 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
             CustomerId: customer.Id,
             ProductId: product.Id));
         await mediator.Send(new AssignRequestOwnerCommand(reqSlaBreached.Id, programmer.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqSlaBreached.Id));
+        await mediator.Send(new StartWorkCommand(reqSlaBreached.Id, ActorPersonId: programmer.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(reqSlaBreached.Id, "Resolved in 96h"));
 
         // 3. Rejected in August 2026
@@ -457,7 +460,7 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
             CustomerId: customer.Id,
             ProductId: product.Id));
         await mediator.Send(new AssignRequestOwnerCommand(reqRejected.Id, programmer.Id));
-        await mediator.Send(new RejectRequestCommand(reqRejected.Id, "Out of scope"));
+        await mediator.Send(new CancelRequestCommand(reqRejected.Id, "Out of scope", programmer.Id));
 
         // Set authoritative timestamps in August 2026 (2026-08-10 and 2026-08-11)
         var aug10Morning = new DateTime(2026, 8, 10, 8, 0, 0, DateTimeKind.Utc);
@@ -523,7 +526,7 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
             CustomerId: customer.Id,
             ProductId: product.Id));
         await mediator.Send(new AssignRequestOwnerCommand(reqLateBackfill.Id, programmer.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqLateBackfill.Id));
+        await mediator.Send(new StartWorkCommand(reqLateBackfill.Id, ActorPersonId: programmer.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(reqLateBackfill.Id, "Resolved in 6h"));
 
         using (var db = connectionFactory.CreateConnection())

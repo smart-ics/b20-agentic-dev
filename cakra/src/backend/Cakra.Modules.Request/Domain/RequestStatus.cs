@@ -1,30 +1,27 @@
 namespace Cakra.Modules.Request.Domain;
 
 /// <summary>
-/// Authoritative lifecycle status of a Request (Architecture §7, §8, §17).
+/// Authoritative lifecycle status of a Request (Architecture §7, §8, CR-016 TD-001).
 /// </summary>
 public enum RequestStatus
 {
     /// <summary>The Request has been recorded and is queued for ownership triage.</summary>
     Captured = 1,
 
-    /// <summary>The Request has been assigned to an owner and is undergoing triage evaluation.</summary>
-    Evaluating = 2,
+    /// <summary>The Request has been assigned to an owner and is awaiting owner initiation.</summary>
+    Assigned = 2,
 
-    /// <summary>The Request has been accepted by the owner for active execution.</summary>
-    Accepted = 3,
+    /// <summary>Active work on the Request is underway by the designated owner.</summary>
+    InProgress = 3,
 
-    /// <summary>The Request has been rejected during evaluation and closed with justification.</summary>
-    Rejected = 4,
-
-    /// <summary>Active work on the Request is underway.</summary>
-    InProgress = 5,
-
-    /// <summary>The Request has been escalated due to authority, technical, or resource barriers.</summary>
-    Escalated = 6,
+    /// <summary>Work on the Request is temporarily suspended due to priority, blocker, or management direction.</summary>
+    Paused = 4,
 
     /// <summary>Work on the Request has concluded and the resolution has been verified.</summary>
-    Completed = 7
+    Completed = 5,
+
+    /// <summary>The Request has been abandoned, rejected, or cancelled without completion.</summary>
+    Cancelled = 6
 }
 
 /// <summary>
@@ -33,22 +30,33 @@ public enum RequestStatus
 public static class RequestStatusNames
 {
     public const string Captured = "CAPTURED";
-    public const string Evaluating = "EVALUATING";
-    public const string Accepted = "ACCEPTED";
-    public const string Rejected = "REJECTED";
+    public const string Assigned = "ASSIGNED";
     public const string InProgress = "IN_PROGRESS";
-    public const string Escalated = "ESCALATED";
+    public const string Paused = "PAUSED";
     public const string Completed = "COMPLETED";
+    public const string Cancelled = "CANCELLED";
+
+    // Legacy status constants retained for backward compatibility during CR-016 migration
+    [Obsolete("Evaluating is deprecated in CR-016.")]
+    public const string Evaluating = "EVALUATING";
+
+    [Obsolete("Accepted is deprecated in CR-016.")]
+    public const string Accepted = "ACCEPTED";
+
+    [Obsolete("Rejected is deprecated in CR-016.")]
+    public const string Rejected = "REJECTED";
+
+    [Obsolete("Escalated is deprecated in CR-016.")]
+    public const string Escalated = "ESCALATED";
 
     public static string ToName(this RequestStatus status) => status switch
     {
         RequestStatus.Captured => Captured,
-        RequestStatus.Evaluating => Evaluating,
-        RequestStatus.Accepted => Accepted,
-        RequestStatus.Rejected => Rejected,
+        RequestStatus.Assigned => Assigned,
         RequestStatus.InProgress => InProgress,
-        RequestStatus.Escalated => Escalated,
+        RequestStatus.Paused => Paused,
         RequestStatus.Completed => Completed,
+        RequestStatus.Cancelled => Cancelled,
         _ => status.ToString().ToUpperInvariant()
     };
 
@@ -60,12 +68,14 @@ public static class RequestStatusNames
         return statusName.Trim().ToUpperInvariant() switch
         {
             Captured => RequestStatus.Captured,
-            Evaluating => RequestStatus.Evaluating,
-            Accepted => RequestStatus.Accepted,
-            Rejected => RequestStatus.Rejected,
+            Assigned => RequestStatus.Assigned,
             InProgress or "INPROGRESS" => RequestStatus.InProgress,
-            Escalated => RequestStatus.Escalated,
+            Paused => RequestStatus.Paused,
             Completed => RequestStatus.Completed,
+            Cancelled or "CANCELED" => RequestStatus.Cancelled,
+            "EVALUATING" or "ACCEPTED" => RequestStatus.Assigned,
+            "ESCALATED" => RequestStatus.Paused,
+            "REJECTED" => RequestStatus.Cancelled,
             _ when Enum.TryParse<RequestStatus>(statusName.Trim(), ignoreCase: true, out var parsed) => parsed,
             _ => throw new ArgumentOutOfRangeException(nameof(statusName), statusName, $"Unknown request status '{statusName}'.")
         };

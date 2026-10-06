@@ -202,49 +202,48 @@ public class RequestCoreCommandsIntegrationTests : IAsyncLifetime
         initialAudit.PreviousOwnerPersonId.Should().BeNull();
         initialAudit.AssignedOwnerPersonId.Should().BeNull();
 
-        // 3. Step 2 of lifecycle: AssignRequestOwner -> EVALUATING
+        // 3. Step 2 of lifecycle: AssignRequestOwner -> ASSIGNED
         var assigned = await mediator.Send(new AssignRequestOwnerCommand(
             RequestId: recorded.Id,
             OwnerPersonId: programmer.Id,
             Notes: "Assigned to LIS integration lead for triage evaluation"));
 
         assigned.Id.Should().Be(recorded.Id);
-        assigned.Status.Should().Be(RequestStatusNames.Evaluating);
+        assigned.Status.Should().Be(RequestStatusNames.Assigned);
         assigned.OwnerPersonId.Should().Be(programmer.Id);
         assigned.UpdatedAt.Should().NotBeNull();
 
         var persistedAfterAssign = await requestRepository.GetByIdAsync(recorded.Id);
         persistedAfterAssign.Should().NotBeNull();
-        persistedAfterAssign!.Status.Should().Be(RequestStatus.Evaluating);
+        persistedAfterAssign!.Status.Should().Be(RequestStatus.Assigned);
         persistedAfterAssign.OwnerPersonId.Should().Be(programmer.Id);
         persistedAfterAssign.Assignments.Should().HaveCount(2);
 
         var assignAudit = persistedAfterAssign.Assignments.Last();
         assignAudit.RequestId.Should().Be(recorded.Id);
         assignAudit.PreviousStatus.Should().Be(RequestStatus.Captured);
-        assignAudit.NewStatus.Should().Be(RequestStatus.Evaluating);
+        assignAudit.NewStatus.Should().Be(RequestStatus.Assigned);
         assignAudit.PreviousOwnerPersonId.Should().BeNull();
         assignAudit.AssignedOwnerPersonId.Should().Be(programmer.Id);
         assignAudit.ActorPersonId.Should().Be(implementator.Id);
         assignAudit.Notes.Should().Be("Assigned to LIS integration lead for triage evaluation");
 
-        // 4. Step 3 of lifecycle: EvaluateRequest -> records evaluation notes in EVALUATING state
+        // 4. Step 3 of lifecycle: StartWorkCommand -> transitions ASSIGNED to IN_PROGRESS
         currentContext?.Initialize(Guid.NewGuid(), programmer.Id, new[] { "Programmer" });
 
-        var evaluated = await mediator.Send(new EvaluateRequestCommand(
+        var started = await mediator.Send(new StartWorkCommand(
             RequestId: recorded.Id,
-            EvaluationNotes: "Confirmed missing index on HL7 outbound queue table; fix requires 2 hours."));
+            ActorPersonId: programmer.Id,
+            Notes: "Confirmed missing index on HL7 outbound queue table; starting fix."));
 
-        evaluated.Id.Should().Be(recorded.Id);
-        evaluated.Status.Should().Be(RequestStatusNames.Evaluating);
-        evaluated.OwnerPersonId.Should().Be(programmer.Id);
-        evaluated.EvaluationNotes.Should().Be("Confirmed missing index on HL7 outbound queue table; fix requires 2 hours.");
+        started.Id.Should().Be(recorded.Id);
+        started.Status.Should().Be(RequestStatusNames.InProgress);
+        started.OwnerPersonId.Should().Be(programmer.Id);
 
-        var persistedAfterEvaluate = await requestRepository.GetByIdAsync(recorded.Id);
-        persistedAfterEvaluate.Should().NotBeNull();
-        persistedAfterEvaluate!.Status.Should().Be(RequestStatus.Evaluating);
-        persistedAfterEvaluate.EvaluationNotes.Should().Be("Confirmed missing index on HL7 outbound queue table; fix requires 2 hours.");
-        persistedAfterEvaluate.Assignments.Should().HaveCount(2);
+        var persistedAfterStart = await requestRepository.GetByIdAsync(recorded.Id);
+        persistedAfterStart.Should().NotBeNull();
+        persistedAfterStart!.Status.Should().Be(RequestStatus.InProgress);
+        persistedAfterStart.Assignments.Should().HaveCount(3);
     }
 
     [Fact]
@@ -295,7 +294,7 @@ public class RequestCoreCommandsIntegrationTests : IAsyncLifetime
             assignedOwnerPersonId: Guid.NewGuid(),
             actorPersonId: Guid.NewGuid(),
             previousStatus: RequestStatus.Captured,
-            newStatus: RequestStatus.Evaluating,
+            newStatus: RequestStatus.Assigned,
             assignedAtUtc: DateTime.UtcNow,
             notes: "Orphaned assignment");
 

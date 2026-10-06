@@ -14,200 +14,35 @@ using Xunit;
 namespace Cakra.Tests.Unit.Request;
 
 /// <summary>
-/// Unit tests for P4-S20 Request Module — Escalation &amp; Management Commands:
-/// - Published visibility of EscalateRequestCommand, RequestManagementDecisionCommand, ReassignRequestOwnershipCommand
-/// - EscalateRequest from EVALUATING and IN_PROGRESS -> ESCALATED, audit logging, RequestEscalated event (UC-REQ-006)
-/// - RequestManagementDecision elevation and resolution from ESCALATED, audit logging, ManagementDecisionRequested event (UC-REQ-007)
-/// - ReassignRequestOwnership owner validation via IOrganizationQueryService, audit logging, RequestAssigned event (UC-MGT-001)
+/// Unit tests for Request Module Reassignment Commands (Architecture CR-016 TD-003):
+/// - Published visibility of ReassignRequestOwnershipCommand
+/// - ReassignRequestOwnership from IN_PROGRESS and PAUSED resets status to ASSIGNED, audit logging, RequestAssigned event
+/// - ReassignRequestOwnership owner validation via IOrganizationQueryService
 /// - Invalid state transitions and FluentValidation rules
 /// </summary>
 public sealed class RequestEscalationAndManagementTests
 {
     [Fact]
-    public void Escalation_and_management_commands_and_validators_are_publicly_accessible()
+    public void Reassign_command_and_validator_are_publicly_accessible()
     {
-        typeof(EscalateRequestCommand).IsPublic.Should().BeTrue();
-        typeof(EscalateRequestCommandValidator).IsPublic.Should().BeTrue();
-        typeof(RequestManagementDecisionCommand).IsPublic.Should().BeTrue();
-        typeof(RequestManagementDecisionCommandValidator).IsPublic.Should().BeTrue();
         typeof(ReassignRequestOwnershipCommand).IsPublic.Should().BeTrue();
         typeof(ReassignRequestOwnershipCommandValidator).IsPublic.Should().BeTrue();
     }
 
     [Fact]
-    public async Task EscalateRequest_from_Evaluating_and_InProgress_transitions_to_Escalated_records_audit_and_emits_RequestEscalated()
-    {
-        var recorderId = Guid.NewGuid();
-        var ownerId = Guid.NewGuid();
-
-        var repo = new InMemoryRequestRepository();
-        var orgQuery = new FakeOrganizationQueryService();
-        orgQuery.SetPerson(recorderId, isActive: true);
-        orgQuery.SetPerson(ownerId, isActive: true);
-
-        var dispatcher = new RecordingDomainEventDispatcher();
-        var contextProvider = new FakeCurrentContextProvider(recorderId);
-        var clock = new FakeSystemClock(new DateTime(2026, 9, 28, 9, 0, 0, DateTimeKind.Utc));
-
-        var service = new RequestService(
-            repo,
-            orgQuery,
-            new FakeCustomerQueryService(),
-            new FakeProductQueryService(),
-            dispatcher,
-            contextProvider,
-            auditContext: null,
-            clock: clock);
-
-        // Case 1: Escalate from EVALUATING
-        var req1 = await service.RecordRequest("Database schema lock", "Production migration blocked by lock");
-        await service.AssignRequestOwner(req1.Id, ownerId);
-
-        clock.AdvanceMinutes(10);
-        contextProvider.CurrentPersonId = ownerId;
-
-        var escalatedFromEval = await service.Handle(
-            new EscalateRequestCommand(
-                RequestId: req1.Id,
-                Reason: "Requires production DBA sysadmin privileges to terminate blocking session."),
-            CancellationToken.None);
-
-        escalatedFromEval.Status.Should().Be(RequestStatusNames.Escalated);
-        escalatedFromEval.EscalationReason.Should().Be("Requires production DBA sysadmin privileges to terminate blocking session.");
-        escalatedFromEval.OwnerPersonId.Should().Be(ownerId);
-
-        var evalAudit = repo.Assignments.Last(a => a.RequestId == req1.Id);
-        evalAudit.PreviousStatus.Should().Be(RequestStatus.Evaluating);
-        evalAudit.NewStatus.Should().Be(RequestStatus.Escalated);
-        evalAudit.ActorPersonId.Should().Be(ownerId);
-        evalAudit.Notes.Should().Contain("Requires production DBA sysadmin privileges");
-
-        dispatcher.Events.OfType<RequestEscalated>().Should().ContainSingle(e =>
-            e.RequestId == req1.Id &&
-            e.EscalatedByPersonId == ownerId &&
-            e.EscalationReason == "Requires production DBA sysadmin privileges to terminate blocking session.");
-
-        // Case 2: Escalate from IN_PROGRESS
-        contextProvider.CurrentPersonId = recorderId;
-        var req2 = await service.RecordRequest("BPJS Bridging SSL Handshake Failure", "Intermittent TLS 1.3 failure");
-        await service.AssignRequestOwner(req2.Id, ownerId);
-
-        contextProvider.CurrentPersonId = ownerId;
-        await service.AcceptRequestResponsibility(req2.Id, "Starting investigation");
-
-        clock.AdvanceMinutes(25);
-        var escalatedFromInProgress = await service.EscalateRequest(
-            requestId: req2.Id,
-            reason: "Hospital firewall blocks outbound OCSP stapling verification; needs network team intervention.");
-
-        escalatedFromInProgress.Status.Should().Be(RequestStatusNames.Escalated);
-        escalatedFromInProgress.EscalationReason.Should().Be("Hospital firewall blocks outbound OCSP stapling verification; needs network team intervention.");
-
-        var inProgAudit = repo.Assignments.Last(a => a.RequestId == req2.Id);
-        inProgAudit.PreviousStatus.Should().Be(RequestStatus.InProgress);
-        inProgAudit.NewStatus.Should().Be(RequestStatus.Escalated);
-        inProgAudit.ActorPersonId.Should().Be(ownerId);
-
-        dispatcher.Events.OfType<RequestEscalated>().Should().Contain(e =>
-            e.RequestId == req2.Id &&
-            e.EscalatedByPersonId == ownerId &&
-            e.EscalationReason.Contains("Hospital firewall blocks outbound OCSP"));
-    }
-
-    [Fact]
-    public async Task RequestManagementDecision_records_decision_notes_audit_entry_and_emits_ManagementDecisionRequested()
-    {
-        var recorderId = Guid.NewGuid();
-        var programmerId = Guid.NewGuid();
-        var managerId = Guid.NewGuid();
-
-        var repo = new InMemoryRequestRepository();
-        var orgQuery = new FakeOrganizationQueryService();
-        orgQuery.SetPerson(recorderId, isActive: true);
-        orgQuery.SetPerson(programmerId, isActive: true);
-        orgQuery.SetPerson(managerId, isActive: true);
-
-        var dispatcher = new RecordingDomainEventDispatcher();
-        var contextProvider = new FakeCurrentContextProvider(recorderId);
-        var clock = new FakeSystemClock(new DateTime(2026, 9, 28, 10, 0, 0, DateTimeKind.Utc));
-
-        var service = new RequestService(
-            repo,
-            orgQuery,
-            new FakeCustomerQueryService(),
-            new FakeProductQueryService(),
-            dispatcher,
-            contextProvider,
-            auditContext: null,
-            clock: clock);
-
-        var recorded = await service.RecordRequest("Custom unbilled module customization", "Hospital requests custom dashboard outside contract");
-        await service.AssignRequestOwner(recorded.Id, programmerId);
-
-        contextProvider.CurrentPersonId = programmerId;
-        await service.EscalateRequest(recorded.Id, "Requires commercial scope approval from management.");
-
-        // 1. Elevate for management decision without state transition
-        clock.AdvanceMinutes(15);
-        var elevated = await service.Handle(
-            new RequestManagementDecisionCommand(
-                RequestId: recorded.Id,
-                DecisionDetails: "Requesting COO determination on whether to include in Q4 maintenance goodwill."),
-            CancellationToken.None);
-
-        elevated.Status.Should().Be(RequestStatusNames.Escalated);
-        elevated.ManagementDecisionNotes.Should().Be("Requesting COO determination on whether to include in Q4 maintenance goodwill.");
-        elevated.Assignments.Last().PreviousStatus.Should().Be(RequestStatusNames.Escalated);
-        elevated.Assignments.Last().NewStatus.Should().Be(RequestStatusNames.Escalated);
-        elevated.Assignments.Last().ActorPersonId.Should().Be(programmerId);
-
-        repo.Assignments.Last(a => a.RequestId == recorded.Id).Notes.Should().Contain("Management decision requested");
-
-        dispatcher.Events.OfType<ManagementDecisionRequested>().Should().ContainSingle(e =>
-            e.RequestId == recorded.Id &&
-            e.RequestedByPersonId == programmerId &&
-            e.DecisionDetails == "Requesting COO determination on whether to include in Q4 maintenance goodwill.");
-
-        // 2. Apply management decision resolving ESCALATED -> IN_PROGRESS
-        clock.AdvanceMinutes(30);
-        contextProvider.CurrentPersonId = managerId;
-
-        var resolvedDecision = await service.Handle(
-            new RequestManagementDecisionCommand(
-                RequestId: recorded.Id,
-                DecisionDetails: "Approved by COO as goodwill deliverable; proceed with implementation.",
-                TargetStatus: RequestStatus.InProgress),
-            CancellationToken.None);
-
-        resolvedDecision.Status.Should().Be(RequestStatusNames.InProgress);
-        resolvedDecision.ManagementDecisionNotes.Should().Be("Approved by COO as goodwill deliverable; proceed with implementation.");
-
-        var decisionAudit = repo.Assignments.Last(a => a.RequestId == recorded.Id);
-        decisionAudit.PreviousStatus.Should().Be(RequestStatus.Escalated);
-        decisionAudit.NewStatus.Should().Be(RequestStatus.InProgress);
-        decisionAudit.ActorPersonId.Should().Be(managerId);
-
-        dispatcher.Events.OfType<ManagementDecisionRequested>().Should().HaveCount(2);
-    }
-
-    [Fact]
-    public async Task ReassignRequestOwnership_validates_assignee_updates_owner_records_audit_and_emits_RequestAssigned()
+    public async Task ReassignRequestOwnership_from_InProgress_and_Paused_resets_status_to_Assigned_and_records_audit()
     {
         var recorderId = Guid.NewGuid();
         var firstOwnerId = Guid.NewGuid();
         var secondOwnerId = Guid.NewGuid();
-        var thirdOwnerId = Guid.NewGuid();
         var managerId = Guid.NewGuid();
-        var inactivePersonId = Guid.NewGuid();
 
         var repo = new InMemoryRequestRepository();
         var orgQuery = new FakeOrganizationQueryService();
         orgQuery.SetPerson(recorderId, isActive: true);
         orgQuery.SetPerson(firstOwnerId, isActive: true);
         orgQuery.SetPerson(secondOwnerId, isActive: true);
-        orgQuery.SetPerson(thirdOwnerId, isActive: true);
         orgQuery.SetPerson(managerId, isActive: true);
-        orgQuery.SetPerson(inactivePersonId, isActive: false);
 
         var dispatcher = new RecordingDomainEventDispatcher();
         var contextProvider = new FakeCurrentContextProvider(recorderId);
@@ -225,30 +60,28 @@ public sealed class RequestEscalationAndManagementTests
 
         var recorded = await service.RecordRequest("Pharmacy inventory discrepancy", "Batch stock mismatch");
         await service.AssignRequestOwner(recorded.Id, firstOwnerId);
-        await service.AcceptRequestResponsibility(recorded.Id, "Started investigation", firstOwnerId);
-        await service.EscalateRequest(recorded.Id, "Blocked on legacy stored procedure complexity", firstOwnerId);
+        await service.StartWorkAsync(recorded.Id, actorPersonId: firstOwnerId);
 
-        // 1. Reassign from ESCALATED -> defaults to EVALUATING for new owner
+        // 1. Reassign from IN_PROGRESS -> resets to ASSIGNED (TD-003)
         clock.AdvanceMinutes(20);
         contextProvider.CurrentPersonId = managerId;
 
-        var reassignedFromEscalated = await service.Handle(
+        var reassignedFromInProgress = await service.Handle(
             new ReassignRequestOwnershipCommand(
                 RequestId: recorded.Id,
                 NewOwnerPersonId: secondOwnerId,
                 Notes: "Reassigned to senior database architect"),
             CancellationToken.None);
 
-        reassignedFromEscalated.Status.Should().Be(RequestStatusNames.Evaluating);
-        reassignedFromEscalated.OwnerPersonId.Should().Be(secondOwnerId);
+        reassignedFromInProgress.Status.Should().Be(RequestStatusNames.Assigned);
+        reassignedFromInProgress.OwnerPersonId.Should().Be(secondOwnerId);
 
         var audit1 = repo.Assignments.Last(a => a.RequestId == recorded.Id);
         audit1.PreviousOwnerPersonId.Should().Be(firstOwnerId);
         audit1.AssignedOwnerPersonId.Should().Be(secondOwnerId);
-        audit1.PreviousStatus.Should().Be(RequestStatus.Escalated);
-        audit1.NewStatus.Should().Be(RequestStatus.Evaluating);
+        audit1.PreviousStatus.Should().Be(RequestStatus.InProgress);
+        audit1.NewStatus.Should().Be(RequestStatus.Assigned);
         audit1.ActorPersonId.Should().Be(managerId);
-        audit1.Notes.Should().Be("Reassigned to senior database architect");
 
         dispatcher.Events.OfType<RequestAssigned>().Last().Should().BeEquivalentTo(new
         {
@@ -256,34 +89,72 @@ public sealed class RequestEscalationAndManagementTests
             OwnerPersonId = secondOwnerId,
             PreviousOwnerPersonId = (Guid?)firstOwnerId,
             ActorPersonId = managerId,
-            PreviousStatus = RequestStatus.Escalated,
-            NewStatus = RequestStatus.Evaluating,
-            Notes = "Reassigned to senior database architect"
+            PreviousStatus = RequestStatus.InProgress,
+            NewStatus = RequestStatus.Assigned
         }, options => options.ExcludingMissingMembers());
 
-        // 2. Reassign while in EVALUATING -> preserves EVALUATING status
+        // 2. Second owner starts work, then pauses work
         clock.AdvanceMinutes(10);
-        var reassignedInEvaluating = await service.ReassignRequestOwnership(
+        contextProvider.CurrentPersonId = secondOwnerId;
+        await service.StartWorkAsync(recorded.Id, actorPersonId: secondOwnerId);
+        await service.PauseWorkAsync(recorded.Id, "Blocked on vendor", actorPersonId: secondOwnerId);
+
+        // 3. Reassign from PAUSED -> resets to ASSIGNED (TD-003)
+        var thirdOwnerId = Guid.NewGuid();
+        orgQuery.SetPerson(thirdOwnerId, isActive: true);
+        contextProvider.CurrentPersonId = managerId;
+
+        var reassignedFromPaused = await service.ReassignRequestOwnership(
             requestId: recorded.Id,
             newOwnerPersonId: thirdOwnerId,
-            notes: "Load balancing across team");
+            notes: "Reassigning paused request");
 
-        reassignedInEvaluating.Status.Should().Be(RequestStatusNames.Evaluating);
-        reassignedInEvaluating.OwnerPersonId.Should().Be(thirdOwnerId);
+        reassignedFromPaused.Status.Should().Be(RequestStatusNames.Assigned);
+        reassignedFromPaused.OwnerPersonId.Should().Be(thirdOwnerId);
 
-        // 3. Rejects unknown, inactive, or identical assignee
+        var audit2 = repo.Assignments.Last(a => a.RequestId == recorded.Id);
+        audit2.PreviousStatus.Should().Be(RequestStatus.Paused);
+        audit2.NewStatus.Should().Be(RequestStatus.Assigned);
+    }
+
+    [Fact]
+    public async Task ReassignRequestOwnership_validates_assignee_and_rejects_invalid_assignees()
+    {
+        var actorId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        var inactivePersonId = Guid.NewGuid();
+
+        var repo = new InMemoryRequestRepository();
+        var orgQuery = new FakeOrganizationQueryService();
+        orgQuery.SetPerson(actorId, isActive: true);
+        orgQuery.SetPerson(ownerId, isActive: true);
+        orgQuery.SetPerson(inactivePersonId, isActive: false);
+
+        var service = new RequestService(
+            repo,
+            orgQuery,
+            new FakeCustomerQueryService(),
+            new FakeProductQueryService(),
+            currentContextProvider: new FakeCurrentContextProvider(actorId));
+
+        var recorded = await service.RecordRequest("Title", "Desc");
+        await service.AssignRequestOwner(recorded.Id, ownerId);
+
+        // Rejects unknown assignee
         var unknownAssigneeAct = async () => await service.ReassignRequestOwnership(recorded.Id, Guid.NewGuid());
         await unknownAssigneeAct.Should().ThrowAsync<KeyNotFoundException>();
 
+        // Rejects inactive assignee
         var inactiveAssigneeAct = async () => await service.ReassignRequestOwnership(recorded.Id, inactivePersonId);
         await inactiveAssigneeAct.Should().ThrowAsync<InvalidOperationException>();
 
-        var sameAssigneeAct = async () => await service.ReassignRequestOwnership(recorded.Id, thirdOwnerId);
+        // Rejects identical assignee
+        var sameAssigneeAct = async () => await service.ReassignRequestOwnership(recorded.Id, ownerId);
         await sameAssigneeAct.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
-    public async Task Invalid_escalation_management_and_reassignment_transitions_are_rejected()
+    public async Task ReassignRequestOwnership_on_closed_request_throws_InvalidRequestStateTransitionException()
     {
         var actorId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
@@ -302,48 +173,30 @@ public sealed class RequestEscalationAndManagementTests
             new FakeProductQueryService(),
             currentContextProvider: new FakeCurrentContextProvider(actorId));
 
-        var captured = await service.RecordRequest("Title", "Desc");
+        // 1. Completed request rejects ReassignRequestOwnership
+        var req1 = await service.RecordRequest("Title 1", "Desc 1");
+        await service.AssignRequestOwner(req1.Id, ownerId);
+        await service.StartWorkAsync(req1.Id, actorPersonId: ownerId);
+        await service.ReviewRequestCompletion(req1.Id, "Completed");
 
-        // Cannot Escalate while CAPTURED
-        var escalateCaptured = async () => await service.EscalateRequest(captured.Id, "Reason");
-        await escalateCaptured.Should().ThrowAsync<InvalidRequestStateTransitionException>();
+        var reassignCompleted = async () => await service.ReassignRequestOwnership(req1.Id, otherOwnerId);
+        await reassignCompleted.Should().ThrowAsync<InvalidRequestStateTransitionException>();
 
-        // Move to EVALUATING -> REJECTED
-        await service.AssignRequestOwner(captured.Id, ownerId);
-        await service.RejectRequest(captured.Id, "Rejected");
+        // 2. Cancelled request rejects ReassignRequestOwnership
+        var req2 = await service.RecordRequest("Title 2", "Desc 2");
+        await service.CancelRequestAsync(req2.Id, "Cancelled reason", actorPersonId: ownerId);
 
-        // Closed request rejects Escalate, RequestManagementDecision, and ReassignRequestOwnership
-        var escalateRejected = async () => await service.EscalateRequest(captured.Id, "Reason");
-        await escalateRejected.Should().ThrowAsync<InvalidRequestStateTransitionException>();
-
-        var decisionRejected = async () => await service.RequestManagementDecision(captured.Id, "Decision");
-        await decisionRejected.Should().ThrowAsync<InvalidRequestStateTransitionException>();
-
-        var reassignRejected = async () => await service.ReassignRequestOwnership(captured.Id, otherOwnerId);
-        await reassignRejected.Should().ThrowAsync<InvalidRequestStateTransitionException>();
+        var reassignCancelled = async () => await service.ReassignRequestOwnership(req2.Id, otherOwnerId);
+        await reassignCancelled.Should().ThrowAsync<InvalidRequestStateTransitionException>();
     }
 
     [Fact]
-    public void Escalation_and_management_command_validators_enforce_required_fields()
+    public void Reassign_command_validator_enforces_required_fields()
     {
-        var escalateValidator = new EscalateRequestCommandValidator();
-        escalateValidator.Validate(new EscalateRequestCommand(Guid.Empty, "Reason")).IsValid.Should().BeFalse();
-        escalateValidator.Validate(new EscalateRequestCommand(Guid.NewGuid(), "")).IsValid.Should().BeFalse();
-        escalateValidator.Validate(new EscalateRequestCommand(Guid.NewGuid(), "Reason", Guid.Empty)).IsValid.Should().BeFalse();
-        escalateValidator.Validate(new EscalateRequestCommand(Guid.NewGuid(), "Valid reason")).IsValid.Should().BeTrue();
-
-        var decisionValidator = new RequestManagementDecisionCommandValidator();
-        decisionValidator.Validate(new RequestManagementDecisionCommand(Guid.Empty, "Details")).IsValid.Should().BeFalse();
-        decisionValidator.Validate(new RequestManagementDecisionCommand(Guid.NewGuid(), " ")).IsValid.Should().BeFalse();
-        decisionValidator.Validate(new RequestManagementDecisionCommand(Guid.NewGuid(), "Details", TargetStatus: RequestStatus.Completed)).IsValid.Should().BeFalse();
-        decisionValidator.Validate(new RequestManagementDecisionCommand(Guid.NewGuid(), "Details", TargetStatus: RequestStatus.InProgress)).IsValid.Should().BeTrue();
-        decisionValidator.Validate(new RequestManagementDecisionCommand(Guid.NewGuid(), "Details")).IsValid.Should().BeTrue();
-
         var reassignValidator = new ReassignRequestOwnershipCommandValidator();
         reassignValidator.Validate(new ReassignRequestOwnershipCommand(Guid.Empty, Guid.NewGuid())).IsValid.Should().BeFalse();
         reassignValidator.Validate(new ReassignRequestOwnershipCommand(Guid.NewGuid(), Guid.Empty)).IsValid.Should().BeFalse();
-        reassignValidator.Validate(new ReassignRequestOwnershipCommand(Guid.NewGuid(), Guid.NewGuid(), TargetStatusForEscalated: RequestStatus.Rejected)).IsValid.Should().BeFalse();
-        reassignValidator.Validate(new ReassignRequestOwnershipCommand(Guid.NewGuid(), Guid.NewGuid(), "Notes", TargetStatusForEscalated: RequestStatus.Evaluating)).IsValid.Should().BeTrue();
+        reassignValidator.Validate(new ReassignRequestOwnershipCommand(Guid.NewGuid(), Guid.NewGuid())).IsValid.Should().BeTrue();
     }
 
     private sealed class InMemoryRequestRepository : IRequestRepository
@@ -374,8 +227,6 @@ public sealed class RequestEscalationAndManagementTests
                 req.ProductId,
                 req.WorkPackageId,
                 req.EvaluationNotes,
-                req.EscalationReason,
-                req.ManagementDecisionNotes,
                 req.CreatedAt,
                 req.UpdatedAt,
                 resolution,

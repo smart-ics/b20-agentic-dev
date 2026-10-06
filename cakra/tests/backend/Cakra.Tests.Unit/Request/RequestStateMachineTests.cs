@@ -29,7 +29,7 @@ public sealed class RequestStateMachineTests
             priority: "HIGH");
     }
 
-    private Cakra.Modules.Request.Domain.Request CreateEvaluatingRequest()
+    private Cakra.Modules.Request.Domain.Request CreateAssignedRequest()
     {
         var request = CreateCapturedRequest();
         request.AssignOwner(_ownerId, _actorId, "Assigned to primary programmer");
@@ -37,34 +37,34 @@ public sealed class RequestStateMachineTests
         return request;
     }
 
-    private Cakra.Modules.Request.Domain.Request CreateAcceptedRequest()
-    {
-        var request = CreateEvaluatingRequest();
-        request.Accept(_ownerId, "Responsibility accepted");
-        request.ClearDomainEvents();
-        return request;
-    }
-
     private Cakra.Modules.Request.Domain.Request CreateInProgressRequest()
     {
-        var request = CreateAcceptedRequest();
-        request.StartProgress(_ownerId, "Starting investigation and fix");
+        var request = CreateAssignedRequest();
+        request.StartWork(_ownerId, "Starting investigation and fix");
         request.ClearDomainEvents();
         return request;
     }
 
-    private Cakra.Modules.Request.Domain.Request CreateEscalatedRequestFromEvaluating()
-    {
-        var request = CreateEvaluatingRequest();
-        request.Escalate("Requires module architect review", _ownerId);
-        request.ClearDomainEvents();
-        return request;
-    }
-
-    private Cakra.Modules.Request.Domain.Request CreateEscalatedRequestFromInProgress()
+    private Cakra.Modules.Request.Domain.Request CreatePausedRequest()
     {
         var request = CreateInProgressRequest();
-        request.Escalate("Resource constraint and architecture blocker", _ownerId);
+        request.PauseWork(_ownerId, "Resource constraint and architecture blocker");
+        request.ClearDomainEvents();
+        return request;
+    }
+
+    private Cakra.Modules.Request.Domain.Request CreateCompletedRequest()
+    {
+        var request = CreateInProgressRequest();
+        request.Complete("Fix delivered and verified", _ownerId);
+        request.ClearDomainEvents();
+        return request;
+    }
+
+    private Cakra.Modules.Request.Domain.Request CreateCancelledRequest()
+    {
+        var request = CreateAssignedRequest();
+        request.Cancel("Superseded by new requirements", _actorId);
         request.ClearDomainEvents();
         return request;
     }
@@ -186,24 +186,24 @@ public sealed class RequestStateMachineTests
 
     #endregion
 
-    #region 2. CAPTURED -> EVALUATING & Invalid Transitions from CAPTURED
+    #region 2. AssignOwner (CAPTURED -> ASSIGNED, reassignments)
 
     [Fact]
-    public void AssignOwner_FromCaptured_TransitionsToEvaluatingAndEmitsEvent()
+    public void AssignOwner_FromCaptured_TransitionsToAssignedAndEmitsEvent()
     {
         var request = CreateCapturedRequest();
         var now = DateTime.UtcNow;
 
         request.AssignOwner(_ownerId, _actorId, "Assigning to Alice", now);
 
-        request.Status.Should().Be(RequestStatus.Evaluating);
+        request.Status.Should().Be(RequestStatus.Assigned);
         request.OwnerPersonId.Should().Be(_ownerId);
         request.UpdatedAt.Should().Be(now);
 
         request.Assignments.Should().HaveCount(2);
         var audit = request.Assignments.Last();
         audit.PreviousStatus.Should().Be(RequestStatus.Captured);
-        audit.NewStatus.Should().Be(RequestStatus.Evaluating);
+        audit.NewStatus.Should().Be(RequestStatus.Assigned);
         audit.PreviousOwnerPersonId.Should().BeNull();
         audit.AssignedOwnerPersonId.Should().Be(_ownerId);
         audit.ActorPersonId.Should().Be(_actorId);
@@ -216,225 +216,29 @@ public sealed class RequestStateMachineTests
                 PreviousOwnerPersonId = (Guid?)null,
                 ActorPersonId = _actorId,
                 PreviousStatus = RequestStatus.Captured,
-                NewStatus = RequestStatus.Evaluating,
+                NewStatus = RequestStatus.Assigned,
                 Notes = "Assigning to Alice",
                 OccurredAtUtc = now
             }, options => options.ExcludingMissingMembers());
     }
 
     [Fact]
-    public void Accept_FromCaptured_ThrowsInvalidRequestStateTransitionException()
+    public void AssignOwner_FromAssigned_UpdatesOwnerAndPreservesAssignedStatus()
     {
-        var request = CreateCapturedRequest();
-        var act = () => request.Accept(_actorId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Captured && e.TargetStatus == RequestStatus.Accepted);
-    }
-
-    [Fact]
-    public void Reject_FromCaptured_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateCapturedRequest();
-        var act = () => request.Reject("Invalid request", _actorId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Captured && e.TargetStatus == RequestStatus.Rejected);
-    }
-
-    [Fact]
-    public void Escalate_FromCaptured_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateCapturedRequest();
-        var act = () => request.Escalate("Premature escalation", _actorId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Captured && e.TargetStatus == RequestStatus.Escalated);
-    }
-
-    [Fact]
-    public void StartProgress_FromCaptured_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateCapturedRequest();
-        var act = () => request.StartProgress(_actorId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Captured && e.TargetStatus == RequestStatus.InProgress);
-    }
-
-    [Fact]
-    public void Complete_FromCaptured_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateCapturedRequest();
-        var act = () => request.Complete("Done prematurely", _actorId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Captured && e.TargetStatus == RequestStatus.Completed);
-    }
-
-    [Fact]
-    public void Evaluate_FromCaptured_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateCapturedRequest();
-        var act = () => request.Evaluate("Notes", _actorId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Captured);
-    }
-
-    [Fact]
-    public void ApplyManagementDecision_FromCaptured_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateCapturedRequest();
-        var act = () => request.ApplyManagementDecision(RequestStatus.Evaluating, "Notes", _actorId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Captured);
-    }
-
-    #endregion
-
-    #region 3. EVALUATING Transitions & Rejections
-
-    [Fact]
-    public void Evaluate_InEvaluatingState_RecordsNotesAndEmitsEventWithoutChangingStatus()
-    {
-        var request = CreateEvaluatingRequest();
+        var request = CreateAssignedRequest();
         var now = DateTime.UtcNow;
 
-        request.Evaluate("Feasible to fix in 4 hours; root cause identified in billing worker.", _ownerId, now);
+        request.AssignOwner(_secondOwnerId, _actorId, "Reassigned to Bob", now);
 
-        request.Status.Should().Be(RequestStatus.Evaluating);
-        request.EvaluationNotes.Should().Be("Feasible to fix in 4 hours; root cause identified in billing worker.");
-        request.UpdatedAt.Should().Be(now);
-
-        request.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<RequestEvaluated>()
-            .Which.Should().BeEquivalentTo(new
-            {
-                RequestId = request.Id,
-                EvaluatedByPersonId = _ownerId,
-                EvaluationNotes = "Feasible to fix in 4 hours; root cause identified in billing worker.",
-                OccurredAtUtc = now
-            }, options => options.ExcludingMissingMembers());
-    }
-
-    [Fact]
-    public void Accept_FromEvaluating_TransitionsToAcceptedAndEmitsEvent()
-    {
-        var request = CreateEvaluatingRequest();
-        var now = DateTime.UtcNow;
-
-        request.Accept(_ownerId, "Accepting ownership for resolution", now);
-
-        request.Status.Should().Be(RequestStatus.Accepted);
-        request.UpdatedAt.Should().Be(now);
-
-        var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Evaluating);
-        audit.NewStatus.Should().Be(RequestStatus.Accepted);
-        audit.ActorPersonId.Should().Be(_ownerId);
-
-        request.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<RequestAccepted>()
-            .Which.Should().BeEquivalentTo(new
-            {
-                RequestId = request.Id,
-                OwnerPersonId = _ownerId,
-                Notes = "Accepting ownership for resolution",
-                OccurredAtUtc = now
-            }, options => options.ExcludingMissingMembers());
-    }
-
-    [Fact]
-    public void Reject_FromEvaluating_TransitionsToRejectedCreatesResolutionAndEmitsEvent()
-    {
-        var request = CreateEvaluatingRequest();
-        var now = DateTime.UtcNow;
-
-        request.Reject("Feature request is out of product scope and violates BPJS policy.", _ownerId, now);
-
-        request.Status.Should().Be(RequestStatus.Rejected);
-        request.UpdatedAt.Should().Be(now);
-        request.Resolution.Should().NotBeNull();
-        request.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Rejected);
-        request.Resolution.Description.Should().Be("Feature request is out of product scope and violates BPJS policy.");
-        request.Resolution.ResolvedBy.Should().Be(_ownerId);
-        request.Resolution.ResolvedAt.Should().Be(now);
-
-        var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Evaluating);
-        audit.NewStatus.Should().Be(RequestStatus.Rejected);
-
-        request.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<RequestRejected>()
-            .Which.Should().BeEquivalentTo(new
-            {
-                RequestId = request.Id,
-                RejectedByPersonId = _ownerId,
-                RejectionReason = "Feature request is out of product scope and violates BPJS policy.",
-                OccurredAtUtc = now
-            }, options => options.ExcludingMissingMembers());
-    }
-
-    [Fact]
-    public void Escalate_FromEvaluating_TransitionsToEscalatedAndEmitsEvent()
-    {
-        var request = CreateEvaluatingRequest();
-        var now = DateTime.UtcNow;
-
-        request.Escalate("Requires DBA permissions to alter partitioned table.", _ownerId, now);
-
-        request.Status.Should().Be(RequestStatus.Escalated);
-        request.EscalationReason.Should().Be("Requires DBA permissions to alter partitioned table.");
-        request.UpdatedAt.Should().Be(now);
-
-        var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Evaluating);
-        audit.NewStatus.Should().Be(RequestStatus.Escalated);
-
-        request.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<RequestEscalated>()
-            .Which.Should().BeEquivalentTo(new
-            {
-                RequestId = request.Id,
-                EscalatedByPersonId = _ownerId,
-                EscalationReason = "Requires DBA permissions to alter partitioned table.",
-                OccurredAtUtc = now
-            }, options => options.ExcludingMissingMembers());
-    }
-
-    [Fact]
-    public void StartProgress_FromEvaluating_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateEvaluatingRequest();
-        var act = () => request.StartProgress(_ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Evaluating && e.TargetStatus == RequestStatus.InProgress);
-    }
-
-    [Fact]
-    public void Complete_FromEvaluating_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateEvaluatingRequest();
-        var act = () => request.Complete("Done", _ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Evaluating && e.TargetStatus == RequestStatus.Completed);
-    }
-
-    [Fact]
-    public void ReassignOwner_InEvaluating_UpdatesOwnerAndEmitsEventWithoutChangingStatus()
-    {
-        var request = CreateEvaluatingRequest();
-        var now = DateTime.UtcNow;
-
-        request.ReassignOwner(_secondOwnerId, _actorId, notes: "Reassigning to Bob", utcNow: now);
-
-        request.Status.Should().Be(RequestStatus.Evaluating);
+        request.Status.Should().Be(RequestStatus.Assigned);
         request.OwnerPersonId.Should().Be(_secondOwnerId);
         request.UpdatedAt.Should().Be(now);
+
+        var audit = request.Assignments.Last();
+        audit.PreviousStatus.Should().Be(RequestStatus.Assigned);
+        audit.NewStatus.Should().Be(RequestStatus.Assigned);
+        audit.PreviousOwnerPersonId.Should().Be(_ownerId);
+        audit.AssignedOwnerPersonId.Should().Be(_secondOwnerId);
 
         request.DomainEvents.OfType<RequestAssigned>().Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new
@@ -443,124 +247,414 @@ public sealed class RequestStateMachineTests
                 OwnerPersonId = _secondOwnerId,
                 PreviousOwnerPersonId = (Guid?)_ownerId,
                 ActorPersonId = _actorId,
-                PreviousStatus = RequestStatus.Evaluating,
-                NewStatus = RequestStatus.Evaluating,
-                Notes = "Reassigning to Bob",
+                PreviousStatus = RequestStatus.Assigned,
+                NewStatus = RequestStatus.Assigned,
+                Notes = "Reassigned to Bob",
                 OccurredAtUtc = now
             }, options => options.ExcludingMissingMembers());
     }
 
     [Fact]
-    public void ReassignOwner_WithSameOwner_ThrowsInvalidOperationException()
+    public void AssignOwner_FromAssigned_ToSameOwner_ThrowsInvalidOperationException()
     {
-        var request = CreateEvaluatingRequest();
-        var act = () => request.ReassignOwner(_ownerId, _actorId);
+        var request = CreateAssignedRequest();
+        var act = () => request.AssignOwner(_ownerId, _actorId);
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*identical*");
+            .WithMessage("*already assigned to this person*");
+    }
+
+    [Fact]
+    public void AssignOwner_FromInProgress_ResetsStatusToAssigned()
+    {
+        var request = CreateInProgressRequest();
+        var now = DateTime.UtcNow;
+
+        request.AssignOwner(_secondOwnerId, _actorId, "Reassigning active work to Bob", now);
+
+        request.Status.Should().Be(RequestStatus.Assigned);
+        request.OwnerPersonId.Should().Be(_secondOwnerId);
+        request.UpdatedAt.Should().Be(now);
+
+        var audit = request.Assignments.Last();
+        audit.PreviousStatus.Should().Be(RequestStatus.InProgress);
+        audit.NewStatus.Should().Be(RequestStatus.Assigned);
+        audit.PreviousOwnerPersonId.Should().Be(_ownerId);
+        audit.AssignedOwnerPersonId.Should().Be(_secondOwnerId);
+
+        request.DomainEvents.OfType<RequestAssigned>().Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new
+            {
+                RequestId = request.Id,
+                OwnerPersonId = _secondOwnerId,
+                PreviousOwnerPersonId = (Guid?)_ownerId,
+                ActorPersonId = _actorId,
+                PreviousStatus = RequestStatus.InProgress,
+                NewStatus = RequestStatus.Assigned,
+                Notes = "Reassigning active work to Bob",
+                OccurredAtUtc = now
+            }, options => options.ExcludingMissingMembers());
+    }
+
+    [Fact]
+    public void AssignOwner_FromInProgress_ToSameOwner_ThrowsInvalidOperationException()
+    {
+        var request = CreateInProgressRequest();
+        var act = () => request.AssignOwner(_ownerId, _actorId);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already assigned to this person*");
+    }
+
+    [Fact]
+    public void AssignOwner_FromPaused_ResetsStatusToAssigned()
+    {
+        var request = CreatePausedRequest();
+        var now = DateTime.UtcNow;
+
+        request.AssignOwner(_secondOwnerId, _actorId, "Reassigning paused work to Bob", now);
+
+        request.Status.Should().Be(RequestStatus.Assigned);
+        request.OwnerPersonId.Should().Be(_secondOwnerId);
+        request.UpdatedAt.Should().Be(now);
+
+        var audit = request.Assignments.Last();
+        audit.PreviousStatus.Should().Be(RequestStatus.Paused);
+        audit.NewStatus.Should().Be(RequestStatus.Assigned);
+        audit.PreviousOwnerPersonId.Should().Be(_ownerId);
+        audit.AssignedOwnerPersonId.Should().Be(_secondOwnerId);
+
+        request.DomainEvents.OfType<RequestAssigned>().Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new
+            {
+                RequestId = request.Id,
+                OwnerPersonId = _secondOwnerId,
+                PreviousOwnerPersonId = (Guid?)_ownerId,
+                ActorPersonId = _actorId,
+                PreviousStatus = RequestStatus.Paused,
+                NewStatus = RequestStatus.Assigned,
+                Notes = "Reassigning paused work to Bob",
+                OccurredAtUtc = now
+            }, options => options.ExcludingMissingMembers());
+    }
+
+    [Fact]
+    public void AssignOwner_FromPaused_ToSameOwner_ThrowsInvalidOperationException()
+    {
+        var request = CreatePausedRequest();
+        var act = () => request.AssignOwner(_ownerId, _actorId);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already assigned to this person*");
+    }
+
+    [Theory]
+    [InlineData(RequestStatus.Completed)]
+    [InlineData(RequestStatus.Cancelled)]
+    public void AssignOwner_WhenClosed_ThrowsInvalidRequestStateTransitionException(RequestStatus closedStatus)
+    {
+        var request = closedStatus == RequestStatus.Completed ? CreateCompletedRequest() : CreateCancelledRequest();
+        var act = () => request.AssignOwner(_secondOwnerId, _actorId);
+
+        act.Should().Throw<InvalidRequestStateTransitionException>()
+            .WithMessage("*Closed requests cannot be assigned or reassigned*");
+    }
+
+    [Fact]
+    public void AssignOwner_WithEmptyOwner_ThrowsValidationException()
+    {
+        var request = CreateCapturedRequest();
+        var act = () => request.AssignOwner(Guid.Empty, _actorId);
+
+        act.Should().Throw<RequestDomainValidationException>()
+            .WithParameterName("ownerPersonId");
+    }
+
+    [Fact]
+    public void AssignOwner_WithEmptyActor_ThrowsValidationException()
+    {
+        var request = CreateCapturedRequest();
+        var act = () => request.AssignOwner(_ownerId, Guid.Empty);
+
+        act.Should().Throw<RequestDomainValidationException>()
+            .WithParameterName("actorPersonId");
     }
 
     #endregion
 
-    #region 4. ACCEPTED Transitions & Rejections
+    #region 3. StartWork (ASSIGNED / PAUSED -> IN_PROGRESS, Owner Enforcement)
 
     [Fact]
-    public void StartProgress_FromAccepted_TransitionsToInProgress()
+    public void StartWork_FromAssigned_TransitionsToInProgressAndEmitsEvent()
     {
-        var request = CreateAcceptedRequest();
+        var request = CreateAssignedRequest();
         var now = DateTime.UtcNow;
 
-        request.StartProgress(_ownerId, "Beginning development", now);
+        request.StartWork(_ownerId, "Beginning implementation", now);
 
         request.Status.Should().Be(RequestStatus.InProgress);
         request.UpdatedAt.Should().Be(now);
 
         var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Accepted);
+        audit.PreviousStatus.Should().Be(RequestStatus.Assigned);
         audit.NewStatus.Should().Be(RequestStatus.InProgress);
         audit.ActorPersonId.Should().Be(_ownerId);
+
+        request.DomainEvents.OfType<RequestWorkStarted>().Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new
+            {
+                RequestId = request.Id,
+                OwnerPersonId = _ownerId,
+                ActorPersonId = _ownerId,
+                PreviousStatus = RequestStatus.Assigned,
+                Notes = "Beginning implementation",
+                OccurredAtUtc = now
+            }, options => options.ExcludingMissingMembers());
     }
 
     [Fact]
-    public void Accept_FromAccepted_ThrowsInvalidRequestStateTransitionException()
+    public void StartWork_FromPaused_TransitionsToInProgressAndEmitsEvent()
     {
-        var request = CreateAcceptedRequest();
-        var act = () => request.Accept(_ownerId);
+        var request = CreatePausedRequest();
+        var now = DateTime.UtcNow;
 
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Accepted && e.TargetStatus == RequestStatus.Accepted);
+        request.StartWork(_ownerId, "Resuming work after unblock", now);
+
+        request.Status.Should().Be(RequestStatus.InProgress);
+        request.UpdatedAt.Should().Be(now);
+
+        var audit = request.Assignments.Last();
+        audit.PreviousStatus.Should().Be(RequestStatus.Paused);
+        audit.NewStatus.Should().Be(RequestStatus.InProgress);
+        audit.ActorPersonId.Should().Be(_ownerId);
+
+        request.DomainEvents.OfType<RequestWorkStarted>().Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new
+            {
+                RequestId = request.Id,
+                OwnerPersonId = _ownerId,
+                ActorPersonId = _ownerId,
+                PreviousStatus = RequestStatus.Paused,
+                Notes = "Resuming work after unblock",
+                OccurredAtUtc = now
+            }, options => options.ExcludingMissingMembers());
     }
 
     [Fact]
-    public void Reject_FromAccepted_ThrowsInvalidRequestStateTransitionException()
+    public void StartWork_ByCallerNotAssignedOwner_ThrowsInvalidOperationException()
     {
-        var request = CreateAcceptedRequest();
-        var act = () => request.Reject("Reject after accepted", _ownerId);
+        var request = CreateAssignedRequest();
+        var nonOwnerId = Guid.NewGuid();
 
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Accepted && e.TargetStatus == RequestStatus.Rejected);
+        var act = () => request.StartWork(nonOwnerId, "Trying to start someone else's work");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Only the assigned owner can start work on this request*");
     }
 
     [Fact]
-    public void Escalate_FromAccepted_ThrowsInvalidRequestStateTransitionException()
+    public void StartWork_WhenNoOwnerAssigned_ThrowsInvalidOperationException()
     {
-        var request = CreateAcceptedRequest();
-        var act = () => request.Escalate("Escalate directly from accepted", _ownerId);
+        var request = CreateCapturedRequest();
+        var act = () => request.StartWork(_actorId);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Only the assigned owner can start work on this request*");
+    }
+
+    [Theory]
+    [InlineData(RequestStatus.InProgress)]
+    public void StartWork_WhenAlreadyInProgress_ThrowsInvalidRequestStateTransitionException(RequestStatus status)
+    {
+        var request = CreateInProgressRequest();
+        var act = () => request.StartWork(_ownerId);
 
         act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Accepted && e.TargetStatus == RequestStatus.Escalated);
+            .Where(e => e.CurrentStatus == status && e.TargetStatus == RequestStatus.InProgress);
     }
 
     [Fact]
-    public void Complete_FromAccepted_ThrowsInvalidRequestStateTransitionException()
+    public void StartWork_WithEmptyActor_ThrowsValidationException()
     {
-        var request = CreateAcceptedRequest();
-        var act = () => request.Complete("Complete without starting work", _ownerId);
+        var request = CreateAssignedRequest();
+        var act = () => request.StartWork(Guid.Empty);
 
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Accepted && e.TargetStatus == RequestStatus.Completed);
-    }
-
-    [Fact]
-    public void Evaluate_FromAccepted_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateAcceptedRequest();
-        var act = () => request.Evaluate("Evaluating after accept", _ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Accepted);
+        act.Should().Throw<RequestDomainValidationException>()
+            .WithParameterName("actorPersonId");
     }
 
     #endregion
 
-    #region 5. IN_PROGRESS Transitions & Rejections
+    #region 4. PauseWork (IN_PROGRESS -> PAUSED)
 
     [Fact]
-    public void Escalate_FromInProgress_TransitionsToEscalatedAndEmitsEvent()
+    public void PauseWork_FromInProgress_TransitionsToPausedAndEmitsEvent()
     {
         var request = CreateInProgressRequest();
         var now = DateTime.UtcNow;
 
-        request.Escalate("Third party API is returning 503 Service Unavailable.", _ownerId, now);
+        request.PauseWork(_ownerId, "Waiting on external dependency", now);
 
-        request.Status.Should().Be(RequestStatus.Escalated);
-        request.EscalationReason.Should().Be("Third party API is returning 503 Service Unavailable.");
+        request.Status.Should().Be(RequestStatus.Paused);
         request.UpdatedAt.Should().Be(now);
 
         var audit = request.Assignments.Last();
         audit.PreviousStatus.Should().Be(RequestStatus.InProgress);
-        audit.NewStatus.Should().Be(RequestStatus.Escalated);
+        audit.NewStatus.Should().Be(RequestStatus.Paused);
+        audit.ActorPersonId.Should().Be(_ownerId);
 
-        request.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<RequestEscalated>()
+        request.DomainEvents.OfType<RequestWorkPaused>().Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new
             {
                 RequestId = request.Id,
-                EscalatedByPersonId = _ownerId,
-                EscalationReason = "Third party API is returning 503 Service Unavailable.",
+                OwnerPersonId = (Guid?)_ownerId,
+                ActorPersonId = _ownerId,
+                Notes = "Waiting on external dependency",
                 OccurredAtUtc = now
             }, options => options.ExcludingMissingMembers());
     }
+
+    [Fact]
+    public void PauseWork_WithoutNote_SucceedsWithDefaultAuditNote()
+    {
+        var request = CreateInProgressRequest();
+        request.PauseWork(_ownerId);
+
+        request.Status.Should().Be(RequestStatus.Paused);
+        request.DomainEvents.OfType<RequestWorkPaused>().Should().ContainSingle()
+            .Which.Notes.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(RequestStatus.Captured)]
+    [InlineData(RequestStatus.Assigned)]
+    [InlineData(RequestStatus.Paused)]
+    public void PauseWork_FromNonInProgressStates_ThrowsInvalidRequestStateTransitionException(RequestStatus invalidStatus)
+    {
+        var request = invalidStatus switch
+        {
+            RequestStatus.Captured => CreateCapturedRequest(),
+            RequestStatus.Assigned => CreateAssignedRequest(),
+            RequestStatus.Paused => CreatePausedRequest(),
+            _ => CreateCapturedRequest()
+        };
+
+        var act = () => request.PauseWork(_ownerId, "Pause attempt");
+
+        act.Should().Throw<InvalidRequestStateTransitionException>()
+            .Where(e => e.CurrentStatus == invalidStatus && e.TargetStatus == RequestStatus.Paused);
+    }
+
+    [Fact]
+    public void PauseWork_WithEmptyActor_ThrowsValidationException()
+    {
+        var request = CreateInProgressRequest();
+        var act = () => request.PauseWork(Guid.Empty);
+
+        act.Should().Throw<RequestDomainValidationException>()
+            .WithParameterName("actorPersonId");
+    }
+
+    #endregion
+
+    #region 5. Cancel (Active States -> CANCELLED, Subtask Immunity)
+
+    [Theory]
+    [InlineData(RequestStatus.Captured)]
+    [InlineData(RequestStatus.Assigned)]
+    [InlineData(RequestStatus.InProgress)]
+    [InlineData(RequestStatus.Paused)]
+    public void Cancel_FromAnyActiveState_TransitionsToCancelledAndCreatesResolution(RequestStatus activeStatus)
+    {
+        var request = activeStatus switch
+        {
+            RequestStatus.Captured => CreateCapturedRequest(),
+            RequestStatus.Assigned => CreateAssignedRequest(),
+            RequestStatus.InProgress => CreateInProgressRequest(),
+            RequestStatus.Paused => CreatePausedRequest(),
+            _ => CreateCapturedRequest()
+        };
+
+        var now = DateTime.UtcNow;
+        request.Cancel("Customer decided not to proceed with this requirement.", _actorId, now);
+
+        request.Status.Should().Be(RequestStatus.Cancelled);
+        request.UpdatedAt.Should().Be(now);
+        request.Resolution.Should().NotBeNull();
+        request.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Cancelled);
+        request.Resolution.Description.Should().Be("Customer decided not to proceed with this requirement.");
+        request.Resolution.ResolvedBy.Should().Be(_actorId);
+        request.Resolution.ResolvedAt.Should().Be(now);
+
+        var audit = request.Assignments.Last();
+        audit.PreviousStatus.Should().Be(activeStatus);
+        audit.NewStatus.Should().Be(RequestStatus.Cancelled);
+        audit.ActorPersonId.Should().Be(_actorId);
+
+        request.DomainEvents.OfType<RequestCancelled>().Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new
+            {
+                RequestId = request.Id,
+                CancelledByPersonId = _actorId,
+                CancellationReason = "Customer decided not to proceed with this requirement.",
+                OccurredAtUtc = now
+            }, options => options.ExcludingMissingMembers());
+    }
+
+    [Fact]
+    public void Cancel_WithUnfinishedSubTasks_SucceedsWithoutBlocking()
+    {
+        var request = CreateInProgressRequest();
+        request.AddSubTask("Pending database schema check", null, _ownerId);
+        request.AddSubTask("Pending integration verification", null, _ownerId);
+
+        request.SubTasks.Any(t => !t.IsCompleted).Should().BeTrue();
+
+        var act = () => request.Cancel("Cancelled due to architectural obsolescence", _actorId);
+
+        act.Should().NotThrow();
+        request.Status.Should().Be(RequestStatus.Cancelled);
+        request.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Cancelled);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Cancel_WithEmptyReason_ThrowsValidationException(string? invalidReason)
+    {
+        var request = CreateInProgressRequest();
+        var act = () => request.Cancel(invalidReason!, _actorId);
+
+        act.Should().Throw<RequestDomainValidationException>()
+            .WithParameterName("reason");
+    }
+
+    [Fact]
+    public void Cancel_WithEmptyActor_ThrowsValidationException()
+    {
+        var request = CreateInProgressRequest();
+        var act = () => request.Cancel("Valid reason", Guid.Empty);
+
+        act.Should().Throw<RequestDomainValidationException>()
+            .WithParameterName("actorPersonId");
+    }
+
+    [Theory]
+    [InlineData(RequestStatus.Completed)]
+    [InlineData(RequestStatus.Cancelled)]
+    public void Cancel_WhenAlreadyClosed_ThrowsInvalidRequestStateTransitionException(RequestStatus closedStatus)
+    {
+        var request = closedStatus == RequestStatus.Completed ? CreateCompletedRequest() : CreateCancelledRequest();
+        var act = () => request.Cancel("Trying to cancel closed request", _actorId);
+
+        act.Should().Throw<InvalidRequestStateTransitionException>()
+            .WithMessage("*Closed requests cannot be cancelled*");
+    }
+
+    #endregion
+
+    #region 6. Complete (IN_PROGRESS -> COMPLETED)
 
     [Fact]
     public void Complete_FromInProgress_TransitionsToCompletedCreatesResolutionAndEmitsEvent()
@@ -593,341 +687,77 @@ public sealed class RequestStateMachineTests
             }, options => options.ExcludingMissingMembers());
     }
 
-    [Fact]
-    public void RequestManagementDecision_FromInProgress_RecordsDecisionAndEmitsEventWithoutChangingStatus()
+    [Theory]
+    [InlineData(RequestStatus.Captured)]
+    [InlineData(RequestStatus.Assigned)]
+    [InlineData(RequestStatus.Paused)]
+    public void Complete_FromNonInProgressStates_ThrowsInvalidRequestStateTransitionException(RequestStatus invalidStatus)
     {
-        var request = CreateInProgressRequest();
-        var now = DateTime.UtcNow;
+        var request = invalidStatus switch
+        {
+            RequestStatus.Captured => CreateCapturedRequest(),
+            RequestStatus.Assigned => CreateAssignedRequest(),
+            RequestStatus.Paused => CreatePausedRequest(),
+            _ => CreateCapturedRequest()
+        };
 
-        request.RequestManagementDecision("Should we backport fix to v2.4 branch?", _ownerId, now);
+        var act = () => request.Complete("Complete attempt", _ownerId);
 
-        request.Status.Should().Be(RequestStatus.InProgress);
-        request.ManagementDecisionNotes.Should().Be("Should we backport fix to v2.4 branch?");
-        request.UpdatedAt.Should().Be(now);
-
-        request.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<ManagementDecisionRequested>()
-            .Which.Should().BeEquivalentTo(new
-            {
-                RequestId = request.Id,
-                RequestedByPersonId = _ownerId,
-                DecisionDetails = "Should we backport fix to v2.4 branch?",
-                OccurredAtUtc = now
-            }, options => options.ExcludingMissingMembers());
+        act.Should().Throw<InvalidRequestStateTransitionException>()
+            .Where(e => e.CurrentStatus == invalidStatus && e.TargetStatus == RequestStatus.Completed);
     }
 
     [Fact]
-    public void Accept_FromInProgress_ThrowsInvalidRequestStateTransitionException()
+    public void Complete_WithUnfinishedSubTasks_ThrowsRequestHasUnfinishedSubTasksException()
     {
         var request = CreateInProgressRequest();
-        var act = () => request.Accept(_ownerId);
+        var task = request.AddSubTask("Pending test verification", null, _ownerId);
 
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.InProgress && e.TargetStatus == RequestStatus.Accepted);
+        var act = () => request.Complete("Done with code", _ownerId);
+
+        act.Should().Throw<RequestHasUnfinishedSubTasksException>()
+            .Where(e => e.UnfinishedCount == 1);
     }
 
     [Fact]
-    public void Reject_FromInProgress_ThrowsInvalidRequestStateTransitionException()
+    public void Complete_WithCompletedSubTasks_Succeeds()
     {
         var request = CreateInProgressRequest();
-        var act = () => request.Reject("Reject while in progress", _ownerId);
+        var task = request.AddSubTask("Verification", null, _ownerId);
+        request.CompleteSubTask(task.Id, _ownerId);
 
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.InProgress && e.TargetStatus == RequestStatus.Rejected);
-    }
+        var act = () => request.Complete("Done and verified", _ownerId);
 
-    [Fact]
-    public void StartProgress_FromInProgress_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateInProgressRequest();
-        var act = () => request.StartProgress(_ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.InProgress && e.TargetStatus == RequestStatus.InProgress);
-    }
-
-    [Fact]
-    public void Evaluate_FromInProgress_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateInProgressRequest();
-        var act = () => request.Evaluate("Evaluating during work", _ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.InProgress);
-    }
-
-    [Fact]
-    public void ApplyManagementDecision_FromInProgress_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateInProgressRequest();
-        var act = () => request.ApplyManagementDecision(RequestStatus.Evaluating, "Notes", _ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.InProgress);
+        act.Should().NotThrow();
+        request.Status.Should().Be(RequestStatus.Completed);
     }
 
     #endregion
 
-    #region 6. ESCALATED Transitions & Rejections
-
-    [Fact]
-    public void ReassignOwner_FromEscalated_DefaultTransitionsToEvaluating()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var now = DateTime.UtcNow;
-
-        request.ReassignOwner(_secondOwnerId, _actorId, utcNow: now);
-
-        request.Status.Should().Be(RequestStatus.Evaluating);
-        request.OwnerPersonId.Should().Be(_secondOwnerId);
-        request.UpdatedAt.Should().Be(now);
-
-        var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Escalated);
-        audit.NewStatus.Should().Be(RequestStatus.Evaluating);
-        audit.AssignedOwnerPersonId.Should().Be(_secondOwnerId);
-
-        request.DomainEvents.OfType<RequestAssigned>().Should().ContainSingle()
-            .Which.Should().BeEquivalentTo(new
-            {
-                RequestId = request.Id,
-                OwnerPersonId = _secondOwnerId,
-                PreviousOwnerPersonId = (Guid?)_ownerId,
-                ActorPersonId = _actorId,
-                PreviousStatus = RequestStatus.Escalated,
-                NewStatus = RequestStatus.Evaluating,
-                OccurredAtUtc = now
-            }, options => options.ExcludingMissingMembers());
-    }
-
-    [Fact]
-    public void ReassignOwner_FromEscalated_WithInProgressTarget_TransitionsToInProgress()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var now = DateTime.UtcNow;
-
-        request.ReassignOwner(_secondOwnerId, _actorId, targetStatusForEscalated: RequestStatus.InProgress, utcNow: now);
-
-        request.Status.Should().Be(RequestStatus.InProgress);
-        request.OwnerPersonId.Should().Be(_secondOwnerId);
-        request.UpdatedAt.Should().Be(now);
-
-        var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Escalated);
-        audit.NewStatus.Should().Be(RequestStatus.InProgress);
-
-        request.DomainEvents.OfType<RequestAssigned>().Should().ContainSingle()
-            .Which.Should().BeEquivalentTo(new
-            {
-                RequestId = request.Id,
-                OwnerPersonId = _secondOwnerId,
-                PreviousOwnerPersonId = (Guid?)_ownerId,
-                ActorPersonId = _actorId,
-                PreviousStatus = RequestStatus.Escalated,
-                NewStatus = RequestStatus.InProgress,
-                OccurredAtUtc = now
-            }, options => options.ExcludingMissingMembers());
-    }
-
-    [Theory]
-    [InlineData(RequestStatus.Captured)]
-    [InlineData(RequestStatus.Accepted)]
-    [InlineData(RequestStatus.Rejected)]
-    [InlineData(RequestStatus.Completed)]
-    [InlineData(RequestStatus.Escalated)]
-    public void ReassignOwner_FromEscalated_WithInvalidTarget_ThrowsInvalidRequestStateTransitionException(RequestStatus invalidTarget)
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var act = () => request.ReassignOwner(_secondOwnerId, _actorId, targetStatusForEscalated: invalidTarget);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Escalated && e.TargetStatus == invalidTarget);
-    }
-
-    [Fact]
-    public void AssignOwner_FromEscalated_TransitionsToEvaluating()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var now = DateTime.UtcNow;
-
-        request.AssignOwner(_secondOwnerId, _actorId, "Manager reassigned escalation", now);
-
-        request.Status.Should().Be(RequestStatus.Evaluating);
-        request.OwnerPersonId.Should().Be(_secondOwnerId);
-        request.UpdatedAt.Should().Be(now);
-    }
-
-    [Fact]
-    public void ApplyManagementDecision_FromEscalated_ToEvaluating_Succeeds()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var now = DateTime.UtcNow;
-
-        request.ApplyManagementDecision(RequestStatus.Evaluating, "Return to evaluating under revised scope", _actorId, now);
-
-        request.Status.Should().Be(RequestStatus.Evaluating);
-        request.ManagementDecisionNotes.Should().Be("Return to evaluating under revised scope");
-        request.UpdatedAt.Should().Be(now);
-
-        var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Escalated);
-        audit.NewStatus.Should().Be(RequestStatus.Evaluating);
-    }
-
-    [Fact]
-    public void ApplyManagementDecision_FromEscalated_ToInProgress_Succeeds()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var now = DateTime.UtcNow;
-
-        request.ApplyManagementDecision(RequestStatus.InProgress, "Management approved overtime; resume development immediately", _actorId, now);
-
-        request.Status.Should().Be(RequestStatus.InProgress);
-        request.ManagementDecisionNotes.Should().Be("Management approved overtime; resume development immediately");
-        request.UpdatedAt.Should().Be(now);
-
-        var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Escalated);
-        audit.NewStatus.Should().Be(RequestStatus.InProgress);
-    }
-
-    [Theory]
-    [InlineData(RequestStatus.Captured)]
-    [InlineData(RequestStatus.Accepted)]
-    [InlineData(RequestStatus.Rejected)]
-    [InlineData(RequestStatus.Completed)]
-    [InlineData(RequestStatus.Escalated)]
-    public void ApplyManagementDecision_WithInvalidTargetStatus_ThrowsInvalidRequestStateTransitionException(RequestStatus invalidTarget)
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var act = () => request.ApplyManagementDecision(invalidTarget, "Notes", _actorId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Escalated && e.TargetStatus == invalidTarget);
-    }
-
-    [Fact]
-    public void StartProgress_FromEscalated_ResumesInProgress()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var now = DateTime.UtcNow;
-
-        request.StartProgress(_ownerId, "Resumed after issue unblocked", now);
-
-        request.Status.Should().Be(RequestStatus.InProgress);
-        request.UpdatedAt.Should().Be(now);
-
-        var audit = request.Assignments.Last();
-        audit.PreviousStatus.Should().Be(RequestStatus.Escalated);
-        audit.NewStatus.Should().Be(RequestStatus.InProgress);
-    }
-
-    [Fact]
-    public void ResumeProgress_FromEscalated_ResumesInProgress()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var now = DateTime.UtcNow;
-
-        request.ResumeProgress(_ownerId, "Resuming progress", now);
-
-        request.Status.Should().Be(RequestStatus.InProgress);
-        request.UpdatedAt.Should().Be(now);
-    }
-
-    [Fact]
-    public void Accept_FromEscalated_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var act = () => request.Accept(_ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Escalated && e.TargetStatus == RequestStatus.Accepted);
-    }
-
-    [Fact]
-    public void Reject_FromEscalated_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var act = () => request.Reject("Reject while escalated", _ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Escalated && e.TargetStatus == RequestStatus.Rejected);
-    }
-
-    [Fact]
-    public void Escalate_FromEscalated_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var act = () => request.Escalate("Re-escalating", _ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Escalated && e.TargetStatus == RequestStatus.Escalated);
-    }
-
-    [Fact]
-    public void Complete_FromEscalated_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var act = () => request.Complete("Complete directly from escalated", _ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Escalated && e.TargetStatus == RequestStatus.Completed);
-    }
-
-    [Fact]
-    public void Evaluate_FromEscalated_ThrowsInvalidRequestStateTransitionException()
-    {
-        var request = CreateEscalatedRequestFromInProgress();
-        var act = () => request.Evaluate("Evaluating while escalated", _ownerId);
-
-        act.Should().Throw<InvalidRequestStateTransitionException>()
-            .Where(e => e.CurrentStatus == RequestStatus.Escalated);
-    }
-
-    #endregion
-
-    #region 7. Terminal States (REJECTED and COMPLETED) Rejection
-
-    [Fact]
-    public void RejectedState_RejectsAllMutations()
-    {
-        var request = CreateEvaluatingRequest();
-        request.Reject("Not valid", _ownerId);
-
-        request.Status.Should().Be(RequestStatus.Rejected);
-
-        // Attempting each mutation throws InvalidRequestStateTransitionException
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.AssignOwner(_secondOwnerId, _actorId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.ReassignOwner(_secondOwnerId, _actorId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Accept(_ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Reject("Double reject", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Escalate("Escalate rejected", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.StartProgress(_ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Complete("Complete rejected", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Evaluate("Evaluate rejected", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.RequestManagementDecision("Decision rejected", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.ApplyManagementDecision(RequestStatus.Evaluating, "Notes", _actorId));
-    }
+    #region 7. Terminal States (COMPLETED and CANCELLED) Reject Mutations
 
     [Fact]
     public void CompletedState_RejectsAllMutations()
     {
-        var request = CreateInProgressRequest();
-        request.Complete("Finished successfully", _ownerId);
+        var request = CreateCompletedRequest();
 
-        request.Status.Should().Be(RequestStatus.Completed);
-
-        // Attempting each mutation throws InvalidRequestStateTransitionException
         Assert.Throws<InvalidRequestStateTransitionException>(() => request.AssignOwner(_secondOwnerId, _actorId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.ReassignOwner(_secondOwnerId, _actorId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Accept(_ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Reject("Reject completed", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Escalate("Escalate completed", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.StartProgress(_ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Complete("Double complete", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Evaluate("Evaluate completed", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.RequestManagementDecision("Decision completed", _ownerId));
-        Assert.Throws<InvalidRequestStateTransitionException>(() => request.ApplyManagementDecision(RequestStatus.InProgress, "Notes", _actorId));
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.StartWork(_ownerId));
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.PauseWork(_ownerId));
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Cancel("Cancel completed", _actorId));
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Complete("Complete again", _ownerId));
+    }
+
+    [Fact]
+    public void CancelledState_RejectsAllMutations()
+    {
+        var request = CreateCancelledRequest();
+
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.AssignOwner(_secondOwnerId, _actorId));
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.StartWork(_ownerId));
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.PauseWork(_ownerId));
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Cancel("Cancel cancelled", _actorId));
+        Assert.Throws<InvalidRequestStateTransitionException>(() => request.Complete("Complete cancelled", _ownerId));
     }
 
     #endregion
@@ -935,112 +765,87 @@ public sealed class RequestStateMachineTests
     #region 8. End-to-End Lifecycle Scenarios
 
     [Fact]
-    public void HappyPath_FullLifecycle_Captured_Evaluating_Accepted_InProgress_Completed()
+    public void HappyPath_FullLifecycle_Captured_Assigned_InProgress_Completed()
     {
         // 1. CAPTURED
         var request = CreateCapturedRequest();
         request.Status.Should().Be(RequestStatus.Captured);
         request.DomainEvents.Should().ContainSingle().Which.Should().BeOfType<RequestRecorded>();
 
-        // 2. CAPTURED -> EVALUATING
+        // 2. CAPTURED -> ASSIGNED
         request.AssignOwner(_ownerId, _actorId, "Assigned to Alice");
-        request.Status.Should().Be(RequestStatus.Evaluating);
+        request.Status.Should().Be(RequestStatus.Assigned);
         request.DomainEvents.OfType<RequestAssigned>().Should().ContainSingle();
 
-        // 3. Evaluation in EVALUATING
-        request.Evaluate("Evaluation complete; plan is approved", _ownerId);
-        request.Status.Should().Be(RequestStatus.Evaluating);
-        request.DomainEvents.OfType<RequestEvaluated>().Should().ContainSingle();
-
-        // 4. EVALUATING -> ACCEPTED
-        request.Accept(_ownerId, "Accepted for execution");
-        request.Status.Should().Be(RequestStatus.Accepted);
-        request.DomainEvents.OfType<RequestAccepted>().Should().ContainSingle();
-
-        // 5. ACCEPTED -> IN_PROGRESS
-        request.StartProgress(_ownerId, "Coding started");
+        // 3. ASSIGNED -> IN_PROGRESS
+        request.StartWork(_ownerId, "Coding started");
         request.Status.Should().Be(RequestStatus.InProgress);
+        request.DomainEvents.OfType<RequestWorkStarted>().Should().ContainSingle();
 
-        // 6. IN_PROGRESS -> COMPLETED
+        // 4. IN_PROGRESS -> COMPLETED
         request.Complete("Resolved, validated, and deployed to staging", _ownerId);
         request.Status.Should().Be(RequestStatus.Completed);
         request.Resolution.Should().NotBeNull();
         request.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Completed);
         request.DomainEvents.OfType<RequestCompleted>().Should().ContainSingle();
 
-        // All 5 audit entries recorded
-        request.Assignments.Should().HaveCount(5);
+        // All 4 audit entries recorded
+        request.Assignments.Should().HaveCount(4);
         request.Assignments.Select(a => a.NewStatus).Should().ContainInOrder(
             RequestStatus.Captured,
-            RequestStatus.Evaluating,
-            RequestStatus.Accepted,
+            RequestStatus.Assigned,
             RequestStatus.InProgress,
             RequestStatus.Completed);
     }
 
     [Fact]
-    public void HappyPath_TriageRejection_Captured_Evaluating_Rejected()
+    public void HappyPath_PauseAndResumeLifecycle_Captured_Assigned_InProgress_Paused_InProgress_Completed()
     {
         var request = CreateCapturedRequest();
         request.AssignOwner(_ownerId, _actorId);
-        request.Evaluate("Evaluated: Not feasible within system architecture", _ownerId);
-        request.Reject("Declined per architectural standards", _ownerId);
+        request.StartWork(_ownerId);
 
-        request.Status.Should().Be(RequestStatus.Rejected);
-        request.Resolution.Should().NotBeNull();
-        request.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Rejected);
-        request.Resolution.Description.Should().Be("Declined per architectural standards");
+        // Pause work
+        request.PauseWork(_ownerId, "Waiting on customer test credentials");
+        request.Status.Should().Be(RequestStatus.Paused);
 
-        request.DomainEvents.OfType<RequestRejected>().Should().ContainSingle();
-        request.Assignments.Select(a => a.NewStatus).Should().ContainInOrder(
-            RequestStatus.Captured,
-            RequestStatus.Evaluating,
-            RequestStatus.Rejected);
-    }
-
-    [Fact]
-    public void HappyPath_EscalationAndReassignment_ToEvaluating_ThenCompleted()
-    {
-        var request = CreateCapturedRequest();
-        request.AssignOwner(_ownerId, _actorId);
-        request.Escalate("Requires specialized database architect", _ownerId);
-        request.Status.Should().Be(RequestStatus.Escalated);
-
-        // Reassign to second owner -> returns to EVALUATING
-        request.ReassignOwner(_secondOwnerId, _actorId, notes: "Reassigned to DB Architect");
-        request.Status.Should().Be(RequestStatus.Evaluating);
-        request.OwnerPersonId.Should().Be(_secondOwnerId);
-
-        request.Accept(_secondOwnerId);
-        request.StartProgress(_secondOwnerId);
-        request.Complete("Database partition migration applied successfully", _secondOwnerId);
-
-        request.Status.Should().Be(RequestStatus.Completed);
-        request.Resolution!.Outcome.Should().Be(ResolutionOutcomeNames.Completed);
-    }
-
-    [Fact]
-    public void HappyPath_EscalationDuringInProgress_ResolvedByManagementDecision_ThenCompleted()
-    {
-        var request = CreateCapturedRequest();
-        request.AssignOwner(_ownerId, _actorId);
-        request.Accept(_ownerId);
-        request.StartProgress(_ownerId);
-
-        // Escalate from IN_PROGRESS
-        request.Escalate("Customer requested scope expansion exceeding sprint limit", _ownerId);
-        request.Status.Should().Be(RequestStatus.Escalated);
-
-        // Request management decision
-        request.RequestManagementDecision("Approve 2 additional days or postpone to next release?", _ownerId);
-        request.DomainEvents.OfType<ManagementDecisionRequested>().Should().ContainSingle();
-
-        // Management applies decision -> returns to IN_PROGRESS
-        request.ApplyManagementDecision(RequestStatus.InProgress, "2 additional days approved by COO", _actorId);
+        // Resume work
+        request.StartWork(_ownerId, "Credentials received; resuming development");
         request.Status.Should().Be(RequestStatus.InProgress);
 
-        request.Complete("Completed under approved schedule extension", _ownerId);
+        // Complete work
+        request.Complete("Integrated and tested", _ownerId);
         request.Status.Should().Be(RequestStatus.Completed);
+
+        request.Assignments.Select(a => a.NewStatus).Should().ContainInOrder(
+            RequestStatus.Captured,
+            RequestStatus.Assigned,
+            RequestStatus.InProgress,
+            RequestStatus.Paused,
+            RequestStatus.InProgress,
+            RequestStatus.Completed);
+    }
+
+    [Fact]
+    public void HappyPath_ActiveWorkReassignment_ResetsToAssigned_ThenCompleted()
+    {
+        var request = CreateCapturedRequest();
+        request.AssignOwner(_ownerId, _actorId);
+        request.StartWork(_ownerId);
+
+        // Reassign while in progress -> resets to ASSIGNED
+        request.AssignOwner(_secondOwnerId, _actorId, "Reassigned to Bob for specialized expertise");
+        request.Status.Should().Be(RequestStatus.Assigned);
+        request.OwnerPersonId.Should().Be(_secondOwnerId);
+
+        // Bob starts work
+        request.StartWork(_secondOwnerId, "Bob picked up task");
+        request.Status.Should().Be(RequestStatus.InProgress);
+
+        // Bob completes work
+        request.Complete("Finished by Bob", _secondOwnerId);
+        request.Status.Should().Be(RequestStatus.Completed);
+        request.Resolution!.ResolvedBy.Should().Be(_secondOwnerId);
     }
 
     #endregion
@@ -1085,15 +890,15 @@ public sealed class RequestStateMachineTests
         var now = DateTime.UtcNow;
 
         var assignment = RequestAssignment.Create(
-            reqId, prevOwner, newOwner, actor, RequestStatus.Evaluating, RequestStatus.Accepted, now, "Notes");
+            reqId, prevOwner, newOwner, actor, RequestStatus.Captured, RequestStatus.Assigned, now, "Notes");
 
         assignment.Id.Should().NotBeEmpty();
         assignment.RequestId.Should().Be(reqId);
         assignment.PreviousOwnerPersonId.Should().Be(prevOwner);
         assignment.AssignedOwnerPersonId.Should().Be(newOwner);
         assignment.ActorPersonId.Should().Be(actor);
-        assignment.PreviousStatus.Should().Be(RequestStatus.Evaluating);
-        assignment.NewStatus.Should().Be(RequestStatus.Accepted);
+        assignment.PreviousStatus.Should().Be(RequestStatus.Captured);
+        assignment.NewStatus.Should().Be(RequestStatus.Assigned);
         assignment.AssignedAtUtc.Should().Be(now);
         assignment.Notes.Should().Be("Notes");
         assignment.CreatedAt.Should().Be(now);

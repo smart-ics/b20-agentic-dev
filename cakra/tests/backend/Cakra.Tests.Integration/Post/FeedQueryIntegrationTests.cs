@@ -8,6 +8,7 @@ using Cakra.Modules.Post.Domain;
 using Cakra.Modules.Post.Domain.Events;
 using Cakra.Modules.Post.Services;
 using Cakra.Modules.Product.Services;
+using Cakra.Modules.Request.Domain.Events;
 using Cakra.Modules.Request.Services;
 using Dapper;
 using FluentAssertions;
@@ -308,10 +309,10 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
         }
 
         await mediator.Send(new AssignRequestOwnerCommand(requestWithPost.Id, actor.Id, ActorPersonId: actor.Id));
-        await mediator.Send(new EscalateRequestCommand(
+        await mediator.Publish(new RequestEscalated(
             requestWithPost.Id,
-            "Requires database administrator approval to increase connection pool limit on production cluster.",
-            actor.Id));
+            actor.Id,
+            "Requires database administrator approval to increase connection pool limit on production cluster."));
 
         var escalatedPostFeedItem = await feedQueryService.GetFeedItemByPostIdAsync(postForEscalatedRequestId);
         escalatedPostFeedItem.Should().NotBeNull();
@@ -331,10 +332,10 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
             ActorPersonId: actor.Id));
 
         await mediator.Send(new AssignRequestOwnerCommand(requestWithoutPriorPost.Id, actor.Id, ActorPersonId: actor.Id));
-        await mediator.Send(new EscalateRequestCommand(
+        await mediator.Publish(new RequestEscalated(
             requestWithoutPriorPost.Id,
-            "Hardware replacement authorization needed from hospital IT director.",
-            actor.Id));
+            actor.Id,
+            "Hardware replacement authorization needed from hospital IT director."));
 
         await Task.Delay(15);
 
@@ -349,10 +350,10 @@ public sealed class FeedQueryIntegrationTests : IAsyncLifetime
             ActorPersonId: actor.Id));
 
         await mediator.Send(new AssignRequestOwnerCommand(rejectedRequest.Id, actor.Id, ActorPersonId: actor.Id));
-        await mediator.Send(new RejectRequestCommand(
+        await mediator.Publish(new RequestRejected(
             rejectedRequest.Id,
-            "Out of contractual scope: Human Resources payroll integration is excluded from MyHospital Emergency.",
-            actor.Id));
+            actor.Id,
+            "Out of contractual scope: Human Resources payroll integration is excluded from MyHospital Emergency."));
 
         await Task.Delay(15);
 

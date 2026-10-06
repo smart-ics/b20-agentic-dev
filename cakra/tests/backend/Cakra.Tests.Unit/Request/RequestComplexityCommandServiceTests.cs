@@ -100,20 +100,7 @@ public sealed class RequestComplexityCommandServiceTests
         result.IsValid.Should().Be(isValid);
     }
 
-    [Theory]
-    [InlineData(null, true)]
-    [InlineData(1, true)]
-    [InlineData(3, true)]
-    [InlineData(5, true)]
-    [InlineData(0, false)]
-    [InlineData(6, false)]
-    public void EvaluateRequestCommandValidator_validates_optional_complexity(int? complexity, bool isValid)
-    {
-        var validator = new EvaluateRequestCommandValidator();
-        var command = new EvaluateRequestCommand(Guid.NewGuid(), "Notes", Complexity: complexity);
-        var result = validator.Validate(command);
-        result.IsValid.Should().Be(isValid);
-    }
+
 
     [Theory]
     [InlineData("Programmer")]
@@ -183,8 +170,7 @@ public sealed class RequestComplexityCommandServiceTests
         var request = RequestAggregate.Record(
             Guid.NewGuid(), "Sample Request", "Description", "Bug", actorId);
         request.AssignOwner(actorId, actorId);
-        request.Accept(actorId);
-        request.StartProgress(actorId);
+        request.StartWork(actorId);
         request.Complete("Done", actorId);
         await repo.AddAsync(request);
 
@@ -213,48 +199,6 @@ public sealed class RequestComplexityCommandServiceTests
 
         result.Complexity.Should().Be(1);
         dispatcher.Events.OfType<RequestComplexityUpdated>().Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task EvaluateRequest_with_complexity_updates_complexity_when_authorized()
-    {
-        var (service, repo, orgQuery, dispatcher) = CreateTestSetup();
-        var actorId = Guid.NewGuid();
-        orgQuery.SetPerson(actorId, isActive: true, roles: new[] { "Team Lead" });
-
-        var request = RequestAggregate.Record(
-            Guid.NewGuid(), "Sample Request", "Description", "Bug", actorId);
-        request.AssignOwner(actorId, actorId);
-        await repo.AddAsync(request);
-
-        var result = await service.Handle(
-            new EvaluateRequestCommand(request.Id, "Triage confirmed, complexity estimated.", actorId, Complexity: 3),
-            CancellationToken.None);
-
-        result.Complexity.Should().Be(3);
-        dispatcher.Events.OfType<RequestComplexityUpdated>().Should().ContainSingle(e =>
-            e.RequestId == request.Id &&
-            e.NewComplexity == 3 &&
-            e.ActorPersonId == actorId);
-    }
-
-    [Fact]
-    public async Task EvaluateRequest_with_complexity_throws_UnauthorizedAccessException_when_actor_unauthorized()
-    {
-        var (service, repo, orgQuery, _) = CreateTestSetup();
-        var actorId = Guid.NewGuid();
-        orgQuery.SetPerson(actorId, isActive: true, roles: new[] { "Viewer" });
-
-        var request = RequestAggregate.Record(
-            Guid.NewGuid(), "Sample Request", "Description", "Bug", actorId);
-        request.AssignOwner(actorId, actorId);
-        await repo.AddAsync(request);
-
-        var act = async () => await service.Handle(
-            new EvaluateRequestCommand(request.Id, "Triage confirmed", actorId, Complexity: 3),
-            CancellationToken.None);
-
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 
     [Fact]
@@ -349,8 +293,6 @@ public sealed class RequestComplexityCommandServiceTests
                 req.ProductId,
                 req.WorkPackageId,
                 req.EvaluationNotes,
-                req.EscalationReason,
-                req.ManagementDecisionNotes,
                 req.CreatedAt,
                 req.UpdatedAt,
                 resolution,

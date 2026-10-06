@@ -263,25 +263,24 @@ public sealed class RequestsController : ApiControllerBase
     }
 
     /// <summary>
-    /// Records triage evaluation notes on a request in <c>EVALUATING</c> state
-    /// (<c>RequestService.EvaluateRequest</c>; Architecture §7, §8 — <c>UC-REQ-003</c>, <c>SCR-REQ-003</c>).
+    /// Starts active work on a request, transitioning <c>ASSIGNED</c> or <c>PAUSED</c> to <c>IN_PROGRESS</c>
+    /// (<c>RequestService.StartWork</c>; CR-016 Architecture TD-002). Strictly executable by the assigned owner.
     /// </summary>
-    [HttpPost("{id:guid}/evaluate")]
+    [HttpPost("{id:guid}/start")]
     [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> EvaluateRequest(
+    public async Task<IActionResult> StartWork(
         Guid id,
-        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] EvaluateRequestBody? request = null,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] StartRequestBody? request = null,
         CancellationToken cancellationToken = default)
     {
-        var command = new EvaluateRequestCommand(
+        var command = new StartWorkCommand(
             RequestId: id,
-            EvaluationNotes: request?.ResolvedEvaluationNotes ?? string.Empty,
-            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId),
-            Complexity: request?.Complexity);
+            Notes: request?.Notes,
+            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
 
         try
         {
@@ -289,7 +288,7 @@ public sealed class RequestsController : ApiControllerBase
             var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
 
             _logger.LogInformation(
-                "Evaluated request '{RequestId}' in status '{Status}'.",
+                "Started work on request '{RequestId}', transitioning to '{Status}'.",
                 enriched.Id,
                 enriched.Status);
 
@@ -298,6 +297,55 @@ public sealed class RequestsController : ApiControllerBase
         catch (UnauthorizedAccessException ex)
         {
             return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Suspends active work on a request, transitioning <c>IN_PROGRESS</c> to <c>PAUSED</c>
+    /// (<c>RequestService.PauseWork</c>; CR-016 Architecture TD-002).
+    /// </summary>
+    [HttpPost("{id:guid}/pause")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> PauseWork(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PauseRequestBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new PauseWorkCommand(
+            RequestId: id,
+            Note: request?.ResolvedNote,
+            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Paused work on request '{RequestId}', transitioning to '{Status}'.",
+                enriched.Id,
+                enriched.Status);
+
+            return Ok(enriched);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
         }
         catch (ArgumentException ex)
         {
@@ -372,57 +420,20 @@ public sealed class RequestsController : ApiControllerBase
     }
 
     /// <summary>
-    /// Accepts operational responsibility for a request, transitioning it to <c>IN_PROGRESS</c>
-    /// (<c>RequestService.AcceptRequestResponsibility</c>; Architecture §7, §8 — <c>UC-REQ-004</c>, <c>SCR-REQ-003</c>).
+    /// Cancels a request in any active state, transitioning it to terminal <c>CANCELLED</c> state
+    /// (<c>RequestService.CancelRequest</c>; CR-016 Architecture TD-002).
     /// </summary>
-    [HttpPost("{id:guid}/accept")]
+    [HttpPost("{id:guid}/cancel")]
     [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> AcceptRequestResponsibility(
+    public async Task<IActionResult> CancelRequest(
         Guid id,
-        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AcceptRequestBody? request = null,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CancelRequestBody? request = null,
         CancellationToken cancellationToken = default)
     {
-        var command = new AcceptRequestResponsibilityCommand(
-            RequestId: id,
-            Notes: request?.Notes,
-            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
-
-        try
-        {
-            var updated = await _mediator.Send(command, cancellationToken);
-            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
-
-            _logger.LogInformation(
-                "Accepted responsibility for request '{RequestId}', transitioning to '{Status}'.",
-                enriched.Id,
-                enriched.Status);
-
-            return Ok(enriched);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return CreateBadRequestProblem(ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Rejects a request during evaluation, transitioning <c>EVALUATING -&gt; REJECTED</c>
-    /// (<c>RequestService.RejectRequest</c>; Architecture §7, §8 — <c>UC-REQ-005</c>, <c>SCR-REQ-003</c>).
-    /// </summary>
-    [HttpPost("{id:guid}/reject")]
-    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> RejectRequest(
-        Guid id,
-        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RejectRequestBody? request = null,
-        CancellationToken cancellationToken = default)
-    {
-        var command = new RejectRequestCommand(
+        var command = new CancelRequestCommand(
             RequestId: id,
             Reason: request?.ResolvedReason ?? string.Empty,
             ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
@@ -433,87 +444,19 @@ public sealed class RequestsController : ApiControllerBase
             var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
 
             _logger.LogInformation(
-                "Rejected request '{RequestId}', transitioning to '{Status}'.",
+                "Cancelled request '{RequestId}', transitioning to '{Status}'.",
                 enriched.Id,
                 enriched.Status);
 
             return Ok(enriched);
         }
-        catch (InvalidOperationException ex)
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
         {
             return CreateBadRequestProblem(ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Escalates a request in <c>EVALUATING</c> or <c>IN_PROGRESS</c> state to <c>ESCALATED</c>
-    /// (<c>RequestService.EscalateRequest</c>; Architecture §7, §8 — <c>UC-REQ-006</c>, <c>SCR-REQ-003</c>).
-    /// </summary>
-    [HttpPost("{id:guid}/escalate")]
-    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> EscalateRequest(
-        Guid id,
-        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] EscalateRequestBody? request = null,
-        CancellationToken cancellationToken = default)
-    {
-        var command = new EscalateRequestCommand(
-            RequestId: id,
-            Reason: request?.ResolvedReason ?? string.Empty,
-            ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId));
-
-        try
-        {
-            var updated = await _mediator.Send(command, cancellationToken);
-            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
-
-            _logger.LogInformation(
-                "Escalated request '{RequestId}', transitioning to '{Status}'.",
-                enriched.Id,
-                enriched.Status);
-
-            return Ok(enriched);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return CreateBadRequestProblem(ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Records a management decision request or determination on an active or escalated request
-    /// (<c>RequestService.RequestManagementDecision</c>; Architecture §7, §8 — <c>UC-REQ-007</c>, <c>SCR-REQ-003</c>).
-    /// </summary>
-    [HttpPost("{id:guid}/management-decision")]
-    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> RequestManagementDecision(
-        Guid id,
-        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RequestManagementDecisionBody? request = null,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var targetStatus = RequestStatusNames.FromNullableName(request?.TargetStatus);
-            var command = new RequestManagementDecisionCommand(
-                RequestId: id,
-                DecisionDetails: request?.ResolvedDecisionDetails ?? string.Empty,
-                ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId),
-                TargetStatus: targetStatus);
-
-            var updated = await _mediator.Send(command, cancellationToken);
-            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
-
-            _logger.LogInformation(
-                "Recorded management decision on request '{RequestId}' in status '{Status}'.",
-                enriched.Id,
-                enriched.Status);
-
-            return Ok(enriched);
         }
         catch (InvalidOperationException ex)
         {
@@ -1006,18 +949,24 @@ public sealed class RequestsController : ApiControllerBase
     }
 
     /// <summary>
-    /// Request payload for <c>POST /api/v1/requests/{id}/evaluate</c> (<c>EvaluateRequest</c>).
+    /// Request payload for <c>POST /api/v1/requests/{id}/start</c> (<c>StartWork</c>).
     /// </summary>
-    public sealed class EvaluateRequestBody
+    public sealed class StartRequestBody
     {
-        public string? EvaluationNotes { get; set; }
         public string? Notes { get; set; }
-        public string? Evaluation { get; set; }
         public Guid? ActorPersonId { get; set; }
-        public int? Complexity { get; set; }
+    }
 
-        public string ResolvedEvaluationNotes =>
-            FirstNonWhiteSpace(EvaluationNotes, Notes, Evaluation) ?? string.Empty;
+    /// <summary>
+    /// Request payload for <c>POST /api/v1/requests/{id}/pause</c> (<c>PauseWork</c>).
+    /// </summary>
+    public sealed class PauseRequestBody
+    {
+        public string? Note { get; set; }
+        public string? Notes { get; set; }
+        public Guid? ActorPersonId { get; set; }
+
+        public string? ResolvedNote => FirstNonWhiteSpace(Note, Notes);
     }
 
     /// <summary>
@@ -1031,57 +980,17 @@ public sealed class RequestsController : ApiControllerBase
     }
 
     /// <summary>
-    /// Request payload for <c>POST /api/v1/requests/{id}/accept</c> (<c>AcceptRequestResponsibility</c>).
+    /// Request payload for <c>POST /api/v1/requests/{id}/cancel</c> (<c>CancelRequest</c>).
     /// </summary>
-    public sealed class AcceptRequestBody
-    {
-        public string? Notes { get; set; }
-        public Guid? ActorPersonId { get; set; }
-    }
-
-    /// <summary>
-    /// Request payload for <c>POST /api/v1/requests/{id}/reject</c> (<c>RejectRequest</c>).
-    /// </summary>
-    public sealed class RejectRequestBody
+    public sealed class CancelRequestBody
     {
         public string? Reason { get; set; }
-        public string? RejectionReason { get; set; }
+        public string? CancellationReason { get; set; }
         public string? Notes { get; set; }
         public Guid? ActorPersonId { get; set; }
 
         public string ResolvedReason =>
-            FirstNonWhiteSpace(Reason, RejectionReason, Notes) ?? string.Empty;
-    }
-
-    /// <summary>
-    /// Request payload for <c>POST /api/v1/requests/{id}/escalate</c> (<c>EscalateRequest</c>).
-    /// </summary>
-    public sealed class EscalateRequestBody
-    {
-        public string? Reason { get; set; }
-        public string? EscalationReason { get; set; }
-        public string? Notes { get; set; }
-        public Guid? ActorPersonId { get; set; }
-
-        public string ResolvedReason =>
-            FirstNonWhiteSpace(Reason, EscalationReason, Notes) ?? string.Empty;
-    }
-
-    /// <summary>
-    /// Request payload for <c>POST /api/v1/requests/{id}/management-decision</c> (<c>RequestManagementDecision</c>).
-    /// </summary>
-    public sealed class RequestManagementDecisionBody
-    {
-        public string? DecisionDetails { get; set; }
-        public string? DecisionNotes { get; set; }
-        public string? Decision { get; set; }
-        public string? Reason { get; set; }
-        public string? Notes { get; set; }
-        public string? TargetStatus { get; set; }
-        public Guid? ActorPersonId { get; set; }
-
-        public string ResolvedDecisionDetails =>
-            FirstNonWhiteSpace(DecisionDetails, DecisionNotes, Decision, Reason, Notes) ?? string.Empty;
+            FirstNonWhiteSpace(Reason, CancellationReason, Notes) ?? string.Empty;
     }
 
     /// <summary>

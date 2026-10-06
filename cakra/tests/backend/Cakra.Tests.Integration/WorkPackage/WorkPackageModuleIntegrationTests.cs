@@ -237,13 +237,12 @@ public sealed class WorkPackageModuleIntegrationTests : IAsyncLifetime
             RequestType: "Support",
             Priority: "URGENT"));
 
-        // Advance req1 to IN_PROGRESS and req2 to EVALUATING
+        // Advance req1 to IN_PROGRESS and req2 to ASSIGNED
         await mediator.Send(new AssignRequestOwnerCommand(req1.Id, programmer.Id));
         currentContext?.Initialize(Guid.NewGuid(), programmer.Id, new[] { "Programmer" });
-        await mediator.Send(new AcceptRequestResponsibilityCommand(req1.Id, "Implementing tariff fix"));
+        await mediator.Send(new StartWorkCommand(req1.Id, Notes: "Implementing tariff fix", ActorPersonId: programmer.Id));
 
         await mediator.Send(new AssignRequestOwnerCommand(req2.Id, programmer.Id));
-        await mediator.Send(new EvaluateRequestCommand(req2.Id, "Confirmed layout change requirement"));
 
         // 2. Step 1: CreateWorkPackage -> DRAFT
         currentContext?.Initialize(Guid.NewGuid(), owner1.Id, new[] { "Management" });
@@ -345,7 +344,7 @@ public sealed class WorkPackageModuleIntegrationTests : IAsyncLifetime
         scopeReq2.IsActive.Should().BeFalse();
         scopeReq2.RemovedAt.Should().NotBeNull();
         scopeReq2.Title.Should().Be("Discharge summary claim export PDF header");
-        scopeReq2.Status.Should().Be(RequestStatusNames.Evaluating);
+        scopeReq2.Status.Should().Be(RequestStatusNames.Assigned);
 
         var scopeReq3 = scopeItems.Single(s => s.RequestId == req3.Id);
         scopeReq3.IsActive.Should().BeTrue();
@@ -486,21 +485,21 @@ public sealed class WorkPackageModuleIntegrationTests : IAsyncLifetime
             Title: "Captured Request",
             Description: "Remains in CAPTURED state"));
 
-        var evaluatingReq = await mediator.Send(new RecordRequestCommand(
-            Title: "Evaluating Request",
-            Description: "Remains in EVALUATING state"));
-        await mediator.Send(new AssignRequestOwnerCommand(evaluatingReq.Id, reqOwner.Id));
+        var assignedReq = await mediator.Send(new RecordRequestCommand(
+            Title: "Assigned Request",
+            Description: "Remains in ASSIGNED state"));
+        await mediator.Send(new AssignRequestOwnerCommand(assignedReq.Id, reqOwner.Id));
 
         var inProgressReq = await mediator.Send(new RecordRequestCommand(
             Title: "InProgress Request",
             Description: "Remains in IN_PROGRESS state"));
         await mediator.Send(new AssignRequestOwnerCommand(inProgressReq.Id, reqOwner.Id));
         currentContext?.Initialize(Guid.NewGuid(), reqOwner.Id, new[] { "Programmer" });
-        await mediator.Send(new AcceptRequestResponsibilityCommand(inProgressReq.Id));
+        await mediator.Send(new StartWorkCommand(inProgressReq.Id, ActorPersonId: reqOwner.Id));
 
         // Record state history counts before Work Package operations
         var capturedHistoryBefore = await requestQueryService.GetRequestStateHistory(capturedReq.Id);
-        var evaluatingHistoryBefore = await requestQueryService.GetRequestStateHistory(evaluatingReq.Id);
+        var assignedHistoryBefore = await requestQueryService.GetRequestStateHistory(assignedReq.Id);
         var inProgressHistoryBefore = await requestQueryService.GetRequestStateHistory(inProgressReq.Id);
 
         // Create, populate, activate, and close a Work Package containing all 3 requests
@@ -511,11 +510,11 @@ public sealed class WorkPackageModuleIntegrationTests : IAsyncLifetime
             OwnerPersonId: wpOwner.Id));
 
         await mediator.Send(new AddRequestToWorkPackageCommand(wp.Id, capturedReq.Id));
-        await mediator.Send(new AddRequestToWorkPackageCommand(wp.Id, evaluatingReq.Id));
+        await mediator.Send(new AddRequestToWorkPackageCommand(wp.Id, assignedReq.Id));
         await mediator.Send(new AddRequestToWorkPackageCommand(wp.Id, inProgressReq.Id));
 
         await mediator.Send(new ActivateWorkPackageCommand(wp.Id));
-        await mediator.Send(new RemoveRequestFromWorkPackageCommand(wp.Id, evaluatingReq.Id));
+        await mediator.Send(new RemoveRequestFromWorkPackageCommand(wp.Id, assignedReq.Id));
         await mediator.Send(new CloseWorkPackageCommand(wp.Id, "Closing package while requests are still open"));
 
         // Verify constituent Requests have identical lifecycle states, owners, and state histories
@@ -526,12 +525,12 @@ public sealed class WorkPackageModuleIntegrationTests : IAsyncLifetime
         (await requestQueryService.GetRequestStateHistory(capturedReq.Id))
             .Should().HaveCount(capturedHistoryBefore.Count);
 
-        var evaluatingAfter = await requestQueryService.GetRequestById(evaluatingReq.Id);
-        evaluatingAfter.Should().NotBeNull();
-        evaluatingAfter!.Status.Should().Be(RequestStatusNames.Evaluating);
-        evaluatingAfter.OwnerPersonId.Should().Be(reqOwner.Id);
-        (await requestQueryService.GetRequestStateHistory(evaluatingReq.Id))
-            .Should().HaveCount(evaluatingHistoryBefore.Count);
+        var assignedAfter = await requestQueryService.GetRequestById(assignedReq.Id);
+        assignedAfter.Should().NotBeNull();
+        assignedAfter!.Status.Should().Be(RequestStatusNames.Assigned);
+        assignedAfter.OwnerPersonId.Should().Be(reqOwner.Id);
+        (await requestQueryService.GetRequestStateHistory(assignedReq.Id))
+            .Should().HaveCount(assignedHistoryBefore.Count);
 
         var inProgressAfter = await requestQueryService.GetRequestById(inProgressReq.Id);
         inProgressAfter.Should().NotBeNull();

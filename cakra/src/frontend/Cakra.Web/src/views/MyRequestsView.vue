@@ -30,12 +30,11 @@ export interface AssignedRequestItem {
   requestType: string
   status:
     | 'CAPTURED'
-    | 'EVALUATING'
-    | 'ACCEPTED'
-    | 'REJECTED'
+    | 'ASSIGNED'
     | 'IN_PROGRESS'
-    | 'ESCALATED'
+    | 'PAUSED'
     | 'COMPLETED'
+    | 'CANCELLED'
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
   ownerPersonId: string | null
@@ -77,18 +76,45 @@ interface ProblemDetailsPayload {
   errors?: Record<string, string[]>
 }
 
+const MY_REQUEST_STATUSES = [
+  'ASSIGNED',
+  'IN_PROGRESS',
+  'PAUSED',
+  'COMPLETED',
+  'CANCELLED',
+] as const
+
+const STATUS_FILTER_TABS = [
+  { value: '', label: 'ALL' },
+  { value: 'ASSIGNED', label: 'ASSIGNED' },
+  { value: 'IN_PROGRESS', label: 'IN_PROGRESS' },
+  { value: 'PAUSED', label: 'PAUSED' },
+  { value: 'COMPLETED', label: 'COMPLETED' },
+  { value: 'CANCELLED', label: 'CANCELLED' },
+] as const
+
 const router = useRouter()
 const authStore = useAuthStore()
 
 const activeTab = ref<'requests' | 'subtasks'>('requests')
 const myRequests = ref<AssignedRequestItem[]>([])
 const assignedSubTaskRequests = ref<RequestDto[]>([])
+const selectedStatusFilter = ref<string>('')
 const isLoading = ref(false)
 const isSubTasksLoading = ref(false)
 const subTaskOperatingId = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
 const actionSuccessMessage = ref<string | null>(null)
 const showCompletedSubTasks = ref(false)
+
+const filteredMyRequests = computed<AssignedRequestItem[]>(() => {
+  if (!selectedStatusFilter.value) {
+    return myRequests.value
+  }
+  return myRequests.value.filter(
+    (req) => (req.status ?? '').toUpperCase() === selectedStatusFilter.value.toUpperCase(),
+  )
+})
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
@@ -113,16 +139,22 @@ function statusBadgeClass(status: string): string {
   switch ((status ?? '').toUpperCase()) {
     case 'CAPTURED':
       return 'text-bg-secondary'
-    case 'EVALUATING':
-      return 'text-bg-info'
-    case 'ACCEPTED':
-      return 'text-bg-primary'
+    case 'ASSIGNED':
+      return 'text-bg-info text-dark'
     case 'IN_PROGRESS':
       return 'text-bg-primary'
-    case 'ESCALATED':
-      return 'text-bg-warning'
+    case 'PAUSED':
+      return 'text-bg-warning text-dark'
     case 'COMPLETED':
       return 'text-bg-success'
+    case 'CANCELLED':
+      return 'text-bg-danger'
+    case 'EVALUATING':
+      return 'text-bg-info text-dark'
+    case 'ACCEPTED':
+      return 'text-bg-info text-dark'
+    case 'ESCALATED':
+      return 'text-bg-warning text-dark'
     case 'REJECTED':
       return 'text-bg-danger'
     default:
@@ -411,6 +443,39 @@ onMounted(async () => {
 
     <!-- Tab 1: High-Density My Assigned Requests Table Card -->
     <div v-if="activeTab === 'requests'" class="card border" data-testid="my-requests-card">
+      <!-- Status Filter Toolbar & Tabs (CR-016 TD-001) -->
+      <div class="card-header bg-body-tertiary py-1 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-1">
+          <label for="myStatusFilterSelect" class="form-label mb-0 fs-11 text-nowrap">Status:</label>
+          <select
+            id="myStatusFilterSelect"
+            v-model="selectedStatusFilter"
+            class="form-select form-select-sm"
+            style="min-width: 130px; max-width: 170px;"
+            data-testid="my-status-filter-select"
+          >
+            <option value="">ALL</option>
+            <option v-for="status in MY_REQUEST_STATUSES" :key="status" :value="status">
+              {{ status }}
+            </option>
+          </select>
+        </div>
+
+        <ul class="nav nav-pills gap-1" data-testid="my-status-tabs">
+          <li v-for="tab in STATUS_FILTER_TABS" :key="tab.value" class="nav-item">
+            <button
+              type="button"
+              class="nav-link py-0.5 px-2 btn-sm font-monospace fs-11"
+              :class="{ active: selectedStatusFilter === tab.value }"
+              :data-testid="`my-status-tab-${tab.value || 'ALL'}`"
+              @click="selectedStatusFilter = tab.value"
+            >
+              {{ tab.label }}
+            </button>
+          </li>
+        </ul>
+      </div>
+
       <div class="table-responsive">
         <table
           class="table table-hover align-middle mb-0"
@@ -441,18 +506,22 @@ onMounted(async () => {
               </td>
             </tr>
 
-            <tr v-else-if="myRequests.length === 0">
+            <tr v-else-if="filteredMyRequests.length === 0">
               <td
                 colspan="9"
                 class="text-center py-4 text-body-secondary"
                 data-testid="empty-my-requests-row"
               >
-                You currently have no assigned operational requests.
+                {{
+                  selectedStatusFilter
+                    ? `No assigned operational requests match status "${selectedStatusFilter}".`
+                    : 'You currently have no assigned operational requests.'
+                }}
               </td>
             </tr>
 
             <tr
-              v-for="req in myRequests"
+              v-for="req in filteredMyRequests"
               v-else
               :key="req.id"
               :data-request-id="req.id"

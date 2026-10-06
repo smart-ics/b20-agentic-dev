@@ -58,6 +58,7 @@ export interface CustomerPortfolioRequestItemDto {
   createdAt: string
   updatedAt: string | null
   lastUpdatedAt: string
+  isPaused?: boolean
   isBlocked: boolean
   isActive: boolean
 }
@@ -70,6 +71,7 @@ export interface CustomerRequestPortfolioDto {
   hasActiveMaintenanceContract: boolean
   contractStatus: string
   activeRequestsCount: number
+  pausedRequestsCount?: number
   openBlockersCount: number
   blockedRequestsCount?: number
   escalatedRequestsCount?: number
@@ -79,6 +81,7 @@ export interface CustomerRequestPortfolioDto {
   rejectedRequestsCount: number
   totalRequestsCount: number
   activeRequests: CustomerPortfolioRequestItemDto[]
+  pausedRequests?: CustomerPortfolioRequestItemDto[]
   openBlockers: CustomerPortfolioRequestItemDto[]
   blockedRequests?: CustomerPortfolioRequestItemDto[]
   recentCompletions: CustomerPortfolioRequestItemDto[]
@@ -111,7 +114,7 @@ const activeRequestsList = computed<CustomerPortfolioRequestItemDto[]>(
 )
 
 const openBlockersList = computed<CustomerPortfolioRequestItemDto[]>(
-  () => portfolio.value?.openBlockers ?? portfolio.value?.blockedRequests ?? [],
+  () => portfolio.value?.pausedRequests ?? portfolio.value?.openBlockers ?? portfolio.value?.blockedRequests ?? [],
 )
 
 const recentCompletionsList = computed<CustomerPortfolioRequestItemDto[]>(
@@ -169,16 +172,22 @@ function statusBadgeClass(status: string): string {
   switch (status?.toUpperCase()) {
     case 'CAPTURED':
       return 'text-bg-secondary'
-    case 'EVALUATING':
-      return 'text-bg-info'
-    case 'ACCEPTED':
-      return 'text-bg-primary'
+    case 'ASSIGNED':
+      return 'text-bg-info text-dark'
     case 'IN_PROGRESS':
       return 'text-bg-primary'
-    case 'ESCALATED':
-      return 'text-bg-danger'
+    case 'PAUSED':
+      return 'text-bg-warning text-dark'
     case 'COMPLETED':
       return 'text-bg-success'
+    case 'CANCELLED':
+      return 'text-bg-danger'
+    case 'EVALUATING':
+      return 'text-bg-info text-dark'
+    case 'ACCEPTED':
+      return 'text-bg-info text-dark'
+    case 'ESCALATED':
+      return 'text-bg-warning text-dark'
     case 'REJECTED':
       return 'text-bg-dark'
     default:
@@ -433,9 +442,9 @@ onMounted(async () => {
         </div>
 
         <div class="op-stat-item">
-          <span class="op-stat-label text-danger">Open Blockers:</span>
-          <span class="op-stat-val text-danger" data-testid="metric-open-blockers">
-            {{ portfolio.openBlockersCount }}
+          <span class="op-stat-label text-warning-emphasis">Paused Requests:</span>
+          <span class="op-stat-val text-warning-emphasis" data-testid="metric-open-blockers" data-testid-alias="metric-paused-requests">
+            {{ portfolio.pausedRequestsCount ?? portfolio.openBlockersCount }}
           </span>
         </div>
 
@@ -455,20 +464,21 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Open Blockers (ESCALATED) Table -->
-      <div v-if="openBlockersList.length > 0" class="card border border-danger mb-2">
-        <div class="card-header bg-danger-subtle text-danger-emphasis py-1 px-3 d-flex justify-content-between align-items-center">
+      <!-- Paused Requests (PAUSED) Table -->
+      <div v-if="openBlockersList.length > 0" class="card border border-warning mb-2">
+        <div class="card-header bg-warning-subtle text-warning-emphasis py-1 px-3 d-flex justify-content-between align-items-center">
           <span class="fw-semibold">
-            <i class="bi bi-exclamation-octagon-fill me-1" aria-hidden="true"></i>
-            Open Blockers (ESCALATED)
+            <i class="bi bi-pause-circle-fill me-1" aria-hidden="true"></i>
+            Paused Requests (PAUSED)
           </span>
-          <span class="badge text-bg-danger">{{ openBlockersList.length }}</span>
+          <span class="badge text-bg-warning text-dark">{{ openBlockersList.length }}</span>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
             <table
               class="table table-hover align-middle mb-0"
               data-testid="open-blockers-table"
+              data-testid-alias="paused-requests-table"
             >
               <thead>
                 <tr>
@@ -476,7 +486,7 @@ onMounted(async () => {
                   <th scope="col" style="width: 80px;">Priority</th>
                   <th scope="col" style="width: 90px;">Status</th>
                   <th scope="col" style="width: 140px;">Assigned Owner</th>
-                  <th scope="col">Escalation Reason</th>
+                  <th scope="col">Paused Reason / Notes</th>
                   <th scope="col" style="width: 125px;">Last Updated</th>
                   <th scope="col" style="width: 120px;" class="text-end">Action</th>
                 </tr>
@@ -504,7 +514,7 @@ onMounted(async () => {
                   </td>
                   <td>{{ item.ownerName || 'Unassigned' }}</td>
                   <td>
-                    <span class="text-danger fw-medium">{{ item.escalationReason || '—' }}</span>
+                    <span class="text-warning-emphasis fw-medium">{{ item.escalationReason || '—' }}</span>
                   </td>
                   <td class="text-body-secondary fs-11">
                     {{ formatDateTime(item.lastUpdatedAt) }}
@@ -512,7 +522,7 @@ onMounted(async () => {
                   <td class="text-end">
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="btn btn-outline-danger btn-sm py-0 px-1.5 fs-11"
+                      class="btn btn-outline-warning text-dark btn-sm py-0 px-1.5 fs-11"
                     >
                       Review
                     </router-link>
@@ -668,7 +678,7 @@ onMounted(async () => {
     <div v-else class="card border">
       <div class="card-body text-center py-4 text-body-secondary small">
         <i class="bi bi-building fs-3 d-block mb-1" aria-hidden="true"></i>
-        Select an active customer above to inspect their real-time request portfolio, open blockers, and recent completions.
+        Select an active customer above to inspect their real-time request portfolio, paused requests, and recent completions.
       </div>
     </div>
 

@@ -172,47 +172,49 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             Priority: "LOW"));
 
         // 2. EVALUATING
-        var reqEvaluating = await mediator.Send(new RecordRequestCommand(
-            Title: "Evaluating request for Rina",
-            Description: "Under evaluation",
+        // 2. ASSIGNED
+        var reqAssigned = await mediator.Send(new RecordRequestCommand(
+            Title: "Assigned request for Rina",
+            Description: "Assigned to Rina",
             CustomerId: customer.Id,
             ProductId: product.Id,
             RequestType: "Bug",
             Priority: "NORMAL"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqEvaluating.Id, progA.Id));
+        await mediator.Send(new AssignRequestOwnerCommand(reqAssigned.Id, progA.Id));
 
-        // 3. ACCEPTED
-        var reqAccepted = await mediator.Send(new RecordRequestCommand(
-            Title: "Accepted request for Rina",
-            Description: "Accepted for implementation",
+        // 3. IN_PROGRESS 1
+        var reqInProgress1 = await mediator.Send(new RecordRequestCommand(
+            Title: "In-progress request 1 for Rina",
+            Description: "Active coding in progress",
             CustomerId: customer.Id,
             ProductId: product.Id,
             RequestType: "Feature",
             Priority: "HIGH"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqAccepted.Id, progA.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqAccepted.Id));
+        await mediator.Send(new AssignRequestOwnerCommand(reqInProgress1.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(reqInProgress1.Id, ActorPersonId: progA.Id));
 
-        // 4. IN_PROGRESS
-        var reqInProgress = await mediator.Send(new RecordRequestCommand(
-            Title: "In-progress request for Rina",
+        // 4. IN_PROGRESS 2
+        var reqInProgress2 = await mediator.Send(new RecordRequestCommand(
+            Title: "In-progress request 2 for Rina",
             Description: "Active coding in progress",
             CustomerId: customer.Id,
             ProductId: product.Id,
             RequestType: "Bug",
             Priority: "HIGH"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqInProgress.Id, progA.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqInProgress.Id));
+        await mediator.Send(new AssignRequestOwnerCommand(reqInProgress2.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(reqInProgress2.Id, ActorPersonId: progA.Id));
 
-        // 5. ESCALATED (and stalled > 72h)
-        var reqEscalated = await mediator.Send(new RecordRequestCommand(
-            Title: "Escalated blocker for Rina",
+        // 5. PAUSED (and stalled > 72h)
+        var reqPaused = await mediator.Send(new RecordRequestCommand(
+            Title: "Paused blocker for Rina",
             Description: "Blocked on database schema lock",
             CustomerId: customer.Id,
             ProductId: product.Id,
             RequestType: "Bug",
             Priority: "URGENT"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqEscalated.Id, progA.Id));
-        await mediator.Send(new EscalateRequestCommand(reqEscalated.Id, "Waiting on DBA approval"));
+        await mediator.Send(new AssignRequestOwnerCommand(reqPaused.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(reqPaused.Id, ActorPersonId: progA.Id));
+        await mediator.Send(new PauseWorkCommand(reqPaused.Id, Note: "Waiting on DBA approval", ActorPersonId: progA.Id));
 
         // 6. COMPLETED (closed — must be excluded from active workload)
         var reqCompleted = await mediator.Send(new RecordRequestCommand(
@@ -221,27 +223,27 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             CustomerId: customer.Id,
             ProductId: product.Id));
         await mediator.Send(new AssignRequestOwnerCommand(reqCompleted.Id, progA.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqCompleted.Id));
+        await mediator.Send(new StartWorkCommand(reqCompleted.Id, ActorPersonId: progA.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted.Id, "Completed fix"));
 
-        // 7. REJECTED (closed — must be excluded from active workload)
-        var reqRejected = await mediator.Send(new RecordRequestCommand(
-            Title: "Rejected request for Rina",
+        // 7. CANCELLED (closed — must be excluded from active workload)
+        var reqCancelled = await mediator.Send(new RecordRequestCommand(
+            Title: "Cancelled request for Rina",
             Description: "Duplicate report",
             CustomerId: customer.Id,
             ProductId: product.Id));
-        await mediator.Send(new AssignRequestOwnerCommand(reqRejected.Id, progA.Id));
-        await mediator.Send(new RejectRequestCommand(reqRejected.Id, "Duplicate of existing issue"));
+        await mediator.Send(new AssignRequestOwnerCommand(reqCancelled.Id, progA.Id));
+        await mediator.Send(new CancelRequestCommand(reqCancelled.Id, "Duplicate of existing issue", progA.Id));
 
-        // Create 1 EVALUATING request for progB
+        // Create 1 ASSIGNED request for progB
         var reqProgB = await mediator.Send(new RecordRequestCommand(
-            Title: "Evaluating request for Hendra",
+            Title: "Assigned request for Hendra",
             Description: "Triage billing report",
             CustomerId: customer.Id,
             ProductId: product.Id));
         await mediator.Send(new AssignRequestOwnerCommand(reqProgB.Id, progB.Id));
 
-        // Ensure exact sub-states in DB for CAPTURED (with OwnerPersonId) and ACCEPTED vs IN_PROGRESS
+        // Ensure exact sub-states in DB for CAPTURED (with OwnerPersonId) and stalled PAUSED
         var stalledTime = DateTime.UtcNow.AddHours(-80);
         using (var db = connectionFactory.CreateConnection())
         {
@@ -252,24 +254,14 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
                 WHERE [Id] = @CapturedId;
 
                 UPDATE [request].[Requests]
-                SET [Status] = 'ACCEPTED'
-                WHERE [Id] = @AcceptedId;
-
-                UPDATE [request].[Requests]
-                SET [Status] = 'IN_PROGRESS'
-                WHERE [Id] = @InProgressId;
-
-                UPDATE [request].[Requests]
                 SET [CreatedAt] = @StalledTime, [UpdatedAt] = @StalledTime
-                WHERE [Id] = @EscalatedId;
+                WHERE [Id] = @PausedId;
                 """,
                 new
                 {
                     OwnerId = progA.Id,
                     CapturedId = reqCaptured.Id,
-                    AcceptedId = reqAccepted.Id,
-                    InProgressId = reqInProgress.Id,
-                    EscalatedId = reqEscalated.Id,
+                    PausedId = reqPaused.Id,
                     StalledTime = stalledTime
                 });
         }
@@ -281,27 +273,25 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
         var rinaWorkload = allWorkloads.Single(w => w.PersonId == progA.Id);
         rinaWorkload.PersonName.Should().Be("Rina Wijaya");
         rinaWorkload.CapturedCount.Should().Be(1);
-        rinaWorkload.EvaluatingCount.Should().Be(1);
-        rinaWorkload.AcceptedCount.Should().Be(1);
-        rinaWorkload.InProgressCount.Should().Be(1);
-        rinaWorkload.EscalatedCount.Should().Be(1);
-        rinaWorkload.TotalActiveCount.Should().Be(5, "5 active sub-states; COMPLETED and REJECTED must be excluded");
+        rinaWorkload.AssignedCount.Should().Be(1);
+        rinaWorkload.InProgressCount.Should().Be(2);
+        rinaWorkload.PausedCount.Should().Be(1);
+        rinaWorkload.TotalActiveCount.Should().Be(5, "5 active requests; COMPLETED and CANCELLED must be excluded");
         rinaWorkload.ActiveRequestsCount.Should().Be(5);
         rinaWorkload.StalledRequestsCount.Should().Be(1);
         rinaWorkload.IsOverloaded.Should().BeTrue();
         rinaWorkload.SubStateCounts["CAPTURED"].Should().Be(1);
-        rinaWorkload.SubStateCounts["EVALUATING"].Should().Be(1);
-        rinaWorkload.SubStateCounts["ACCEPTED"].Should().Be(1);
-        rinaWorkload.SubStateCounts["IN_PROGRESS"].Should().Be(1);
-        rinaWorkload.SubStateCounts["ESCALATED"].Should().Be(1);
+        rinaWorkload.SubStateCounts["ASSIGNED"].Should().Be(1);
+        rinaWorkload.SubStateCounts["IN_PROGRESS"].Should().Be(2);
+        rinaWorkload.SubStateCounts["PAUSED"].Should().Be(1);
         rinaWorkload.ActiveRequests.Should().HaveCount(5);
         rinaWorkload.ActiveRequests.Should().OnlyContain(r => r.CustomerName == "RSUP Fatmawati" && r.OwnerName == "Rina Wijaya");
         rinaWorkload.ActiveRequests.Select(r => r.RequestId)
-            .Should().NotContain(new[] { reqCompleted.Id, reqRejected.Id });
+            .Should().NotContain(new[] { reqCompleted.Id, reqCancelled.Id });
 
         var hendraWorkload = allWorkloads.Single(w => w.PersonId == progB.Id);
         hendraWorkload.PersonName.Should().Be("Hendra Pratama");
-        hendraWorkload.EvaluatingCount.Should().Be(1);
+        hendraWorkload.AssignedCount.Should().Be(1);
         hendraWorkload.TotalActiveCount.Should().Be(1);
         hendraWorkload.IsOverloaded.Should().BeFalse();
         hendraWorkload.ActiveRequests.Should().ContainSingle(r => r.RequestId == reqProgB.Id);
@@ -368,9 +358,9 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             RequestType: "Feature",
             Priority: "HIGH"));
         await mediator.Send(new AssignRequestOwnerCommand(reqActive1.Id, programmer.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqActive1.Id));
+        await mediator.Send(new StartWorkCommand(reqActive1.Id, ActorPersonId: programmer.Id));
 
-        // 2. Active EVALUATING
+        // 2. Active ASSIGNED
         var reqActive2 = await mediator.Send(new RecordRequestCommand(
             Title: "Outpatient Lab Slip Layout",
             Description: "Adjust header margin on thermal printer",
@@ -380,7 +370,7 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             Priority: "NORMAL"));
         await mediator.Send(new AssignRequestOwnerCommand(reqActive2.Id, programmer.Id));
 
-        // 3. Open Blocker (ESCALATED)
+        // 3. Open Blocker (PAUSED)
         var reqBlocker = await mediator.Send(new RecordRequestCommand(
             Title: "Critical LIS Database Timeout",
             Description: "Lock contention during morning peak",
@@ -389,7 +379,8 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             RequestType: "Bug",
             Priority: "URGENT"));
         await mediator.Send(new AssignRequestOwnerCommand(reqBlocker.Id, programmer.Id));
-        await mediator.Send(new EscalateRequestCommand(reqBlocker.Id, "Requires hospital infra firewall change"));
+        await mediator.Send(new StartWorkCommand(reqBlocker.Id, ActorPersonId: programmer.Id));
+        await mediator.Send(new PauseWorkCommand(reqBlocker.Id, Note: "Requires hospital infra firewall change", ActorPersonId: programmer.Id));
 
         // 4. Recent Completion 1 (COMPLETED)
         var reqCompleted1 = await mediator.Send(new RecordRequestCommand(
@@ -400,7 +391,7 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             RequestType: "Bug",
             Priority: "HIGH"));
         await mediator.Send(new AssignRequestOwnerCommand(reqCompleted1.Id, programmer.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqCompleted1.Id));
+        await mediator.Send(new StartWorkCommand(reqCompleted1.Id, ActorPersonId: programmer.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted1.Id, "Deployed barcode patch v1.4.2"));
 
         // 5. Recent Completion 2 (COMPLETED)
@@ -412,17 +403,17 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             RequestType: "Feature",
             Priority: "NORMAL"));
         await mediator.Send(new AssignRequestOwnerCommand(reqCompleted2.Id, programmer.Id));
-        await mediator.Send(new AcceptRequestResponsibilityCommand(reqCompleted2.Id));
+        await mediator.Send(new StartWorkCommand(reqCompleted2.Id, ActorPersonId: programmer.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted2.Id, "Added CSV export endpoint"));
 
-        // 6. Rejected Request (REJECTED)
+        // 6. Cancelled Request (CANCELLED)
         var reqRejected = await mediator.Send(new RecordRequestCommand(
             Title: "Unsupported Legacy OS Printer Driver",
             Description: "Windows XP driver request",
             CustomerId: custWithContract.Id,
             ProductId: product.Id));
         await mediator.Send(new AssignRequestOwnerCommand(reqRejected.Id, programmer.Id));
-        await mediator.Send(new RejectRequestCommand(reqRejected.Id, "OS out of vendor support"));
+        await mediator.Send(new CancelRequestCommand(reqRejected.Id, "OS out of vendor support", programmer.Id));
 
         // Query portfolio via service and MediatR
         var portfolio = await mediator.Send(new GetCustomerRequestPortfolioQuery(custWithContract.Id));
@@ -436,7 +427,7 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
 
         portfolio.TotalRequestsCount.Should().Be(6);
         portfolio.ActiveRequestsCount.Should().Be(3, "reqActive1, reqActive2, and reqBlocker are active");
-        portfolio.OpenBlockersCount.Should().Be(1, "reqBlocker is ESCALATED");
+        portfolio.OpenBlockersCount.Should().Be(1, "reqBlocker is PAUSED");
         portfolio.BlockedRequestsCount.Should().Be(1);
         portfolio.RecentCompletionsCount.Should().Be(2, "reqCompleted1 and reqCompleted2 are COMPLETED");
         portfolio.ResolvedRequestsCount.Should().Be(2);
@@ -445,9 +436,8 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
         portfolio.ActiveRequests.Should().HaveCount(3);
         portfolio.OpenBlockers.Should().ContainSingle(b =>
             b.RequestId == reqBlocker.Id &&
-            b.Status == "ESCALATED" &&
+            b.Status == "PAUSED" &&
             b.IsBlocked &&
-            b.EscalationReason == "Requires hospital infra firewall change" &&
             b.OwnerName == "Arif Nugroho");
 
         portfolio.RecentCompletions.Should().HaveCount(2);
