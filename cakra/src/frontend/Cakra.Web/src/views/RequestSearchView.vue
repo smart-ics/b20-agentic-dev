@@ -399,14 +399,6 @@ onMounted(async () => {
       </div>
 
       <div class="d-flex align-items-center gap-2">
-        <router-link
-          to="/requests"
-          class="btn btn-outline-secondary btn-sm"
-          data-testid="all-requests-link"
-        >
-          <i class="bi bi-card-checklist me-1" aria-hidden="true"></i>
-          All Requests
-        </router-link>
 
         <router-link
           to="/requests/my"

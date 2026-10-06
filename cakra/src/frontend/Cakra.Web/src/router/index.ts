@@ -10,14 +10,13 @@ import ProductCatalogView from '@/views/ProductCatalogView.vue'
 import ProgrammerPerformanceView from '@/views/ProgrammerPerformanceView.vue'
 import ProgrammerWorkloadView from '@/views/ProgrammerWorkloadView.vue'
 import RequestDetailView from '@/views/RequestDetailView.vue'
-import RequestListView from '@/views/RequestListView.vue'
 import RequestSearchView from '@/views/RequestSearchView.vue'
 import WorkPackageView from '@/views/WorkPackageView.vue'
 
-// Vue Router 4 configuration (Architecture §9, §10, §11, §12, §13, §14, §19.4, §19.5).
+// Vue Router 4 configuration (Architecture §9, §10, §11, §12, §13, §14, §19.4, §19.5; CR-017).
 // Routes `/login` to SCR-AUTH-001 (`LoginView.vue`), `/feed` to SCR-FEED-001 (`FeedView.vue`),
-// `/products` to SCR-PRD-001 (`ProductCatalogView.vue`), `/requests` to SCR-REQ-001
-// (`RequestListView.vue`), `/requests/create` to SCR-REQ-002 (`CreateRequestView.vue`),
+// `/products` to SCR-PRD-001 (`ProductCatalogView.vue`), `/requests` redirects to `/feed` (CR-017),
+// `/requests/create` to SCR-REQ-002 (`CreateRequestView.vue`),
 // `/requests/my` to SCR-REQ-004 (`MyRequestsView.vue`), `/requests/search` to SCR-REQ-005
 // (`RequestSearchView.vue`), `/requests/:id` to SCR-REQ-003 (`RequestDetailView.vue`),
 // `/work-packages` & `/work-packages/:id` to SCR-WP-001 (`WorkPackageView.vue`),
@@ -46,12 +45,8 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/requests',
-    name: 'requests',
-    component: RequestListView,
-    meta: {
-      requiresAuth: true,
-      screenId: 'SCR-REQ-001',
-    },
+    name: 'requests-redirect',
+    redirect: '/feed',
   },
   {
     path: '/requests/create',

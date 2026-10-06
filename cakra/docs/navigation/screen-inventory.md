@@ -8,7 +8,7 @@ Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios*
 
 | Screen ID | Screen Name | Navigation Area | Primary Actors | Supported Journeys | Supported Use Cases |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `SCR-REQ-001` | Request List | Requests | Implementator, Request Owner | UJ-REQ-002, UJ-REQ-008, UJ-COL-003 | UC-REQ-002, UC-REQ-008, UC-COL-003 |
+| `SCR-REQ-001` | Request List *(Retired - Superseded by `SCR-FEED-001`)* | Requests | Implementator, Request Owner | Retired (superseded by `SCR-FEED-001`) | Retired (superseded by `SCR-FEED-001`) |
 | `SCR-REQ-002` | Create Request | Requests | Implementator | UJ-REQ-001 | UC-REQ-001 |
 | `SCR-REQ-003` | Request Detail | Requests | Implementator, Request Owner, Management | UJ-REQ-002, UJ-REQ-003, UJ-REQ-004, UJ-REQ-005, UJ-REQ-006, UJ-REQ-007, UJ-REQ-008, UJ-COL-001, UJ-COL-003, UJ-MGT-001 | UC-REQ-002, UC-REQ-003, UC-REQ-004, UC-REQ-005, UC-REQ-006, UC-REQ-007, UC-REQ-008, UC-COL-001, UC-COL-003, UC-MGT-001 |
 | `SCR-REQ-004` | Request Search & History | Requests | Implementator | UJ-COL-002 | UC-COL-002 |
@@ -32,34 +32,36 @@ Derived from approved **User Journeys**, **Use Cases**, **Operational Scenarios*
 
 ## Screen Definitions
 
-### SCR-REQ-001
+### SCR-REQ-001 (Retired)
+
+> [!IMPORTANT]
+> **RETIRED / SUPERSEDED**: This screen (SCR-REQ-001) has been retired and superseded by `SCR-FEED-001` (Operational Feed). Operational requests are visualized and tracked within `SCR-FEED-001`.
 
 **Screen Name:**
-Request List
+Request List *(Retired)*
 
 **Purpose:**
-View and locate Requests within the system.
+View and locate Requests within the system. *(Retired; operational requests are now visualized and tracked in `SCR-FEED-001: Operational Feed`).*
 
 **Primary Actors:**
 * Implementator
 * Request Owner
 
 **Supported Use Cases:**
-* UC-REQ-002: Assign Request Owner
-* UC-REQ-008: Review Request Completion
-* UC-COL-003: Track Request Progress
+* UC-REQ-002: Assign Request Owner *(Superseded by SCR-FEED-001)*
+* UC-REQ-008: Review Request Completion *(Superseded by SCR-FEED-001)*
+* UC-COL-003: Track Request Progress *(Superseded by SCR-FEED-001)*
 
 **Supported User Journeys:**
-* UJ-REQ-002: Assign Request Owner
-* UJ-REQ-008: Review Request Completion
-* UJ-COL-003: Track Request Progress
+* UJ-REQ-002: Assign Request Owner *(Superseded by SCR-FEED-001)*
+* UJ-REQ-008: Review Request Completion *(Superseded by SCR-FEED-001)*
+* UJ-COL-003: Track Request Progress *(Superseded by SCR-FEED-001)*
 
 **Entry Points:**
-* Global Navigation (`Requests > All Requests`)
+* Retired (Route `/requests` redirects to `/feed`)
 
 **Exit / Destination:**
-* `SCR-REQ-002: Create Request`
-* `SCR-REQ-003: Request Detail`
+* Retired
 
 ---
 
@@ -81,11 +83,11 @@ Record and submit a new Request.
 * UJ-REQ-001: Record Customer Request
 
 **Entry Points:**
-* Request List (`SCR-REQ-001`)
+* Operational Feed (`SCR-FEED-001`)
 * Global Navigation Quick Action (`+ New Request`)
 
 **Exit / Destination:**
-* `SCR-REQ-001: Request List`
+* Originating screen (Dynamic back navigation, fallback to `SCR-FEED-001`)
 * `SCR-REQ-003: Request Detail`
 
 ---
@@ -128,7 +130,7 @@ View and interact with a specific Request record.
 * UJ-MGT-001: Reassign Request Ownership
 
 **Entry Points:**
-* Request List (`SCR-REQ-001`)
+* Operational Feed (`SCR-FEED-001`)
 * Create Request (`SCR-REQ-002`)
 * Request Search & History (`SCR-REQ-004`)
 * My Assigned Requests (`SCR-REQ-005`)
@@ -138,9 +140,8 @@ View and interact with a specific Request record.
 * Direct URL / Permanent Link
 
 **Exit / Destination:**
-* `SCR-REQ-001: Request List`
+* Originating screen (Dynamic back navigation, fallback to `SCR-FEED-001`)
 * `SCR-REQ-005: My Assigned Requests`
-* Originating screen (Back navigation)
 
 ---
 
@@ -163,7 +164,6 @@ Search and retrieve historical Request records.
 
 **Entry Points:**
 * Global Navigation (`Requests > Search & History`)
-* Request List (`SCR-REQ-001`)
 
 **Exit / Destination:**
 * `SCR-REQ-003: Request Detail`

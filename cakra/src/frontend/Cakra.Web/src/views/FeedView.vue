@@ -5,6 +5,8 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
 import CreateRequestModal, { type CreatedRequestResponse } from '@/components/CreateRequestModal.vue'
+import FeedDossierPanel from '@/components/FeedDossierPanel.vue'
+import FeedLedgerRow from '@/components/FeedLedgerRow.vue'
 import FeedTimelineCard from '@/components/FeedTimelineCard.vue'
 import PostDetailModal from '@/views/PostDetailModal.vue'
 
@@ -28,6 +30,9 @@ export interface FeedItem {
   authorPersonId?: string | null
   authorName?: string | null
   author?: string | null
+  ownerName?: string | null
+  decisionNeeded?: string | null
+  expectedImpact?: string | null
   postType?: string | null
   source?: string | null
   title: string
@@ -43,9 +48,11 @@ export interface FeedItem {
   customerId?: string | null
   customerName?: string | null
   customer?: string | null
+  customerCode?: string | null
   productId?: string | null
   productName?: string | null
   product?: string | null
+  productCode?: string | null
   requestId?: string | null
   workPackageId?: string | null
   commentCount: number
@@ -140,7 +147,24 @@ const customerNameById = computed<Record<string, string>>(() => {
     const name = customer.customerName || customer.name || ''
     const code = customer.customerCode || customer.code || ''
     if (id) {
-      map[id] = code ? `${name} (${code})` : name
+      const formatted = code ? `${name} (${code})` : name
+      map[id] = formatted
+      map[id.toLowerCase()] = formatted
+      map[id.toUpperCase()] = formatted
+    }
+  }
+  return map
+})
+
+const customerCodeById = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const customer of activeCustomers.value) {
+    const id = customer.id || customer.customerId || ''
+    const code = customer.customerCode || customer.code || ''
+    if (id && code) {
+      map[id] = code
+      map[id.toLowerCase()] = code
+      map[id.toUpperCase()] = code
     }
   }
   return map
@@ -153,14 +177,64 @@ const productNameById = computed<Record<string, string>>(() => {
     const name = product.name || product.productName || ''
     const code = product.code || product.productCode || ''
     if (id) {
-      map[id] = code ? `${name} (${code})` : name
+      const formatted = code ? `${name} (${code})` : name
+      map[id] = formatted
+      map[id.toLowerCase()] = formatted
+      map[id.toUpperCase()] = formatted
     }
   }
   return map
 })
 
+const productCodeById = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const product of activeProducts.value) {
+    const id = product.id || product.productId || ''
+    const code = product.code || product.productCode || ''
+    if (id && code) {
+      map[id] = code
+      map[id.toLowerCase()] = code
+      map[id.toUpperCase()] = code
+    }
+  }
+  return map
+})
+
+// View mode and triage selection
+const viewMode = ref<'stream' | 'ledger'>('stream')
+const selectedFeedItem = ref<FeedItem | null>(null)
+const activeFilter = ref<'ALL' | 'EXCEPTIONS' | 'REQUESTS' | 'SYSTEM'>('ALL')
+
+const displayedFeedItems = computed<FeedItem[]>(() => {
+  if (activeFilter.value === 'EXCEPTIONS') {
+    return feedItems.value.filter((item) => item.isException)
+  }
+  if (activeFilter.value === 'REQUESTS') {
+    return feedItems.value.filter(
+      (item) =>
+        (item.referenceType ?? '').toUpperCase() === 'REQUEST' ||
+        (item.postType ?? '').toUpperCase() === 'REQUEST',
+    )
+  }
+  if (activeFilter.value === 'SYSTEM') {
+    return feedItems.value.filter(
+      (item) =>
+        (item.source ?? item.postType ?? '').toUpperCase() === 'SYSTEM_GENERATED',
+    )
+  }
+  return feedItems.value
+})
+
+function selectFeedItem(item: FeedItem): void {
+  selectedFeedItem.value = item
+}
+
+function handleClaimOwnership(_item: FeedItem): void {
+  void loadFeed()
+}
+
 const hasActiveFilters = computed<boolean>(
-  () => searchTerm.value.trim().length > 0,
+  () => searchTerm.value.trim().length > 0 || activeFilter.value !== 'ALL',
 )
 
 const exceptionCount = computed<number>(() =>
@@ -340,6 +414,10 @@ async function loadFeed(): Promise<void> {
         typeof data.hasMore === 'boolean'
           ? data.hasMore
           : offset.value + items.length < totalCount.value
+    }
+
+    if (!selectedFeedItem.value && feedItems.value.length > 0) {
+      selectedFeedItem.value = feedItems.value[0]
     }
   } catch (err: unknown) {
     errorMessage.value = extractErrorMessage(
@@ -575,6 +653,30 @@ onUnmounted(() => {
           </div>
 
           <div class="d-flex align-items-center gap-2">
+            <!-- View Mode Switcher -->
+            <div class="btn-group btn-group-sm" role="group" aria-label="Feed View Mode">
+              <button
+                type="button"
+                class="btn py-1 px-2.5 fs-11"
+                :class="viewMode === 'stream' ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="viewMode = 'stream'"
+                title="Cards Timeline Stream"
+              >
+                <i class="bi bi-view-stacked me-1" aria-hidden="true"></i>
+                Cards
+              </button>
+              <button
+                type="button"
+                class="btn py-1 px-2.5 fs-11"
+                :class="viewMode === 'ledger' ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="viewMode = 'ledger'"
+                title="High-Density Split Ledger Table"
+              >
+                <i class="bi bi-table me-1" aria-hidden="true"></i>
+                Ledger
+              </button>
+            </div>
+
             <button
               type="button"
               class="btn btn-primary btn-sm"
@@ -597,10 +699,10 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Universal Search Bar (Dedicated Full-Width Input) -->
+        <!-- Universal Search Bar (Dedicated Full-Width Input + Quick Filter Chips) -->
         <div class="op-feed-universal-search card shadow-xs border-0 mb-3" data-testid="feed-universal-search">
           <div class="card-body p-2">
-            <div class="input-group input-group-sm">
+            <div class="input-group input-group-sm mb-2">
               <span class="input-group-text bg-white border-end-0 text-muted">
                 <i class="bi bi-search" aria-hidden="true"></i>
               </span>
@@ -622,6 +724,43 @@ onUnmounted(() => {
                 @click="clearSearch"
               >
                 <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <!-- Quick Filter Chips -->
+            <div class="d-flex align-items-center gap-1.5 overflow-x-auto fs-11">
+              <button
+                type="button"
+                class="btn btn-sm py-0.5 px-2 rounded-pill fs-11"
+                :class="activeFilter === 'ALL' ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="activeFilter = 'ALL'"
+              >
+                All ({{ totalCount }})
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm py-0.5 px-2 rounded-pill fs-11 d-inline-flex align-items-center gap-1"
+                :class="activeFilter === 'EXCEPTIONS' ? 'btn-danger' : 'btn-outline-danger'"
+                @click="activeFilter = 'EXCEPTIONS'"
+              >
+                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                Exceptions ({{ exceptionCount }})
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm py-0.5 px-2 rounded-pill fs-11"
+                :class="activeFilter === 'REQUESTS' ? 'btn-info text-white' : 'btn-outline-secondary'"
+                @click="activeFilter = 'REQUESTS'"
+              >
+                Requests Only
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm py-0.5 px-2 rounded-pill fs-11"
+                :class="activeFilter === 'SYSTEM' ? 'btn-secondary text-white' : 'btn-outline-secondary'"
+                @click="activeFilter = 'SYSTEM'"
+              >
+                System Facts
               </button>
             </div>
           </div>
@@ -705,17 +844,56 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- High-Density Operational Feed Stream -->
+        <!-- Operational Feed Stream / Ledger Container -->
         <div v-else class="d-flex flex-column gap-2" data-testid="feed-card-list">
-          <FeedTimelineCard
-            v-for="item in feedItems"
-            :key="resolveFeedItemKey(item)"
-            :item="item"
-            :customer-name-map="customerNameById"
-            :product-name-map="productNameById"
-            @open-modal="openPostDetailModal"
-            @post-updated="handlePostUpdated"
-          />
+          <!-- High-Density Ledger Mode -->
+          <div v-if="viewMode === 'ledger'" class="card border-0 shadow-xs overflow-hidden mb-1">
+            <div class="table-responsive">
+              <table class="table table-hover table-sm align-middle mb-0 op-ledger-table fs-12">
+                <thead class="table-light text-secondary font-monospace fs-11">
+                  <tr>
+                    <th class="py-2 px-2" style="width: 70px;">TIME</th>
+                    <th class="py-2 px-2" style="width: 100px;">SEVERITY</th>
+                    <th class="py-2 px-2" style="width: 110px;">REFERENCE</th>
+                    <th class="py-2 px-2" style="width: 110px;">OWNER</th>
+                    <th class="py-2 px-2" style="width: 130px;">CONTEXT</th>
+                    <th class="py-2 px-2">EVENT TITLE</th>
+                    <th class="py-2 px-2" style="width: 90px;">SIGNALS</th>
+                    <th class="py-2 px-2 text-end" style="width: 70px;">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <FeedLedgerRow
+                    v-for="item in displayedFeedItems"
+                    :key="resolveFeedItemKey(item)"
+                    :item="item"
+                    :is-selected="selectedFeedItem?.postId === item.postId"
+                    :customer-name-map="customerNameById"
+                    :product-name-map="productNameById"
+                    :customer-code-map="customerCodeById"
+                    :product-code-map="productCodeById"
+                    @select="selectFeedItem"
+                    @open-modal="openPostDetailModal"
+                  />
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Compact Cards Timeline Stream Mode -->
+          <div v-else class="d-flex flex-column gap-2">
+            <FeedTimelineCard
+              v-for="item in displayedFeedItems"
+              :key="resolveFeedItemKey(item)"
+              :item="item"
+              :customer-name-map="customerNameById"
+              :product-name-map="productNameById"
+              :customer-code-map="customerCodeById"
+              :product-code-map="productCodeById"
+              @open-modal="openPostDetailModal"
+              @post-updated="handlePostUpdated"
+            />
+          </div>
 
           <!-- Bottom Loading Spinner (TD-004) -->
           <div
@@ -768,8 +946,19 @@ onUnmounted(() => {
       <!-- Right Column: Sticky Contextual Panel (~33% / 4 cols on xl+) -->
       <div class="col-12 col-xl-4 col-xxl-4">
         <div class="op-feed-sticky-panel">
-          <!-- Summary Metrics / Active Status -->
-          <div class="card shadow-xs">
+          <!-- Pinned Decision Dossier in Ledger Mode -->
+          <FeedDossierPanel
+            v-if="viewMode === 'ledger' && selectedFeedItem"
+            :item="selectedFeedItem"
+            :customer-name-map="customerNameById"
+            :product-name-map="productNameById"
+            @open-modal="openPostDetailModal"
+            @post-updated="handlePostUpdated"
+            @claim-ownership="handleClaimOwnership"
+          />
+
+          <!-- Summary Metrics / Active Status in Stream Mode -->
+          <div v-else class="card shadow-xs">
             <div class="card-header py-1.5 px-3">
               <span class="fw-semibold small">
                 <i class="bi bi-activity me-1 text-primary" aria-hidden="true"></i>

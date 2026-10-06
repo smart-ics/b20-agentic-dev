@@ -53,7 +53,6 @@ const currentScreenTitle = computed(() => {
   if (path.startsWith('/requests/my')) return 'My Assigned Requests'
   if (path.startsWith('/requests/search')) return 'Request Search'
   if (path.startsWith('/requests/')) return 'Request Details'
-  if (path.startsWith('/requests')) return 'Operational Requests'
   if (path.startsWith('/work-packages')) return 'Work Packages'
   if (path.startsWith('/products')) return 'Product Catalog'
   if (path.startsWith('/analytics/customer-portfolio')) return 'Customer Portfolio'

@@ -209,9 +209,13 @@ public record PostDto
 
     public string? CustomerName { get; init; }
 
+    public string? CustomerCode { get; init; }
+
     public Guid? ProductId { get; init; }
 
     public string? ProductName { get; init; }
+
+    public string? ProductCode { get; init; }
 
     public Guid? RequestId { get; init; }
 

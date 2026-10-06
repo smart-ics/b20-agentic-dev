@@ -83,12 +83,16 @@ public sealed record FeedItemDto
     /// <summary>Convenience alias for <see cref="CustomerName"/> (SCR-FEED-001).</summary>
     public string? Customer => CustomerName;
 
+    public string? CustomerCode { get; init; }
+
     public Guid? ProductId { get; init; }
 
     public string? ProductName { get; init; }
 
     /// <summary>Convenience alias for <see cref="ProductName"/> (SCR-FEED-001).</summary>
     public string? Product => ProductName;
+
+    public string? ProductCode { get; init; }
 
     public Guid? RequestId { get; init; }
 

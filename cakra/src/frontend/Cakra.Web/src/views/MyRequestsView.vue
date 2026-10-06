@@ -100,6 +100,8 @@ const activeTab = ref<'requests' | 'subtasks'>('requests')
 const myRequests = ref<AssignedRequestItem[]>([])
 const assignedSubTaskRequests = ref<RequestDto[]>([])
 const selectedStatusFilter = ref<string>('')
+const selectedPriorityFilter = ref<string>('')
+const searchQuery = ref<string>('')
 const isLoading = ref(false)
 const isSubTasksLoading = ref(false)
 const subTaskOperatingId = ref<string | null>(null)
@@ -107,13 +109,54 @@ const errorMessage = ref<string | null>(null)
 const actionSuccessMessage = ref<string | null>(null)
 const showCompletedSubTasks = ref(false)
 
-const filteredMyRequests = computed<AssignedRequestItem[]>(() => {
-  if (!selectedStatusFilter.value) {
-    return myRequests.value
+const totalAssignedCount = computed(() => myRequests.value.length)
+const inProgressCount = computed(
+  () => myRequests.value.filter((req) => (req.status ?? '').toUpperCase() === 'IN_PROGRESS').length,
+)
+const pausedCount = computed(
+  () => myRequests.value.filter((req) => (req.status ?? '').toUpperCase() === 'PAUSED').length,
+)
+const overallCompletionPercentage = computed(() => {
+  let totalTasks = 0
+  let completedTasks = 0
+  for (const req of myRequests.value) {
+    totalTasks += req.totalSubTasksCount ?? 0
+    completedTasks += req.completedSubTasksCount ?? 0
   }
-  return myRequests.value.filter(
-    (req) => (req.status ?? '').toUpperCase() === selectedStatusFilter.value.toUpperCase(),
-  )
+  return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+})
+
+const filteredMyRequests = computed<AssignedRequestItem[]>(() => {
+  let list = myRequests.value
+
+  if (selectedStatusFilter.value) {
+    list = list.filter(
+      (req) => (req.status ?? '').toUpperCase() === selectedStatusFilter.value.toUpperCase(),
+    )
+  }
+
+  if (selectedPriorityFilter.value) {
+    list = list.filter(
+      (req) => (req.priority ?? '').toUpperCase() === selectedPriorityFilter.value.toUpperCase(),
+    )
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.trim().toLowerCase()
+    list = list.filter((req) => {
+      return (
+        (req.id ?? '').toLowerCase().includes(q) ||
+        (req.title ?? '').toLowerCase().includes(q) ||
+        (req.description ?? '').toLowerCase().includes(q) ||
+        (req.customerName ?? '').toLowerCase().includes(q) ||
+        (req.customerCode ?? '').toLowerCase().includes(q) ||
+        (req.productName ?? '').toLowerCase().includes(q) ||
+        (req.productCode ?? '').toLowerCase().includes(q)
+      )
+    })
+  }
+
+  return list
 })
 
 function extractErrorMessage(err: unknown, fallback: string): string {
@@ -248,11 +291,34 @@ const assignedSubTasks = computed<FlattenedAssignedSubTask[]>(() => {
   return list
 })
 
+const subTaskSearchQuery = ref<string>('')
+
+const completedSubTasksCount = computed(
+  () => assignedSubTasks.value.filter((st) => st.isCompleted).length,
+)
+
+const subTasksCompletionRate = computed(() => {
+  const total = assignedSubTasks.value.length
+  if (total === 0) return 0
+  return Math.round((completedSubTasksCount.value / total) * 100)
+})
+
 const filteredAssignedSubTasks = computed(() => {
-  if (showCompletedSubTasks.value) {
-    return assignedSubTasks.value
+  let list = showCompletedSubTasks.value
+    ? assignedSubTasks.value
+    : assignedSubTasks.value.filter((st) => !st.isCompleted)
+
+  if (subTaskSearchQuery.value.trim()) {
+    const q = subTaskSearchQuery.value.trim().toLowerCase()
+    list = list.filter(
+      (st) =>
+        st.title.toLowerCase().includes(q) ||
+        st.requestTitle.toLowerCase().includes(q) ||
+        st.requestId.toLowerCase().includes(q),
+    )
   }
-  return assignedSubTasks.value.filter((st) => !st.isCompleted)
+
+  return list
 })
 
 const pendingSubTasksCount = computed(
@@ -351,14 +417,6 @@ onMounted(async () => {
           Refresh
         </button>
 
-        <router-link
-          to="/requests"
-          class="btn btn-outline-secondary btn-sm"
-          data-testid="all-requests-link"
-        >
-          <i class="bi bi-card-checklist me-1" aria-hidden="true"></i>
-          All Requests
-        </router-link>
 
         <router-link
           to="/requests/create"
@@ -405,6 +463,68 @@ onMounted(async () => {
       ></button>
     </div>
 
+    <!-- Executive KPI Metrics Summary Highlights -->
+    <div class="row g-2 mb-2" data-testid="my-workspace-kpis">
+      <div class="col-6 col-md-3">
+        <div class="card border p-2 h-100 bg-white shadow-xs">
+          <div class="d-flex align-items-center justify-content-between text-body-secondary mb-1">
+            <span class="fs-11 fw-semibold text-uppercase">Assigned Requests</span>
+            <i class="bi bi-folder2-open text-primary" aria-hidden="true"></i>
+          </div>
+          <div class="d-flex align-items-baseline gap-1.5">
+            <span class="fs-4 fw-bold text-dark">{{ totalAssignedCount }}</span>
+            <span class="fs-11 text-body-secondary">in scope</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card border p-2 h-100 bg-white shadow-xs">
+          <div class="d-flex align-items-center justify-content-between text-body-secondary mb-1">
+            <span class="fs-11 fw-semibold text-uppercase">In Progress</span>
+            <i class="bi bi-lightning-charge-fill text-info" aria-hidden="true"></i>
+          </div>
+          <div class="d-flex align-items-baseline gap-1.5">
+            <span class="fs-4 fw-bold text-primary">{{ inProgressCount }}</span>
+            <span class="fs-11 text-body-secondary">active &bull; {{ pausedCount }} paused</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card border p-2 h-100 bg-white shadow-xs">
+          <div class="d-flex align-items-center justify-content-between text-body-secondary mb-1">
+            <span class="fs-11 fw-semibold text-uppercase">Pending Sub-Tasks</span>
+            <i class="bi bi-check2-circle text-warning" aria-hidden="true"></i>
+          </div>
+          <div class="d-flex align-items-baseline gap-1.5">
+            <span class="fs-4 fw-bold text-warning">{{ pendingSubTasksCount }}</span>
+            <span class="fs-11 text-body-secondary">actionable</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card border p-2 h-100 bg-white shadow-xs">
+          <div class="d-flex align-items-center justify-content-between text-body-secondary mb-1">
+            <span class="fs-11 fw-semibold text-uppercase">Subtask Velocity</span>
+            <i class="bi bi-graph-up-arrow text-success" aria-hidden="true"></i>
+          </div>
+          <div class="d-flex align-items-baseline gap-1.5">
+            <span class="fs-4 fw-bold text-success">{{ overallCompletionPercentage }}%</span>
+            <span class="fs-11 text-body-secondary">done</span>
+          </div>
+          <div class="progress mt-1" style="height: 4px;">
+            <div
+              class="progress-bar bg-success"
+              role="progressbar"
+              :style="{ width: `${overallCompletionPercentage}%` }"
+              :aria-valuenow="overallCompletionPercentage"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Workspace Tabs Navigation (CR-006, TD-009, TD-010) -->
     <ul class="nav nav-tabs mb-2" data-testid="my-workspace-tabs">
       <li class="nav-item">
@@ -441,141 +561,136 @@ onMounted(async () => {
       </li>
     </ul>
 
-    <!-- Tab 1: High-Density My Assigned Requests Table Card -->
+    <!-- Tab 1: High-Density My Assigned Requests Table / Cards Card -->
     <div v-if="activeTab === 'requests'" class="card border" data-testid="my-requests-card">
-      <!-- Status Filter Toolbar & Tabs (CR-016 TD-001) -->
+      <!-- Status & Search Toolbar (CR-016 TD-001) -->
       <div class="card-header bg-body-tertiary py-1 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <div class="d-flex align-items-center gap-1">
-          <label for="myStatusFilterSelect" class="form-label mb-0 fs-11 text-nowrap">Status:</label>
-          <select
-            id="myStatusFilterSelect"
-            v-model="selectedStatusFilter"
-            class="form-select form-select-sm"
-            style="min-width: 130px; max-width: 170px;"
-            data-testid="my-status-filter-select"
-          >
-            <option value="">ALL</option>
-            <option v-for="status in MY_REQUEST_STATUSES" :key="status" :value="status">
-              {{ status }}
-            </option>
-          </select>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <!-- Universal Search Input -->
+          <div class="input-group input-group-sm" style="width: 220px;">
+            <span class="input-group-text bg-white border-end-0 text-muted py-0 px-2">
+              <i class="bi bi-search" style="font-size: 11px;"></i>
+            </span>
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="form-control form-control-sm border-start-0 ps-0"
+              placeholder="Search tickets..."
+              style="font-size: 11.5px;"
+              data-testid="my-requests-search-input"
+            />
+            <button
+              v-if="searchQuery"
+              type="button"
+              class="btn btn-outline-secondary border-start-0 bg-white text-muted py-0 px-1.5"
+              @click="searchQuery = ''"
+            >
+              <i class="bi bi-x-circle-fill" style="font-size: 10px;"></i>
+            </button>
+          </div>
+
+          <!-- Status Dropdown -->
+          <div class="d-flex align-items-center gap-1">
+            <label for="myStatusFilterSelect" class="form-label mb-0 fs-11 text-nowrap">Status:</label>
+            <select
+              id="myStatusFilterSelect"
+              v-model="selectedStatusFilter"
+              class="form-select form-select-sm"
+              style="min-width: 110px; max-width: 140px;"
+              data-testid="my-status-filter-select"
+            >
+              <option value="">ALL</option>
+              <option v-for="status in MY_REQUEST_STATUSES" :key="status" :value="status">
+                {{ status }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Priority Filter -->
+          <div class="d-flex align-items-center gap-1">
+            <label for="myPriorityFilterSelect" class="form-label mb-0 fs-11 text-nowrap">Priority:</label>
+            <select
+              id="myPriorityFilterSelect"
+              v-model="selectedPriorityFilter"
+              class="form-select form-select-sm"
+              style="min-width: 95px; max-width: 120px;"
+              data-testid="my-priority-filter-select"
+            >
+              <option value="">ALL</option>
+              <option value="URGENT">URGENT</option>
+              <option value="HIGH">HIGH</option>
+              <option value="NORMAL">NORMAL</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
         </div>
 
-        <ul class="nav nav-pills gap-1" data-testid="my-status-tabs">
-          <li v-for="tab in STATUS_FILTER_TABS" :key="tab.value" class="nav-item">
-            <button
-              type="button"
-              class="nav-link py-0.5 px-2 btn-sm font-monospace fs-11"
-              :class="{ active: selectedStatusFilter === tab.value }"
-              :data-testid="`my-status-tab-${tab.value || 'ALL'}`"
-              @click="selectedStatusFilter = tab.value"
-            >
-              {{ tab.label }}
-            </button>
-          </li>
-        </ul>
+        <div class="d-flex align-items-center gap-2">
+          <!-- Status Filter Tabs -->
+          <ul class="nav nav-pills gap-1 d-none d-lg-flex" data-testid="my-status-tabs">
+            <li v-for="tab in STATUS_FILTER_TABS" :key="tab.value" class="nav-item">
+              <button
+                type="button"
+                class="nav-link py-0.5 px-2 btn-sm font-monospace fs-11"
+                :class="{ active: selectedStatusFilter === tab.value }"
+                :data-testid="`my-status-tab-${tab.value || 'ALL'}`"
+                @click="selectedStatusFilter = tab.value"
+              >
+                {{ tab.label }}
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
 
-      <div class="table-responsive">
-        <table
-          class="table table-hover align-middle mb-0"
-          data-testid="my-requests-table"
+      <!-- Modern Cards Grid View (Exclusive View) -->
+      <div class="p-3" data-testid="my-requests-cards-container">
+        <div v-if="isLoading" class="text-center py-4 text-body-secondary">
+          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          Loading assigned requests...
+        </div>
+
+        <div
+          v-else-if="filteredMyRequests.length === 0"
+          class="text-center py-4 text-body-secondary"
+          data-testid="empty-my-requests-row"
         >
-          <thead>
-            <tr>
-              <th scope="col" style="width: 105px;">ID</th>
-              <th scope="col">Title</th>
-              <th scope="col" style="width: 150px;">Customer</th>
-              <th scope="col" style="width: 140px;">Product</th>
-              <th scope="col" style="width: 105px;">Status</th>
-              <th scope="col" style="width: 120px;">Progress</th>
-              <th scope="col" style="width: 140px;">Assignee</th>
-              <th scope="col" style="width: 125px;">CreatedAt</th>
-              <th scope="col" style="width: 90px;" class="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="isLoading">
-              <td colspan="9" class="text-center py-4 text-body-secondary">
-                <span
-                  class="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                Loading assigned requests...
-              </td>
-            </tr>
+          {{
+            selectedStatusFilter || searchQuery || selectedPriorityFilter
+              ? 'No assigned operational requests match current filter criteria.'
+              : 'You currently have no assigned operational requests.'
+          }}
+        </div>
 
-            <tr v-else-if="filteredMyRequests.length === 0">
-              <td
-                colspan="9"
-                class="text-center py-4 text-body-secondary"
-                data-testid="empty-my-requests-row"
-              >
-                {{
-                  selectedStatusFilter
-                    ? `No assigned operational requests match status "${selectedStatusFilter}".`
-                    : 'You currently have no assigned operational requests.'
-                }}
-              </td>
-            </tr>
-
-            <tr
-              v-for="req in filteredMyRequests"
-              v-else
-              :key="req.id"
-              :data-request-id="req.id"
-              style="cursor: pointer"
-              data-testid="my-request-row"
+        <div v-else class="row g-2.5">
+          <div
+            v-for="req in filteredMyRequests"
+            :key="req.id"
+            :data-request-id="req.id"
+            class="col-12 col-md-6 col-lg-4"
+            data-testid="my-request-row"
+          >
+            <div
+              class="card h-100 p-3 shadow-xs border"
+              style="cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;"
+              data-testid="my-request-grid-card"
               @click="navigateToDetail(req.id)"
             >
-              <td>
-                <router-link
-                  :to="`/requests/${req.id}`"
-                  class="font-monospace text-decoration-none fw-semibold"
-                  style="font-size: 11.5px;"
-                  data-testid="my-request-id-link"
-                  @click.stop
-                >
-                  {{ req.id }}
-                </router-link>
-              </td>
-
-              <td>
-                <div class="d-flex align-items-center gap-1.5 flex-nowrap">
+              <div class="d-flex align-items-center justify-content-between mb-1.5">
+                <div class="d-flex align-items-center gap-1.5">
                   <router-link
                     :to="`/requests/${req.id}`"
-                    class="fw-semibold text-decoration-none text-dark text-truncate"
-                    style="max-width: 360px;"
-                    data-testid="my-request-title-link"
-                    :title="req.title"
+                    class="font-monospace fw-bold text-primary text-decoration-none"
+                    style="font-size: 11.5px;"
+                    data-testid="my-request-id-link"
                     @click.stop
                   >
-                    {{ req.title }}
+                    {{ req.id }}
                   </router-link>
-                  <span
-                    v-if="req.priority"
-                    class="badge flex-shrink-0"
-                    :class="priorityBadgeClass(req.priority)"
-                  >
+                  <span v-if="req.priority" class="badge" :class="priorityBadgeClass(req.priority)">
                     {{ req.priority }}
                   </span>
                 </div>
-              </td>
-
-              <td>
-                <span class="text-truncate d-inline-block" style="max-width: 145px;" :title="resolveCustomerDisplay(req)">
-                  {{ resolveCustomerDisplay(req) }}
-                </span>
-              </td>
-
-              <td>
-                <span class="text-truncate d-inline-block" style="max-width: 135px;" :title="resolveProductDisplay(req)">
-                  {{ resolveProductDisplay(req) }}
-                </span>
-              </td>
-
-              <td>
                 <span
                   class="badge"
                   :class="statusBadgeClass(req.status)"
@@ -583,65 +698,77 @@ onMounted(async () => {
                 >
                   {{ req.status }}
                 </span>
-              </td>
+              </div>
 
-              <!-- Progress Column -->
-              <td>
+              <h6 class="fw-bold text-dark text-truncate mb-1" :title="req.title">
+                <router-link
+                  :to="`/requests/${req.id}`"
+                  class="fw-semibold text-decoration-none text-dark"
+                  data-testid="my-request-title-link"
+                  @click.stop
+                >
+                  {{ req.title }}
+                </router-link>
+              </h6>
+
+              <p class="text-body-secondary small mb-2 text-truncate" style="font-size: 11.5px;">
+                {{ req.description || 'No description provided.' }}
+              </p>
+
+              <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">
+                <span class="badge text-bg-light border text-secondary" style="font-size: 10.5px;" :title="resolveCustomerDisplay(req)">
+                  <i class="bi bi-building me-1"></i>{{ resolveCustomerDisplay(req) }}
+                </span>
+                <span class="badge text-bg-light border text-secondary" style="font-size: 10.5px;" :title="resolveProductDisplay(req)">
+                  <i class="bi bi-box me-1"></i>{{ resolveProductDisplay(req) }}
+                </span>
+                <span class="badge text-bg-light border text-secondary" style="font-size: 10.5px;" :title="resolveAssigneeDisplay(req)">
+                  <i class="bi bi-person me-1"></i>{{ resolveAssigneeDisplay(req) }}
+                </span>
+              </div>
+
+              <div class="mt-auto pt-2 border-top">
                 <div
                   v-if="(req.totalSubTasksCount ?? 0) > 0"
-                  class="d-flex flex-column gap-1"
+                  class="mb-1.5"
                   data-testid="my-request-progress"
                 >
-                  <div class="d-flex justify-content-between align-items-center" style="font-size: 11px;">
+                  <div class="d-flex justify-content-between align-items-center fs-11 mb-1">
+                    <span class="text-body-secondary">Subtasks ({{ req.completedSubTasksCount ?? 0 }}/{{ req.totalSubTasksCount ?? 0 }})</span>
                     <span class="fw-semibold">{{ req.completionPercentage ?? 0 }}%</span>
-                    <span class="text-body-secondary small">({{ req.completedSubTasksCount ?? 0 }}/{{ req.totalSubTasksCount ?? 0 }})</span>
                   </div>
-                  <div class="progress" style="height: 6px;">
+                  <div class="progress" style="height: 5px;">
                     <div
                       class="progress-bar"
                       :class="(req.completionPercentage ?? 0) === 100 ? 'bg-success' : 'bg-primary'"
                       role="progressbar"
                       :style="{ width: `${req.completionPercentage ?? 0}%` }"
-                      :aria-valuenow="req.completionPercentage ?? 0"
-                      aria-valuemin="0"
-                      aria-valuemax="100"
                     ></div>
                   </div>
                 </div>
-                <span v-else class="text-body-secondary small" style="font-size: 11px;">—</span>
-              </td>
 
-              <td>
-                <span class="text-truncate d-inline-block" style="max-width: 135px;">
-                  <i class="bi bi-person me-0.5 text-secondary" aria-hidden="true"></i>
-                  {{ resolveAssigneeDisplay(req) }}
-                </span>
-              </td>
-
-              <td class="text-body-secondary fs-11">
-                {{ formatTimestamp(req.createdAt) }}
-              </td>
-
-              <td class="text-end" @click.stop>
-                <router-link
-                  :to="`/requests/${req.id}`"
-                  class="btn btn-outline-primary btn-sm py-0 px-1.5 fs-11"
-                  data-testid="my-request-detail-button"
-                  @click.stop
-                >
-                  View
-                </router-link>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <div class="d-flex align-items-center justify-content-between fs-11 text-body-secondary mt-1">
+                  <span><i class="bi bi-clock me-1"></i>{{ formatTimestamp(req.createdAt) }}</span>
+                  <router-link
+                    :to="`/requests/${req.id}`"
+                    class="btn btn-outline-primary btn-sm py-0 px-1.5 fs-11"
+                    data-testid="my-request-detail-button"
+                    @click.stop
+                  >
+                    View
+                  </router-link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Tab 2: Assigned Sub-Tasks Personal Queue Card (CR-006, TD-009, TD-010) -->
     <div v-if="activeTab === 'subtasks'" class="card border" data-testid="assigned-subtasks-card">
-      <div class="card-header py-1 px-3 bg-body-tertiary d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-2">
+      <div class="card-header py-1.5 px-3 bg-body-tertiary d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           <span class="fw-semibold small">
             <i class="bi bi-list-task me-1 text-primary" aria-hidden="true"></i>
             Actionable Sub-Tasks Queue
@@ -649,19 +776,49 @@ onMounted(async () => {
           <span class="badge text-bg-secondary" data-testid="assigned-subtasks-total-badge">
             {{ filteredAssignedSubTasks.length }} item(s)
           </span>
+
+          <span class="badge text-bg-light border text-secondary font-monospace" style="font-size: 10.5px;">
+            <span class="text-success fw-semibold">{{ completedSubTasksCount }}</span>/{{ assignedSubTasks.length }} done ({{ subTasksCompletionRate }}%)
+          </span>
         </div>
-        <div class="form-check form-switch m-0 small">
-          <input
-            id="showCompletedSubTasksCheck"
-            v-model="showCompletedSubTasks"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-            data-testid="show-completed-subtasks-toggle"
-          />
-          <label for="showCompletedSubTasksCheck" class="form-check-label text-body-secondary" style="font-size: 11.5px;">
-            Show completed
-          </label>
+
+        <div class="d-flex align-items-center gap-2">
+          <!-- Subtasks Search Input -->
+          <div class="input-group input-group-sm" style="width: 200px;">
+            <span class="input-group-text bg-white border-end-0 text-muted py-0 px-2">
+              <i class="bi bi-search" style="font-size: 11px;"></i>
+            </span>
+            <input
+              v-model="subTaskSearchQuery"
+              type="text"
+              class="form-control form-control-sm border-start-0 ps-0"
+              placeholder="Filter tasks..."
+              style="font-size: 11.5px;"
+              data-testid="subtask-search-input"
+            />
+            <button
+              v-if="subTaskSearchQuery"
+              type="button"
+              class="btn btn-outline-secondary border-start-0 bg-white text-muted py-0 px-1.5"
+              @click="subTaskSearchQuery = ''"
+            >
+              <i class="bi bi-x-circle-fill" style="font-size: 10px;"></i>
+            </button>
+          </div>
+
+          <div class="form-check form-switch m-0 small">
+            <input
+              id="showCompletedSubTasksCheck"
+              v-model="showCompletedSubTasks"
+              type="checkbox"
+              class="form-check-input"
+              role="switch"
+              data-testid="show-completed-subtasks-toggle"
+            />
+            <label for="showCompletedSubTasksCheck" class="form-check-label text-body-secondary" style="font-size: 11.5px;">
+              Show completed
+            </label>
+          </div>
         </div>
       </div>
 
@@ -689,7 +846,7 @@ onMounted(async () => {
               <td colspan="6" class="text-center py-4 text-body-secondary" data-testid="empty-assigned-subtasks-row">
                 <div class="d-flex flex-column align-items-center gap-1">
                   <i class="bi bi-check2-circle text-success" style="font-size: 24px;" aria-hidden="true"></i>
-                  <span>You have no {{ showCompletedSubTasks ? '' : 'pending' }} assigned sub-tasks.</span>
+                  <span>{{ subTaskSearchQuery ? 'No assigned sub-tasks match your search criteria.' : `You have no ${showCompletedSubTasks ? '' : 'pending'} assigned sub-tasks.` }}</span>
                 </div>
               </td>
             </tr>

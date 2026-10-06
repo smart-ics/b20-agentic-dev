@@ -12,7 +12,7 @@ This artifact defines the authoritative list of screens for the Operational Syst
 
 | Screen ID | Screen Name | Purpose |
 | :--- | :--- | :--- |
-| **SCR-REQ-001** | Request List | View lists of Requests categorized by operational state (e.g., Active, Needs Attention). |
+| **SCR-REQ-001** | Request List *(Retired)* | Retired / Superseded by `SCR-FEED-001` (Operational Feed). Formerly viewed lists of Requests categorized by operational state. |
 | **SCR-REQ-002** | Create Request | Create a new Request, formalizing a business need into an operational record. |
 | **SCR-REQ-003** | Request Detail | The structured operational record for a Request, used when deep context or state transitions are needed. |
 | **SCR-REQ-004** | Request Search & History | Search for historical Requests using structured filters. |

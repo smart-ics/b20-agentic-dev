@@ -37,9 +37,11 @@ export interface FeedItem {
   referenceDisplay?: string | null
   customerId?: string | null
   customerName?: string | null
+  customerCode?: string | null
   customer?: string | null
   productId?: string | null
   productName?: string | null
+  productCode?: string | null
   product?: string | null
   requestId?: string | null
   workPackageId?: string | null
@@ -110,10 +112,14 @@ const props = withDefaults(
     item: FeedItem
     customerNameMap?: Record<string, string>
     productNameMap?: Record<string, string>
+    customerCodeMap?: Record<string, string>
+    productCodeMap?: Record<string, string>
   }>(),
   {
     customerNameMap: () => ({}),
     productNameMap: () => ({}),
+    customerCodeMap: () => ({}),
+    productCodeMap: () => ({}),
   },
 )
 
@@ -179,6 +185,7 @@ const REACTION_OPTIONS: readonly ReactionOptionMeta[] = [
 // Local Card States
 const comments = ref<PostCommentItem[]>([])
 const showAllComments = ref<boolean>(false)
+const isCommentsOpen = ref<boolean>(false)
 const isLoadingComments = ref<boolean>(false)
 const isSubmittingComment = ref<boolean>(false)
 const newCommentText = ref<string>('')
@@ -216,31 +223,265 @@ const authorDisplay = computed<string>(() => {
   return 'Operational User'
 })
 
-const customerDisplay = computed<string>(() => {
-  const name = props.item.customer ?? props.item.customerName
-  if (name && name.trim().length > 0) {
-    return name.trim()
+// Module-level cache to share lookups across FeedTimelineCard instances
+const sharedCustomerCache = ref<Record<string, { code: string; name: string }>>({})
+const sharedProductCache = ref<Record<string, { code: string; name: string }>>({})
+let hasInitiatedLookup = false
+
+async function ensureSharedLookups(): Promise<void> {
+  if (hasInitiatedLookup) return
+  hasInitiatedLookup = true
+  try {
+    const [custRes, prodRes] = await Promise.all([
+      httpClient.get<Array<{ id?: string; customerId?: string; code?: string; customerCode?: string; name?: string; customerName?: string }>>('/customers/active').catch(() => null),
+      httpClient.get<Array<{ id?: string; productId?: string; code?: string; productCode?: string; name?: string; productName?: string }>>('/products/active').catch(() => null),
+    ])
+
+    if (Array.isArray(custRes?.data)) {
+      const cMap: Record<string, { code: string; name: string }> = {}
+      for (const c of custRes.data) {
+        const id = (c.id || c.customerId || '').trim().toLowerCase()
+        const code = (c.customerCode || c.code || '').trim()
+        const name = (c.customerName || c.name || '').trim()
+        if (id) {
+          cMap[id] = { code: code || name, name: name || code }
+        }
+      }
+      sharedCustomerCache.value = cMap
+    }
+
+    if (Array.isArray(prodRes?.data)) {
+      const pMap: Record<string, { code: string; name: string }> = {}
+      for (const p of prodRes.data) {
+        const id = (p.id || p.productId || '').trim().toLowerCase()
+        const code = (p.productCode || p.code || '').trim()
+        const name = (p.productName || p.name || '').trim()
+        if (id) {
+          pMap[id] = { code: code || name, name: name || code }
+        }
+      }
+      sharedProductCache.value = pMap
+    }
+  } catch {
+    // Ignore error
   }
-  if (props.item.customerId && props.customerNameMap[props.item.customerId]) {
-    return props.customerNameMap[props.item.customerId]
+}
+
+// Helper regex to extract code from formatted strings like "Name (CODE)"
+function parseFormattedCode(str?: string | null): { code: string; name: string } | null {
+  if (!str) return null
+  const trimmed = str.trim()
+  const match = trimmed.match(/^(.*?)\s*\(([^()]+)\)$/)
+  if (match) {
+    return { name: match[1].trim(), code: match[2].trim() }
   }
-  return props.item.customerId ? `Customer #${props.item.customerId.slice(0, 8)}` : ''
+  return null
+}
+
+const customerDisplayCode = computed<string>(() => {
+  // 1. Direct customerCode on item
+  const direct = props.item.customerCode?.trim()
+  if (direct) return direct
+
+  // 2. From customerCodeMap by ID (case-insensitive)
+  const custId = props.item.customerId?.trim().toLowerCase()
+  if (custId) {
+    const fromCodeMap = props.customerCodeMap[custId] || props.customerCodeMap[props.item.customerId!]
+    if (fromCodeMap?.trim()) return fromCodeMap.trim()
+
+    const fromNameMap = props.customerNameMap[custId] || props.customerNameMap[props.item.customerId!]
+    if (fromNameMap) {
+      const parsed = parseFormattedCode(fromNameMap)
+      if (parsed?.code) return parsed.code
+    }
+
+    if (sharedCustomerCache.value[custId]?.code) {
+      return sharedCustomerCache.value[custId].code
+    }
+  }
+
+  // 3. From customer string if formatted with parenthesized code e.g. "Husada Jakarta (HJ-01)"
+  const raw = props.item.customer ?? props.item.customerName
+  if (raw) {
+    const parsed = parseFormattedCode(raw)
+    if (parsed?.code) return parsed.code
+
+    // 4. Search customerNameMap by customer name
+    const rawLower = raw.trim().toLowerCase()
+    for (const [id, formatted] of Object.entries(props.customerNameMap)) {
+      const p = parseFormattedCode(formatted)
+      if (p && (p.name.toLowerCase() === rawLower || p.code.toLowerCase() === rawLower)) {
+        return p.code
+      }
+      if (formatted.toLowerCase() === rawLower) {
+        const cCode = props.customerCodeMap[id] || props.customerCodeMap[id.toLowerCase()]
+        if (cCode) return cCode
+      }
+    }
+
+    // 5. Search shared customer cache by name
+    const matched = Object.values(sharedCustomerCache.value).find(
+      (c) => c.name.toLowerCase() === rawLower,
+    )
+    if (matched?.code) {
+      return matched.code
+    }
+  }
+
+  // 6. If we have customerId, format short code identifier (NEVER full name)
+  if (props.item.customerId) {
+    return `CUST-${props.item.customerId.slice(0, 6).toUpperCase()}`
+  }
+
+  // 7. If we only have raw name, format short uppercase acronym (NEVER full name)
+  if (raw && raw.trim().length > 0) {
+    const words = raw.trim().split(/\s+/).filter(Boolean)
+    if (words.length > 1) {
+      return words.map(w => w[0]).join('').toUpperCase()
+    }
+    return raw.trim().slice(0, 6).toUpperCase()
+  }
+
+  return ''
 })
 
-const productDisplay = computed<string>(() => {
-  const name = props.item.product ?? props.item.productName
-  if (name && name.trim().length > 0) {
-    return name.trim()
+const customerTooltipName = computed<string>(() => {
+  const custId = props.item.customerId?.trim().toLowerCase()
+  let fullName = ''
+
+  if (custId) {
+    const fromNameMap = props.customerNameMap[custId] || props.customerNameMap[props.item.customerId!]
+    if (fromNameMap) {
+      const parsed = parseFormattedCode(fromNameMap)
+      fullName = parsed ? parsed.name : fromNameMap
+    }
+    if (!fullName && sharedCustomerCache.value[custId]?.name) {
+      fullName = sharedCustomerCache.value[custId].name
+    }
   }
-  if (props.item.productId && props.productNameMap[props.item.productId]) {
-    return props.productNameMap[props.item.productId]
+
+  if (!fullName) {
+    const raw = props.item.customer ?? props.item.customerName
+    if (raw) {
+      const parsed = parseFormattedCode(raw)
+      fullName = parsed ? parsed.name : raw.trim()
+    }
   }
-  return props.item.productId ? `Product #${props.item.productId.slice(0, 8)}` : ''
+
+  const code = customerDisplayCode.value.trim()
+  if (fullName && code && fullName.toLowerCase() !== code.toLowerCase()) {
+    return `${fullName} (${code})`
+  }
+  return fullName || code || 'Customer'
+})
+
+const productDisplayCode = computed<string>(() => {
+  // 1. Direct productCode on item
+  const direct = props.item.productCode?.trim()
+  if (direct) return direct
+
+  // 2. From productCodeMap by ID (case-insensitive)
+  const prodId = props.item.productId?.trim().toLowerCase()
+  if (prodId) {
+    const fromCodeMap = props.productCodeMap[prodId] || props.productCodeMap[props.item.productId!]
+    if (fromCodeMap?.trim()) return fromCodeMap.trim()
+
+    const fromNameMap = props.productNameMap[prodId] || props.productNameMap[props.item.productId!]
+    if (fromNameMap) {
+      const parsed = parseFormattedCode(fromNameMap)
+      if (parsed?.code) return parsed.code
+    }
+
+    if (sharedProductCache.value[prodId]?.code) {
+      return sharedProductCache.value[prodId].code
+    }
+  }
+
+  // 3. From product string if formatted with parenthesized code e.g. "My Hospital Web (MYHOSP-WEB)"
+  const raw = props.item.product ?? props.item.productName
+  if (raw) {
+    const parsed = parseFormattedCode(raw)
+    if (parsed?.code) return parsed.code
+
+    // 4. Search productNameMap by product name
+    const rawLower = raw.trim().toLowerCase()
+    for (const [id, formatted] of Object.entries(props.productNameMap)) {
+      const p = parseFormattedCode(formatted)
+      if (p && (p.name.toLowerCase() === rawLower || p.code.toLowerCase() === rawLower)) {
+        return p.code
+      }
+      if (formatted.toLowerCase() === rawLower) {
+        const pCode = props.productCodeMap[id] || props.productCodeMap[id.toLowerCase()]
+        if (pCode) return pCode
+      }
+    }
+
+    // 5. Search shared product cache by name
+    const matched = Object.values(sharedProductCache.value).find(
+      (p) => p.name.toLowerCase() === rawLower,
+    )
+    if (matched?.code) {
+      return matched.code
+    }
+  }
+
+  // 6. If we have productId, format short code identifier (NEVER full name)
+  if (props.item.productId) {
+    return `PROD-${props.item.productId.slice(0, 6).toUpperCase()}`
+  }
+
+  // 7. If we only have raw name, format short uppercase acronym (NEVER full name)
+  if (raw && raw.trim().length > 0) {
+    const words = raw.trim().split(/\s+/).filter(Boolean)
+    if (words.length > 1) {
+      return words.map(w => w[0]).join('').toUpperCase()
+    }
+    return raw.trim().slice(0, 6).toUpperCase()
+  }
+
+  return ''
+})
+
+const productTooltipName = computed<string>(() => {
+  const prodId = props.item.productId?.trim().toLowerCase()
+  let fullName = ''
+
+  if (prodId) {
+    const fromNameMap = props.productNameMap[prodId] || props.productNameMap[props.item.productId!]
+    if (fromNameMap) {
+      const parsed = parseFormattedCode(fromNameMap)
+      fullName = parsed ? parsed.name : fromNameMap
+    }
+    if (!fullName && sharedProductCache.value[prodId]?.name) {
+      fullName = sharedProductCache.value[prodId].name
+    }
+  }
+
+  if (!fullName) {
+    const raw = props.item.product ?? props.item.productName
+    if (raw) {
+      const parsed = parseFormattedCode(raw)
+      fullName = parsed ? parsed.name : raw.trim()
+    }
+  }
+
+  const code = productDisplayCode.value.trim()
+  if (fullName && code && fullName.toLowerCase() !== code.toLowerCase()) {
+    return `${fullName} (${code})`
+  }
+  return fullName || code || 'Product'
 })
 
 const contentExcerpt = computed<string>(() => {
   const text = props.item.contentExcerpt ?? props.item.summary ?? ''
   return text.trim()
+})
+
+const shouldShowExcerpt = computed<boolean>(() => {
+  if (!contentExcerpt.value) return false
+  const title = (props.item.title || '').trim().toLowerCase()
+  const excerpt = contentExcerpt.value.toLowerCase()
+  return excerpt !== title
 })
 
 const effectiveRequestId = computed<string | null>(() => {
@@ -258,15 +499,30 @@ const effectiveRequestId = computed<string | null>(() => {
 })
 
 const effectiveRequestDisplay = computed<string>(() => {
-  if (
-    (props.item.referenceType ?? '').toUpperCase() === 'REQUEST' &&
-    props.item.referenceDisplay &&
-    props.item.referenceDisplay.trim().length > 0
-  ) {
-    return props.item.referenceDisplay.trim()
-  }
   const reqId = effectiveRequestId.value
-  return reqId ? `Request #${reqId.slice(0, 8)}` : 'View Request'
+  if (!reqId) return ''
+
+  const rawRef = props.item.referenceDisplay?.trim()
+  const title = props.item.title?.trim().toLowerCase()
+  if (
+    rawRef &&
+    (props.item.referenceType ?? '').toUpperCase() === 'REQUEST' &&
+    /^REQ[-#\s]?[0-9a-fA-F]+/i.test(rawRef) &&
+    rawRef.toLowerCase() !== title
+  ) {
+    return rawRef
+  }
+
+  return `REQ #${reqId.slice(0, 8).toUpperCase()}`
+})
+
+const requestTooltipTitle = computed<string>(() => {
+  const title = (props.item.referenceDisplay || props.item.title || '').trim()
+  const reqId = effectiveRequestId.value
+  if (reqId && title) {
+    return `Request #${reqId.slice(0, 8)}: ${title}`
+  }
+  return title || (reqId ? `Request #${reqId.slice(0, 8)}` : 'Request')
 })
 
 const effectiveWorkPackageId = computed<string | null>(() => {
@@ -501,9 +757,31 @@ function handleCommentKeydown(e: KeyboardEvent): void {
   }
 }
 
-function focusCommentInput(): void {
-  commentTextareaRef.value?.focus()
+function toggleComments(): void {
+  isCommentsOpen.value = !isCommentsOpen.value
+  if (isCommentsOpen.value) {
+    if (comments.value.length === 0 && localCommentCount.value > 0) {
+      void loadComments()
+    }
+    setTimeout(() => {
+      commentTextareaRef.value?.focus()
+    }, 50)
+  }
 }
+
+function focusCommentInput(): void {
+  isCommentsOpen.value = true
+  if (comments.value.length === 0 && localCommentCount.value > 0) {
+    void loadComments()
+  }
+  setTimeout(() => {
+    commentTextareaRef.value?.focus()
+  }, 50)
+}
+
+defineExpose({
+  focusCommentInput,
+})
 
 // Reaction Handlers
 async function toggleQuickSeenReaction(): Promise<void> {
@@ -628,229 +906,240 @@ watch(
 onMounted(() => {
   initReactionCounts()
   void loadComments()
+  void ensureSharedLookups()
+})
+const isClosed = computed<boolean>(() => {
+  const st = (props.item.status || '').toUpperCase()
+  return st === 'CLOSED' || st === 'RESOLVED' || st === 'CANCELLED'
+})
+
+const isEscalation = computed<boolean>(() => {
+  if (props.item.isException) return true
+  const exc = (props.item.exceptionType || '').toUpperCase()
+  const postT = (props.item.postType || '').toUpperCase()
+  return exc.includes('ESCALAT') || postT.includes('ESCALAT')
+})
+
+const statusAccentClass = computed<string>(() => {
+  if (isEscalation.value) {
+    return 'status-accent-red'
+  }
+  if (isSystemGenerated.value) {
+    return 'status-accent-cyan'
+  }
+  if (isClosed.value) {
+    return 'status-accent-gray'
+  }
+  return 'status-accent-blue'
 })
 </script>
 
 <template>
   <article
-    class="op-feed-row op-feed-card p-3 mb-2 rounded-3 border bg-white shadow-xs"
-    :class="{ 'is-exception border-danger-subtle': item.isException }"
+    class="op-feed-row op-feed-card p-3 mb-2.5 rounded-2 bg-white shadow-sm transition-all position-relative"
+    :class="statusAccentClass"
     :data-testid="`feed-card-${resolvedPostId}`"
   >
-    <!-- Header Row: Exception, SYS/POST badge, Title, Customer, Product, Author, Timestamp -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+    <!-- Row 1: Header - Streamlined Essential Badges & Meta -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1.5">
       <div class="d-flex flex-wrap align-items-center gap-1.5 min-w-0">
-        <!-- Exception Badge -->
+        <!-- Event Type Badge (SYS / ESCALATION) with muted calm colors -->
         <span
-          v-if="item.isException"
-          class="badge bg-danger"
+          v-if="isEscalation"
+          class="badge font-monospace fs-11 fw-medium bg-danger-subtle text-danger border border-danger-subtle"
           data-testid="feed-card-exception-badge"
         >
           <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
-          {{ item.exceptionType || 'EXCEPTION' }}
+          {{ item.exceptionType || 'ESCALATION' }}
         </span>
 
-        <!-- Post Source Badge -->
         <span
-          class="badge"
-          :class="
-            isSystemGenerated
-              ? 'bg-info bg-opacity-10 text-info border border-info border-opacity-25'
-              : 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25'
-          "
+          v-else-if="isSystemGenerated"
+          class="badge font-monospace fs-11 fw-medium bg-info-subtle text-info-emphasis border border-info-subtle"
         >
-          {{ isSystemGenerated ? 'SYS' : 'POST' }}
+          SYS
         </span>
 
-        <!-- Post Title Trigger -->
-        <button
-          type="button"
-          class="btn btn-link text-dark fw-semibold text-start p-0 text-decoration-none text-truncate"
-          style="max-width: 440px;"
-          data-testid="feed-card-title"
-          :title="item.title"
-          @click.stop="openModal"
+        <!-- Request Number Badge / Link -->
+        <RouterLink
+          v-if="effectiveRequestId"
+          :to="`/requests/${effectiveRequestId}`"
+          class="badge font-monospace fs-11 fw-medium bg-light text-secondary border border-secondary-subtle text-decoration-none text-hover-primary"
+          data-testid="feed-card-request-link"
+          :title="requestTooltipTitle"
+          @click.stop="navigateToRequest(effectiveRequestId)"
         >
-          {{ item.title }}
-        </button>
+          {{ effectiveRequestDisplay }}
+        </RouterLink>
 
-        <!-- Customer Tag -->
-        <span
-          v-if="customerDisplay"
-          class="badge bg-light text-dark border text-truncate"
-          style="max-width: 140px;"
-          data-testid="feed-card-customer"
-          :title="customerDisplay"
+        <!-- Work Package Badge / Link -->
+        <RouterLink
+          v-if="effectiveWorkPackageId"
+          :to="`/work-packages/${effectiveWorkPackageId}`"
+          class="badge font-monospace fs-11 fw-medium bg-light text-secondary border border-secondary-subtle text-decoration-none"
+          data-testid="feed-card-work-package-link"
+          @click.stop
         >
-          <i class="bi bi-building me-1 text-secondary" aria-hidden="true"></i>
-          {{ customerDisplay }}
-        </span>
-
-        <!-- Product Tag -->
-        <span
-          v-if="productDisplay"
-          class="badge bg-light text-dark border text-truncate"
-          style="max-width: 130px;"
-          data-testid="feed-card-product"
-          :title="productDisplay"
-        >
-          <i class="bi bi-box-seam me-1 text-secondary" aria-hidden="true"></i>
-          {{ productDisplay }}
-        </span>
+          WP
+        </RouterLink>
       </div>
 
-      <!-- Author and CreatedAt Timestamp -->
-      <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
-        <span class="text-body-secondary fs-11" data-testid="feed-card-author">
+      <!-- Right Header Actions: Author, Timestamp, and Quick Reaction Pill -->
+      <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0 text-muted fs-11">
+        <span class="d-none d-sm-inline" data-testid="feed-card-author">
           <i class="bi bi-person me-0.5" aria-hidden="true"></i>
           {{ authorDisplay }}
         </span>
-        <span class="text-body-secondary fs-11" data-testid="feed-card-created-at">
+        <span class="text-secondary-emphasis" data-testid="feed-card-created-at">
           <i class="bi bi-clock me-0.5" aria-hidden="true"></i>
           {{ formatTimestamp(item.createdAt) }}
         </span>
+
+        <!-- React Button + Floating Palette Container -->
+        <div
+          class="position-relative d-inline-block"
+          @mouseenter="onReactionAreaMouseEnter"
+          @mouseleave="onReactionAreaMouseLeave"
+        >
+          <!-- Floating Reaction Palette -->
+          <div
+            v-if="showReactionPalette"
+            class="op-reaction-palette"
+            data-testid="feed-card-palette"
+            @mouseenter="onReactionAreaMouseEnter"
+            @mouseleave="onReactionAreaMouseLeave"
+          >
+            <button
+              v-for="option in REACTION_OPTIONS"
+              :key="option.type"
+              type="button"
+              class="op-reaction-palette-btn"
+              :class="{ 'opacity-50': isTogglingReaction }"
+              :title="option.label"
+              :disabled="isTogglingReaction"
+              @click.stop="handlePaletteSelect(option.type)"
+            >
+              {{ option.emoji }}
+            </button>
+          </div>
+
+          <!-- React Action Button (Compact Pill) -->
+          <button
+            type="button"
+            class="btn btn-sm py-0.5 px-2 rounded-pill fs-11 font-medium d-inline-flex align-items-center gap-1 border border-light-subtle"
+            :class="activeReactionMeta ? `${activeReactionMeta.colorClass} border-primary bg-primary bg-opacity-10 fw-semibold` : 'btn-light text-secondary'"
+            data-testid="feed-card-react-btn"
+            :disabled="isTogglingReaction"
+            @click.stop="toggleQuickSeenReaction"
+          >
+            <i
+              class="bi"
+              :class="activeReactionMeta ? activeReactionMeta.iconClass : 'bi-hand-thumbs-up'"
+              aria-hidden="true"
+            ></i>
+            <span>{{ activeReactionMeta ? activeReactionMeta.label : 'Seen' }}</span>
+            <span v-if="totalReactionCount > 0" class="fw-bold font-monospace ms-0.5" data-testid="feed-card-reaction-count">({{ totalReactionCount }})</span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Content Excerpt -->
+    <!-- Row 2: Request Title (High Visual Priority) -->
+    <div class="mb-1">
+      <button
+        type="button"
+        class="btn btn-link text-dark fw-semibold text-start p-0 text-decoration-none feed-title-link w-100"
+        data-testid="feed-card-title"
+        :title="item.title"
+        @click.stop="openModal"
+      >
+        {{ item.title }}
+      </button>
+    </div>
+
+    <!-- Row 3: Feed Message / Content Excerpt (Clear & Readable) -->
     <div
-      v-if="contentExcerpt"
-      class="text-secondary fs-12 mb-2 text-break"
+      v-if="shouldShowExcerpt"
+      class="text-body-secondary fs-12 mb-2 line-clamp-2 cursor-pointer lh-base"
       data-testid="feed-card-excerpt"
+      :title="contentExcerpt"
+      @click="openModal"
     >
       {{ contentExcerpt }}
     </div>
 
-    <!-- Contextual Links Row (Request / Work Package) -->
-    <div v-if="effectiveRequestId || effectiveWorkPackageId" class="d-flex align-items-center gap-1.5 mb-2" @click.stop>
-      <RouterLink
-        v-if="effectiveRequestId"
-        :to="`/requests/${effectiveRequestId}`"
-        class="btn btn-sm btn-outline-primary py-0 px-1.5 fs-11"
-        data-testid="feed-card-request-link"
-        @click.stop="navigateToRequest(effectiveRequestId)"
-      >
-        <i class="bi bi-box-arrow-up-right me-0.5" aria-hidden="true"></i>
-        {{ effectiveRequestDisplay }}
-      </RouterLink>
-
-      <RouterLink
-        v-if="effectiveWorkPackageId"
-        :to="`/work-packages/${effectiveWorkPackageId}`"
-        class="btn btn-sm btn-outline-secondary py-0 px-1.5 fs-11"
-        data-testid="feed-card-work-package-link"
-      >
-        <i class="bi bi-kanban me-0.5" aria-hidden="true"></i>
-        WP
-      </RouterLink>
-    </div>
-
-    <!-- Engagement Summary Row (Reactions Count + Comments Count) -->
-    <div class="d-flex justify-content-between align-items-center text-muted fs-11 py-1 mb-1">
-      <!-- Reactions breakdown badges -->
-      <div class="d-flex align-items-center gap-1.5" data-testid="feed-card-reaction-summary">
-        <span v-if="totalReactionCount > 0" class="d-flex align-items-center gap-1">
-          <span
-            v-for="opt in presentReactionOptions"
-            :key="opt.type"
-            class="d-inline-flex align-items-center"
-            :title="`${opt.label}: ${localReactionCounts[opt.type]}`"
-          >
-            <span>{{ opt.emoji }}</span>
-          </span>
-          <span class="ms-1 fw-semibold text-dark" data-testid="feed-card-reaction-count">
-            {{ totalReactionCount }}
-          </span>
-        </span>
-        <span v-else class="text-body-tertiary">
-          No reactions yet
-        </span>
-      </div>
-
-      <!-- Comment Count Indicator -->
-      <div class="d-flex align-items-center gap-1 text-secondary" data-testid="feed-card-comment-count">
-        <i class="bi bi-chat-left-text me-0.5" aria-hidden="true"></i>
-        <span>{{ localCommentCount }} {{ localCommentCount === 1 ? 'comment' : 'comments' }}</span>
-      </div>
-    </div>
-
-    <!-- Facebook-Style Action Bar (React / Comment / View Thread) -->
-    <div class="d-flex align-items-center justify-content-between border-top border-bottom py-1 my-1">
-      <!-- React Button + Floating Palette Container -->
-      <div
-        class="position-relative flex-grow-1 text-center"
-        @mouseenter="onReactionAreaMouseEnter"
-        @mouseleave="onReactionAreaMouseLeave"
-      >
-        <!-- Floating Reaction Palette -->
-        <div
-          v-if="showReactionPalette"
-          class="op-reaction-palette"
-          data-testid="feed-card-palette"
-          @mouseenter="onReactionAreaMouseEnter"
-          @mouseleave="onReactionAreaMouseLeave"
+    <!-- Row 3: Metadata Footer & Engagement Summary (Customer, Product, Signals, Comment trigger) -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-1.5 pt-1 border-top border-light-subtle">
+      <!-- Left Metadata Chips -->
+      <div class="d-flex flex-wrap align-items-center gap-1.5 min-w-0">
+        <!-- Customer Tag -->
+        <span
+          v-if="customerDisplayCode"
+          class="badge bg-light text-dark border text-truncate font-monospace fs-11"
+          style="max-width: 140px; cursor: help;"
+          data-testid="feed-card-customer"
+          :title="customerTooltipName"
         >
-          <button
-            v-for="option in REACTION_OPTIONS"
-            :key="option.type"
-            type="button"
-            class="op-reaction-palette-btn"
-            :class="{ 'opacity-50': isTogglingReaction }"
-            :title="option.label"
-            :disabled="isTogglingReaction"
-            @click.stop="handlePaletteSelect(option.type)"
-          >
-            {{ option.emoji }}
-          </button>
+          <i class="bi bi-building me-1 text-secondary" aria-hidden="true"></i>
+          {{ customerDisplayCode }}
+        </span>
+
+        <!-- Product Tag -->
+        <span
+          v-if="productDisplayCode"
+          class="badge bg-light text-dark border text-truncate font-monospace fs-11"
+          style="max-width: 130px; cursor: help;"
+          data-testid="feed-card-product"
+          :title="productTooltipName"
+        >
+          <i class="bi bi-box-seam me-1 text-secondary" aria-hidden="true"></i>
+          {{ productDisplayCode }}
+        </span>
+
+        <!-- Reactions breakdown badges -->
+        <div class="d-flex align-items-center gap-1 text-muted fs-11 ms-1" data-testid="feed-card-reaction-summary">
+          <span v-if="totalReactionCount > 0" class="d-flex align-items-center gap-0.5">
+            <span
+              v-for="opt in presentReactionOptions"
+              :key="opt.type"
+              class="d-inline-flex align-items-center"
+              :title="`${opt.label}: ${localReactionCounts[opt.type]}`"
+            >
+              <span>{{ opt.emoji }}</span>
+            </span>
+          </span>
         </div>
-
-        <!-- React Action Button -->
-        <button
-          type="button"
-          class="op-action-btn w-100"
-          :class="activeReactionMeta ? activeReactionMeta.colorClass : ''"
-          data-testid="feed-card-react-btn"
-          :disabled="isTogglingReaction"
-          @click.stop="toggleQuickSeenReaction"
-        >
-          <i
-            class="bi"
-            :class="activeReactionMeta ? activeReactionMeta.iconClass : 'bi-hand-thumbs-up'"
-            aria-hidden="true"
-          ></i>
-          <span>{{ activeReactionMeta ? activeReactionMeta.label : 'Seen' }}</span>
-        </button>
       </div>
 
-      <!-- Comment Button (focuses inline textarea) -->
-      <div class="flex-grow-1 text-center">
+      <!-- Right Engagement & Action Triggers -->
+      <div class="d-flex align-items-center gap-1.5 ms-auto flex-shrink-0">
+        <!-- Comment Toggle Button (Expand/Collapse drawer) -->
         <button
           type="button"
-          class="op-action-btn w-100"
+          class="btn btn-sm py-0 px-2 rounded-pill fs-11 d-inline-flex align-items-center gap-1 border transition-colors"
+          :class="isCommentsOpen ? 'btn-primary text-white' : 'btn-light text-secondary'"
           data-testid="feed-card-comment-btn"
-          @click.stop="focusCommentInput"
+          @click.stop="toggleComments"
+          title="Toggle comments drawer"
         >
           <i class="bi bi-chat-left-text" aria-hidden="true"></i>
-          <span>Comment</span>
+          <span data-testid="feed-card-comment-count">{{ localCommentCount }} {{ localCommentCount === 1 ? 'comment' : 'comments' }}</span>
         </button>
-      </div>
 
-      <!-- View Full Thread Button -->
-      <div class="flex-grow-1 text-center">
+        <!-- View Full Thread Button -->
         <button
           type="button"
-          class="op-action-btn w-100 text-secondary"
+          class="btn btn-sm btn-link text-decoration-none py-0 px-1 fs-11 text-body-secondary"
           data-testid="feed-card-open-modal-btn"
           @click.stop="openModal"
         >
-          <i class="bi bi-chat-dots" aria-hidden="true"></i>
-          <span>View full thread</span>
+          <span>Detail &rarr;</span>
         </button>
       </div>
     </div>
 
-    <!-- Comments Section -->
-    <div class="pt-2">
+    <!-- Collapsible Comments Section (Opens smoothly on demand) -->
+    <div v-if="isCommentsOpen" class="pt-2 border-top mt-2 bg-light bg-opacity-50 rounded-2 p-2">
       <!-- Loading comments spinner -->
       <div v-if="isLoadingComments" class="text-center py-2 text-muted fs-11">
         <div class="spinner-border spinner-border-sm text-primary me-1" role="status"></div>
@@ -876,7 +1165,7 @@ onMounted(() => {
       <!-- Comments List (Speech Bubbles) -->
       <div
         v-if="displayedComments.length > 0"
-        class="d-flex flex-column gap-2 mb-2"
+        class="d-flex flex-column gap-1.5 mb-2"
         data-testid="feed-card-comments-list"
       >
         <div
@@ -906,6 +1195,9 @@ onMounted(() => {
           </div>
         </div>
       </div>
+      <div v-else-if="!isLoadingComments && localCommentCount === 0" class="text-muted fs-11 mb-2 ps-1 fst-italic">
+        No comments yet. Write an operational note below.
+      </div>
 
       <!-- Anchored Inline Comment Input Box -->
       <div class="d-flex align-items-start gap-2 pt-1" @click.stop>
@@ -920,7 +1212,7 @@ onMounted(() => {
             ref="commentTextareaRef"
             v-model="newCommentText"
             rows="1"
-            class="form-control form-control-sm pe-5 fs-12 rounded-3 bg-light"
+            class="form-control form-control-sm pe-5 fs-12 rounded-3 bg-white"
             placeholder="Write an operational comment... (Enter to submit, Shift+Enter for newline)"
             data-testid="feed-card-comment-input"
             :disabled="isSubmittingComment"
@@ -955,3 +1247,58 @@ onMounted(() => {
     </div>
   </article>
 </template>
+
+<style scoped>
+.op-feed-card {
+  border: 1px solid #e5e7eb !important;
+  background-color: #ffffff;
+  border-left-width: 4px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.op-feed-card:hover {
+  border-color: #d1d5db !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* 4px Left Status Accent Bars */
+.status-accent-red {
+  border-left-color: #ef4444 !important;
+}
+
+.status-accent-cyan {
+  border-left-color: #06b6d4 !important;
+}
+
+.status-accent-blue {
+  border-left-color: #3b82f6 !important;
+}
+
+.status-accent-gray {
+  border-left-color: #9ca3af !important;
+}
+
+.feed-title-link {
+  color: #111827 !important;
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.35;
+  transition: color 0.15s ease;
+}
+
+.feed-title-link:hover {
+  color: #2563eb !important;
+}
+
+.text-hover-primary:hover {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>
+

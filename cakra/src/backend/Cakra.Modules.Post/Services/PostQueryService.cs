@@ -346,17 +346,21 @@ public sealed class PostQueryService :
         }
 
         string? customerName = null;
+        string? customerCode = null;
         if (postRow.CustomerId.HasValue && _customerQueryService is not null)
         {
             var customer = await _customerQueryService.GetCustomerByIdAsync(postRow.CustomerId.Value, cancellationToken);
             customerName = customer?.CustomerName;
+            customerCode = customer?.CustomerCode;
         }
 
         string? productName = null;
+        string? productCode = null;
         if (postRow.ProductId.HasValue && _productQueryService is not null)
         {
             var product = await _productQueryService.GetProductByIdAsync(postRow.ProductId.Value, cancellationToken);
             productName = product?.Name;
+            productCode = product?.Code;
         }
 
         string? requestTitle = null;
@@ -395,8 +399,10 @@ public sealed class PostQueryService :
             ExceptionType = postRow.ExceptionType,
             CustomerId = postRow.CustomerId,
             CustomerName = customerName,
+            CustomerCode = customerCode,
             ProductId = postRow.ProductId,
             ProductName = productName,
+            ProductCode = productCode,
             RequestId = postRow.RequestId,
             RequestTitle = requestTitle,
             WorkPackageId = postRow.WorkPackageId,

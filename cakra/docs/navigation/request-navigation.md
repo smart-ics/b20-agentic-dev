@@ -12,20 +12,17 @@ This document details the destinations and movement paths for the **Request Life
 ```text
 Requests Area
 ├── SCR-REQ-005: My Assigned Requests [Primary Global Navigation]
-│   ├── Request Selection ──────────► SCR-REQ-003: Request Detail
-│   └── All Requests Link ──────────► SCR-REQ-001: Request List
-│
-├── SCR-REQ-001: Request List [Contextual Navigation]
-│   ├── Create Request Link ────────► SCR-REQ-002: Create Request
 │   └── Request Selection ──────────► SCR-REQ-003: Request Detail
 │
 ├── SCR-REQ-002: Create Request
-│   └── Submission / Return ────────► SCR-REQ-001: Request List
-│                                    └── SCR-REQ-003: Request Detail
+│   ├── Dynamic Return ─────────────► Originating Screen (Fallback: SCR-FEED-001)
+│   └── Creation Transition ────────► SCR-REQ-003: Request Detail
 │
 └── SCR-REQ-003: Request Detail
-    └── Back / Return ──────────────► SCR-REQ-001: Request List
-                                     └── SCR-REQ-005: My Assigned Requests
+    ├── Dynamic Return ─────────────► Originating Screen (Fallback: SCR-FEED-001)
+    └── Assigned Return ────────────► SCR-REQ-005: My Assigned Requests
+
+[Note: SCR-REQ-001 Request List is retired; operational requests are visualized in SCR-FEED-001]
 ```
 
 ---
@@ -34,38 +31,38 @@ Requests Area
 
 ### UJ-REQ-001: Record Customer Request
 * **Primary Actor:** Implementator
-* **Entry Point:** Global Action (`+ New Request`) or Request List (`SCR-REQ-001`, accessed contextually from `SCR-REQ-005: My Assigned Requests` via "All Requests" link or direct URL)
+* **Entry Point:** Global Action (`+ New Request`), Operational Feed (`SCR-FEED-001`), or direct URL (`/requests/create`)
 * **Destination:** `SCR-REQ-002: Create Request`
-* **Exit / Destination:** `SCR-REQ-001: Request List` or `SCR-REQ-003: Request Detail`
+* **Exit / Destination:** Originating Screen (Dynamic history return, fallback to `SCR-FEED-001`) or `SCR-REQ-003: Request Detail`
 * **Movement Path:**
-  1. Actor arrives at `SCR-REQ-002` from contextual `SCR-REQ-001` or via Global Action. Primary global sidebar navigation leads to `SCR-FEED-001: Operational Feed` or `SCR-REQ-005: My Assigned Requests`, from which `SCR-REQ-001` is accessed contextually via the "All Requests" link.
-  2. Upon completing the form, actor navigates to `SCR-REQ-001: Request List` or `SCR-REQ-003: Request Detail`.
+  1. Actor arrives at `SCR-REQ-002` from `SCR-FEED-001: Operational Feed` or via Global Action (`+ New Request`).
+  2. Upon completing the form, actor navigates to `SCR-REQ-003: Request Detail`, or returns to origin (`SCR-FEED-001`) via dynamic return on cancel or back.
 
 ### UJ-REQ-002: Assign Request Owner
 * **Primary Actor:** Implementator
-* **Entry Point:** Contextual `SCR-REQ-001: Request List` (accessed from primary global sidebar entry point `SCR-REQ-005: My Assigned Requests` via "All Requests" link, `SCR-FEED-001: Operational Feed`, or direct URL)
+* **Entry Point:** Operational Feed (`SCR-FEED-001`), `SCR-REQ-005: My Assigned Requests`, or direct link
 * **Destination:** `SCR-REQ-003: Request Detail`
-* **Exit / Destination:** `SCR-REQ-001: Request List` or `SCR-REQ-005: My Assigned Requests`
+* **Exit / Destination:** Originating Screen (Dynamic history return, fallback to `SCR-FEED-001`) or `SCR-REQ-005: My Assigned Requests`
 * **Movement Path:**
-  1. Actor accesses the system via primary global sidebar entry points (`SCR-FEED-001` or `SCR-REQ-005`). From `SCR-REQ-005: My Assigned Requests`, actor navigates contextually to `SCR-REQ-001: Request List` via the "All Requests" link.
-  2. Actor locates a Request on `SCR-REQ-001`.
+  1. Actor accesses the system via primary global sidebar entry points (`SCR-FEED-001: Operational Feed` or `SCR-REQ-005: My Assigned Requests`).
+  2. Actor locates a Request on `SCR-FEED-001` or `SCR-REQ-005`.
   3. Actor selects the Request, navigating to `SCR-REQ-003: Request Detail`.
-  4. Actor remains on `SCR-REQ-003` or returns to `SCR-REQ-001` / `SCR-REQ-005`.
+  4. Actor remains on `SCR-REQ-003` or returns to originating screen via dynamic back navigation (fallback to `SCR-FEED-001`) or `SCR-REQ-005`.
 
 ### UJ-REQ-003: Evaluate Request
 * **Primary Actor:** Request Owner
-* **Entry Point:** `SCR-REQ-001: Request List` or `SCR-REQ-005: My Assigned Requests`
+* **Entry Point:** Operational Feed (`SCR-FEED-001`) or `SCR-REQ-005: My Assigned Requests`
 * **Destination:** `SCR-REQ-003: Request Detail`
-* **Exit / Destination:** `SCR-REQ-001: Request List` or `SCR-REQ-005: My Assigned Requests`
+* **Exit / Destination:** Originating Screen (Dynamic history return, fallback to `SCR-FEED-001`) or `SCR-REQ-005: My Assigned Requests`
 * **Movement Path:**
-  1. Actor selects an assigned Request from `SCR-REQ-001` or `SCR-REQ-005`.
+  1. Actor selects an assigned Request from `SCR-FEED-001` or `SCR-REQ-005`.
   2. Actor arrives at `SCR-REQ-003: Request Detail` to review the record.
 
 ### UJ-REQ-004: Accept Request Responsibility
 * **Primary Actor:** Request Owner
 * **Entry Point:** `SCR-REQ-003: Request Detail`
 * **Destination:** `SCR-REQ-003: Request Detail`
-* **Exit / Destination:** `SCR-REQ-001: Request List` or `SCR-REQ-005: My Assigned Requests`
+* **Exit / Destination:** Originating Screen (Dynamic history return, fallback to `SCR-FEED-001`) or `SCR-REQ-005: My Assigned Requests`
 * **Movement Path:**
   1. Actor is on `SCR-REQ-003: Request Detail`.
   2. Actor remains on `SCR-REQ-003` upon completion or returns to their assigned queue (`SCR-REQ-005`).
@@ -74,36 +71,36 @@ Requests Area
 * **Primary Actor:** Request Owner
 * **Entry Point:** `SCR-REQ-003: Request Detail`
 * **Destination:** `SCR-REQ-003: Request Detail`
-* **Exit / Destination:** `SCR-REQ-001: Request List` or `SCR-REQ-005: My Assigned Requests`
+* **Exit / Destination:** Originating Screen (Dynamic history return, fallback to `SCR-FEED-001`) or `SCR-REQ-005: My Assigned Requests`
 * **Movement Path:**
   1. Actor is on `SCR-REQ-003: Request Detail`.
-  2. Actor remains on `SCR-REQ-003` or returns to `SCR-REQ-001` / `SCR-REQ-005`.
+  2. Actor remains on `SCR-REQ-003` or returns to `SCR-REQ-005` or originating screen.
 
 ### UJ-REQ-006: Escalate Request
 * **Primary Actor:** Request Owner
 * **Entry Point:** `SCR-REQ-003: Request Detail`
 * **Destination:** `SCR-REQ-003: Request Detail`
-* **Exit / Destination:** `SCR-REQ-001: Request List` or `SCR-REQ-005: My Assigned Requests`
+* **Exit / Destination:** Originating Screen (Dynamic history return, fallback to `SCR-FEED-001`) or `SCR-REQ-005: My Assigned Requests`
 * **Movement Path:**
   1. Actor is on `SCR-REQ-003: Request Detail`.
-  2. Actor remains on `SCR-REQ-003` or returns to `SCR-REQ-001` / `SCR-REQ-005`.
+  2. Actor remains on `SCR-REQ-003` or returns to `SCR-REQ-005` or originating screen.
 
 ### UJ-REQ-007: Request Management Decision
 * **Primary Actor:** Request Owner
 * **Entry Point:** `SCR-REQ-003: Request Detail`
 * **Destination:** `SCR-REQ-003: Request Detail`
-* **Exit / Destination:** `SCR-REQ-001: Request List` or `SCR-REQ-005: My Assigned Requests`
+* **Exit / Destination:** Originating Screen (Dynamic history return, fallback to `SCR-FEED-001`) or `SCR-REQ-005: My Assigned Requests`
 * **Movement Path:**
   1. Actor is on `SCR-REQ-003: Request Detail`.
-  2. Actor remains on `SCR-REQ-003` or returns to `SCR-REQ-001` / `SCR-REQ-005`.
+  2. Actor remains on `SCR-REQ-003` or returns to `SCR-REQ-005` or originating screen.
 
 ### UJ-REQ-008: Review Request Completion
 * **Primary Actor:** Implementator
-* **Entry Point:** Contextual `SCR-REQ-001: Request List` (accessed from primary global sidebar entry point `SCR-REQ-005: My Assigned Requests` via "All Requests" link, `SCR-FEED-001: Operational Feed`, or direct URL)
+* **Entry Point:** Operational Feed (`SCR-FEED-001`), `SCR-REQ-005: My Assigned Requests`, or direct link
 * **Destination:** `SCR-REQ-003: Request Detail`
-* **Exit / Destination:** `SCR-REQ-001: Request List` or `SCR-REQ-005: My Assigned Requests`
+* **Exit / Destination:** Originating Screen (Dynamic history return, fallback to `SCR-FEED-001`) or `SCR-REQ-005: My Assigned Requests`
 * **Movement Path:**
-  1. Actor accesses the system via primary global sidebar entry points (`SCR-FEED-001` or `SCR-REQ-005`). From `SCR-REQ-005: My Assigned Requests`, actor navigates contextually to `SCR-REQ-001: Request List` via the "All Requests" link.
-  2. Actor locates a completed Request on `SCR-REQ-001`.
+  1. Actor accesses the system via primary global sidebar entry points (`SCR-FEED-001: Operational Feed` or `SCR-REQ-005: My Assigned Requests`).
+  2. Actor locates a completed Request on `SCR-FEED-001` or `SCR-REQ-005`.
   3. Actor selects the Request, navigating to `SCR-REQ-003: Request Detail`.
-  4. Actor remains on `SCR-REQ-003` or returns to `SCR-REQ-001` / `SCR-REQ-005`.
+  4. Actor remains on `SCR-REQ-003` or returns to originating screen via dynamic back navigation (fallback to `SCR-FEED-001`) or `SCR-REQ-005`.

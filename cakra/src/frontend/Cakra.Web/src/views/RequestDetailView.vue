@@ -891,8 +891,12 @@ async function handleRemoveSubTask(subTaskId: string): Promise<void> {
   }
 }
 
-async function navigateBackToList(): Promise<void> {
-  await router.push('/requests')
+async function handleBack(): Promise<void> {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    await router.push('/feed')
+  }
 }
 
 watch(
@@ -914,15 +918,15 @@ onMounted(async () => {
     <!-- Screen Header -->
     <div class="op-screen-header">
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <router-link
-          to="/requests"
+        <button
+          type="button"
           class="btn btn-outline-secondary btn-sm py-0 px-2"
           style="font-size: 12px; height: 26px; line-height: 24px"
-          data-testid="back-to-requests-link"
-          @click.prevent="navigateBackToList"
+          data-testid="back-button"
+          @click="handleBack"
         >
           <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back
-        </router-link>
+        </button>
         <span class="font-monospace text-body-secondary small fw-medium" data-testid="request-detail-id">
           {{ request?.id || requestId }}
         </span>

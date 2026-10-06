@@ -22,7 +22,7 @@ Navigation defines the destinations available to actors and the paths used to mo
 CAKRA - ICS Operational System
 │
 ├── Operational Feed Area
-│   ├── Operational Feed (SCR-FEED-001)
+│   ├── Operational Feed (SCR-FEED-001) [Primary Workspace; Requests Visualized Here]
 │   │   ├── Post Detail (SCR-POST-001)
 │   │   │   └── Request Detail (SCR-REQ-003)
 │   │   └── Create Post (SCR-POST-002)
@@ -30,11 +30,11 @@ CAKRA - ICS Operational System
 ├── Requests Area
 │   ├── My Assigned Requests (SCR-REQ-005) [Primary Global Navigation]
 │   │   └── Request Detail (SCR-REQ-003)
-│   ├── Request List (SCR-REQ-001) [Contextual / Secondary Navigation]
-│   │   ├── Create Request (SCR-REQ-002)
+│   ├── Create Request (SCR-REQ-002) [Action Navigation / Dynamic Return]
 │   │   └── Request Detail (SCR-REQ-003)
 │   └── Request Search & History (SCR-REQ-004) [Contextual / Direct Navigation]
 │       └── Request Detail (SCR-REQ-003)
+│   [Note: SCR-REQ-001 Request List is retired; operational requests are visualized in SCR-FEED-001]
 │
 ├── Management Oversight Area
 │   ├── Customer Progress Review (SCR-MGT-001)
@@ -60,7 +60,7 @@ Contains destinations for observing operational activity, participating in discu
 * **Primary Actors:** Implementator, Management, Request Owner
 * **Destinations:**
   * **`SCR-FEED-001`: Operational Feed**
-    * *Purpose:* Primary workspace for observing and participating in operational activity.
+    * *Purpose:* Primary workspace for observing and participating in operational activity. Operational requests are visualized here.
     * *Entry Points:* Global Navigation (`Operational Feed` — primary), System Default Landing.
     * *Exit / Destinations:* `SCR-POST-001: Post Detail`, `SCR-POST-002: Create Post`, `SCR-REQ-003: Request Detail` (via Post Reference).
   * **`SCR-POST-001`: Post Detail**
@@ -76,29 +76,30 @@ Contains destinations for observing operational activity, participating in discu
 
 ### Area 1: Requests
 
-Contains destinations for viewing, searching, creating, and inspecting Request records.
+Contains destinations for viewing, searching, creating, and inspecting Request records. *(Note: `SCR-REQ-001: Request List` is retired; operational requests are visualized in `SCR-FEED-001: Operational Feed`).*
 
 * **Primary Actors:** Implementator, Request Owner
 * **Destinations:**
   * **`SCR-REQ-005`: My Assigned Requests**
     * *Purpose:* View Requests assigned to the current user (primary global sidebar entry point for Requests).
     * *Entry Points:* Global Sidebar Navigation (`Operations > My Requests`).
-    * *Exit / Destinations:* `SCR-REQ-003: Request Detail`, `SCR-REQ-001: Request List` (via "All Requests" contextual link).
-  * **`SCR-REQ-001`: Request List**
+    * *Exit / Destinations:* `SCR-REQ-003: Request Detail`.
+  * **`SCR-REQ-001`: Request List (Retired)**
     * *Purpose:* View and locate Requests within the system.
-    * *Entry Points:* Contextual Navigation (via "All Requests" link on `SCR-REQ-005: My Assigned Requests`, "Back to Requests" link on `SCR-REQ-003: Request Detail`, or direct URL).
-    * *Exit / Destinations:* `SCR-REQ-002: Create Request`, `SCR-REQ-003: Request Detail`.
+    * *Status:* Retired / Superseded by `SCR-FEED-001` (Operational Feed). Operational requests are visualized in `SCR-FEED-001`.
+    * *Entry Points:* None (Route `/requests` redirects to `/feed`).
+    * *Exit / Destinations:* Retired.
   * **`SCR-REQ-002`: Create Request**
     * *Purpose:* Record and submit a new Request.
-    * *Entry Points:* `SCR-REQ-001: Request List`, Global Action (`+ New Request`).
-    * *Exit / Destinations:* `SCR-REQ-001: Request List`, `SCR-REQ-003: Request Detail`.
+    * *Entry Points:* Operational Feed (`SCR-FEED-001`), Global Action (`+ New Request`).
+    * *Exit / Destinations:* Originating Screen (Dynamic Back Navigation, fallback to `SCR-FEED-001`), `SCR-REQ-003: Request Detail`.
   * **`SCR-REQ-003`: Request Detail**
     * *Purpose:* View and interact with a specific Request record.
-    * *Entry Points:* `SCR-REQ-001`, `SCR-REQ-002`, `SCR-REQ-004`, `SCR-REQ-005`, `SCR-MGT-001`, `SCR-MGT-002`, `SCR-MGT-003`, Direct Link.
-    * *Exit / Destinations:* `SCR-REQ-001: Request List`, `SCR-REQ-005: My Assigned Requests`, Originating Screen.
+    * *Entry Points:* `SCR-FEED-001`, `SCR-REQ-002`, `SCR-REQ-004`, `SCR-REQ-005`, `SCR-MGT-001`, `SCR-MGT-002`, `SCR-MGT-003`, Direct Link.
+    * *Exit / Destinations:* Originating Screen (Dynamic Back Navigation, fallback to `SCR-FEED-001`), `SCR-REQ-005: My Assigned Requests`.
   * **`SCR-REQ-004`: Request Search & History**
     * *Purpose:* Search and retrieve historical Request records.
-    * *Entry Points:* Contextual Navigation / Direct URL (`/requests/search`), or secondary link from `SCR-REQ-001: Request List`.
+    * *Entry Points:* Contextual Navigation / Direct URL (`/requests/search`).
     * *Exit / Destinations:* `SCR-REQ-003: Request Detail`.
 
 ---
@@ -152,7 +153,6 @@ flowchart TD
     end
 
     subgraph Requests_Area [Requests Area]
-        REQ_LIST["SCR-REQ-001<br/>Request List"]
         REQ_CREATE["SCR-REQ-002<br/>Create Request"]
         REQ_MY["SCR-REQ-005<br/>My Assigned Requests"]
         REQ_SEARCH["SCR-REQ-004<br/>Request Search & History"]
@@ -174,13 +174,13 @@ flowchart TD
     FEED -->|"Select Post"| POST_DETAIL
     FEED -->|"Create Post"| POST_CREATE
     FEED -->|"Post Reference"| REQ_DETAIL
+    FEED -->|"Create Request Action"| REQ_CREATE
     POST_DETAIL -->|"Post Reference"| REQ_DETAIL
     POST_DETAIL -->|"Back"| FEED
     POST_CREATE -->|"On Creation"| FEED
     POST_CREATE -->|"On Creation"| POST_DETAIL
 
-    REQ_LIST <-->|"Navigate"| REQ_CREATE
-    REQ_LIST -->|"Select Request"| REQ_DETAIL
+    REQ_CREATE -->|"Back / Cancel (Dynamic)"| FEED
     REQ_CREATE -->|"On Creation"| REQ_DETAIL
     REQ_MY -->|"Select Request"| REQ_DETAIL
     REQ_SEARCH -->|"Select Result"| REQ_DETAIL
@@ -189,7 +189,7 @@ flowchart TD
     MGT_PERF -->|"Select Request"| REQ_DETAIL
     MGT_WORK -->|"Select Request"| REQ_DETAIL
 
-    REQ_DETAIL -->|"Back / Return"| REQ_LIST
+    REQ_DETAIL -->|"Back / Return (Dynamic)"| FEED
     REQ_DETAIL -->|"Back / Return"| REQ_MY
 
     USR_MGMT -->|"Add / Edit Action"| USR_MODAL
@@ -200,11 +200,11 @@ flowchart TD
 
 * **From User Management (`SCR-USR-001`)**:
   * Open `SCR-USR-002: Add / Edit User Modal` to register a new user account or update an existing account.
-* **From Request List (`SCR-REQ-001`)**:
+* **From Operational Feed (`SCR-FEED-001`)**:
   * Navigate to `SCR-REQ-002: Create Request` to enter a new Request.
-  * Select a Request to navigate to `SCR-REQ-003: Request Detail`.
+  * Select a Request or Post Reference to navigate to `SCR-REQ-003: Request Detail`.
 * **From Create Request (`SCR-REQ-002`)**:
-  * Return to `SCR-REQ-001: Request List` or proceed to `SCR-REQ-003: Request Detail`.
+  * Return via dynamic back navigation (fallback to `SCR-FEED-001`) or proceed to `SCR-REQ-003: Request Detail`.
 * **From My Assigned Requests (`SCR-REQ-005`)**:
   * Select an assigned Request to navigate to `SCR-REQ-003: Request Detail`.
 * **From Request Search & History (`SCR-REQ-004`)**:
@@ -216,7 +216,7 @@ flowchart TD
 * **From Programmer Workload Review (`SCR-MGT-003`)**:
   * Select an active Request to navigate to `SCR-REQ-003: Request Detail`.
 * **From Request Detail (`SCR-REQ-003`)**:
-  * Return to originating screen (`SCR-REQ-001`, `SCR-REQ-005`, `SCR-REQ-004`, or management screens).
+  * Return to originating screen via dynamic back navigation (`SCR-FEED-001`, `SCR-REQ-005`, `SCR-REQ-004`, or management screens).
 
 ---
 
@@ -229,7 +229,7 @@ Every screen in this navigation map traces directly to approved operational arti
 | **SCR-FEED-001** | Operational Feed | UJ-AWR-001, UJ-AWR-002, UJ-AWR-003, UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-005 | UC-AWR-001, UC-AWR-002, UC-AWR-003, UC-FCOL-001, UC-FCOL-002, UC-FCOL-005 | SC-AWR-001, SC-AWR-002, SC-AWR-003, SC-FCOL-001, SC-FCOL-002, SC-FCOL-005 | All Actors | Post, Request, Customer, Product |
 | **SCR-POST-001** | Post Detail | UJ-FCOL-001, UJ-FCOL-002, UJ-FCOL-004 | UC-FCOL-001, UC-FCOL-002, UC-FCOL-004 | SC-FCOL-001, SC-FCOL-002, SC-FCOL-004 | All Actors | Post, Request |
 | **SCR-POST-002** | Create Post | UJ-FCOL-003 | UC-FCOL-003 | SC-FCOL-003 | Implementator | Post |
-| **SCR-REQ-001** | Request List | UJ-REQ-002<br/>UJ-REQ-008<br/>UJ-COL-003 | UC-REQ-002<br/>UC-REQ-008<br/>UC-COL-003 | SC-REQ-002<br/>SC-REQ-008<br/>SC-COL-003 | Implementator<br/>Request Owner | Request, Customer, Organization |
+| **SCR-REQ-001** | Request List *(Retired)* | UJ-REQ-002<br/>UJ-REQ-008<br/>UJ-COL-003 | UC-REQ-002<br/>UC-REQ-008<br/>UC-COL-003 | SC-REQ-002<br/>SC-REQ-008<br/>SC-COL-003 | Retired (Superseded by SCR-FEED-001) | Request, Customer, Organization |
 | **SCR-REQ-002** | Create Request | UJ-REQ-001 | UC-REQ-001 | SC-REQ-001 | Implementator | Request, Customer, Product, Work Package |
 | **SCR-REQ-003** | Request Detail | UJ-REQ-002<br/>UJ-REQ-003<br/>UJ-REQ-004<br/>UJ-REQ-005<br/>UJ-REQ-006<br/>UJ-REQ-007<br/>UJ-REQ-008<br/>UJ-COL-001<br/>UJ-COL-003<br/>UJ-MGT-001 | UC-REQ-002<br/>UC-REQ-003<br/>UC-REQ-004<br/>UC-REQ-005<br/>UC-REQ-006<br/>UC-REQ-007<br/>UC-REQ-008<br/>UC-COL-001<br/>UC-COL-003<br/>UC-MGT-001 | SC-REQ-002<br/>SC-REQ-003<br/>SC-REQ-004<br/>SC-REQ-005<br/>SC-REQ-006<br/>SC-REQ-007<br/>SC-REQ-008<br/>SC-COL-001<br/>SC-COL-003<br/>SC-MGT-001 | Implementator<br/>Request Owner<br/>Management | Request, Post, Customer, Organization, Product |
 | **SCR-REQ-004** | Request Search & History | UJ-COL-002 | UC-COL-002 | SC-COL-002 | Implementator | Request, Customer, Product |

@@ -1,5 +1,8 @@
 # Request List
 
+> [!IMPORTANT]
+> **RETIRED / SUPERSEDED**: This screen (SCR-REQ-001) has been retired. Operational requests are visualized and tracked within SCR-FEED-001 (Operational Feed).
+
 ## Purpose
 
 Provides a structured view of Requests categorized by their operational state, allowing users to find and access authoritative operational records when deep context is needed.

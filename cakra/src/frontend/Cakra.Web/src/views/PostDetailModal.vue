@@ -86,8 +86,10 @@ export interface PostThreadDetails {
   exceptionType?: string | null
   customerId?: string | null
   customerName?: string | null
+  customerCode?: string | null
   productId?: string | null
   productName?: string | null
+  productCode?: string | null
   requestId?: string | null
   requestTitle?: string | null
   workPackageId?: string | null
@@ -230,6 +232,11 @@ const newCommentContent = ref<string>('')
 const errorMessage = ref<string | null>(null)
 const actionFeedbackMessage = ref<string | null>(null)
 
+// Lookup caches to guarantee resolving Customer Code and Product Code even if backend thread only provides IDs/names
+const customerCacheById = ref<Record<string, { code: string; name: string }>>({})
+const productCacheById = ref<Record<string, { code: string; name: string }>>({})
+const hasLoadedLookups = ref(false)
+
 const currentPersonId = computed<string>(() => (authStore.currentUser?.personId ?? '').trim())
 
 const postBody = computed<string>(() => post.value?.body ?? post.value?.content ?? '')
@@ -245,6 +252,18 @@ const postAuthorDisplay = computed<string>(() => {
   return 'Operational User'
 })
 
+const postAuthorInitials = computed<string>(() => {
+  const name = postAuthorDisplay.value.trim()
+  if (!name || name === 'SYSTEM') {
+    return 'SYS'
+  }
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+})
+
 const isArchived = computed<boolean>(
   () => (post.value?.status ?? '').toUpperCase() === 'ARCHIVED',
 )
@@ -252,6 +271,90 @@ const isArchived = computed<boolean>(
 const isHidden = computed<boolean>(
   () => (post.value?.visibility ?? '').toUpperCase() === 'HIDDEN',
 )
+
+/**
+ * Customer and Product display helpers:
+ * Display code instead of name, name is shown as tooltip.
+ */
+const customerDisplayCode = computed<string>(() => {
+  // 1. Direct code on post payload
+  const directCode = post.value?.customerCode?.trim()
+  if (directCode) {
+    return directCode
+  }
+
+  // 2. Lookup by customer ID in cache
+  const custId = post.value?.customerId?.trim().toLowerCase()
+  if (custId && customerCacheById.value[custId]?.code) {
+    return customerCacheById.value[custId].code
+  }
+
+  // 3. Lookup by customer name in cache values
+  const name = post.value?.customerName?.trim()
+  if (name) {
+    const matched = Object.values(customerCacheById.value).find(
+      (c) => c.name.toLowerCase() === name.toLowerCase(),
+    )
+    if (matched?.code) {
+      return matched.code
+    }
+    return name
+  }
+
+  return ''
+})
+
+const customerTooltipName = computed<string>(() => {
+  const custId = post.value?.customerId?.trim().toLowerCase()
+  const cached = custId ? customerCacheById.value[custId] : undefined
+  const name = cached?.name || post.value?.customerName?.trim()
+  const code = customerDisplayCode.value.trim()
+
+  if (name && code && name !== code) {
+    return `${name} (${code})`
+  }
+  return name || code || ''
+})
+
+const productDisplayCode = computed<string>(() => {
+  // 1. Direct code on post payload
+  const directCode = post.value?.productCode?.trim()
+  if (directCode) {
+    return directCode
+  }
+
+  // 2. Lookup by product ID in cache
+  const prodId = post.value?.productId?.trim().toLowerCase()
+  if (prodId && productCacheById.value[prodId]?.code) {
+    return productCacheById.value[prodId].code
+  }
+
+  // 3. Lookup by product name in cache values
+  const name = post.value?.productName?.trim()
+  if (name) {
+    const matched = Object.values(productCacheById.value).find(
+      (p) => p.name.toLowerCase() === name.toLowerCase(),
+    )
+    if (matched?.code) {
+      return matched.code
+    }
+    return name
+  }
+
+  return ''
+})
+
+const productTooltipName = computed<string>(() => {
+  const prodId = post.value?.productId?.trim().toLowerCase()
+  const cached = prodId ? productCacheById.value[prodId] : undefined
+  const name = cached?.name || post.value?.productName?.trim()
+  const code = productDisplayCode.value.trim()
+
+  if (name && code && name !== code) {
+    return `${name} (${code})`
+  }
+  return name || code || ''
+})
 
 /**
  * Resolves the referenced Request ID from direct `requestId`, primary `referenceType === 'REQUEST'`,
@@ -454,6 +557,61 @@ function formatCommentAuthor(comment: PostCommentItem): string {
   return 'Operational User'
 }
 
+function formatCommentAuthorInitials(comment: PostCommentItem): string {
+  const name = formatCommentAuthor(comment)
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
+/**
+ * Loads lookup caches (`/customers/active` and `/products/active`) to guarantee resolving
+ * customer and product codes even for older posts or posts without embedded codes.
+ */
+async function ensureLookupsLoaded(): Promise<void> {
+  if (hasLoadedLookups.value) {
+    return
+  }
+  try {
+    const [custRes, prodRes] = await Promise.all([
+      httpClient.get<Array<{ id?: string; customerId?: string; code?: string; customerCode?: string; name?: string; customerName?: string }>>('/customers/active').catch(() => null),
+      httpClient.get<Array<{ id?: string; productId?: string; code?: string; productCode?: string; name?: string; productName?: string }>>('/products/active').catch(() => null),
+    ])
+
+    if (Array.isArray(custRes?.data)) {
+      const cMap: Record<string, { code: string; name: string }> = {}
+      for (const c of custRes.data) {
+        const id = (c.id || c.customerId || '').trim().toLowerCase()
+        const code = (c.customerCode || c.code || '').trim()
+        const name = (c.customerName || c.name || '').trim()
+        if (id) {
+          cMap[id] = { code: code || name, name: name || code }
+        }
+      }
+      customerCacheById.value = cMap
+    }
+
+    if (Array.isArray(prodRes?.data)) {
+      const pMap: Record<string, { code: string; name: string }> = {}
+      for (const p of prodRes.data) {
+        const id = (p.id || p.productId || '').trim().toLowerCase()
+        const code = (p.productCode || p.code || '').trim()
+        const name = (p.productName || p.name || '').trim()
+        if (id) {
+          pMap[id] = { code: code || name, name: name || code }
+        }
+      }
+      productCacheById.value = pMap
+    }
+
+    hasLoadedLookups.value = true
+  } catch {
+    // Gracefully ignore lookup failure; fallbacks remain in place
+  }
+}
+
 /**
  * Loads full Post thread details (`GET /api/v1/posts/${id}`) and comments (`GET /api/v1/posts/${id}/comments`).
  */
@@ -470,6 +628,7 @@ async function loadPostThread(id: string): Promise<void> {
   errorMessage.value = null
 
   try {
+    void ensureLookupsLoaded()
     const [postResponse, commentsResponse] = await Promise.all([
       httpClient.get<PostThreadDetails>(`/posts/${id}`),
       httpClient.get<PostCommentItem[]>(`/posts/${id}/comments`),
@@ -756,32 +915,24 @@ onBeforeUnmount(() => {
       @click.self="handleClose"
     >
       <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow border">
-          <!-- Modal Header -->
-          <div class="modal-header py-1 px-3 bg-body-tertiary">
-            <div class="d-flex flex-column gap-1 pe-2 flex-grow-1">
-              <div class="d-flex flex-wrap align-items-center gap-1">
-                <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace" style="font-size: 10px">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden bg-body">
+          <!-- 1 & 2. Modern Collaboration Header (Prominent Title + Secondary Metadata + Compact Info Bar) -->
+          <div class="modal-header border-0 pb-2 pt-3 px-3 px-md-4 d-block bg-body">
+            <!-- Utility Bar: Metadata Badges + Top Right Utility Controls -->
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+              <!-- Secondary Metadata Row (SCR-POST-001 • Active • Visible • System Event) -->
+              <div class="d-flex flex-wrap align-items-center gap-1.5 text-body-secondary small">
+                <span class="font-monospace text-body-secondary me-1" style="font-size: 11.5px">
                   SCR-POST-001
                 </span>
-
-                <!-- Exception Badge -->
-                <span
-                  v-if="post?.isException"
-                  class="badge bg-danger"
-                  style="font-size: 10px"
-                  data-testid="post-exception-badge"
-                >
-                  <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
-                  {{ post.exceptionType || 'EXCEPTION' }}
-                </span>
+                <span class="text-secondary-subtle">•</span>
 
                 <!-- Status Badge -->
                 <span
                   v-if="post?.status"
-                  class="badge"
-                  style="font-size: 10px"
-                  :class="isArchived ? 'bg-secondary' : 'bg-success-subtle text-success-emphasis'"
+                  class="badge rounded-pill fw-medium px-2 py-0.5"
+                  style="font-size: 10.5px"
+                  :class="isArchived ? 'bg-secondary text-white' : 'bg-success-subtle text-success-emphasis border border-success-subtle'"
                 >
                   {{ post.status }}
                 </span>
@@ -789,9 +940,9 @@ onBeforeUnmount(() => {
                 <!-- Visibility Badge -->
                 <span
                   v-if="post?.visibility"
-                  class="badge"
-                  style="font-size: 10px"
-                  :class="isHidden ? 'bg-warning text-dark' : 'bg-light text-secondary border'"
+                  class="badge rounded-pill fw-medium px-2 py-0.5"
+                  style="font-size: 10.5px"
+                  :class="isHidden ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-secondary-subtle text-body-secondary border border-secondary-subtle'"
                 >
                   {{ post.visibility }}
                 </span>
@@ -799,33 +950,137 @@ onBeforeUnmount(() => {
                 <!-- Source Badge -->
                 <span
                   v-if="post?.source"
-                  class="badge bg-info-subtle text-info-emphasis"
-                  style="font-size: 10px"
+                  class="badge rounded-pill fw-medium px-2 py-0.5 bg-info-subtle text-info-emphasis border border-info-subtle"
+                  style="font-size: 10.5px"
                 >
                   {{ post.source === 'SYSTEM_GENERATED' ? 'System Event' : 'Operational Post' }}
                 </span>
+
+                <!-- Exception Badge -->
+                <span
+                  v-if="post?.isException"
+                  class="badge rounded-pill fw-medium px-2 py-0.5 bg-danger-subtle text-danger-emphasis border border-danger-subtle"
+                  style="font-size: 10.5px"
+                  data-testid="post-exception-badge"
+                >
+                  <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+                  {{ post.exceptionType || 'EXCEPTION' }}
+                </span>
               </div>
 
-              <h2 id="postDetailModalTitle" class="modal-title h6 fw-bold mb-0">
-                {{ post?.title || (isLoadingPost ? 'Loading post thread…' : 'Operational Post Detail') }}
-              </h2>
+              <!-- Top Right Utilities: Hide/Visible, Archive & Close -->
+              <div class="d-flex align-items-center gap-1">
+                <button
+                  v-if="post"
+                  type="button"
+                  class="btn btn-sm btn-link text-body-secondary text-decoration-none py-0 px-1.5 d-inline-flex align-items-center gap-1"
+                  style="font-size: 11.5px"
+                  :disabled="isTogglingVisibility"
+                  data-testid="post-visibility-toggle-btn"
+                  :title="isHidden ? 'Make Visible' : 'Hide Post'"
+                  @click="handleToggleVisibility"
+                >
+                  <i
+                    class="bi"
+                    :class="isHidden ? 'bi-eye' : 'bi-eye-slash'"
+                    aria-hidden="true"
+                  ></i>
+                  <span class="d-none d-sm-inline">{{ isHidden ? 'Unhide' : 'Hide' }}</span>
+                </button>
+
+                <button
+                  v-if="post && !isArchived"
+                  type="button"
+                  class="btn btn-sm btn-link text-body-secondary text-decoration-none py-0 px-1.5 d-inline-flex align-items-center gap-1"
+                  style="font-size: 11.5px"
+                  :disabled="isArchiving"
+                  data-testid="post-archive-btn"
+                  title="Archive Post"
+                  @click="handleArchivePost"
+                >
+                  <i class="bi bi-archive" aria-hidden="true"></i>
+                  <span class="d-none d-sm-inline">Archive</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-close ms-1 p-1"
+                  aria-label="Close modal"
+                  data-testid="post-modal-close-btn"
+                  @click="handleClose"
+                ></button>
+              </div>
             </div>
 
-            <button
-              type="button"
-              class="btn-close py-1 px-2"
-              aria-label="Close modal"
-              data-testid="post-modal-close-btn"
-              @click="handleClose"
-            ></button>
+            <!-- Prominent Request Title (Large, dominant element) -->
+            <h1 id="postDetailModalTitle" class="h4 fw-bold mb-2 text-body">
+              {{ post?.title || (isLoadingPost ? 'Loading post thread…' : 'Operational Post Detail') }}
+            </h1>
+
+            <!-- 2. Compact Metadata Bar (Unboxed, single muted line with Avatar) -->
+            <div
+              v-if="post"
+              class="d-flex flex-wrap align-items-center gap-2 text-body-secondary small"
+              style="font-size: 12px"
+            >
+              <div class="d-flex align-items-center gap-1.5">
+                <span
+                  class="avatar-circle rounded-circle bg-primary-subtle text-primary fw-semibold d-inline-flex align-items-center justify-content-center"
+                  style="width: 22px; height: 22px; font-size: 10px"
+                  aria-hidden="true"
+                >
+                  {{ postAuthorInitials }}
+                </span>
+                <span class="fw-semibold text-body" data-testid="post-author">
+                  {{ postAuthorDisplay }}
+                </span>
+              </div>
+
+              <span>•</span>
+
+              <time
+                :datetime="post.createdAt"
+                data-testid="post-created-at"
+                class="d-inline-flex align-items-center gap-1"
+              >
+                <i class="bi bi-clock" aria-hidden="true"></i>
+                {{ formatDateTime(post.createdAt) }}
+              </time>
+
+              <template v-if="customerDisplayCode">
+                <span>•</span>
+                <span
+                  class="d-inline-flex align-items-center gap-1 text-body-secondary font-monospace"
+                  style="cursor: help"
+                  :title="customerTooltipName"
+                  data-testid="post-customer-badge"
+                >
+                  <i class="bi bi-building font-sans" aria-hidden="true"></i>
+                  {{ customerDisplayCode }}
+                </span>
+              </template>
+
+              <template v-if="productDisplayCode">
+                <span>•</span>
+                <span
+                  class="d-inline-flex align-items-center gap-1 text-body-secondary font-monospace"
+                  style="cursor: help"
+                  :title="productTooltipName"
+                  data-testid="post-product-badge"
+                >
+                  <i class="bi bi-box-seam font-sans" aria-hidden="true"></i>
+                  {{ productDisplayCode }}
+                </span>
+              </template>
+            </div>
           </div>
 
-          <!-- Modal Body -->
-          <div class="modal-body p-2 p-md-3">
+          <!-- Modal Body: Collaborative Document & Discussion Stream -->
+          <div class="modal-body pt-2 pb-3 px-3 px-md-4">
             <!-- Alert Banners -->
             <div
               v-if="errorMessage"
-              class="alert alert-danger alert-dismissible fade show py-1 px-2 mb-2 small"
+              class="alert alert-danger alert-dismissible fade show py-1.5 px-3 mb-3 small rounded-3"
               role="alert"
               data-testid="post-modal-error"
             >
@@ -833,7 +1088,7 @@ onBeforeUnmount(() => {
               {{ errorMessage }}
               <button
                 type="button"
-                class="btn-close py-1 px-2"
+                class="btn-close py-1.5 px-2"
                 aria-label="Dismiss error"
                 @click="errorMessage = null"
               ></button>
@@ -841,7 +1096,7 @@ onBeforeUnmount(() => {
 
             <div
               v-if="actionFeedbackMessage"
-              class="alert alert-success alert-dismissible fade show py-1 px-2 mb-2 small"
+              class="alert alert-success alert-dismissible fade show py-1.5 px-3 mb-3 small rounded-3"
               role="status"
               data-testid="post-modal-feedback"
             >
@@ -849,7 +1104,7 @@ onBeforeUnmount(() => {
               {{ actionFeedbackMessage }}
               <button
                 type="button"
-                class="btn-close py-1 px-2"
+                class="btn-close py-1.5 px-2"
                 aria-label="Dismiss notice"
                 @click="actionFeedbackMessage = null"
               ></button>
@@ -858,143 +1113,98 @@ onBeforeUnmount(() => {
             <!-- Loading State -->
             <div
               v-if="isLoadingPost && !post"
-              class="py-4 text-center text-body-secondary"
+              class="py-5 text-center text-body-secondary"
               data-testid="post-modal-loading"
             >
-              <div class="spinner-border spinner-border-sm text-primary mb-1" role="status">
+              <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
                 <span class="visually-hidden">Loading post details…</span>
               </div>
-              <p class="mb-0 small">Loading post thread and discussion…</p>
+              <p class="mb-0 small">Loading collaboration workspace…</p>
             </div>
 
-            <!-- Post Thread Content -->
+            <!-- Post Document & Collaboration Workspace -->
             <template v-else-if="post">
-              <!-- Author, Timestamp & Context Metadata Bar -->
-              <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mb-2 pb-1 border-bottom">
-                <div class="d-flex flex-wrap align-items-center gap-2 text-body-secondary small" style="font-size: 11.5px">
-                  <span class="fw-semibold text-body" data-testid="post-author">
-                    <i class="bi bi-person-circle me-1" aria-hidden="true"></i>
-                    {{ postAuthorDisplay }}
-                  </span>
-                  <span>•</span>
-                  <time :datetime="post.createdAt" class="font-monospace" style="font-size: 11px" data-testid="post-created-at">
-                    <i class="bi bi-clock me-1" aria-hidden="true"></i>
-                    {{ formatDateTime(post.createdAt) }}
-                  </time>
+              <!-- 3. Post Body: Document Layout (No textbox, no inset border, natural document flow) -->
+              <article class="post-document-body mb-3 py-1" data-testid="post-body-card">
+                <div
+                  class="post-content-text text-body"
+                  style="white-space: pre-wrap; font-size: 14px; line-height: 1.65"
+                  data-testid="post-body"
+                >
+                  {{ postBody }}
                 </div>
+              </article>
 
-                <!-- Context Badges (Customer & Product) -->
-                <div class="d-flex flex-wrap align-items-center gap-1">
-                  <span
-                    v-if="post.customerName"
-                    class="badge bg-primary-subtle text-primary-emphasis"
-                    style="font-size: 10px"
-                    data-testid="post-customer-badge"
-                  >
-                    <i class="bi bi-building me-1" aria-hidden="true"></i>
-                    {{ post.customerName }}
-                  </span>
-                  <span
-                    v-if="post.productName"
-                    class="badge bg-secondary-subtle text-secondary-emphasis"
-                    style="font-size: 10px"
-                    data-testid="post-product-badge"
-                  >
-                    <i class="bi bi-box-seam me-1" aria-hidden="true"></i>
-                    {{ post.productName }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Post Body / Content -->
-              <div
-                class="card bg-body-tertiary border mb-2 shadow-none"
-                data-testid="post-body-card"
-              >
-                <div class="card-body p-2">
-                  <p class="card-text mb-0 small" style="white-space: pre-wrap; font-size: 12.5px; line-height: 1.4" data-testid="post-body">
-                    {{ postBody }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Contextual Reference Navigation (UC-FCOL-004: Navigate to Request / Work Package) -->
+              <!-- 4. Referenced Context Action Button(s) (Open Request) -->
               <div
                 v-if="effectiveRequestId || effectiveWorkPackageId"
-                class="d-flex flex-wrap align-items-center justify-content-between gap-1 p-1 px-2 mb-2 rounded border bg-light-subtle small"
+                class="d-flex flex-wrap align-items-center gap-1.5 mb-3"
                 data-testid="post-reference-links"
               >
-                <div class="text-body-secondary" style="font-size: 11px">
-                  <i class="bi bi-link-45deg me-1" aria-hidden="true"></i>
-                  <span class="fw-semibold text-body">Referenced Context:</span>
-                </div>
+                <RouterLink
+                  v-if="effectiveRequestId"
+                  :to="`/requests/${effectiveRequestId}`"
+                  class="btn btn-sm btn-outline-secondary py-1 px-2.5 rounded-pill d-inline-flex align-items-center gap-1.5"
+                  style="font-size: 11.5px; height: 28px"
+                  :title="`Open ${effectiveRequestLabel}`"
+                  :aria-label="`Open ${effectiveRequestLabel}`"
+                  data-testid="post-request-link"
+                  @click="navigateToRequest(effectiveRequestId)"
+                >
+                  <i class="bi bi-box-arrow-up-right text-primary" aria-hidden="true" style="font-size: 11px"></i>
+                  <span>Open Request</span>
+                </RouterLink>
 
-                <div class="d-flex flex-wrap align-items-center gap-1">
-                  <RouterLink
-                    v-if="effectiveRequestId"
-                    :to="`/requests/${effectiveRequestId}`"
-                    class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1 py-0 px-2"
-                    style="font-size: 11px; height: 22px; line-height: 20px"
-                    data-testid="post-request-link"
-                    @click="navigateToRequest(effectiveRequestId)"
-                  >
-                    <i class="bi bi-arrow-up-right-square" aria-hidden="true"></i>
-                    <span>{{ effectiveRequestLabel }}</span>
-                  </RouterLink>
-
-                  <RouterLink
-                    v-if="effectiveWorkPackageId"
-                    :to="`/work-packages/${effectiveWorkPackageId}`"
-                    class="btn btn-xs btn-outline-secondary d-inline-flex align-items-center gap-1 py-0 px-2"
-                    style="font-size: 11px; height: 22px; line-height: 20px"
-                    data-testid="post-work-package-link"
-                    @click="navigateToWorkPackage(effectiveWorkPackageId)"
-                  >
-                    <i class="bi bi-kanban" aria-hidden="true"></i>
-                    <span>{{ effectiveWorkPackageLabel }}</span>
-                  </RouterLink>
-                </div>
+                <RouterLink
+                  v-if="effectiveWorkPackageId"
+                  :to="`/work-packages/${effectiveWorkPackageId}`"
+                  class="btn btn-sm btn-outline-secondary py-1 px-2.5 rounded-pill d-inline-flex align-items-center gap-1.5"
+                  style="font-size: 11.5px; height: 28px"
+                  data-testid="post-work-package-link"
+                  @click="navigateToWorkPackage(effectiveWorkPackageId)"
+                >
+                  <i class="bi bi-kanban" aria-hidden="true" style="font-size: 11px"></i>
+                  <span>{{ effectiveWorkPackageLabel }}</span>
+                </RouterLink>
               </div>
 
-              <!-- Operational Reactions Bar (UC-FCOL-002 / FEAT-FCOL-002) -->
-              <section class="mb-2" aria-label="Operational reactions">
-                <div class="d-flex align-items-center justify-content-between mb-1">
-                  <span class="fw-semibold small text-uppercase text-body-secondary" style="font-size: 10.5px">
+              <!-- 5. Modernized Reaction Chips (GitHub-style rounded pills with soft background) -->
+              <section class="mb-4" aria-label="Operational reactions">
+                <div class="d-flex align-items-center justify-content-between mb-1.5">
+                  <span class="text-body-secondary fw-semibold text-uppercase tracking-wider" style="font-size: 11px">
                     Reactions
-                    <span class="badge text-bg-secondary ms-1" style="font-size: 9px">{{ totalReactionCount }}</span>
-                  </span>
-                  <span class="text-body-secondary" style="font-size: 10px">
-                    Click to toggle
+                    <span v-if="totalReactionCount > 0" class="badge rounded-pill bg-body-secondary text-body ms-1" style="font-size: 10px">
+                      {{ totalReactionCount }}
+                    </span>
                   </span>
                 </div>
-
-                <div class="d-flex flex-wrap gap-1" data-testid="post-reaction-buttons">
+                <div class="d-flex flex-wrap align-items-center gap-2" data-testid="post-reaction-buttons">
                   <button
                     v-for="option in REACTION_OPTIONS"
                     :key="option.type"
                     type="button"
-                    class="btn btn-xs d-inline-flex align-items-center gap-1 py-0 px-1.5"
-                    style="font-size: 11px; height: 24px; line-height: 22px"
+                    class="btn btn-sm rounded-pill d-inline-flex align-items-center gap-2 py-1 px-3 transition-all border-0 shadow-none"
+                    style="font-size: 13px; height: 30px"
                     :class="
                       hasUserReacted(option.type)
-                        ? 'btn-primary'
-                        : 'btn-outline-secondary'
+                        ? 'bg-primary-subtle text-primary-emphasis fw-semibold ring-1 ring-primary'
+                        : 'bg-body-secondary text-body-secondary'
                     "
-                    :title="option.description"
+                    :title="`${option.label}: ${option.description}`"
+                    :aria-label="option.label"
                     :disabled="pendingReactionType !== null || isArchived"
                     :data-testid="`reaction-btn-${option.type}`"
                     :aria-pressed="hasUserReacted(option.type)"
                     @click="handleToggleReaction(option.type)"
                   >
-                    <i class="bi" :class="option.iconClass" aria-hidden="true"></i>
-                    <span>{{ option.label }}</span>
+                    <i class="bi me-1" :class="option.iconClass" aria-hidden="true"></i>
                     <span
-                      class="badge rounded-pill ms-0.5"
-                      style="font-size: 9.5px; padding: 1px 4px"
+                      class="badge rounded-pill fw-semibold ms-1"
+                      style="font-size: 10.5px; padding: 2px 6px"
                       :class="
                         hasUserReacted(option.type)
-                          ? 'bg-light text-primary'
-                          : 'bg-secondary-subtle text-secondary-emphasis'
+                          ? 'bg-primary text-white'
+                          : 'bg-body text-body'
                       "
                       :data-testid="`reaction-count-${option.type}`"
                     >
@@ -1004,23 +1214,20 @@ onBeforeUnmount(() => {
                 </div>
               </section>
 
-              <hr class="my-2" />
-
-              <!-- Comments Section (UC-FCOL-001 / FEAT-FCOL-001) -->
-              <section aria-label="Discussion comments">
-                <div class="d-flex align-items-center justify-content-between mb-1">
-                  <span class="fw-semibold small" style="font-size: 11.5px">
-                    <i class="bi bi-chat-left-text me-1 text-primary" aria-hidden="true"></i>
-                    Discussion Comments
-                    <span class="badge text-bg-secondary ms-1" style="font-size: 10px" data-testid="post-comment-count">
+              <!-- 6. Discussion Timeline (Vertical conversational flow, no bordered blocks) -->
+              <section class="mb-2" aria-label="Discussion comments">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <span class="text-body-secondary fw-semibold text-uppercase tracking-wider" style="font-size: 11px">
+                    Discussion Activity
+                    <span class="badge rounded-pill bg-body-secondary text-body ms-1" style="font-size: 10px" data-testid="post-comment-count">
                       {{ comments.length }}
                     </span>
                   </span>
 
                   <button
                     type="button"
-                    class="btn btn-link text-decoration-none p-0 small"
-                    style="font-size: 11px"
+                    class="btn btn-link text-body-secondary text-decoration-none p-0 small"
+                    style="font-size: 11.5px"
                     :disabled="isLoadingComments"
                     @click="refreshThreadState"
                   >
@@ -1031,7 +1238,7 @@ onBeforeUnmount(() => {
                 <!-- Comments Loading Indicator -->
                 <div
                   v-if="isLoadingComments && comments.length === 0"
-                  class="text-center py-2 text-body-secondary small"
+                  class="text-center py-3 text-body-secondary small"
                 >
                   <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                   Loading comments…
@@ -1040,142 +1247,123 @@ onBeforeUnmount(() => {
                 <!-- Empty Comments State -->
                 <div
                   v-else-if="comments.length === 0"
-                  class="text-center py-2 bg-body-tertiary rounded mb-2 text-body-secondary small"
-                  style="font-size: 11.5px"
+                  class="py-3 text-center text-body-secondary small rounded-3 bg-body-tertiary"
+                  style="font-size: 12px"
                   data-testid="post-comments-empty"
                 >
-                  No comments yet. Start the operational discussion below.
+                  No comments yet. Start the conversation below.
                 </div>
 
-                <!-- Comments List -->
-                <ul
+                <!-- Vertical Discussion Timeline (Clean conversational spacing) -->
+                <div
                   v-else
-                  class="list-group list-group-flush border rounded mb-2"
-                  style="max-height: 240px; overflow-y: auto"
+                  class="discussion-timeline d-flex flex-column gap-3 mb-2"
+                  style="max-height: 280px; overflow-y: auto"
                   data-testid="post-comments-list"
                 >
-                  <li
+                  <div
                     v-for="comment in comments"
                     :key="comment.id"
-                    class="list-group-item py-1.5 px-2"
+                    class="d-flex align-items-start gap-2.5"
                     data-testid="post-comment-item"
                   >
-                    <div class="d-flex justify-content-between align-items-center mb-0.5">
-                      <span class="fw-semibold small" style="font-size: 11.5px" data-testid="comment-author">
-                        <i class="bi bi-person me-1 text-secondary" aria-hidden="true"></i>
-                        {{ formatCommentAuthor(comment) }}
-                      </span>
-                      <time
-                        class="text-body-secondary font-monospace"
-                        style="font-size: 10.5px"
-                        :datetime="comment.createdAt"
-                        data-testid="comment-created-at"
-                      >
-                        {{ formatDateTime(comment.createdAt) }}
-                      </time>
-                    </div>
-                    <p
-                      class="mb-0 small text-body"
-                      style="white-space: pre-wrap; font-size: 12px; line-height: 1.35"
-                      data-testid="comment-content"
+                    <!-- Author Avatar Circle -->
+                    <div
+                      class="avatar-circle rounded-circle bg-secondary-subtle text-secondary-emphasis fw-semibold flex-shrink-0 d-inline-flex align-items-center justify-content-center mt-0.5"
+                      style="width: 28px; height: 28px; font-size: 10.5px"
+                      aria-hidden="true"
                     >
-                      {{ comment.content }}
-                    </p>
-                  </li>
-                </ul>
-
-                <!-- Comment Input Form -->
-                <form
-                  class="card bg-body-tertiary border rounded shadow-none mb-0"
-                  data-testid="post-comment-form"
-                  @submit.prevent="handleCommentSubmit"
-                >
-                  <div class="card-body p-2">
-                    <div class="d-flex align-items-center justify-content-between mb-1">
-                      <label for="newPostCommentTextarea" class="form-label mb-0 small fw-semibold" style="font-size: 11px">
-                        Add Comment
-                      </label>
-                      <span v-if="isArchived" class="text-muted small" style="font-size: 10.5px">
-                        Post archived (read-only).
-                      </span>
+                      {{ formatCommentAuthorInitials(comment) }}
                     </div>
-                    <textarea
-                      id="newPostCommentTextarea"
-                      v-model="newCommentContent"
-                      class="form-control form-control-sm mb-1"
-                      rows="2"
-                      placeholder="Write comment..."
-                      :disabled="isSubmittingComment || isArchived"
-                      required
-                      data-testid="post-comment-textarea"
-                    ></textarea>
-                    <div class="d-flex justify-content-end">
-                      <button
-                        type="submit"
-                        class="btn btn-primary btn-sm py-0 px-2"
-                        style="font-size: 11px; height: 24px; line-height: 22px"
-                        :disabled="isSubmittingComment || !newCommentContent.trim() || isArchived"
-                        data-testid="post-comment-submit"
+
+                    <!-- Comment Body Flow -->
+                    <div class="flex-grow-1 min-w-0">
+                      <div class="d-flex align-items-baseline gap-2 mb-0.5">
+                        <span class="fw-semibold text-body small" data-testid="comment-author">
+                          {{ formatCommentAuthor(comment) }}
+                        </span>
+                        <time
+                          class="text-body-tertiary font-monospace"
+                          style="font-size: 11px"
+                          :datetime="comment.createdAt"
+                          data-testid="comment-created-at"
+                        >
+                          {{ formatDateTime(comment.createdAt) }}
+                        </time>
+                      </div>
+
+                      <p
+                        class="mb-0 text-body"
+                        style="white-space: pre-wrap; font-size: 13px; line-height: 1.5"
+                        data-testid="comment-content"
                       >
-                        <span
-                          v-if="isSubmittingComment"
-                          class="spinner-border spinner-border-sm me-1"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
-                        <i v-else class="bi bi-send me-1" aria-hidden="true"></i>
-                        Post Comment
-                      </button>
+                        {{ comment.content }}
+                      </p>
                     </div>
                   </div>
-                </form>
+                </div>
               </section>
             </template>
           </div>
 
-          <!-- Modal Footer -->
-          <div class="modal-footer py-1 px-3 bg-body-tertiary d-flex justify-content-between align-items-center">
-            <div class="d-flex flex-wrap gap-1">
-              <button
-                v-if="post"
-                type="button"
-                class="btn btn-sm btn-outline-secondary py-0 px-2"
-                style="font-size: 11px; height: 24px; line-height: 22px"
-                :disabled="isTogglingVisibility"
-                data-testid="post-visibility-toggle-btn"
-                @click="handleToggleVisibility"
-              >
-                <i
-                  class="bi me-1"
-                  :class="isHidden ? 'bi-eye' : 'bi-eye-slash'"
-                  aria-hidden="true"
-                ></i>
-                {{ isHidden ? 'Make Visible' : 'Hide Post' }}
-              </button>
-
-              <button
-                v-if="post && !isArchived"
-                type="button"
-                class="btn btn-sm btn-outline-warning py-0 px-2"
-                style="font-size: 11px; height: 24px; line-height: 22px"
-                :disabled="isArchiving"
-                data-testid="post-archive-btn"
-                @click="handleArchivePost"
-              >
-                <i class="bi bi-archive me-1" aria-hidden="true"></i>
-                Archive
-              </button>
-            </div>
-
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm py-0 px-2"
-              style="font-size: 11px; height: 24px; line-height: 22px"
-              data-testid="post-modal-footer-close-btn"
-              @click="handleClose"
+          <!-- 7 & 9. Sticky Comment Composer & Simplified Bottom Actions (Slack / GitHub style) -->
+          <div class="modal-footer p-3 px-md-4 border-0 bg-body d-block">
+            <form
+              class="sticky-composer-container rounded-3 border bg-body-tertiary p-2 transition-all shadow-xs"
+              data-testid="post-comment-form"
+              @submit.prevent="handleCommentSubmit"
             >
-              Close
-            </button>
+              <textarea
+                id="newPostCommentTextarea"
+                v-model="newCommentContent"
+                class="form-control form-control-sm border-0 bg-transparent shadow-none px-1 py-1"
+                rows="2"
+                placeholder="Write a comment..."
+                :disabled="isSubmittingComment || isArchived"
+                required
+                style="font-size: 13px; resize: none"
+                data-testid="post-comment-textarea"
+                @keydown.enter.ctrl.prevent="handleCommentSubmit"
+              ></textarea>
+
+              <div class="d-flex align-items-center justify-content-between pt-1 border-top border-light-subtle">
+                <span v-if="isArchived" class="text-muted small ps-1" style="font-size: 11px">
+                  Post archived (read-only).
+                </span>
+                <span v-else class="text-body-tertiary small ps-1" style="font-size: 11px">
+                  Press Ctrl+Enter to post
+                </span>
+
+                <div class="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-link text-body-secondary text-decoration-none py-0 px-2"
+                    style="font-size: 12px"
+                    data-testid="post-modal-footer-close-btn"
+                    @click="handleClose"
+                  >
+                    Close
+                  </button>
+
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-sm py-1 px-3 rounded-2 fw-medium d-inline-flex align-items-center gap-1.5"
+                    style="font-size: 12px"
+                    :disabled="isSubmittingComment || !newCommentContent.trim() || isArchived"
+                    data-testid="post-comment-submit"
+                  >
+                    <span
+                      v-if="isSubmittingComment"
+                      class="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    <i v-else class="bi bi-send-fill" aria-hidden="true" style="font-size: 10px"></i>
+                    Post Comment
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       </div>

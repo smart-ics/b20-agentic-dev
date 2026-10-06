@@ -230,8 +230,16 @@ async function handleSubmit(): Promise<void> {
   }
 }
 
+async function handleBack(): Promise<void> {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    await router.push('/feed')
+  }
+}
+
 async function handleCancel(): Promise<void> {
-  await router.push('/requests')
+  await handleBack()
 }
 
 onMounted(async () => {
@@ -249,14 +257,15 @@ onMounted(async () => {
         <span class="text-body-secondary small d-none d-md-inline">| Record new demand in CAPTURED state</span>
       </div>
 
-      <router-link
-        to="/requests"
+      <button
+        type="button"
         class="btn btn-outline-secondary btn-sm py-0 px-2"
         style="font-size: 12px; height: 26px; line-height: 24px"
-        data-testid="back-to-requests-button"
+        data-testid="back-button"
+        @click="handleBack"
       >
-        <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back to Requests
-      </router-link>
+        <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Back
+      </button>
     </div>
 
     <!-- Error Alert -->

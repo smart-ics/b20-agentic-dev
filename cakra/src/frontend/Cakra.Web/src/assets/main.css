@@ -969,32 +969,32 @@ code, kbd, samp, pre, .font-monospace {
   line-height: 1;
 }
 
-/* High-Density Feed Item Row (Linear / GitHub style) */
+/* High-Density Feed Item Row (Linear / GitHub / SaaS Feed style) */
 .op-feed-row,
 .op-feed-card {
   background-color: #ffffff;
-  border: 1px solid var(--cakra-border);
-  border-radius: 5px;
-  padding: 0.4rem 0.65rem;
-  transition: all 0.12s ease-in-out;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  transition: all 0.15s ease-in-out;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.25rem;
 }
 
 .op-feed-row:hover,
 .op-feed-card:hover {
-  background-color: #f2f6fa;
-  border-color: var(--cakra-cyan);
-  box-shadow: var(--cakra-shadow-xs);
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 .op-feed-row.is-exception,
 .op-feed-card.is-exception {
-  border-left: 3.5px solid #fc5185 !important;
-  background-color: #fff6f8;
+  border-left: 4px solid #ef4444 !important;
 }
+
 
 /* Operational Feed Sticky Contextual Sidebar Panel */
 .op-feed-sticky-panel {
