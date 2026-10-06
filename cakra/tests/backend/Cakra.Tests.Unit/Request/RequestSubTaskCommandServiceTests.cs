@@ -630,6 +630,12 @@ public sealed class RequestSubTaskCommandServiceTests
 
         public Task<RequestResolution?> GetResolutionByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default) =>
             Task.FromResult<RequestResolution?>(null);
+
+        public Task<RequestAggregate?> GetActiveInProgressByOwnerAsync(
+            Guid ownerPersonId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<RequestAggregate?>(
+                _requests.Values.FirstOrDefault(r => r.OwnerPersonId == ownerPersonId && r.Status == RequestStatus.InProgress));
     }
 
     private sealed class FakeOrganizationQueryService : IOrganizationQueryService

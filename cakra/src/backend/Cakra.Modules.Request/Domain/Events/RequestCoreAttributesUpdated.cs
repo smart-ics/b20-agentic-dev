@@ -12,7 +12,8 @@ public sealed record RequestCoreAttributesUpdated(
     string Priority,
     string RequestType,
     Guid ActorPersonId,
-    DateTime OccurredAtUtc) : IDomainEvent
+    DateTime OccurredAtUtc,
+    DateTime? Deadline = null) : IDomainEvent
 {
     public Guid EventId { get; init; } = Guid.NewGuid();
 
@@ -24,12 +25,26 @@ public sealed record RequestCoreAttributesUpdated(
         string requestType,
         Guid actorPersonId,
         DateTime occurredAtUtc,
+        DateTime? deadline = null,
         Guid? eventId = null)
-        : this(requestId, title, description, priority, requestType, actorPersonId, occurredAtUtc)
+        : this(requestId, title, description, priority, requestType, actorPersonId, occurredAtUtc, deadline)
     {
         if (eventId.HasValue)
         {
             EventId = eventId.Value;
         }
+    }
+
+    public RequestCoreAttributesUpdated(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid actorPersonId,
+        DateTime occurredAtUtc,
+        Guid? eventId)
+        : this(requestId, title, description, priority, requestType, actorPersonId, occurredAtUtc, deadline: null, eventId: eventId)
+    {
     }
 }

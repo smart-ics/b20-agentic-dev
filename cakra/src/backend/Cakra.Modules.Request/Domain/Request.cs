@@ -56,6 +56,9 @@ public sealed class Request : EntityBase
     /// <summary>Optional WorkPackageId from Work Package domain grouping this request.</summary>
     public Guid? WorkPackageId { get; private set; }
 
+    /// <summary>Optional target deadline for resolution or delivery, normalized to UTC midnight (CR-020).</summary>
+    public DateTime? Deadline { get; private set; }
+
     /// <summary>Evaluation notes recorded during triage assessment.</summary>
     public string? EvaluationNotes { get; private set; }
 
@@ -70,6 +73,13 @@ public sealed class Request : EntityBase
 
     /// <summary>Clears all recorded domain events after dispatch.</summary>
     public void ClearDomainEvents() => _domainEvents.Clear();
+
+    private static DateTime? NormalizeDeadline(DateTime? deadline)
+    {
+        if (!deadline.HasValue) return null;
+        var d = deadline.Value;
+        return new DateTime(d.Year, d.Month, d.Day, 0, 0, 0, DateTimeKind.Utc);
+    }
 
     // Parameterless constructor for Dapper / persistence hydration
     private Request() { }
@@ -88,6 +98,7 @@ public sealed class Request : EntityBase
         Guid? workPackageId = null,
         string? priority = null,
         int? complexity = null,
+        DateTime? deadline = null,
         DateTime? utcNow = null)
     {
         if (id == Guid.Empty)
@@ -117,6 +128,7 @@ public sealed class Request : EntityBase
             CustomerId = customerId,
             ProductId = productId,
             WorkPackageId = workPackageId,
+            Deadline = NormalizeDeadline(deadline),
             CreatedAt = now,
             UpdatedAt = null
         };
@@ -143,6 +155,7 @@ public sealed class Request : EntityBase
             productId: productId,
             workPackageId: workPackageId,
             priority: request.Priority,
+            deadline: request.Deadline,
             occurredAtUtc: now));
 
         return request;
@@ -496,7 +509,7 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Updates the core attributes (Title, Description, Priority, RequestType) of the Request (CR-018 TD-002).
+    /// Updates the core attributes (Title, Description, Priority, RequestType) and optional deadline of the Request (CR-018 TD-002, CR-020 TD-002, TD-003).
     /// Enforces active lifecycle gating and aggregate invariants.
     /// </summary>
     public void UpdateCoreAttributes(
@@ -505,6 +518,7 @@ public sealed class Request : EntityBase
         string priority,
         string requestType,
         Guid actorPersonId,
+        DateTime? deadline = null,
         DateTime? utcNow = null)
     {
         if (actorPersonId == Guid.Empty)
@@ -536,6 +550,34 @@ public sealed class Request : EntityBase
         Description = description.Trim();
         Priority = normalizedPriority;
         RequestType = normalizedType;
+
+        var normalizedNewDeadline = NormalizeDeadline(deadline);
+        var deadlineChanged = normalizedNewDeadline != Deadline;
+
+        if (deadlineChanged)
+        {
+            string note = (Deadline, normalizedNewDeadline) switch
+            {
+                (null, { } newDate) => $"Deadline set to {newDate:yyyy-MM-dd}",
+                ({ } oldDate, { } newDate) => $"Deadline changed from {oldDate:yyyy-MM-dd} to {newDate:yyyy-MM-dd}",
+                ({ }, null) => "Deadline cleared",
+                _ => "Deadline updated"
+            };
+
+            var assignment = RequestAssignment.Create(
+                requestId: Id,
+                previousOwnerPersonId: OwnerPersonId,
+                assignedOwnerPersonId: OwnerPersonId,
+                actorPersonId: actorPersonId,
+                previousStatus: Status,
+                newStatus: Status,
+                assignedAtUtc: now,
+                notes: note);
+
+            _assignments.Add(assignment);
+        }
+
+        Deadline = normalizedNewDeadline;
         UpdatedAt = now;
 
         _domainEvents.Add(new RequestCoreAttributesUpdated(
@@ -545,7 +587,8 @@ public sealed class Request : EntityBase
             priority: Priority,
             requestType: RequestType,
             actorPersonId: actorPersonId,
-            occurredAtUtc: now));
+            occurredAtUtc: now,
+            deadline: Deadline));
     }
 
     // =========================================================================
@@ -742,7 +785,8 @@ public sealed class Request : EntityBase
         IEnumerable<RequestSubTask>? subTasks = null,
         int totalSubTasksCount = 0,
         int completedSubTasksCount = 0,
-        int completionPercentage = 0)
+        int completionPercentage = 0,
+        DateTime? deadline = null)
     {
         var request = new Request
         {
@@ -757,6 +801,7 @@ public sealed class Request : EntityBase
             CustomerId = customerId,
             ProductId = productId,
             WorkPackageId = workPackageId,
+            Deadline = NormalizeDeadline(deadline),
             EvaluationNotes = evaluationNotes,
             Resolution = resolution,
             CreatedAt = createdAt,

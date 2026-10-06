@@ -19,6 +19,7 @@ import WorkPackageView from '@/views/WorkPackageView.vue'
 // `/requests/create` to SCR-REQ-002 (`CreateRequestView.vue`),
 // `/requests/my` to SCR-REQ-004 (`MyRequestsView.vue`), `/requests/search` to SCR-REQ-005
 // (`RequestSearchView.vue`), `/requests/:id` to SCR-REQ-003 (`RequestDetailView.vue`),
+// `/operations/wip` to SCR-REQ-006 (`WorkInProgressView.vue`; CR-021),
 // `/work-packages` & `/work-packages/:id` to SCR-WP-001 (`WorkPackageView.vue`),
 // `/analytics/customer-portfolio` to SCR-MGT-001 (`CustomerPortfolioView.vue`),
 // `/analytics/programmer-performance` to SCR-MGT-002 (`ProgrammerPerformanceView.vue`),
@@ -82,6 +83,15 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       screenId: 'SCR-REQ-003',
+    },
+  },
+  {
+    path: '/operations/wip',
+    name: 'work-in-progress',
+    component: () => import('@/views/WorkInProgressView.vue'),
+    meta: {
+      requiresAuth: true,
+      screenId: 'SCR-REQ-006',
     },
   },
   {

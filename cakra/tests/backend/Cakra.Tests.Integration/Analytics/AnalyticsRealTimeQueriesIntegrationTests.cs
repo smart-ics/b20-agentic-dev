@@ -171,40 +171,17 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             RequestType: "Support",
             Priority: "LOW"));
 
-        // 2. EVALUATING
-        // 2. ASSIGNED
-        var reqAssigned = await mediator.Send(new RecordRequestCommand(
-            Title: "Assigned request for Rina",
-            Description: "Assigned to Rina",
+        // 2. COMPLETED (closed — must be excluded from active workload)
+        var reqCompleted = await mediator.Send(new RecordRequestCommand(
+            Title: "Completed request for Rina",
+            Description: "Already resolved",
             CustomerId: customer.Id,
-            ProductId: product.Id,
-            RequestType: "Bug",
-            Priority: "NORMAL"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqAssigned.Id, progA.Id));
+            ProductId: product.Id));
+        await mediator.Send(new AssignRequestOwnerCommand(reqCompleted.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(reqCompleted.Id, ActorPersonId: progA.Id));
+        await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted.Id, "Completed fix"));
 
-        // 3. IN_PROGRESS 1
-        var reqInProgress1 = await mediator.Send(new RecordRequestCommand(
-            Title: "In-progress request 1 for Rina",
-            Description: "Active coding in progress",
-            CustomerId: customer.Id,
-            ProductId: product.Id,
-            RequestType: "Feature",
-            Priority: "HIGH"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqInProgress1.Id, progA.Id));
-        await mediator.Send(new StartWorkCommand(reqInProgress1.Id, ActorPersonId: progA.Id));
-
-        // 4. IN_PROGRESS 2
-        var reqInProgress2 = await mediator.Send(new RecordRequestCommand(
-            Title: "In-progress request 2 for Rina",
-            Description: "Active coding in progress",
-            CustomerId: customer.Id,
-            ProductId: product.Id,
-            RequestType: "Bug",
-            Priority: "HIGH"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqInProgress2.Id, progA.Id));
-        await mediator.Send(new StartWorkCommand(reqInProgress2.Id, ActorPersonId: progA.Id));
-
-        // 5. PAUSED (and stalled > 72h)
+        // 3. PAUSED (and stalled > 72h)
         var reqPaused = await mediator.Send(new RecordRequestCommand(
             Title: "Paused blocker for Rina",
             Description: "Blocked on database schema lock",
@@ -216,15 +193,36 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
         await mediator.Send(new StartWorkCommand(reqPaused.Id, ActorPersonId: progA.Id));
         await mediator.Send(new PauseWorkCommand(reqPaused.Id, Note: "Waiting on DBA approval", ActorPersonId: progA.Id));
 
-        // 6. COMPLETED (closed — must be excluded from active workload)
-        var reqCompleted = await mediator.Send(new RecordRequestCommand(
-            Title: "Completed request for Rina",
-            Description: "Already resolved",
+        // 4. IN_PROGRESS 1
+        var reqInProgress1 = await mediator.Send(new RecordRequestCommand(
+            Title: "In-progress request 1 for Rina",
+            Description: "Active coding in progress",
             CustomerId: customer.Id,
-            ProductId: product.Id));
-        await mediator.Send(new AssignRequestOwnerCommand(reqCompleted.Id, progA.Id));
-        await mediator.Send(new StartWorkCommand(reqCompleted.Id, ActorPersonId: progA.Id));
-        await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted.Id, "Completed fix"));
+            ProductId: product.Id,
+            RequestType: "Feature",
+            Priority: "HIGH"));
+        await mediator.Send(new AssignRequestOwnerCommand(reqInProgress1.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(reqInProgress1.Id, ActorPersonId: progA.Id));
+
+        // 5. IN_PROGRESS 2 (assigned to Rina; status updated in DB to test aggregation of multiple active items)
+        var reqInProgress2 = await mediator.Send(new RecordRequestCommand(
+            Title: "In-progress request 2 for Rina",
+            Description: "Active coding in progress",
+            CustomerId: customer.Id,
+            ProductId: product.Id,
+            RequestType: "Bug",
+            Priority: "HIGH"));
+        await mediator.Send(new AssignRequestOwnerCommand(reqInProgress2.Id, progA.Id));
+
+        // 6. ASSIGNED
+        var reqAssigned = await mediator.Send(new RecordRequestCommand(
+            Title: "Assigned request for Rina",
+            Description: "Assigned to Rina",
+            CustomerId: customer.Id,
+            ProductId: product.Id,
+            RequestType: "Bug",
+            Priority: "NORMAL"));
+        await mediator.Send(new AssignRequestOwnerCommand(reqAssigned.Id, progA.Id));
 
         // 7. CANCELLED (closed — must be excluded from active workload)
         var reqCancelled = await mediator.Send(new RecordRequestCommand(
@@ -243,7 +241,7 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
             ProductId: product.Id));
         await mediator.Send(new AssignRequestOwnerCommand(reqProgB.Id, progB.Id));
 
-        // Ensure exact sub-states in DB for CAPTURED (with OwnerPersonId) and stalled PAUSED
+        // Ensure exact sub-states in DB for CAPTURED (with OwnerPersonId), IN_PROGRESS 2, and stalled PAUSED
         var stalledTime = DateTime.UtcNow.AddHours(-80);
         using (var db = connectionFactory.CreateConnection())
         {
@@ -254,6 +252,10 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
                 WHERE [Id] = @CapturedId;
 
                 UPDATE [request].[Requests]
+                SET [Status] = 'IN_PROGRESS'
+                WHERE [Id] = @InProgress2Id;
+
+                UPDATE [request].[Requests]
                 SET [CreatedAt] = @StalledTime, [UpdatedAt] = @StalledTime
                 WHERE [Id] = @PausedId;
                 """,
@@ -261,6 +263,7 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
                 {
                     OwnerId = progA.Id,
                     CapturedId = reqCaptured.Id,
+                    InProgress2Id = reqInProgress2.Id,
                     PausedId = reqPaused.Id,
                     StalledTime = stalledTime
                 });
@@ -349,26 +352,29 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
         currentContext?.Initialize(Guid.NewGuid(), programmer.Id, new[] { "Programmer" });
 
         // Create portfolio requests for custWithContract:
-        // 1. Active IN_PROGRESS
-        var reqActive1 = await mediator.Send(new RecordRequestCommand(
-            Title: "HL7 Analyzer Interface Update",
-            Description: "Add new hematology analyzer mapping",
+        // 1. Recent Completion 1 (COMPLETED)
+        var reqCompleted1 = await mediator.Send(new RecordRequestCommand(
+            Title: "Fix Barcode Checksum",
+            Description: "Code128 checksum fix",
+            CustomerId: custWithContract.Id,
+            ProductId: product.Id,
+            RequestType: "Bug",
+            Priority: "HIGH"));
+        await mediator.Send(new AssignRequestOwnerCommand(reqCompleted1.Id, programmer.Id));
+        await mediator.Send(new StartWorkCommand(reqCompleted1.Id, ActorPersonId: programmer.Id));
+        await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted1.Id, "Deployed barcode patch v1.4.2"));
+
+        // 2. Recent Completion 2 (COMPLETED)
+        var reqCompleted2 = await mediator.Send(new RecordRequestCommand(
+            Title: "Add Reagent Lot Report",
+            Description: "Monthly reagent usage export",
             CustomerId: custWithContract.Id,
             ProductId: product.Id,
             RequestType: "Feature",
-            Priority: "HIGH"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqActive1.Id, programmer.Id));
-        await mediator.Send(new StartWorkCommand(reqActive1.Id, ActorPersonId: programmer.Id));
-
-        // 2. Active ASSIGNED
-        var reqActive2 = await mediator.Send(new RecordRequestCommand(
-            Title: "Outpatient Lab Slip Layout",
-            Description: "Adjust header margin on thermal printer",
-            CustomerId: custWithContract.Id,
-            ProductId: product.Id,
-            RequestType: "Support",
             Priority: "NORMAL"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqActive2.Id, programmer.Id));
+        await mediator.Send(new AssignRequestOwnerCommand(reqCompleted2.Id, programmer.Id));
+        await mediator.Send(new StartWorkCommand(reqCompleted2.Id, ActorPersonId: programmer.Id));
+        await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted2.Id, "Added CSV export endpoint"));
 
         // 3. Open Blocker (PAUSED)
         var reqBlocker = await mediator.Send(new RecordRequestCommand(
@@ -382,29 +388,26 @@ public class AnalyticsRealTimeQueriesIntegrationTests : IAsyncLifetime
         await mediator.Send(new StartWorkCommand(reqBlocker.Id, ActorPersonId: programmer.Id));
         await mediator.Send(new PauseWorkCommand(reqBlocker.Id, Note: "Requires hospital infra firewall change", ActorPersonId: programmer.Id));
 
-        // 4. Recent Completion 1 (COMPLETED)
-        var reqCompleted1 = await mediator.Send(new RecordRequestCommand(
-            Title: "Fix Barcode Checksum",
-            Description: "Code128 checksum fix",
-            CustomerId: custWithContract.Id,
-            ProductId: product.Id,
-            RequestType: "Bug",
-            Priority: "HIGH"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqCompleted1.Id, programmer.Id));
-        await mediator.Send(new StartWorkCommand(reqCompleted1.Id, ActorPersonId: programmer.Id));
-        await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted1.Id, "Deployed barcode patch v1.4.2"));
-
-        // 5. Recent Completion 2 (COMPLETED)
-        var reqCompleted2 = await mediator.Send(new RecordRequestCommand(
-            Title: "Add Reagent Lot Report",
-            Description: "Monthly reagent usage export",
+        // 4. Active IN_PROGRESS
+        var reqActive1 = await mediator.Send(new RecordRequestCommand(
+            Title: "HL7 Analyzer Interface Update",
+            Description: "Add new hematology analyzer mapping",
             CustomerId: custWithContract.Id,
             ProductId: product.Id,
             RequestType: "Feature",
+            Priority: "HIGH"));
+        await mediator.Send(new AssignRequestOwnerCommand(reqActive1.Id, programmer.Id));
+        await mediator.Send(new StartWorkCommand(reqActive1.Id, ActorPersonId: programmer.Id));
+
+        // 5. Active ASSIGNED
+        var reqActive2 = await mediator.Send(new RecordRequestCommand(
+            Title: "Outpatient Lab Slip Layout",
+            Description: "Adjust header margin on thermal printer",
+            CustomerId: custWithContract.Id,
+            ProductId: product.Id,
+            RequestType: "Support",
             Priority: "NORMAL"));
-        await mediator.Send(new AssignRequestOwnerCommand(reqCompleted2.Id, programmer.Id));
-        await mediator.Send(new StartWorkCommand(reqCompleted2.Id, ActorPersonId: programmer.Id));
-        await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted2.Id, "Added CSV export endpoint"));
+        await mediator.Send(new AssignRequestOwnerCommand(reqActive2.Id, programmer.Id));
 
         // 6. Cancelled Request (CANCELLED)
         var reqRejected = await mediator.Send(new RecordRequestCommand(

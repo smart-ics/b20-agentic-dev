@@ -21,7 +21,8 @@ public sealed class RequestQueryService :
     IRequestHandler<GetRequestStateHistoryQuery, IReadOnlyList<RequestAssignmentDto>>,
     IRequestHandler<ListMyAssignedRequestsQuery, IReadOnlyList<RequestDto>>,
     IRequestHandler<GetFilteredRequestGridQuery, PagedRequestGridResult>,
-    IRequestHandler<GetRequestsWithAssignedSubTasksQuery, IReadOnlyList<RequestDto>>
+    IRequestHandler<GetRequestsWithAssignedSubTasksQuery, IReadOnlyList<RequestDto>>,
+    IRequestHandler<GetWorkInProgressOverviewQuery, IReadOnlyList<PersonWorkInProgressDto>>
 {
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly ICurrentContextProvider? _currentContextProvider;
@@ -622,6 +623,271 @@ public sealed class RequestQueryService :
         CancellationToken cancellationToken = default)
         => GetRequestsByIdsAsync(requestIds, cancellationToken);
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PersonWorkInProgressDto>> GetWorkInProgressOverviewAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string activeRequestsSql = """
+            SELECT
+                r.[Id],
+                r.[Title],
+                r.[Description],
+                r.[RequestType],
+                r.[Status],
+                r.[Priority],
+                r.[CustomerId],
+                r.[ProductId],
+                r.[WorkPackageId],
+                r.[OwnerPersonId],
+                r.[CreatedAt],
+                r.[UpdatedAt]
+            FROM [request].[Requests] r
+            WHERE r.[Status] IN ('IN_PROGRESS', 'PAUSED')
+              AND r.[OwnerPersonId] IS NOT NULL
+            ORDER BY r.[UpdatedAt] DESC, r.[CreatedAt] DESC, r.[Id] ASC;
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        var requestRows = (await connection.QueryAsync<WorkInProgressRequestRow>(
+            new CommandDefinition(activeRequestsSql, cancellationToken: cancellationToken))).AsList();
+
+        if (requestRows.Count == 0)
+        {
+            return Array.Empty<PersonWorkInProgressDto>();
+        }
+
+        var requestIds = requestRows.Select(r => r.Id).Distinct().ToList();
+
+        const string assignmentsSql = """
+            SELECT
+                [Id],
+                [RequestId],
+                [PreviousOwnerPersonId],
+                [AssignedOwnerPersonId],
+                [ActorPersonId],
+                [PreviousStatus],
+                [NewStatus],
+                [AssignedAtUtc],
+                [Notes],
+                [CreatedAt],
+                [UpdatedAt]
+            FROM [request].[RequestAssignments]
+            WHERE [RequestId] IN @RequestIds
+            ORDER BY [AssignedAtUtc] ASC, [CreatedAt] ASC, [Id] ASC;
+            """;
+
+        var assignmentRows = (await connection.QueryAsync<RequestAssignmentDto>(
+            new CommandDefinition(assignmentsSql, new { RequestIds = requestIds }, cancellationToken: cancellationToken))).AsList();
+
+        var assignmentsByRequest = assignmentRows
+            .GroupBy(a => a.RequestId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<RequestAssignmentDto>)g.ToList());
+
+        // Cache customers
+        var customerIds = requestRows
+            .Where(r => r.CustomerId.HasValue && r.CustomerId.Value != Guid.Empty)
+            .Select(r => r.CustomerId!.Value)
+            .Distinct()
+            .ToList();
+
+        var customerCache = new Dictionary<Guid, CustomerDto?>();
+        if (_customerQueryService is not null)
+        {
+            foreach (var cid in customerIds)
+            {
+                var cust = await _customerQueryService.GetCustomerByIdAsync(cid, cancellationToken);
+                customerCache[cid] = cust;
+            }
+        }
+
+        // Cache persons
+        var personIds = requestRows
+            .Where(r => r.OwnerPersonId.HasValue && r.OwnerPersonId.Value != Guid.Empty)
+            .Select(r => r.OwnerPersonId!.Value)
+            .Distinct()
+            .ToList();
+
+        var personCache = new Dictionary<Guid, PersonDto?>();
+        if (_organizationQueryService is not null)
+        {
+            foreach (var pid in personIds)
+            {
+                var person = await _organizationQueryService.GetPersonByIdAsync(pid, cancellationToken);
+                personCache[pid] = person;
+            }
+        }
+
+        var utcNow = DateTime.UtcNow;
+        var tasksByOwner = new Dictionary<Guid, List<TaskWorkInProgressDto>>();
+
+        foreach (var req in requestRows)
+        {
+            if (!req.OwnerPersonId.HasValue)
+            {
+                continue;
+            }
+
+            assignmentsByRequest.TryGetValue(req.Id, out var reqAssignments);
+            var (totalSeconds, totalHours, formatted, lastStartedAt) = CalculateInProgressDuration(
+                req.Status,
+                req.CreatedAt,
+                req.UpdatedAt,
+                reqAssignments,
+                utcNow);
+
+            CustomerDto? cust = null;
+            if (req.CustomerId.HasValue)
+            {
+                customerCache.TryGetValue(req.CustomerId.Value, out cust);
+            }
+
+            var taskDto = new TaskWorkInProgressDto
+            {
+                RequestId = req.Id,
+                Title = req.Title,
+                Description = req.Description,
+                RequestType = req.RequestType,
+                Status = req.Status,
+                Priority = req.Priority,
+                CustomerId = req.CustomerId,
+                CustomerName = cust?.CustomerName,
+                CustomerCode = cust?.CustomerCode,
+                ProductId = req.ProductId,
+                WorkPackageId = req.WorkPackageId,
+                TotalInProgressSeconds = totalSeconds,
+                TotalInProgressHours = totalHours,
+                TotalInProgressFormatted = formatted,
+                CreatedAt = req.CreatedAt,
+                UpdatedAt = req.UpdatedAt,
+                LastStartedAt = lastStartedAt
+            };
+
+            if (!tasksByOwner.TryGetValue(req.OwnerPersonId.Value, out var ownerTasks))
+            {
+                ownerTasks = new List<TaskWorkInProgressDto>();
+                tasksByOwner[req.OwnerPersonId.Value] = ownerTasks;
+            }
+            ownerTasks.Add(taskDto);
+        }
+
+        var personDtos = new List<PersonWorkInProgressDto>(personIds.Count);
+
+        foreach (var personId in personIds)
+        {
+            personCache.TryGetValue(personId, out var person);
+            var personName = !string.IsNullOrWhiteSpace(person?.FullName)
+                ? person.FullName
+                : $"Person {personId}";
+            var email = person?.Email;
+
+            tasksByOwner.TryGetValue(personId, out var personTasks);
+            personTasks ??= new List<TaskWorkInProgressDto>();
+
+            var inProgressTask = personTasks.FirstOrDefault(t =>
+                string.Equals(t.Status, RequestStatusNames.InProgress, StringComparison.OrdinalIgnoreCase));
+
+            var pausedTasks = personTasks
+                .Where(t => string.Equals(t.Status, RequestStatusNames.Paused, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(t => t.UpdatedAt ?? t.CreatedAt)
+                .ThenBy(t => t.RequestId)
+                .ToList();
+
+            personDtos.Add(new PersonWorkInProgressDto
+            {
+                PersonId = personId,
+                PersonName = personName,
+                Email = email,
+                InProgressTask = inProgressTask,
+                PausedTasks = pausedTasks
+            });
+        }
+
+        return personDtos
+            .OrderBy(p => p.InProgressTask is null ? 1 : 0)
+            .ThenBy(p => p.PersonName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(p => p.PersonId)
+            .ToList();
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<PersonWorkInProgressDto>> GetWorkInProgressOverview(
+        CancellationToken cancellationToken = default)
+        => GetWorkInProgressOverviewAsync(cancellationToken);
+
+    /// <summary>
+    /// Computes cumulative elapsed time spent in IN_PROGRESS status for a request across
+    /// all historical start/pause intervals in chronological order (Architecture CR-021 §4 TD-002).
+    /// </summary>
+    public static (double TotalSeconds, double TotalHours, string Formatted, DateTime? LastStartedAt) CalculateInProgressDuration(
+        string status,
+        DateTime createdAt,
+        DateTime? updatedAt,
+        IReadOnlyList<RequestAssignmentDto>? assignments,
+        DateTime? referenceUtc = null)
+    {
+        var effectiveReferenceUtc = referenceUtc ?? DateTime.UtcNow;
+        var inProgressAssignments = new List<(int Index, RequestAssignmentDto Assignment)>();
+
+        if (assignments is not null)
+        {
+            for (var i = 0; i < assignments.Count; i++)
+            {
+                if (string.Equals(assignments[i].NewStatus, RequestStatusNames.InProgress, StringComparison.OrdinalIgnoreCase))
+                {
+                    inProgressAssignments.Add((i, assignments[i]));
+                }
+            }
+        }
+
+        DateTime? lastStartedAt = inProgressAssignments.Count > 0
+            ? inProgressAssignments[^1].Assignment.AssignedAtUtc
+            : (string.Equals(status, RequestStatusNames.InProgress, StringComparison.OrdinalIgnoreCase) ? (updatedAt ?? createdAt) : null);
+
+        double totalSeconds = 0;
+
+        if (assignments is not null && inProgressAssignments.Count > 0)
+        {
+            foreach (var (idx, inProgressItem) in inProgressAssignments)
+            {
+                var tStart = inProgressItem.AssignedAtUtc;
+                DateTime tEnd;
+
+                if (idx + 1 < assignments.Count)
+                {
+                    tEnd = assignments[idx + 1].AssignedAtUtc;
+                }
+                else
+                {
+                    if (string.Equals(status, RequestStatusNames.InProgress, StringComparison.OrdinalIgnoreCase))
+                    {
+                        tEnd = effectiveReferenceUtc;
+                    }
+                    else
+                    {
+                        tEnd = updatedAt ?? createdAt;
+                    }
+                }
+
+                var deltaSeconds = Math.Max(0.0, (tEnd - tStart).TotalSeconds);
+                totalSeconds += deltaSeconds;
+            }
+        }
+        else if (string.Equals(status, RequestStatusNames.InProgress, StringComparison.OrdinalIgnoreCase))
+        {
+            var tStart = updatedAt ?? createdAt;
+            totalSeconds = Math.Max(0.0, (effectiveReferenceUtc - tStart).TotalSeconds);
+        }
+
+        var totalHours = Math.Round(totalSeconds / 3600.0, 2);
+        var timeSpan = TimeSpan.FromSeconds(totalSeconds);
+        var hours = (int)timeSpan.TotalHours;
+        var minutes = timeSpan.Minutes;
+        var formatted = $"{hours}h {minutes}m";
+
+        return (totalSeconds, totalHours, formatted, lastStartedAt);
+    }
+
+
     // MediatR query handler entry points
     Task<RequestDto?> IRequestHandler<GetRequestByIdQuery, RequestDto?>.Handle(
         GetRequestByIdQuery request,
@@ -774,6 +1040,15 @@ public sealed class RequestQueryService :
         return GetRequestsWithAssignedSubTasksAsync(request.PersonId, cancellationToken);
     }
 
+    public Task<IReadOnlyList<PersonWorkInProgressDto>> Handle(
+        GetWorkInProgressOverviewQuery request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return GetWorkInProgressOverviewAsync(cancellationToken);
+    }
+
+
     private sealed class RequestWithResolutionRow
     {
         public Guid Id { get; init; }
@@ -879,4 +1154,21 @@ public sealed class RequestQueryService :
             CreatedAt,
             UpdatedAt);
     }
+
+    private sealed class WorkInProgressRequestRow
+    {
+        public Guid Id { get; init; }
+        public string Title { get; init; } = string.Empty;
+        public string Description { get; init; } = string.Empty;
+        public string RequestType { get; init; } = string.Empty;
+        public string Status { get; init; } = string.Empty;
+        public string Priority { get; init; } = "NORMAL";
+        public Guid? CustomerId { get; init; }
+        public Guid? ProductId { get; init; }
+        public Guid? WorkPackageId { get; init; }
+        public Guid? OwnerPersonId { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public DateTime? UpdatedAt { get; init; }
+    }
 }
+

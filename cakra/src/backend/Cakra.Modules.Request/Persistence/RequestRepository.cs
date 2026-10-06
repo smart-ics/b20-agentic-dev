@@ -44,6 +44,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [ProductId],
                 [WorkPackageId],
                 [EvaluationNotes],
+                [Deadline],
                 [CreatedAt],
                 [UpdatedAt]
             FROM [request].[Requests]
@@ -144,6 +145,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [ProductId],
                 [WorkPackageId],
                 [EvaluationNotes],
+                [Deadline],
                 [CreatedAt],
                 [UpdatedAt]
             FROM [request].[Requests]
@@ -156,6 +158,44 @@ internal sealed class RequestRepository : IRequestRepository
 
         return rows.Select(r => r.ToDomain()).ToList();
     }
+
+    public async Task<Domain.Request?> GetActiveInProgressByOwnerAsync(
+        Guid ownerPersonId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT TOP (1)
+                [Id],
+                [Title],
+                [Description],
+                [RequestType],
+                [Status],
+                [Priority],
+                [Complexity],
+                [TotalSubTasksCount],
+                [CompletedSubTasksCount],
+                [CompletionPercentage],
+                [OwnerPersonId],
+                [CustomerId],
+                [ProductId],
+                [WorkPackageId],
+                [EvaluationNotes],
+                [Deadline],
+                [CreatedAt],
+                [UpdatedAt]
+            FROM [request].[Requests]
+            WHERE [OwnerPersonId] = @OwnerPersonId
+              AND [Status] = 'IN_PROGRESS';
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        var row = await connection.QuerySingleOrDefaultAsync<RequestRow>(
+            new CommandDefinition(sql, new { OwnerPersonId = ownerPersonId }, cancellationToken: cancellationToken));
+
+        return row is null ? null : HydrateFromRow(row);
+    }
+
+    private static Domain.Request HydrateFromRow(RequestRow row) => row.ToDomain();
 
     public async Task AddAsync(Domain.Request entity, CancellationToken cancellationToken = default)
     {
@@ -188,6 +228,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [ProductId],
                 [WorkPackageId],
                 [EvaluationNotes],
+                [Deadline],
                 [CreatedAt],
                 [UpdatedAt]
             ) VALUES (
@@ -206,6 +247,7 @@ internal sealed class RequestRepository : IRequestRepository
                 @ProductId,
                 @WorkPackageId,
                 @EvaluationNotes,
+                @Deadline,
                 @CreatedAt,
                 @UpdatedAt
             );
@@ -262,6 +304,7 @@ internal sealed class RequestRepository : IRequestRepository
                 entity.ProductId,
                 entity.WorkPackageId,
                 entity.EvaluationNotes,
+                entity.Deadline,
                 entity.CreatedAt,
                 entity.UpdatedAt
             }, transaction: transaction, cancellationToken: cancellationToken));
@@ -309,6 +352,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [ProductId] = @ProductId,
                 [WorkPackageId] = @WorkPackageId,
                 [EvaluationNotes] = @EvaluationNotes,
+                [Deadline] = @Deadline,
                 [UpdatedAt] = @UpdatedAt
             WHERE [Id] = @Id;
             """;
@@ -388,6 +432,7 @@ internal sealed class RequestRepository : IRequestRepository
             entity.ProductId,
             entity.WorkPackageId,
             entity.EvaluationNotes,
+            entity.Deadline,
             entity.UpdatedAt
         }, transaction: transaction, cancellationToken: cancellationToken));
 
@@ -635,6 +680,7 @@ internal sealed class RequestRepository : IRequestRepository
         public Guid? ProductId { get; init; }
         public Guid? WorkPackageId { get; init; }
         public string? EvaluationNotes { get; init; }
+        public DateTime? Deadline { get; init; }
         public DateTime CreatedAt { get; init; }
         public DateTime? UpdatedAt { get; init; }
 
@@ -663,7 +709,8 @@ internal sealed class RequestRepository : IRequestRepository
                 subTasks,
                 TotalSubTasksCount,
                 CompletedSubTasksCount,
-                CompletionPercentage);
+                CompletionPercentage,
+                Deadline);
         }
     }
 

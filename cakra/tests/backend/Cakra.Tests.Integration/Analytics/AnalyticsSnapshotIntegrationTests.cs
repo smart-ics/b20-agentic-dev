@@ -261,16 +261,17 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
 
         currentContext?.Initialize(Guid.NewGuid(), progA.Id, new[] { "Programmer" });
 
-        // Req 1 for progA: IN_PROGRESS (active, not stalled — created 10 hours ago, updated 2 hours ago)
-        var req1 = await mediator.Send(new RecordRequestCommand(
-            Title: "Active in-progress request",
-            Description: "In progress fix for pharmacy dispensing",
+        // Req 3 for progA: COMPLETED today
+        var req3 = await mediator.Send(new RecordRequestCommand(
+            Title: "Completed request today",
+            Description: "Resolved outpatient queue sorting issue",
             CustomerId: customer.Id,
             ProductId: product.Id,
             RequestType: "Bug",
-            Priority: "HIGH"));
-        await mediator.Send(new AssignRequestOwnerCommand(req1.Id, progA.Id));
-        await mediator.Send(new StartWorkCommand(req1.Id, Notes: "Working on fix", ActorPersonId: progA.Id));
+            Priority: "NORMAL"));
+        await mediator.Send(new AssignRequestOwnerCommand(req3.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(req3.Id, ActorPersonId: progA.Id));
+        await mediator.Send(new ReviewRequestCompletionCommand(req3.Id, "Fixed sorting order in query"));
 
         // Req 2 for progA: PAUSED and stalled (created & last updated 80 hours ago >= 72h threshold)
         var req2 = await mediator.Send(new RecordRequestCommand(
@@ -284,17 +285,16 @@ public class AnalyticsSnapshotIntegrationTests : IAsyncLifetime
         await mediator.Send(new StartWorkCommand(req2.Id, ActorPersonId: progA.Id));
         await mediator.Send(new PauseWorkCommand(req2.Id, Note: "Waiting for vendor spec", ActorPersonId: progA.Id));
 
-        // Req 3 for progA: COMPLETED today
-        var req3 = await mediator.Send(new RecordRequestCommand(
-            Title: "Completed request today",
-            Description: "Resolved outpatient queue sorting issue",
+        // Req 1 for progA: IN_PROGRESS (active, not stalled — created 10 hours ago, updated 2 hours ago)
+        var req1 = await mediator.Send(new RecordRequestCommand(
+            Title: "Active in-progress request",
+            Description: "In progress fix for pharmacy dispensing",
             CustomerId: customer.Id,
             ProductId: product.Id,
             RequestType: "Bug",
-            Priority: "NORMAL"));
-        await mediator.Send(new AssignRequestOwnerCommand(req3.Id, progA.Id));
-        await mediator.Send(new StartWorkCommand(req3.Id, ActorPersonId: progA.Id));
-        await mediator.Send(new ReviewRequestCompletionCommand(req3.Id, "Fixed sorting order in query"));
+            Priority: "HIGH"));
+        await mediator.Send(new AssignRequestOwnerCommand(req1.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(req1.Id, Notes: "Working on fix", ActorPersonId: progA.Id));
 
         // Req 4 for progB: ASSIGNED (active, not stalled)
         var req4 = await mediator.Send(new RecordRequestCommand(

@@ -23,6 +23,7 @@ public partial interface IRequestService
         Guid? workPackageId = null,
         int? complexity = null,
         IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -39,6 +40,7 @@ public partial interface IRequestService
         Guid? workPackageId = null,
         int? complexity = null,
         IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default)
         => RecordRequestAsync(
             title,
@@ -51,6 +53,7 @@ public partial interface IRequestService
             workPackageId,
             complexity,
             initialSubTasks,
+            deadline,
             cancellationToken);
 
     /// <summary>
@@ -323,7 +326,21 @@ public partial interface IRequestService
         string priority,
         string requestType,
         Guid? actorPersonId = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Backward-compatible overload for <see cref="UpdateRequestCoreAttributesAsync"/> without explicit deadline.
+    /// </summary>
+    Task<RequestDto> UpdateRequestCoreAttributesAsync(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid? actorPersonId,
+        CancellationToken cancellationToken)
+        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, deadline: null, cancellationToken);
 
     /// <summary>
     /// Convenience alias for <see cref="UpdateRequestCoreAttributesAsync"/>.
@@ -335,7 +352,21 @@ public partial interface IRequestService
         string priority,
         string requestType,
         Guid? actorPersonId = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default)
-        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, cancellationToken);
+        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, deadline, cancellationToken);
+
+    /// <summary>
+    /// Backward-compatible overload for <see cref="UpdateRequestCoreAttributes"/> without explicit deadline.
+    /// </summary>
+    Task<RequestDto> UpdateRequestCoreAttributes(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid? actorPersonId,
+        CancellationToken cancellationToken)
+        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, deadline: null, cancellationToken);
 }
 

@@ -22,7 +22,8 @@ public sealed record RecordRequestCommand(
     Guid? ActorPersonId = null,
     Guid? WorkPackageId = null,
     int? Complexity = null,
-    IReadOnlyList<InitialSubTaskDto>? InitialSubTasks = null) : IRequest<RequestDto>
+    IReadOnlyList<InitialSubTaskDto>? InitialSubTasks = null,
+    DateTime? Deadline = null) : IRequest<RequestDto>
 {
     public string Description { get; init; } = Description ?? string.Empty;
 }
@@ -418,7 +419,8 @@ public sealed record UpdateRequestCoreAttributesCommand(
     string Description,
     string Priority,
     string RequestType,
-    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+    Guid? ActorPersonId = null,
+    DateTime? Deadline = null) : IRequest<RequestDto>;
 
 public sealed class UpdateRequestCoreAttributesCommandValidator : AbstractValidator<UpdateRequestCoreAttributesCommand>
 {

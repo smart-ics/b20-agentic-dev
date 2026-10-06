@@ -51,6 +51,7 @@ export interface CreatedRequestResponse {
   productId?: string | null
   requestType?: string
   priority?: string
+  deadline?: string | null
   createdAt?: string
 }
 
@@ -101,6 +102,7 @@ const form = reactive({
   requestType: 'GENERAL',
   priority: 'NORMAL',
   complexity: 1,
+  deadline: null as string | null,
 })
 
 const isSubmitDisabled = computed(
@@ -218,6 +220,7 @@ async function handleSubmit(): Promise<void> {
       requestType: form.requestType || 'GENERAL',
       priority: form.priority || 'NORMAL',
       complexity: Number(form.complexity) || 1,
+      deadline: form.deadline ? form.deadline : null,
       initialSubTasks: initialSubTasksPayload.length > 0 ? initialSubTasksPayload : undefined,
     })
 
@@ -357,7 +360,7 @@ onMounted(async () => {
             </div>
 
             <!-- Customer Select -->
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <label for="requestCustomer" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Customer (Optional)
               </label>
@@ -381,7 +384,7 @@ onMounted(async () => {
             </div>
 
             <!-- Product Select -->
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <label for="requestProduct" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Product (Optional)
               </label>
@@ -405,7 +408,7 @@ onMounted(async () => {
             </div>
 
             <!-- Complexity Select -->
-            <div class="col-12 col-md-4">
+            <div class="col-6 col-md-3">
               <label for="requestComplexity" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Complexity
               </label>
@@ -423,6 +426,22 @@ onMounted(async () => {
                 <option :value="4">4 (High)</option>
                 <option :value="5">5 (Very High)</option>
               </select>
+            </div>
+
+            <!-- Target Deadline -->
+            <div class="col-6 col-md-3">
+              <label for="createDeadlineInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Deadline (Optional)
+              </label>
+              <input
+                id="createDeadlineInput"
+                v-model="form.deadline"
+                type="date"
+                name="deadline"
+                class="form-control form-control-sm"
+                :disabled="isSubmitting"
+                data-testid="create-deadline-input"
+              />
             </div>
 
             <!-- Description -->

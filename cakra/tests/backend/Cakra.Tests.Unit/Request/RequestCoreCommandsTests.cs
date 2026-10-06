@@ -277,6 +277,102 @@ public sealed class RequestCoreCommandsTests
         result.Status.Should().Be("CAPTURED");
     }
 
+    [Fact]
+    public async Task RequestRepository_GetActiveInProgressByOwnerAsync_returns_active_request_when_in_progress_and_null_otherwise()
+    {
+        var repo = new InMemoryRequestRepository();
+        var ownerId = Guid.NewGuid();
+
+        // 1. Returns null when no request exists for owner
+        var none = await repo.GetActiveInProgressByOwnerAsync(ownerId);
+        none.Should().BeNull();
+
+        // 2. Request recorded and assigned but not yet started (Status = ASSIGNED) -> returns null
+        var req = Cakra.Modules.Request.Domain.Request.Record(
+            Guid.NewGuid(),
+            "Unit Test Demand",
+            "Description",
+            "GENERAL",
+            ownerId);
+        req.AssignOwner(ownerId, Guid.NewGuid());
+        await repo.AddAsync(req);
+
+        var assignedResult = await repo.GetActiveInProgressByOwnerAsync(ownerId);
+        assignedResult.Should().BeNull();
+
+        // 3. Request started (Status = IN_PROGRESS) -> returns active request
+        req.StartWork(ownerId);
+        await repo.UpdateAsync(req);
+
+        var inProgressResult = await repo.GetActiveInProgressByOwnerAsync(ownerId);
+        inProgressResult.Should().NotBeNull();
+        inProgressResult!.Id.Should().Be(req.Id);
+        inProgressResult.Title.Should().Be("Unit Test Demand");
+        inProgressResult.Status.Should().Be(RequestStatus.InProgress);
+        inProgressResult.OwnerPersonId.Should().Be(ownerId);
+
+        // 4. Different owner returns null
+        var otherOwnerResult = await repo.GetActiveInProgressByOwnerAsync(Guid.NewGuid());
+        otherOwnerResult.Should().BeNull();
+
+        // 5. Request paused (Status = PAUSED) -> returns null
+        req.PauseWork(ownerId, "Pausing work");
+        await repo.UpdateAsync(req);
+
+        var pausedResult = await repo.GetActiveInProgressByOwnerAsync(ownerId);
+        pausedResult.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task StartWorkAsync_enforces_single_in_progress_policy_per_owner()
+    {
+        var ownerId = Guid.NewGuid();
+        var repo = new InMemoryRequestRepository();
+        var orgQuery = new FakeOrganizationQueryService();
+        orgQuery.SetPerson(ownerId, isActive: true);
+
+        var customerQuery = new FakeCustomerQueryService();
+        var productQuery = new FakeProductQueryService();
+        var contextProvider = new FakeCurrentContextProvider(ownerId);
+        var clock = new FakeSystemClock(new DateTime(2026, 10, 7, 8, 0, 0, DateTimeKind.Utc));
+
+        var service = new RequestService(
+            repo,
+            orgQuery,
+            customerQuery,
+            productQuery,
+            eventDispatcher: null,
+            currentContextProvider: contextProvider,
+            auditContext: null,
+            clock: clock);
+
+        // 1. Create two requests assigned to the same owner
+        var req1 = await service.RecordRequest("First Task", "Description 1", actorPersonId: ownerId);
+        await service.AssignRequestOwner(req1.Id, ownerId, actorPersonId: ownerId);
+
+        var req2 = await service.RecordRequest("Second Task", "Description 2", actorPersonId: ownerId);
+        await service.AssignRequestOwner(req2.Id, ownerId, actorPersonId: ownerId);
+
+        // 2. Starting req1 succeeds when zero active tasks are in progress
+        var started1 = await service.StartWorkAsync(req1.Id, actorPersonId: ownerId);
+        started1.Status.Should().Be(RequestStatusNames.InProgress);
+
+        // 3. Attempting to start req2 while req1 is IN_PROGRESS throws RequestDomainValidationException
+        var secondStartAct = async () => await service.StartWorkAsync(req2.Id, actorPersonId: ownerId);
+        var ex = await secondStartAct.Should().ThrowAsync<RequestDomainValidationException>();
+        ex.WithMessage("*Cannot start work on request 'Second Task' because the assigned owner already has an active task in progress: 'First Task'. Please pause or complete it first.*");
+        ex.Which.ParamName.Should().Be("requestId");
+
+        // 4. Starting req1 again (already IN_PROGRESS) follows existing transition validation
+        var alreadyStartedAct = async () => await service.StartWorkAsync(req1.Id, actorPersonId: ownerId);
+        await alreadyStartedAct.Should().ThrowAsync<InvalidRequestStateTransitionException>();
+
+        // 5. Pausing req1 frees up the owner, allowing req2 to start
+        await service.PauseWorkAsync(req1.Id, note: "Paused to switch tasks", actorPersonId: ownerId);
+        var started2 = await service.StartWorkAsync(req2.Id, actorPersonId: ownerId);
+        started2.Status.Should().Be(RequestStatusNames.InProgress);
+    }
+
     private sealed class InMemoryRequestRepository : IRequestRepository
     {
         private readonly Dictionary<Guid, Cakra.Modules.Request.Domain.Request> _requests = new();
@@ -308,7 +404,8 @@ public sealed class RequestCoreCommandsTests
                 req.CreatedAt,
                 req.UpdatedAt,
                 resolution,
-                reqAssignments);
+                reqAssignments,
+                deadline: req.Deadline);
 
             return Task.FromResult<Cakra.Modules.Request.Domain.Request?>(hydrated);
         }
@@ -356,6 +453,12 @@ public sealed class RequestCoreCommandsTests
             Guid requestId,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(_resolutions.TryGetValue(requestId, out var res) ? res : null);
+
+        public Task<Cakra.Modules.Request.Domain.Request?> GetActiveInProgressByOwnerAsync(
+            Guid ownerPersonId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<Cakra.Modules.Request.Domain.Request?>(
+                _requests.Values.FirstOrDefault(r => r.OwnerPersonId == ownerPersonId && r.Status == RequestStatus.InProgress));
     }
 
     private sealed class FakeOrganizationQueryService : IOrganizationQueryService

@@ -369,6 +369,56 @@ public sealed class RequestCoreAttributesCommandServiceTests
     }
 
     [Fact]
+    public async Task Handle_WithDeadline_SetsDeadlineToUtcMidnightAndReturnsInDto()
+    {
+        var (service, repo, _, _) = CreateTestSetup();
+        var actorId = Guid.NewGuid();
+
+        var request = RequestAggregate.Record(
+            Guid.NewGuid(), "Original Title", "Original Description", "GENERAL", actorId);
+        await repo.AddAsync(request);
+
+        var targetDeadline = new DateTime(2026, 11, 20, 15, 30, 0, DateTimeKind.Local);
+        var expectedNormalized = new DateTime(2026, 11, 20, 0, 0, 0, DateTimeKind.Utc);
+
+        var command = new UpdateRequestCoreAttributesCommand(
+            request.Id,
+            "Updated Title",
+            "Updated Description",
+            "HIGH",
+            "BUG",
+            actorId,
+            Deadline: targetDeadline);
+
+        var result = await service.Handle(command, CancellationToken.None);
+
+        result.Deadline.Should().Be(expectedNormalized);
+        var persisted = await repo.GetByIdAsync(request.Id);
+        persisted!.Deadline.Should().Be(expectedNormalized);
+    }
+
+    [Fact]
+    public async Task Handle_RecordRequestCommand_WithDeadline_SetsDeadlineOnCreatedDtoAndPersists()
+    {
+        var (service, repo, _, _) = CreateTestSetup();
+        var actorId = Guid.NewGuid();
+
+        var targetDeadline = new DateTime(2026, 12, 1, 10, 0, 0, DateTimeKind.Utc);
+        var expectedNormalized = new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc);
+        var command = new RecordRequestCommand(
+            "New Feature",
+            "Feature details",
+            ActorPersonId: actorId,
+            Deadline: targetDeadline);
+
+        var result = await service.Handle(command, CancellationToken.None);
+
+        result.Deadline.Should().Be(expectedNormalized);
+        var persisted = await repo.GetByIdAsync(result.Id);
+        persisted!.Deadline.Should().Be(expectedNormalized);
+    }
+
+    [Fact]
     public async Task UpdateRequestCoreAttributes_throws_when_request_is_closed()
     {
         var (service, repo, orgQuery, _) = CreateTestSetup();
@@ -448,7 +498,8 @@ public sealed class RequestCoreAttributesCommandServiceTests
                 req.UpdatedAt,
                 resolution,
                 reqAssignments,
-                req.Complexity);
+                req.Complexity,
+                deadline: req.Deadline);
 
             return Task.FromResult<RequestAggregate?>(hydrated);
         }
@@ -492,6 +543,12 @@ public sealed class RequestCoreAttributesCommandServiceTests
 
         public Task<RequestResolution?> GetResolutionByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default) =>
             Task.FromResult(_resolutions.TryGetValue(requestId, out var res) ? res : null);
+
+        public Task<RequestAggregate?> GetActiveInProgressByOwnerAsync(
+            Guid ownerPersonId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<RequestAggregate?>(
+                _requests.Values.FirstOrDefault(r => r.OwnerPersonId == ownerPersonId && r.Status == RequestStatus.InProgress));
     }
 
     private sealed class FakeOrganizationQueryService : IOrganizationQueryService

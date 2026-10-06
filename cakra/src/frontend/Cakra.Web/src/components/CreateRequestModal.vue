@@ -55,6 +55,7 @@ export interface CreatedRequestResponse {
   productId?: string | null
   requestType?: string
   priority?: string
+  deadline?: string | null
   createdAt?: string
 }
 
@@ -97,6 +98,7 @@ const form = reactive({
   requestType: 'GENERAL',
   priority: 'NORMAL',
   complexity: 1,
+  deadline: null as string | null,
 })
 
 function extractErrorMessage(err: unknown, fallback: string): string {
@@ -164,6 +166,7 @@ function resetForm(): void {
   form.requestType = 'GENERAL'
   form.priority = 'NORMAL'
   form.complexity = 1
+  form.deadline = null
   errorMessage.value = null
   validationErrors.value = {}
 }
@@ -201,6 +204,7 @@ async function handleSubmit(): Promise<void> {
       requestType: form.requestType || 'GENERAL',
       priority: form.priority || 'NORMAL',
       complexity: Number(form.complexity) || 1,
+      deadline: form.deadline ? form.deadline : null,
     })
 
     emit('saved', response.data)
@@ -354,7 +358,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Customer Select -->
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
                   <label for="createRequestCustomer" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                     Customer (Optional)
                   </label>
@@ -368,9 +372,9 @@ onBeforeUnmount(() => {
                   >
                     <option value="">Select customer...</option>
                     <option
-                      v-for="customer in activeCustomers"
-                      :key="customer.id || customer.customerId"
-                      :value="customer.id || customer.customerId"
+                       v-for="customer in activeCustomers"
+                       :key="customer.id || customer.customerId"
+                       :value="customer.id || customer.customerId"
                     >
                       {{ resolveCustomerLabel(customer) }}
                     </option>
@@ -378,7 +382,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Product Select -->
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
                   <label for="createRequestProduct" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                     Product (Optional)
                   </label>
@@ -402,7 +406,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Complexity Select -->
-                <div class="col-12 col-md-4">
+                <div class="col-6 col-md-3">
                   <label for="createRequestComplexity" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                     Complexity
                   </label>
@@ -420,6 +424,22 @@ onBeforeUnmount(() => {
                     <option :value="4">4 (High)</option>
                     <option :value="5">5 (Very High)</option>
                   </select>
+                </div>
+
+                <!-- Target Deadline -->
+                <div class="col-6 col-md-3">
+                  <label for="createDeadlineInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                    Deadline (Optional)
+                  </label>
+                  <input
+                    id="createDeadlineInput"
+                    v-model="form.deadline"
+                    type="date"
+                    name="deadline"
+                    class="form-control form-control-sm"
+                    :disabled="isSubmitting"
+                    data-testid="create-deadline-input"
+                  />
                 </div>
 
                 <!-- Description -->

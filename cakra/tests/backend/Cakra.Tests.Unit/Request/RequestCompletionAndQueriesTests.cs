@@ -306,7 +306,8 @@ public sealed class RequestCompletionAndQueriesTests
                 req.CreatedAt,
                 req.UpdatedAt,
                 resolution,
-                reqAssignments);
+                reqAssignments,
+                deadline: req.Deadline);
 
             return Task.FromResult<Cakra.Modules.Request.Domain.Request?>(hydrated);
         }
@@ -354,6 +355,12 @@ public sealed class RequestCompletionAndQueriesTests
             Guid requestId,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(Resolutions.TryGetValue(requestId, out var res) ? res : null);
+
+        public Task<Cakra.Modules.Request.Domain.Request?> GetActiveInProgressByOwnerAsync(
+            Guid ownerPersonId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<Cakra.Modules.Request.Domain.Request?>(
+                _requests.Values.FirstOrDefault(r => r.OwnerPersonId == ownerPersonId && r.Status == RequestStatus.InProgress));
     }
 
     private sealed class FakeOrganizationQueryService : IOrganizationQueryService

@@ -295,17 +295,18 @@ public class AnalyticsControllerTests : IAsyncLifetime
 
             currentContext?.Initialize(managerUser.Id, programmerPersonId, new[] { "Programmer", "Management" });
 
-            // Active request (IN_PROGRESS)
-            var reqActive = await mediator.Send(new RecordRequestCommand(
-                Title: "Inpatient Pharmacy Dispensing Timeout",
-                Description: "Optimize batch stock deduction query",
+            // Completed request (COMPLETED)
+            var reqCompleted = await mediator.Send(new RecordRequestCommand(
+                Title: "Lab Result PDF Header Logo Fix",
+                Description: "Fix aspect ratio on pathology report header",
                 CustomerId: customerId,
                 ProductId: product.Id,
                 RequestType: "Bug",
-                Priority: "HIGH"));
-            await mediator.Send(new AssignRequestOwnerCommand(reqActive.Id, programmerPersonId));
-            await mediator.Send(new StartWorkCommand(reqActive.Id, ActorPersonId: programmerPersonId));
-            activeRequestId = reqActive.Id;
+                Priority: "NORMAL"));
+            await mediator.Send(new AssignRequestOwnerCommand(reqCompleted.Id, programmerPersonId));
+            await mediator.Send(new StartWorkCommand(reqCompleted.Id, ActorPersonId: programmerPersonId));
+            await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted.Id, "Updated report template v2.1"));
+            completedRequestId = reqCompleted.Id;
 
             // Open blocker (PAUSED)
             var reqBlocker = await mediator.Send(new RecordRequestCommand(
@@ -320,18 +321,17 @@ public class AnalyticsControllerTests : IAsyncLifetime
             await mediator.Send(new PauseWorkCommand(reqBlocker.Id, Note: "Waiting on hospital network team", ActorPersonId: programmerPersonId));
             blockerRequestId = reqBlocker.Id;
 
-            // Completed request (COMPLETED)
-            var reqCompleted = await mediator.Send(new RecordRequestCommand(
-                Title: "Lab Result PDF Header Logo Fix",
-                Description: "Fix aspect ratio on pathology report header",
+            // Active request (IN_PROGRESS)
+            var reqActive = await mediator.Send(new RecordRequestCommand(
+                Title: "Inpatient Pharmacy Dispensing Timeout",
+                Description: "Optimize batch stock deduction query",
                 CustomerId: customerId,
                 ProductId: product.Id,
                 RequestType: "Bug",
-                Priority: "NORMAL"));
-            await mediator.Send(new AssignRequestOwnerCommand(reqCompleted.Id, programmerPersonId));
-            await mediator.Send(new StartWorkCommand(reqCompleted.Id, ActorPersonId: programmerPersonId));
-            await mediator.Send(new ReviewRequestCompletionCommand(reqCompleted.Id, "Updated report template v2.1"));
-            completedRequestId = reqCompleted.Id;
+                Priority: "HIGH"));
+            await mediator.Send(new AssignRequestOwnerCommand(reqActive.Id, programmerPersonId));
+            await mediator.Send(new StartWorkCommand(reqActive.Id, ActorPersonId: programmerPersonId));
+            activeRequestId = reqActive.Id;
 
             // 3. Capture daily workload snapshot and monthly customer performance snapshot
             await snapshotJob.TriggerDailySnapshotAsync(todayUtc);

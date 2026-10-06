@@ -297,7 +297,8 @@ public sealed class RequestComplexityCommandServiceTests
                 req.UpdatedAt,
                 resolution,
                 reqAssignments,
-                req.Complexity);
+                req.Complexity,
+                deadline: req.Deadline);
 
             return Task.FromResult<RequestAggregate?>(hydrated);
         }
@@ -341,6 +342,12 @@ public sealed class RequestComplexityCommandServiceTests
 
         public Task<RequestResolution?> GetResolutionByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default) =>
             Task.FromResult(_resolutions.TryGetValue(requestId, out var res) ? res : null);
+
+        public Task<RequestAggregate?> GetActiveInProgressByOwnerAsync(
+            Guid ownerPersonId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<RequestAggregate?>(
+                _requests.Values.FirstOrDefault(r => r.OwnerPersonId == ownerPersonId && r.Status == RequestStatus.InProgress));
     }
 
     private sealed class FakeOrganizationQueryService : IOrganizationQueryService

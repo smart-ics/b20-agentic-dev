@@ -96,6 +96,7 @@ export interface RequestDetail {
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
   complexity?: number
+  deadline?: string | null
   ownerPersonId: string | null
   assigneePersonId?: string | null
   ownerName?: string | null
@@ -189,11 +190,18 @@ const showReassignModal = ref(false)
 const showEditModal = ref(false)
 const isSubmittingEdit = ref(false)
 const editErrorMessage = ref<string | null>(null)
-const editForm = reactive({
+const editForm = reactive<{
+  title: string
+  description: string
+  requestType: string
+  priority: string
+  deadline: string | null
+}>({
   title: '',
   description: '',
   requestType: 'GENERAL',
   priority: 'NORMAL',
+  deadline: null,
 })
 
 const REQUEST_TYPES = ['GENERAL', 'BUG', 'FEATURE', 'SUPPORT', 'CHANGE_REQUEST', 'INCIDENT'] as const
@@ -218,6 +226,22 @@ const isCancelled = computed(() => normalizedStatus.value === 'CANCELLED')
 const isClosed = computed(
   () => isCompleted.value || isCancelled.value || normalizedStatus.value === 'REJECTED',
 )
+
+const isOverdue = computed(() => {
+  if (!request.value?.deadline) return false
+  const status = normalizedStatus.value
+  if (status === 'COMPLETED' || status === 'CANCELLED') return false
+  const raw = request.value.deadline
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  const deadlineDate = match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    : new Date(raw)
+  if (Number.isNaN(deadlineDate.getTime())) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  deadlineDate.setHours(0, 0, 0, 0)
+  return deadlineDate < today
+})
 
 const authStore = useAuthStore()
 
@@ -510,6 +534,21 @@ function formatTimestamp(value: string | null | undefined): string {
   return parsed.toLocaleString()
 }
 
+function formatDeadline(value: string | null | undefined): string {
+  if (!value) {
+    return 'None'
+  }
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]}`
+  }
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+  return parsed.toISOString().slice(0, 10)
+}
+
 async function loadActivePersons(): Promise<void> {
   try {
     const response = await httpClient.get<ActivePersonOption[]>('/organization/persons/active')
@@ -649,6 +688,17 @@ function openEditModal(): void {
   editForm.description = request.value.description ?? ''
   editForm.requestType = request.value.requestType ?? 'GENERAL'
   editForm.priority = request.value.priority ?? 'NORMAL'
+  if (request.value.deadline) {
+    const match = request.value.deadline.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (match) {
+      editForm.deadline = `${match[1]}-${match[2]}-${match[3]}`
+    } else {
+      const d = new Date(request.value.deadline)
+      editForm.deadline = Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
+    }
+  } else {
+    editForm.deadline = null
+  }
   showEditModal.value = true
 }
 
@@ -677,10 +727,12 @@ async function handleSaveEdit(): Promise<void> {
       description: trimmedDescription,
       requestType: editForm.requestType,
       priority: editForm.priority,
+      deadline: editForm.deadline ? editForm.deadline : null,
     })
     request.value = { ...request.value, ...updated } as RequestDetail
     actionSuccessMessage.value = 'Request details updated successfully.'
     showEditModal.value = false
+    await loadStateHistory()
   } catch (err: unknown) {
     editErrorMessage.value = extractErrorMessage(err, 'Failed to update request details.')
   } finally {
@@ -2042,6 +2094,31 @@ onMounted(async () => {
                       </select>
                     </div>
                   </div>
+
+                  <div class="mb-2">
+                    <label for="editDeadlineInput" class="form-label small fw-medium">
+                      Deadline <span class="text-body-secondary">(Optional)</span>
+                    </label>
+                    <div class="input-group">
+                      <input
+                        id="editDeadlineInput"
+                        v-model="editForm.deadline"
+                        type="date"
+                        class="form-control"
+                        :disabled="isSubmittingEdit"
+                        data-testid="edit-deadline-input"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        :disabled="isSubmittingEdit || !editForm.deadline"
+                        data-testid="clear-deadline-button"
+                        @click="editForm.deadline = null"
+                      >
+                        Clear Deadline
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="modal-footer py-1">
@@ -2073,7 +2150,7 @@ onMounted(async () => {
       <!-- Properties & History Column (Right) -->
       <div class="col-12 col-lg-4">
         <!-- Properties Card -->
-        <div class="card shadow-none border mb-2">
+        <div class="card shadow-none border mb-2" data-testid="request-information-card">
           <div class="card-header py-1 px-2 bg-body-tertiary fw-semibold small">
             <i class="bi bi-info-circle me-1 text-primary" aria-hidden="true"></i>
             Properties
@@ -2124,6 +2201,16 @@ onMounted(async () => {
                   >
                     <i class="bi bi-pencil ms-1" aria-hidden="true"></i>Edit
                   </button>
+                </div>
+              </dd>
+
+              <dt class="col-4 text-body-secondary fw-normal">Deadline:</dt>
+              <dd class="col-8 mb-1" data-testid="request-detail-deadline">
+                <div class="d-flex align-items-center gap-2">
+                  <span>{{ formatDeadline(request.deadline) }}</span>
+                  <span v-if="isOverdue" class="badge bg-danger" data-testid="request-overdue-badge">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Overdue
+                  </span>
                 </div>
               </dd>
 

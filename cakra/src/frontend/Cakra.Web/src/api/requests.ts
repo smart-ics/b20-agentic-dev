@@ -42,6 +42,7 @@ export interface RequestDto {
     | string
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | string
   complexity?: number
+  deadline?: string | null
   ownerPersonId: string | null
   assigneePersonId?: string | null
   ownerName?: string | null
@@ -65,9 +66,11 @@ export interface RequestDto {
 }
 
 export type Request = RequestDto
-export type RequestDetail = RequestDto
+export interface RequestDetail extends RequestDto {
+  deadline?: string | null
+}
 
-export interface RecordRequestPayload {
+export interface CreateRequestPayload {
   title: string
   description?: string
   customerId?: string | null
@@ -76,15 +79,18 @@ export interface RecordRequestPayload {
   requestType?: string
   priority?: string
   complexity?: number
+  deadline?: string | null
   actorPersonId?: string | null
   initialSubTasks?: InitialSubTaskInput[]
 }
+
+export type RecordRequestPayload = CreateRequestPayload
 
 /**
  * Records a new operational request (CR-019).
  */
 export async function recordRequest(
-  payload: RecordRequestPayload,
+  payload: CreateRequestPayload,
 ): Promise<RequestDto> {
   const response = await httpClient.post<RequestDto>('/requests', payload)
   return response.data
@@ -119,6 +125,7 @@ export interface UpdateRequestCoreAttributesPayload {
   description: string
   priority: string
   requestType: string
+  deadline?: string | null
 }
 
 /**
@@ -278,6 +285,52 @@ export async function getAssignedSubTasks(personId?: string): Promise<RequestDto
   return response.data
 }
 
+/**
+ * Read model representing a task in progress or paused under operational WIP tracking
+ * (CR-021, TD-003, SCR-REQ-006).
+ */
+export interface TaskWorkInProgressDto {
+  requestId: string
+  title: string
+  description: string
+  requestType: string
+  status: string
+  priority: string
+  customerId?: string | null
+  customerName?: string | null
+  customerCode?: string | null
+  productId?: string | null
+  workPackageId?: string | null
+  totalInProgressSeconds: number
+  totalInProgressHours: number
+  totalInProgressFormatted: string
+  createdAt: string
+  updatedAt?: string | null
+  lastStartedAt?: string | null
+}
+
+/**
+ * Read model grouping active WIP tasks (single active in-progress task and paused tasks)
+ * for a person under operational WIP tracking (CR-021, TD-003, SCR-REQ-006).
+ */
+export interface PersonWorkInProgressDto {
+  personId: string
+  personName: string
+  email?: string | null
+  inProgressTask?: TaskWorkInProgressDto | null
+  pausedTasks: TaskWorkInProgressDto[]
+  totalActiveTasksCount: number
+}
+
+/**
+ * Retrieves the real-time Work in Progress (WIP) overview across all persons with active
+ * or paused requests, including cumulative elapsed IN_PROGRESS hours per task (CR-021, TD-004, TD-006).
+ */
+export async function getWorkInProgressOverview(): Promise<PersonWorkInProgressDto[]> {
+  const response = await httpClient.get<PersonWorkInProgressDto[]>('/requests/wip')
+  return response.data
+}
+
 export const requestService = {
   recordRequest,
   normalizeTaskLine,
@@ -294,6 +347,7 @@ export const requestService = {
   reopenSubTask,
   removeSubTask,
   getAssignedSubTasks,
+  getWorkInProgressOverview,
 }
 
 export default requestService

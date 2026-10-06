@@ -129,6 +129,20 @@ public sealed class RequestsController : ApiControllerBase
     }
 
     /// <summary>
+    /// Retrieves the real-time Work in Progress (WIP) overview across all persons with active
+    /// or paused requests, including cumulative elapsed IN_PROGRESS hours per task (CR-021).
+    /// </summary>
+    [HttpGet("wip")]
+    [ProducesResponseType(typeof(IReadOnlyList<PersonWorkInProgressDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyList<PersonWorkInProgressDto>>> GetWorkInProgressOverview(
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _requestQueryService.GetWorkInProgressOverviewAsync(cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Retrieves a single request's details by unique identifier
     /// (<c>RequestQueryService.GetRequestById</c>; Architecture §7, §8 — <c>SCR-REQ-003</c>).
     /// </summary>
@@ -172,6 +186,7 @@ public sealed class RequestsController : ApiControllerBase
     /// (<c>RequestService.UpdateRequestCoreAttributes</c>; CR-018 Architecture TD-001, TD-004).
     /// </summary>
     [HttpPut("{id:guid}")]
+    [HttpPut("{id:guid}/core-attributes")]
     [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -196,7 +211,8 @@ public sealed class RequestsController : ApiControllerBase
             Description: request?.Description ?? string.Empty,
             Priority: request?.ResolvedPriority ?? request?.Priority ?? string.Empty,
             RequestType: request?.ResolvedRequestType ?? request?.RequestType ?? string.Empty,
-            ActorPersonId: actorPersonId);
+            ActorPersonId: actorPersonId,
+            Deadline: request?.Deadline);
 
         try
         {
@@ -268,7 +284,8 @@ public sealed class RequestsController : ApiControllerBase
             ActorPersonId: FirstNonEmptyGuid(request?.ActorPersonId),
             WorkPackageId: FirstNonEmptyGuid(request?.WorkPackageId),
             Complexity: request?.Complexity,
-            InitialSubTasks: request?.ResolvedInitialSubTasks);
+            InitialSubTasks: request?.ResolvedInitialSubTasks,
+            Deadline: request?.Deadline);
 
         try
         {
@@ -1028,6 +1045,7 @@ public sealed class RequestsController : ApiControllerBase
         public Guid? WorkPackageId { get; set; }
         public Guid? ActorPersonId { get; set; }
         public int? Complexity { get; set; }
+        public DateTime? Deadline { get; set; }
         public IReadOnlyList<InitialSubTaskInput>? InitialSubTasks { get; set; }
         public IReadOnlyList<InitialSubTaskInput>? SubTasks { get; set; }
 
@@ -1191,6 +1209,7 @@ public sealed class RequestsController : ApiControllerBase
         public string? Type { get; set; }
         public string? Priority { get; set; }
         public Guid? ActorPersonId { get; set; }
+        public DateTime? Deadline { get; set; }
 
         public string? ResolvedRequestType =>
             FirstNonWhiteSpace(RequestType, Type);

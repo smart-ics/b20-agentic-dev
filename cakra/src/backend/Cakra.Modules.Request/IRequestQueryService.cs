@@ -238,4 +238,20 @@ public interface IRequestQueryService
         IEnumerable<Guid> requestIds,
         CancellationToken cancellationToken = default)
         => GetRequestsByIdsAsync(requestIds, cancellationToken);
+
+    /// <summary>
+    /// Retrieves the real-time Work in Progress (WIP) overview across all persons with active
+    /// or paused requests, including cumulative elapsed IN_PROGRESS hours per task (Architecture CR-021 §4 TD-002, TD-005, §5, §11).
+    /// </summary>
+    Task<IReadOnlyList<PersonWorkInProgressDto>> GetWorkInProgressOverviewAsync(
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<PersonWorkInProgressDto>>(Array.Empty<PersonWorkInProgressDto>());
+
+    /// <summary>
+    /// Convenience alias for <see cref="GetWorkInProgressOverviewAsync"/> (Architecture CR-021 §4 TD-002).
+    /// </summary>
+    Task<IReadOnlyList<PersonWorkInProgressDto>> GetWorkInProgressOverview(
+        CancellationToken cancellationToken = default)
+        => GetWorkInProgressOverviewAsync(cancellationToken);
 }
+

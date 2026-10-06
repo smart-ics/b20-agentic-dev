@@ -104,6 +104,9 @@ public record RequestDto
     /// <summary>Audit trail of ownership and lifecycle state transitions.</summary>
     public IReadOnlyList<RequestAssignmentDto> Assignments { get; init; } = Array.Empty<RequestAssignmentDto>();
 
+    /// <summary>Optional deadline date for request resolution (UTC midnight).</summary>
+    public DateTime? Deadline { get; init; }
+
     /// <summary>UTC timestamp when the request was created.</summary>
     public DateTime CreatedAt { get; init; }
 
@@ -130,6 +133,7 @@ public record RequestDto
             CustomerId = request.CustomerId,
             ProductId = request.ProductId,
             WorkPackageId = request.WorkPackageId,
+            Deadline = request.Deadline,
             EvaluationNotes = request.EvaluationNotes,
             EscalationReason = null,
             ManagementDecisionNotes = null,

@@ -35,4 +35,12 @@ internal interface IRequestRepository : IRepository<Domain.Request>
     Task<RequestResolution?> GetResolutionByRequestIdAsync(
         Guid requestId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves the active request currently in <c>IN_PROGRESS</c> status for the specified owner person,
+    /// or <c>null</c> if the person has no active in-progress task (Architecture §4 TD-001, CR-021).
+    /// </summary>
+    Task<Domain.Request?> GetActiveInProgressByOwnerAsync(
+        Guid ownerPersonId,
+        CancellationToken cancellationToken = default);
 }

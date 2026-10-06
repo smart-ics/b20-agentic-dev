@@ -16,6 +16,7 @@ public sealed record RequestRecorded : IDomainEvent
     public Guid? ProductId { get; init; }
     public Guid? WorkPackageId { get; init; }
     public string? Priority { get; init; }
+    public DateTime? Deadline { get; init; }
     public Guid EventId { get; init; } = Guid.NewGuid();
     public DateTime OccurredAtUtc { get; init; } = DateTime.UtcNow;
 
@@ -29,6 +30,7 @@ public sealed record RequestRecorded : IDomainEvent
         Guid? productId = null,
         Guid? workPackageId = null,
         string? priority = null,
+        DateTime? deadline = null,
         DateTime? occurredAtUtc = null,
         Guid? eventId = null)
     {
@@ -41,6 +43,7 @@ public sealed record RequestRecorded : IDomainEvent
         ProductId = productId;
         WorkPackageId = workPackageId;
         Priority = priority;
+        Deadline = deadline;
         OccurredAtUtc = occurredAtUtc ?? DateTime.UtcNow;
         EventId = eventId ?? Guid.NewGuid();
     }

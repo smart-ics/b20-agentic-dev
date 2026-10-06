@@ -232,6 +232,7 @@ public sealed partial class RequestService :
         Guid? workPackageId = null,
         int? complexity = null,
         IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -270,6 +271,7 @@ public sealed partial class RequestService :
             workPackageId: workPackageId,
             priority: normalizedPriority,
             complexity: complexity,
+            deadline: deadline,
             utcNow: now);
 
         if (initialSubTasks is not null && initialSubTasks.Count > 0)
@@ -349,6 +351,20 @@ public sealed partial class RequestService :
 
         var request = await GetRequiredRequestAsync(requestId, cancellationToken);
 
+        if (request.OwnerPersonId.HasValue)
+        {
+            var existingInProgress = await _requestRepository.GetActiveInProgressByOwnerAsync(
+                request.OwnerPersonId.Value,
+                cancellationToken);
+
+            if (existingInProgress != null && existingInProgress.Id != requestId)
+            {
+                throw new RequestDomainValidationException(
+                    $"Cannot start work on request '{request.Title}' because the assigned owner already has an active task in progress: '{existingInProgress.Title}'. Please pause or complete it first.",
+                    nameof(requestId));
+            }
+        }
+
         var resolvedActorId = ResolveActorPersonId(actorPersonId, fallbackPersonId: request.OwnerPersonId);
         var existingAssignmentIds = SnapshotAssignmentIds(request);
         var hadResolution = request.Resolution is not null;
@@ -385,6 +401,7 @@ public sealed partial class RequestService :
         Guid? workPackageId = null,
         int? complexity = null,
         IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default)
         => RecordRequestAsync(
             title,
@@ -397,6 +414,7 @@ public sealed partial class RequestService :
             workPackageId,
             complexity,
             initialSubTasks,
+            deadline,
             cancellationToken);
 
     /// <inheritdoc />
@@ -802,6 +820,7 @@ public sealed partial class RequestService :
         string priority,
         string requestType,
         Guid? actorPersonId = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default)
     {
         if (requestId == Guid.Empty)
@@ -828,7 +847,7 @@ public sealed partial class RequestService :
         var hadResolution = request.Resolution is not null;
         var now = GetNextMonotonicTimestamp(request);
 
-        request.UpdateCoreAttributes(title, description, priority, requestType, resolvedActorId, now);
+        request.UpdateCoreAttributes(title, description, priority, requestType, resolvedActorId, deadline, now);
 
         await PersistStateChangesAndDispatchAsync(
             request,
@@ -840,6 +859,17 @@ public sealed partial class RequestService :
     }
 
     /// <inheritdoc />
+    public Task<RequestDto> UpdateRequestCoreAttributesAsync(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid? actorPersonId,
+        CancellationToken cancellationToken)
+        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, deadline: null, cancellationToken);
+
+    /// <inheritdoc />
     public Task<RequestDto> UpdateRequestCoreAttributes(
         Guid requestId,
         string title,
@@ -847,8 +877,20 @@ public sealed partial class RequestService :
         string priority,
         string requestType,
         Guid? actorPersonId = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default)
-        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, cancellationToken);
+        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, deadline, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<RequestDto> UpdateRequestCoreAttributes(
+        Guid requestId,
+        string title,
+        string description,
+        string priority,
+        string requestType,
+        Guid? actorPersonId,
+        CancellationToken cancellationToken)
+        => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, deadline: null, cancellationToken);
 
 
     internal DateTime GetNextMonotonicTimestamp(Domain.Request request)
@@ -1074,6 +1116,7 @@ public sealed partial class RequestService :
             request.WorkPackageId,
             request.Complexity,
             request.InitialSubTasks,
+            request.Deadline,
             cancellationToken);
     }
 
@@ -1211,6 +1254,7 @@ public sealed partial class RequestService :
             request.Priority,
             request.RequestType,
             request.ActorPersonId,
+            request.Deadline,
             cancellationToken);
     }
 }

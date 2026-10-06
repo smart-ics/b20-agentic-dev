@@ -6,6 +6,7 @@ using Cakra.Modules.Customer.Services;
 using Cakra.Modules.Organization.Commands;
 using Cakra.Modules.Product.Services;
 using Cakra.Modules.Request.Domain;
+using Cakra.Modules.Request.Domain.Exceptions;
 using Cakra.Modules.Request.Persistence;
 using Cakra.Modules.Request.Services;
 using Dapper;
@@ -300,5 +301,180 @@ public class RequestCoreCommandsIntegrationTests : IAsyncLifetime
 
         var fkAct = async () => await requestRepository.AddAssignmentAsync(orphanedAssignment);
         await fkAct.Should().ThrowAsync<SqlException>();
+    }
+
+    [Fact]
+    public async Task RequestRepository_persists_and_retrieves_Deadline_on_Record_and_UpdateCoreAttributes()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        using var scope = _factory!.Services.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var requestRepository = scope.ServiceProvider.GetRequiredService<IRequestRepository>();
+        var currentContext = scope.ServiceProvider.GetRequiredService<ICurrentContextProvider>() as CurrentContextProvider;
+
+        var programmer = await mediator.Send(new CreatePersonCommand(
+            "Test",
+            "Actor",
+            $"actor.{Guid.NewGuid():N}@cakra.id"));
+
+        currentContext?.Initialize(Guid.NewGuid(), programmer.Id, new[] { "Programmer" });
+
+        var initialDeadline = new DateTime(2026, 12, 15, 12, 0, 0, DateTimeKind.Utc);
+        var expectedInitialNormalized = new DateTime(2026, 12, 15, 0, 0, 0, DateTimeKind.Utc);
+
+        // 1. Record with initial deadline
+        var recorded = await mediator.Send(new RecordRequestCommand(
+            Title: "Request with target deadline",
+            Description: "Verifying deadline persistence against real SQL Server database",
+            RequestType: "GENERAL",
+            Priority: "NORMAL",
+            ActorPersonId: programmer.Id,
+            Deadline: initialDeadline));
+
+        recorded.Deadline.Should().Be(expectedInitialNormalized);
+
+        // Verify retrieval via repository GetByIdAsync
+        var persisted = await requestRepository.GetByIdAsync(recorded.Id);
+        persisted.Should().NotBeNull();
+        persisted!.Deadline.Should().Be(expectedInitialNormalized);
+
+        // Verify retrieval via repository GetAllAsync
+        var allRequests = await requestRepository.GetAllAsync();
+        allRequests.Should().Contain(r => r.Id == recorded.Id && r.Deadline == expectedInitialNormalized);
+
+        // 2. Update core attributes with a new deadline
+        var updatedDeadline = new DateTime(2026, 12, 31, 18, 0, 0, DateTimeKind.Utc);
+        var expectedUpdatedNormalized = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+
+        var updated = await mediator.Send(new UpdateRequestCoreAttributesCommand(
+            RequestId: recorded.Id,
+            Title: "Updated title with modified deadline",
+            Description: "Updated description",
+            Priority: "HIGH",
+            RequestType: "FEATURE",
+            ActorPersonId: programmer.Id,
+            Deadline: updatedDeadline));
+
+        updated.Deadline.Should().Be(expectedUpdatedNormalized);
+
+        var persistedAfterUpdate = await requestRepository.GetByIdAsync(recorded.Id);
+        persistedAfterUpdate.Should().NotBeNull();
+        persistedAfterUpdate!.Deadline.Should().Be(expectedUpdatedNormalized);
+
+        // 3. Clear deadline
+        var cleared = await mediator.Send(new UpdateRequestCoreAttributesCommand(
+            RequestId: recorded.Id,
+            Title: "Updated title with cleared deadline",
+            Description: "Updated description",
+            Priority: "HIGH",
+            RequestType: "FEATURE",
+            ActorPersonId: programmer.Id,
+            Deadline: null));
+
+        cleared.Deadline.Should().BeNull();
+
+        var persistedAfterClear = await requestRepository.GetByIdAsync(recorded.Id);
+        persistedAfterClear.Should().NotBeNull();
+        persistedAfterClear!.Deadline.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RequestRepository_GetActiveInProgressByOwnerAsync_returns_active_request_or_null()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        using var scope = _factory!.Services.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var requestRepository = scope.ServiceProvider.GetRequiredService<IRequestRepository>();
+        var currentContext = scope.ServiceProvider.GetRequiredService<ICurrentContextProvider>() as CurrentContextProvider;
+
+        var owner = await mediator.Send(new CreatePersonCommand(
+            "WIP",
+            "Owner",
+            $"wip.owner.{Guid.NewGuid():N}@cakra.id"));
+
+        currentContext?.Initialize(Guid.NewGuid(), owner.Id, new[] { "Programmer" });
+
+        // 1. Initial state: owner has no requests -> returns null
+        var initialResult = await requestRepository.GetActiveInProgressByOwnerAsync(owner.Id);
+        initialResult.Should().BeNull();
+
+        // 2. Record request and assign to owner -> status is ASSIGNED, not IN_PROGRESS -> returns null
+        var recorded = await mediator.Send(new RecordRequestCommand(
+            Title: "WIP Test Request 1",
+            Description: "Assigned but not started",
+            ActorPersonId: owner.Id));
+
+        await mediator.Send(new AssignRequestOwnerCommand(recorded.Id, owner.Id));
+
+        var afterAssignResult = await requestRepository.GetActiveInProgressByOwnerAsync(owner.Id);
+        afterAssignResult.Should().BeNull();
+
+        // 3. Start work -> status transitions to IN_PROGRESS -> returns this request
+        await mediator.Send(new StartWorkCommand(recorded.Id, ActorPersonId: owner.Id));
+
+        var inProgressResult = await requestRepository.GetActiveInProgressByOwnerAsync(owner.Id);
+        inProgressResult.Should().NotBeNull();
+        inProgressResult!.Id.Should().Be(recorded.Id);
+        inProgressResult.Title.Should().Be("WIP Test Request 1");
+        inProgressResult.Status.Should().Be(RequestStatus.InProgress);
+        inProgressResult.OwnerPersonId.Should().Be(owner.Id);
+
+        // 4. Another owner has no in-progress request -> returns null
+        var otherOwnerId = Guid.NewGuid();
+        var otherResult = await requestRepository.GetActiveInProgressByOwnerAsync(otherOwnerId);
+        otherResult.Should().BeNull();
+
+        // 5. Pause work -> status transitions to PAUSED -> returns null
+        await mediator.Send(new PauseWorkCommand(recorded.Id, Note: "Paused for testing", ActorPersonId: owner.Id));
+
+        var afterPauseResult = await requestRepository.GetActiveInProgressByOwnerAsync(owner.Id);
+        afterPauseResult.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task StartWork_enforces_single_in_progress_policy_in_database()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        using var scope = _factory!.Services.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var currentContext = scope.ServiceProvider.GetRequiredService<ICurrentContextProvider>() as CurrentContextProvider;
+
+        var owner = await mediator.Send(new CreatePersonCommand(
+            "Policy",
+            "Owner",
+            $"policy.owner.{Guid.NewGuid():N}@cakra.id"));
+
+        currentContext?.Initialize(Guid.NewGuid(), owner.Id, new[] { "Programmer" });
+
+        var req1 = await mediator.Send(new RecordRequestCommand(
+            Title: "Active Task Alpha",
+            Description: "First task in progress",
+            ActorPersonId: owner.Id));
+        await mediator.Send(new AssignRequestOwnerCommand(req1.Id, owner.Id));
+
+        var req2 = await mediator.Send(new RecordRequestCommand(
+            Title: "Active Task Beta",
+            Description: "Second task queued",
+            ActorPersonId: owner.Id));
+        await mediator.Send(new AssignRequestOwnerCommand(req2.Id, owner.Id));
+
+        // Start first task
+        await mediator.Send(new StartWorkCommand(req1.Id, ActorPersonId: owner.Id));
+
+        // Attempting to start second task throws RequestDomainValidationException
+        var act = async () => await mediator.Send(new StartWorkCommand(req2.Id, ActorPersonId: owner.Id));
+        var ex = await act.Should().ThrowAsync<RequestDomainValidationException>();
+        ex.WithMessage("*Cannot start work on request 'Active Task Beta' because the assigned owner already has an active task in progress: 'Active Task Alpha'. Please pause or complete it first.*");
+
+        // Pausing first task allows starting second task
+        await mediator.Send(new PauseWorkCommand(req1.Id, Note: "Switching", ActorPersonId: owner.Id));
+        var started2 = await mediator.Send(new StartWorkCommand(req2.Id, ActorPersonId: owner.Id));
+        started2.Status.Should().Be(RequestStatusNames.InProgress);
     }
 }

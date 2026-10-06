@@ -55,3 +55,11 @@ public sealed record GetFilteredRequestGridQuery(
         Offset = Offset
     };
 }
+
+/// <summary>
+/// MediatR query to retrieve the real-time Work in Progress (WIP) overview across all persons
+/// with active or paused requests, including cumulative elapsed IN_PROGRESS hours per task
+/// (Architecture CR-021 §4 TD-002, TD-004, TD-005).
+/// </summary>
+public sealed record GetWorkInProgressOverviewQuery : IRequest<IReadOnlyList<PersonWorkInProgressDto>>;
+

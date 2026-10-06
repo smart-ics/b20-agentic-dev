@@ -7,6 +7,7 @@ using Cakra.Modules.Customer.Services;
 using Cakra.Modules.Identity.Domain;
 using Cakra.Modules.Organization.Commands;
 using Cakra.Modules.Product.Services;
+using Cakra.Modules.Request;
 using Cakra.Modules.Request.Domain;
 using FluentAssertions;
 using MediatR;
@@ -170,6 +171,8 @@ public class RequestsControllerTests : IAsyncLifetime
         (await client.PutAsJsonAsync($"/api/v1/requests/{randomId}", new { title = "T", description = "D" }))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.GetAsync("/api/v1/requests/assigned-subtasks"))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.GetAsync("/api/v1/requests/wip"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         (await client.GetAsync("/api/v1/customers/active")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -936,6 +939,55 @@ public class RequestsControllerTests : IAsyncLifetime
             priority = "NORMAL"
         });
         closedResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task GetWorkInProgressOverview_authenticated_returns_200_OK_with_WIP_overview()
+    {
+        if (!_sqlServerAvailable || _factory is null) return;
+
+        var ctx = await SeedOperationalActorsAndMasterDataAsync();
+
+        // 1. Create a request
+        var createResp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "WIP Endpoint Integration Test Request",
+            description = "Testing GET /api/v1/requests/wip",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id,
+            requestType = "Bug",
+            priority = "HIGH"
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var requestId = created.GetProperty("id").GetGuid();
+
+        // 2. Assign and start work
+        var assignResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
+        {
+            ownerPersonId = ctx.Programmer1Id,
+            notes = "Assigned for WIP test"
+        });
+        assignResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var startResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new
+        {
+            notes = "Starting work for WIP test"
+        });
+        startResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 3. GET /api/v1/requests/wip -> 200 OK
+        var wipResp = await ctx.Client.GetAsync("/api/v1/requests/wip");
+        wipResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var wipPersons = await wipResp.Content.ReadFromJsonAsync<List<PersonWorkInProgressDto>>();
+        wipPersons.Should().NotBeNull();
+        var prog1Wip = wipPersons!.FirstOrDefault(p => p.PersonId == ctx.Programmer1Id);
+        prog1Wip.Should().NotBeNull();
+        prog1Wip!.InProgressTask.Should().NotBeNull();
+        prog1Wip.InProgressTask!.RequestId.Should().Be(requestId);
+        prog1Wip.InProgressTask.Title.Should().Be("WIP Endpoint Integration Test Request");
+        prog1Wip.InProgressTask.Status.Should().Be(RequestStatusNames.InProgress);
     }
 
     private sealed record SeededContext(

@@ -53,6 +53,7 @@ const currentScreenTitle = computed(() => {
   if (path.startsWith('/requests/my')) return 'My Assigned Requests'
   if (path.startsWith('/requests/search')) return 'Request Search'
   if (path.startsWith('/requests/')) return 'Request Details'
+  if (path.startsWith('/operations/wip')) return 'Work in Progress'
   if (path.startsWith('/work-packages')) return 'Work Packages'
   if (path.startsWith('/products')) return 'Product Catalog'
   if (path.startsWith('/analytics/customer-portfolio')) return 'Customer Portfolio'
@@ -128,6 +129,18 @@ const currentScreenTitle = computed(() => {
         >
           <i class="bi bi-person-workspace nav-icon" aria-hidden="true"></i>
           <span v-show="!isCollapsed" class="nav-label">My Requests</span>
+        </router-link>
+
+        <router-link
+          class="sidebar-nav-item"
+          to="/operations/wip"
+          active-class="active"
+          data-testid="nav-wip-link"
+          :title="isCollapsed ? 'Work in Progress' : undefined"
+          @click="closeMobile"
+        >
+          <i class="bi bi-hourglass-split nav-icon" aria-hidden="true"></i>
+          <span v-show="!isCollapsed" class="nav-label">Work in Progress</span>
         </router-link>
 
         <router-link

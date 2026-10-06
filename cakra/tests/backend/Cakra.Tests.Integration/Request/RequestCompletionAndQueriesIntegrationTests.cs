@@ -315,17 +315,6 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
 
         currentContext?.Initialize(Guid.NewGuid(), progA.Id, new[] { "Programmer" });
 
-        // Req 1: Cust1 + Prod1, assigned to progA -> IN_PROGRESS
-        var req1 = await mediator.Send(new RecordRequestCommand(
-            Title: "Req 1 - InProgress for ProgA",
-            Description: "First request",
-            CustomerId: cust1.Id,
-            ProductId: prod1.Id,
-            RequestType: "Bug",
-            Priority: "HIGH"));
-        await mediator.Send(new AssignRequestOwnerCommand(req1.Id, progA.Id));
-        await mediator.Send(new StartWorkCommand(req1.Id, Notes: "Working on Req 1", ActorPersonId: progA.Id));
-
         // Req 2: Cust1 + Prod2, assigned to progA -> COMPLETED
         var req2 = await mediator.Send(new RecordRequestCommand(
             Title: "Req 2 - Completed for ProgA",
@@ -337,6 +326,17 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
         await mediator.Send(new AssignRequestOwnerCommand(req2.Id, progA.Id));
         await mediator.Send(new StartWorkCommand(req2.Id, ActorPersonId: progA.Id));
         await mediator.Send(new ReviewRequestCompletionCommand(req2.Id, "Completed Req 2"));
+
+        // Req 1: Cust1 + Prod1, assigned to progA -> IN_PROGRESS
+        var req1 = await mediator.Send(new RecordRequestCommand(
+            Title: "Req 1 - InProgress for ProgA",
+            Description: "First request",
+            CustomerId: cust1.Id,
+            ProductId: prod1.Id,
+            RequestType: "Bug",
+            Priority: "HIGH"));
+        await mediator.Send(new AssignRequestOwnerCommand(req1.Id, progA.Id));
+        await mediator.Send(new StartWorkCommand(req1.Id, Notes: "Working on Req 1", ActorPersonId: progA.Id));
 
         // Req 3: Cust2 + Prod1, assigned to progB -> ASSIGNED
         var req3 = await mediator.Send(new RecordRequestCommand(
@@ -441,5 +441,35 @@ public class RequestCompletionAndQueriesIntegrationTests : IAsyncLifetime
         var batch = await requestQueryService.GetRequestsByIdsAsync(new[] { req1.Id, req3.Id });
         batch.Should().HaveCount(2);
         batch.Select(r => r.Id).Should().BeEquivalentTo(new[] { req1.Id, req3.Id });
+
+        // 10. Verify GetWorkInProgressOverviewAsync and MediatR query (CR-021)
+        var wip = await requestQueryService.GetWorkInProgressOverviewAsync();
+        wip.Should().HaveCount(1);
+        var personA = wip.First();
+        personA.PersonId.Should().Be(progA.Id);
+        personA.PersonName.Should().Be("Adi Pratama");
+        personA.InProgressTask.Should().NotBeNull();
+        personA.InProgressTask!.RequestId.Should().Be(req1.Id);
+        personA.InProgressTask.CustomerName.Should().Be("RS Harapan Kita");
+        personA.InProgressTask.Status.Should().Be(RequestStatusNames.InProgress);
+        personA.InProgressTask.TotalInProgressSeconds.Should().BeGreaterThan(0);
+        personA.PausedTasks.Should().BeEmpty();
+        personA.TotalActiveTasksCount.Should().Be(1);
+
+        // Also verify MediatR query returns identical result
+        var mediatorWip = await mediator.Send(new GetWorkInProgressOverviewQuery());
+        mediatorWip.Should().HaveCount(1);
+        mediatorWip.First().PersonId.Should().Be(progA.Id);
+
+        // Pause req1 -> personA now has InProgressTask = null and 1 PausedTask
+        await mediator.Send(new PauseWorkCommand(req1.Id, Note: "Awaiting logs", ActorPersonId: progA.Id));
+        var wipAfterPause = await requestQueryService.GetWorkInProgressOverviewAsync();
+        wipAfterPause.Should().HaveCount(1);
+        var pausedPersonA = wipAfterPause.First();
+        pausedPersonA.InProgressTask.Should().BeNull();
+        pausedPersonA.PausedTasks.Should().HaveCount(1);
+        pausedPersonA.PausedTasks[0].RequestId.Should().Be(req1.Id);
+        pausedPersonA.PausedTasks[0].Status.Should().Be(RequestStatusNames.Paused);
+        pausedPersonA.PausedTasks[0].TotalInProgressSeconds.Should().BeGreaterThan(0);
     }
 }
