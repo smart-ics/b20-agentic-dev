@@ -236,8 +236,8 @@ public sealed class CrossCuttingSystemIntegrationTests : IAsyncLifetime
         problemDetails.Title.Should().Be("Validation Error");
         problemDetails.Errors.Should().ContainKey("title");
         problemDetails.Errors["title"].Should().Contain(msg => msg.Contains("title", StringComparison.OrdinalIgnoreCase));
-        problemDetails.Errors.Should().ContainKey("description");
-        problemDetails.Errors["description"].Should().Contain(msg => msg.Contains("description", StringComparison.OrdinalIgnoreCase));
+        // Under CR-019, Description is optional for quick capture and does not trigger validation failure
+        problemDetails.Errors.Should().NotContainKey("description");
 
         var rawProblem = JsonDocument.Parse(rawBody).RootElement;
         rawProblem.GetProperty("errorCode").GetString().Should().Be("VALIDATION_FAILED");

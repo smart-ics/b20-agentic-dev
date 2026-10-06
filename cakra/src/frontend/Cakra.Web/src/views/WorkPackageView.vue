@@ -1,9 +1,18 @@
+<script lang="ts">
+export { normalizeTaskLine, parseTaskListText } from '@/api/requests'
+</script>
+
 <script setup lang="ts">
 import { AxiosError } from 'axios'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
+import {
+  normalizeTaskLine,
+  parseTaskListText,
+  recordRequest,
+} from '@/api/requests'
 import { reorderWorkPackageRequests } from '@/api/workpackages'
 
 /**
@@ -161,6 +170,7 @@ const isSubmittingAction = ref(false)
 const removingRequestId = ref<string | null>(null)
 
 const errorMessage = ref<string | null>(null)
+const warningMessage = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 
 // Filter state for GET /api/v1/work-packages
@@ -180,6 +190,9 @@ const createForm = reactive({
   customerId: '',
   productId: '',
 })
+// Quick capture candidate tasks for create modal (CR-019)
+const createRawTasks = ref('')
+const createCandidateTasks = ref<string[]>([])
 
 // Detail Panel forms
 const objectiveForm = reactive({
@@ -199,6 +212,12 @@ const addRequestForm = reactive({
   selectedRequestId: '',
   manualRequestId: '',
 })
+
+// Scope bulk quick add state (CR-019)
+const scopeAddMode = ref<'existing' | 'quick'>('existing')
+const scopeRawTasks = ref('')
+const scopeCandidateTasks = ref<string[]>([])
+const isSubmittingScopeBulk = ref(false)
 
 const routeWorkPackageId = computed(() => String(route.params.id ?? '').trim())
 
@@ -510,18 +529,40 @@ async function handleResetFilters(): Promise<void> {
   await loadWorkPackages()
 }
 
+function handleParseCreateTasks(): void {
+  const parsed = parseTaskListText(createRawTasks.value).map((line) => normalizeTaskLine(line))
+  if (parsed.length > 0) {
+    createCandidateTasks.value = [...createCandidateTasks.value, ...parsed]
+    createRawTasks.value = ''
+  }
+}
+
+function handleRemoveCreateCandidate(index: number): void {
+  createCandidateTasks.value.splice(index, 1)
+}
+
+function handleClearCreateCandidates(): void {
+  createCandidateTasks.value = []
+  createRawTasks.value = ''
+}
+
 function openCreateModal(): void {
   errorMessage.value = null
+  warningMessage.value = null
   successMessage.value = null
   createForm.name = ''
   createForm.objective = ''
   createForm.ownerPersonId = activePersons.value[0]?.id ?? ''
   createForm.customerId = ''
   createForm.productId = ''
+  createRawTasks.value = ''
+  createCandidateTasks.value = []
   showCreateForm.value = true
 }
 
 function closeCreateModal(): void {
+  createRawTasks.value = ''
+  createCandidateTasks.value = []
   showCreateForm.value = false
 }
 
@@ -532,6 +573,7 @@ async function handleCreateWorkPackage(): Promise<void> {
 
   isSubmittingCreate.value = true
   errorMessage.value = null
+  warningMessage.value = null
   successMessage.value = null
 
   const trimmedObjective = createForm.objective.trim()
@@ -547,8 +589,50 @@ async function handleCreateWorkPackage(): Promise<void> {
     })
 
     const created = response.data
+
+    const tasksToRecord = [...createCandidateTasks.value]
+    if (tasksToRecord.length === 0 && createRawTasks.value.trim().length > 0) {
+      tasksToRecord.push(...parseTaskListText(createRawTasks.value))
+    }
+
+    const unrecordedTitles: string[] = []
+    let recordedCount = 0
+
+    if (tasksToRecord.length > 0) {
+      const results = await Promise.allSettled(
+        tasksToRecord.map((taskTitle) =>
+          recordRequest({
+            title: taskTitle,
+            description: '',
+            customerId: createForm.customerId.trim() || null,
+            productId: createForm.productId.trim() || null,
+            workPackageId: created.id,
+            requestType: 'GENERAL',
+            priority: 'NORMAL',
+          }),
+        ),
+      )
+
+      results.forEach((res, idx) => {
+        if (res.status === 'fulfilled') {
+          recordedCount++
+        } else {
+          unrecordedTitles.push(tasksToRecord[idx])
+        }
+      })
+    }
+
     showCreateForm.value = false
-    successMessage.value = `Work Package "${created.objective || created.name}" created in ${created.status} status.`
+    createRawTasks.value = ''
+    createCandidateTasks.value = []
+
+    if (unrecordedTitles.length > 0) {
+      warningMessage.value = `Work package "${created.objective || created.name}" created, but ${unrecordedTitles.length} task(s) failed to record: "${unrecordedTitles.join('", "')}". You can re-try adding them in Scope Management.`
+    } else if (recordedCount > 0) {
+      successMessage.value = `Work Package "${created.objective || created.name}" created with ${recordedCount} task(s) in ${created.status} status.`
+    } else {
+      successMessage.value = `Work Package "${created.objective || created.name}" created in ${created.status} status.`
+    }
 
     await loadWorkPackages()
     await selectWorkPackage(created.id)
@@ -574,6 +658,7 @@ async function selectWorkPackage(workPackageId: string): Promise<void> {
 async function closeDetailPanel(): Promise<void> {
   selectedWorkPackage.value = null
   scopeItems.value = []
+  resetScopeBulkState()
   if (routeWorkPackageId.value) {
     await router.push('/work-packages')
   }
@@ -742,6 +827,97 @@ async function handleAddRequestToScope(): Promise<void> {
   }
 }
 
+function handleParseScopeTasks(): void {
+  const parsed = parseTaskListText(scopeRawTasks.value).map((line) => normalizeTaskLine(line))
+  if (parsed.length > 0) {
+    scopeCandidateTasks.value = [...scopeCandidateTasks.value, ...parsed]
+    scopeRawTasks.value = ''
+  }
+}
+
+function handleRemoveScopeCandidate(index: number): void {
+  scopeCandidateTasks.value.splice(index, 1)
+}
+
+function handleClearScopeCandidates(): void {
+  scopeCandidateTasks.value = []
+  scopeRawTasks.value = ''
+}
+
+function resetScopeBulkState(): void {
+  scopeRawTasks.value = ''
+  scopeCandidateTasks.value = []
+  scopeAddMode.value = 'existing'
+}
+
+async function handleBulkAddTasksToScope(): Promise<void> {
+  if (!selectedWorkPackage.value || !canModifyPackage.value) {
+    return
+  }
+
+  const wp = selectedWorkPackage.value
+  const tasksToAdd = [...scopeCandidateTasks.value]
+  if (tasksToAdd.length === 0 && scopeRawTasks.value.trim().length > 0) {
+    tasksToAdd.push(...parseTaskListText(scopeRawTasks.value))
+  }
+
+  if (tasksToAdd.length === 0) {
+    errorMessage.value = 'Please enter or parse at least one task title to add.'
+    return
+  }
+
+  isSubmittingScopeBulk.value = true
+  errorMessage.value = null
+  warningMessage.value = null
+  successMessage.value = null
+
+  try {
+    const results = await Promise.allSettled(
+      tasksToAdd.map((title) =>
+        recordRequest({
+          title,
+          description: '',
+          customerId: wp.customerId || null,
+          productId: wp.productId || null,
+          workPackageId: wp.id,
+          requestType: 'GENERAL',
+          priority: 'NORMAL',
+        }),
+      ),
+    )
+
+    const unrecordedTitles: string[] = []
+    let recordedCount = 0
+
+    results.forEach((res, idx) => {
+      if (res.status === 'fulfilled') {
+        recordedCount++
+      } else {
+        unrecordedTitles.push(tasksToAdd[idx])
+      }
+    })
+
+    if (unrecordedTitles.length > 0) {
+      scopeCandidateTasks.value = unrecordedTitles
+      scopeRawTasks.value = ''
+      warningMessage.value = `${recordedCount} task(s) added to scope, but ${unrecordedTitles.length} failed: "${unrecordedTitles.join('", "')}".`
+    } else {
+      scopeCandidateTasks.value = []
+      scopeRawTasks.value = ''
+      successMessage.value = `Successfully added ${recordedCount} task(s) to scope.`
+    }
+
+    await Promise.all([loadWorkPackageScope(wp.id), loadWorkPackages()])
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(
+      err,
+      'Failed to add tasks to work package scope.',
+    )
+  } finally {
+    isSubmittingScopeBulk.value = false
+  }
+}
+
 async function handleRemoveRequestFromScope(requestId: string): Promise<void> {
   if (!selectedWorkPackage.value || !canModifyPackage.value || !requestId) {
     return
@@ -867,6 +1043,7 @@ async function onDrop(event: DragEvent, targetIndex: number): Promise<void> {
 watch(
   routeWorkPackageId,
   async (newId) => {
+    resetScopeBulkState()
     if (newId) {
       await loadWorkPackageDetail(newId)
     } else {
@@ -932,6 +1109,22 @@ onMounted(async () => {
         class="btn-close py-1 px-2"
         aria-label="Close"
         @click="errorMessage = null"
+      ></button>
+    </div>
+
+    <div
+      v-if="warningMessage"
+      role="alert"
+      class="alert alert-warning alert-dismissible py-1 px-2 mb-2 small d-flex align-items-center gap-2"
+      data-testid="work-package-warning-alert"
+    >
+      <i class="bi bi-exclamation-circle-fill flex-shrink-0" aria-hidden="true"></i>
+      <div>{{ warningMessage }}</div>
+      <button
+        type="button"
+        class="btn-close py-1 px-2"
+        aria-label="Close"
+        @click="warningMessage = null"
       ></button>
     </div>
 
@@ -1078,6 +1271,103 @@ onMounted(async () => {
                   {{ resolveProductOptionLabel(product) }}
                 </option>
               </select>
+            </div>
+          </div>
+
+          <!-- Quick Capture Tasks (Optional) (CR-019) -->
+          <div class="mt-2 pt-2 border-top" data-testid="create-quick-capture-section">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label for="createQuickTasksInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                <i class="bi bi-lightning-charge me-1 text-warning"></i>Quick Capture Tasks (Optional)
+              </label>
+              <div class="d-flex align-items-center gap-1">
+                <span
+                  v-if="createCandidateTasks.length > 0"
+                  class="badge text-bg-primary"
+                  style="font-size: 10px"
+                  data-testid="create-candidate-count-badge"
+                >
+                  {{ createCandidateTasks.length }} parsed
+                </span>
+                <button
+                  v-if="createCandidateTasks.length > 0"
+                  type="button"
+                  class="btn btn-link btn-sm p-0 text-decoration-none small text-danger"
+                  style="font-size: 10.5px"
+                  :disabled="isSubmittingCreate"
+                  data-testid="create-clear-candidates-button"
+                  @click="handleClearCreateCandidates"
+                >
+                  Clear Parsed
+                </button>
+              </div>
+            </div>
+
+            <div class="mb-1">
+              <textarea
+                id="createQuickTasksInput"
+                v-model="createRawTasks"
+                class="form-control form-control-sm font-monospace"
+                style="font-size: 11.5px; resize: vertical"
+                rows="3"
+                placeholder="Paste or type task list (bullets, numbers, markdown checklists)&#10;- Setup database schema&#10;- Configure API endpoints&#10;- Build user interface"
+                :disabled="isSubmittingCreate"
+                data-testid="create-quick-tasks-textarea"
+              ></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-body-secondary small" style="font-size: 10.5px">
+                One task per line. Bullets, numbers, and checkboxes are automatically cleaned.
+              </span>
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm py-0 px-2"
+                style="font-size: 11px; height: 24px; line-height: 22px"
+                :disabled="isSubmittingCreate || !createRawTasks.trim()"
+                data-testid="create-parse-tasks-button"
+                @click="handleParseCreateTasks"
+              >
+                <i class="bi bi-arrow-down-circle me-1"></i>Parse Tasks
+              </button>
+            </div>
+
+            <!-- Candidate Tasks Preview List -->
+            <div
+              v-if="createCandidateTasks.length > 0"
+              class="border rounded p-1 bg-body-tertiary mb-1"
+              data-testid="create-candidate-preview-container"
+            >
+              <div class="small fw-semibold text-body-secondary mb-1 px-1" style="font-size: 10.5px">
+                Candidate Tasks to Create:
+              </div>
+              <ul class="list-group list-group-flush small" style="max-height: 150px; overflow-y: auto" data-testid="create-candidate-tasks-list">
+                <li
+                  v-for="(task, idx) in createCandidateTasks"
+                  :key="idx"
+                  class="list-group-item d-flex justify-content-between align-items-center py-1 px-2 bg-transparent"
+                  data-testid="create-candidate-task-item"
+                >
+                  <div class="d-flex align-items-center text-truncate me-2">
+                    <span class="badge text-bg-light border text-secondary me-2 font-monospace" style="font-size: 9px">
+                      #{{ idx + 1 }}
+                    </span>
+                    <span class="text-truncate" style="font-size: 11.5px">{{ task }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-xs py-0 px-1"
+                    style="font-size: 10px; height: 20px; line-height: 18px"
+                    title="Remove candidate task"
+                    aria-label="Remove candidate task"
+                    :disabled="isSubmittingCreate"
+                    data-testid="create-candidate-remove-button"
+                    @click="handleRemoveCreateCandidate(idx)"
+                  >
+                    ✕
+                  </button>
+                </li>
+              </ul>
             </div>
           </div>
 
@@ -1557,9 +1847,35 @@ onMounted(async () => {
                 </button>
               </div>
 
-              <!-- Add Request Controls -->
+              <!-- Scope Add Controls Toggle Pill (CR-019) -->
+              <div v-if="canModifyPackage" class="d-flex align-items-center mb-1" data-testid="scope-add-mode-toggle">
+                <div class="btn-group btn-group-sm w-100" role="group">
+                  <button
+                    type="button"
+                    class="btn py-0"
+                    :class="scopeAddMode === 'existing' ? 'btn-primary' : 'btn-outline-secondary'"
+                    style="font-size: 11px; height: 24px; line-height: 22px"
+                    data-testid="scope-mode-existing-button"
+                    @click="scopeAddMode = 'existing'"
+                  >
+                    Existing Request
+                  </button>
+                  <button
+                    type="button"
+                    class="btn py-0"
+                    :class="scopeAddMode === 'quick' ? 'btn-primary' : 'btn-outline-secondary'"
+                    style="font-size: 11px; height: 24px; line-height: 22px"
+                    data-testid="scope-mode-quick-button"
+                    @click="scopeAddMode = 'quick'"
+                  >
+                    ⚡ Quick Bulk Add
+                  </button>
+                </div>
+              </div>
+
+              <!-- Existing Request Form -->
               <form
-                v-if="canModifyPackage"
+                v-if="canModifyPackage && scopeAddMode === 'existing'"
                 novalidate
                 class="p-1 mb-1 rounded bg-body-tertiary border"
                 data-testid="add-request-form"
@@ -1606,6 +1922,127 @@ onMounted(async () => {
                   </div>
                 </div>
               </form>
+
+              <!-- Quick Bulk Add Form (CR-019) -->
+              <div
+                v-if="canModifyPackage && scopeAddMode === 'quick'"
+                class="p-2 mb-2 rounded bg-body-tertiary border"
+                data-testid="scope-quick-bulk-form"
+              >
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label for="scopeQuickTasksInput" class="small fw-semibold text-body-secondary mb-0" style="font-size: 11px">
+                    <i class="bi bi-lightning-charge-fill me-1 text-warning"></i>Bulk Quick Add Tasks
+                  </label>
+                  <div class="d-flex align-items-center gap-1">
+                    <span
+                      v-if="scopeCandidateTasks.length > 0"
+                      class="badge text-bg-primary"
+                      style="font-size: 10px"
+                      data-testid="scope-candidate-count-badge"
+                    >
+                      {{ scopeCandidateTasks.length }} parsed
+                    </span>
+                    <button
+                      v-if="scopeCandidateTasks.length > 0"
+                      type="button"
+                      class="btn btn-link btn-sm p-0 text-decoration-none small text-danger"
+                      style="font-size: 10.5px"
+                      :disabled="isSubmittingScopeBulk"
+                      data-testid="scope-clear-candidates-button"
+                      @click="handleClearScopeCandidates"
+                    >
+                      Clear Parsed
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mb-1">
+                  <textarea
+                    id="scopeQuickTasksInput"
+                    v-model="scopeRawTasks"
+                    class="form-control form-control-sm font-monospace"
+                    style="font-size: 11.5px; resize: vertical"
+                    rows="3"
+                    placeholder="Paste or type task list (bullets, numbers, markdown checklists)&#10;- Sub-system integration&#10;- Validation checks"
+                    :disabled="isSubmittingScopeBulk"
+                    data-testid="scope-quick-tasks-textarea"
+                  ></textarea>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-body-secondary small" style="font-size: 10.5px">
+                    One task per line. Bullets, numbers, and checkboxes are cleaned.
+                  </span>
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm py-0 px-2"
+                    style="font-size: 11px; height: 24px; line-height: 22px"
+                    :disabled="isSubmittingScopeBulk || !scopeRawTasks.trim()"
+                    data-testid="scope-parse-tasks-button"
+                    @click="handleParseScopeTasks"
+                  >
+                    <i class="bi bi-arrow-down-circle me-1"></i>Parse Tasks
+                  </button>
+                </div>
+
+                <!-- Scope Candidate Tasks Preview List -->
+                <div
+                  v-if="scopeCandidateTasks.length > 0"
+                  class="border rounded p-1 bg-white mb-2"
+                  data-testid="scope-candidate-preview-container"
+                >
+                  <div class="small fw-semibold text-body-secondary mb-1 px-1" style="font-size: 10.5px">
+                    Candidate Tasks to Add to Scope:
+                  </div>
+                  <ul class="list-group list-group-flush small" style="max-height: 150px; overflow-y: auto" data-testid="scope-candidate-tasks-list">
+                    <li
+                      v-for="(task, idx) in scopeCandidateTasks"
+                      :key="idx"
+                      class="list-group-item d-flex justify-content-between align-items-center py-1 px-2"
+                      data-testid="scope-candidate-task-item"
+                    >
+                      <div class="d-flex align-items-center text-truncate me-2">
+                        <span class="badge text-bg-light border text-secondary me-2 font-monospace" style="font-size: 9px">
+                          #{{ idx + 1 }}
+                        </span>
+                        <span class="text-truncate" style="font-size: 11.5px">{{ task }}</span>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn-outline-danger btn-xs py-0 px-1"
+                        style="font-size: 10px; height: 20px; line-height: 18px"
+                        title="Remove candidate task"
+                        aria-label="Remove candidate task"
+                        :disabled="isSubmittingScopeBulk"
+                        data-testid="scope-candidate-remove-button"
+                        @click="handleRemoveScopeCandidate(idx)"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm py-0 px-2"
+                    style="font-size: 11px; height: 26px; line-height: 24px"
+                    :disabled="isSubmittingScopeBulk || (scopeCandidateTasks.length === 0 && !scopeRawTasks.trim())"
+                    data-testid="scope-submit-bulk-button"
+                    @click="handleBulkAddTasksToScope"
+                  >
+                    <span
+                      v-if="isSubmittingScopeBulk"
+                      class="spinner-border spinner-border-sm me-1"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    <i v-else class="bi bi-plus-circle me-1" aria-hidden="true"></i>
+                    Add Tasks to Scope
+                  </button>
+                </div>
+              </div>
 
               <!-- Linked Requests List -->
               <div v-if="isLoadingScope" class="text-center py-2 text-body-secondary small">

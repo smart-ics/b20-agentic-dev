@@ -14,7 +14,7 @@ public partial interface IRequestService
     /// </summary>
     Task<RequestDto> RecordRequestAsync(
         string title,
-        string description,
+        string? description = null,
         Guid? customerId = null,
         Guid? productId = null,
         string requestType = "GENERAL",
@@ -30,7 +30,7 @@ public partial interface IRequestService
     /// </summary>
     Task<RequestDto> RecordRequest(
         string title,
-        string description,
+        string? description = null,
         Guid? customerId = null,
         Guid? productId = null,
         string requestType = "GENERAL",

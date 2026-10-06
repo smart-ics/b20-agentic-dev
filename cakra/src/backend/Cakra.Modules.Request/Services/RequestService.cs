@@ -223,7 +223,7 @@ public sealed partial class RequestService :
     /// <inheritdoc />
     public async Task<RequestDto> RecordRequestAsync(
         string title,
-        string description,
+        string? description = null,
         Guid? customerId = null,
         Guid? productId = null,
         string requestType = "GENERAL",
@@ -237,11 +237,6 @@ public sealed partial class RequestService :
         if (string.IsNullOrWhiteSpace(title))
         {
             throw new RequestDomainValidationException("Title cannot be empty.", nameof(title));
-        }
-
-        if (string.IsNullOrWhiteSpace(description))
-        {
-            throw new RequestDomainValidationException("Description cannot be empty.", nameof(description));
         }
 
         if (customerId.HasValue)
@@ -267,7 +262,7 @@ public sealed partial class RequestService :
         var request = Domain.Request.Record(
             id: Guid.NewGuid(),
             title: title,
-            description: description,
+            description: description ?? string.Empty,
             requestType: normalizedType,
             actorPersonId: resolvedActorId,
             customerId: customerId,
@@ -381,7 +376,7 @@ public sealed partial class RequestService :
     /// <inheritdoc />
     public Task<RequestDto> RecordRequest(
         string title,
-        string description,
+        string? description = null,
         Guid? customerId = null,
         Guid? productId = null,
         string requestType = "GENERAL",

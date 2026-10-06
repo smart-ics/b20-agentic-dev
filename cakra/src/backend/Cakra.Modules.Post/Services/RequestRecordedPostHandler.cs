@@ -33,7 +33,7 @@ public sealed class RequestRecordedPostHandler : INotificationHandler<RequestRec
             notification.Title);
 
         var title = $"Request: {notification.Title}";
-        var content = notification.Description;
+        var content = string.IsNullOrWhiteSpace(notification.Description) ? notification.Title : notification.Description;
         var authorPersonId = notification.ActorPersonId;
         const string sourceEventType = "RequestRecorded";
 

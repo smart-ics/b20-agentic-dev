@@ -222,7 +222,7 @@ public sealed class RequestCoreCommandsTests
     {
         var recordValidator = new RecordRequestCommandValidator();
         recordValidator.Validate(new RecordRequestCommand("", "Desc")).IsValid.Should().BeFalse();
-        recordValidator.Validate(new RecordRequestCommand("Title", "")).IsValid.Should().BeFalse();
+        recordValidator.Validate(new RecordRequestCommand("Title", "")).IsValid.Should().BeTrue();
         recordValidator.Validate(new RecordRequestCommand("Title", "Desc", CustomerId: Guid.Empty)).IsValid.Should().BeFalse();
         recordValidator.Validate(new RecordRequestCommand("Title", "Desc", ProductId: Guid.Empty)).IsValid.Should().BeFalse();
         recordValidator.Validate(new RecordRequestCommand("Title", "Desc", Guid.NewGuid(), Guid.NewGuid())).IsValid.Should().BeTrue();
@@ -244,6 +244,37 @@ public sealed class RequestCoreCommandsTests
         cancelValidator.Validate(new CancelRequestCommand(Guid.Empty, "Reason")).IsValid.Should().BeFalse();
         cancelValidator.Validate(new CancelRequestCommand(Guid.NewGuid(), "")).IsValid.Should().BeFalse();
         cancelValidator.Validate(new CancelRequestCommand(Guid.NewGuid(), "Valid reason")).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RecordRequest_supports_empty_and_null_description_for_quick_capture()
+    {
+        var recordValidator = new RecordRequestCommandValidator();
+
+        // 1. Validator allows empty, null, or omitted description (CR-019 / P1-S01)
+        recordValidator.Validate(new RecordRequestCommand("Quick demand", "")).IsValid.Should().BeTrue();
+        recordValidator.Validate(new RecordRequestCommand("Quick demand", null!)).IsValid.Should().BeTrue();
+        recordValidator.Validate(new RecordRequestCommand("Quick demand")).IsValid.Should().BeTrue();
+
+        // 2. Command defaults null description to string.Empty
+        var cmd1 = new RecordRequestCommand("Quick demand");
+        cmd1.Description.Should().Be(string.Empty);
+
+        var cmd2 = new RecordRequestCommand("Quick demand", null);
+        cmd2.Description.Should().Be(string.Empty);
+
+        // 3. RequestService records request with empty description successfully
+        var repo = new InMemoryRequestRepository();
+        var orgQuery = new FakeOrganizationQueryService();
+        var customerQuery = new FakeCustomerQueryService();
+        var productQuery = new FakeProductQueryService();
+        var service = new RequestService(repo, orgQuery, customerQuery, productQuery);
+
+        var result = await service.RecordRequest("Minimal demand", "");
+        result.Should().NotBeNull();
+        result.Title.Should().Be("Minimal demand");
+        result.Description.Should().Be(string.Empty);
+        result.Status.Should().Be("CAPTURED");
     }
 
     private sealed class InMemoryRequestRepository : IRequestRepository

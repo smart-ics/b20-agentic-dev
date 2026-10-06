@@ -143,13 +143,13 @@ public sealed class RequestStateMachineTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Record_WithEmptyDescription_ThrowsValidationException(string description)
+    [InlineData(null)]
+    public void Record_WithEmptyDescription_IsAllowed_AndSetsEmptyDescription(string? description)
     {
-        var act = () => Cakra.Modules.Request.Domain.Request.Record(
+        var request = Cakra.Modules.Request.Domain.Request.Record(
             Guid.NewGuid(), "Title", description, "Bug", _actorId);
 
-        act.Should().Throw<RequestDomainValidationException>()
-            .WithParameterName("description");
+        request.Description.Should().Be(string.Empty);
     }
 
     [Theory]

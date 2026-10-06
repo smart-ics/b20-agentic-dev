@@ -80,7 +80,7 @@ public sealed class Request : EntityBase
     public static Request Record(
         Guid id,
         string title,
-        string description,
+        string? description,
         string requestType,
         Guid actorPersonId,
         Guid? customerId = null,
@@ -94,8 +94,6 @@ public sealed class Request : EntityBase
             throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(id));
         if (string.IsNullOrWhiteSpace(title))
             throw new RequestDomainValidationException("Title cannot be empty.", nameof(title));
-        if (string.IsNullOrWhiteSpace(description))
-            throw new RequestDomainValidationException("Description cannot be empty.", nameof(description));
         if (string.IsNullOrWhiteSpace(requestType))
             throw new RequestDomainValidationException("RequestType cannot be empty.", nameof(requestType));
         if (actorPersonId == Guid.Empty)
@@ -111,7 +109,7 @@ public sealed class Request : EntityBase
         {
             Id = id,
             Title = title.Trim(),
-            Description = description.Trim(),
+            Description = description?.Trim() ?? string.Empty,
             RequestType = requestType.Trim(),
             Status = RequestStatus.Captured,
             Priority = string.IsNullOrWhiteSpace(priority) ? "NORMAL" : priority.Trim().ToUpperInvariant(),

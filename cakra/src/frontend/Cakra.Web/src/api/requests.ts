@@ -67,6 +67,53 @@ export interface RequestDto {
 export type Request = RequestDto
 export type RequestDetail = RequestDto
 
+export interface RecordRequestPayload {
+  title: string
+  description?: string
+  customerId?: string | null
+  productId?: string | null
+  workPackageId?: string | null
+  requestType?: string
+  priority?: string
+  complexity?: number
+  actorPersonId?: string | null
+  initialSubTasks?: InitialSubTaskInput[]
+}
+
+/**
+ * Records a new operational request (CR-019).
+ */
+export async function recordRequest(
+  payload: RecordRequestPayload,
+): Promise<RequestDto> {
+  const response = await httpClient.post<RequestDto>('/requests', payload)
+  return response.data
+}
+
+/**
+ * Normalizes a single task line by stripping markdown checkboxes, bullets, and numbering (CR-019 TD-002).
+ */
+export function normalizeTaskLine(line: string): string {
+  // 1. Strip markdown checkboxes like [ ], [x], [X]
+  let cleaned = line.replace(/^\s*\[[ xX]?\]\s*/, '')
+  // 2. Strip bullet prefixes (-, *, +) and numeric prefixes (1., 1), (1))
+  cleaned = cleaned.replace(/^\s*(?:[-*+]|\d+[\.\)]|\(\d+\))\s*/, '')
+  // 3. Trim whitespace
+  return cleaned.trim()
+}
+
+/**
+ * Parses raw multi-line task list text into normalized non-empty lines with a 255-character cap (CR-019 TD-002).
+ */
+export function parseTaskListText(rawText: string): string[] {
+  if (!rawText) return []
+  return rawText
+    .split(/\r?\n/)
+    .map((line) => normalizeTaskLine(line))
+    .filter((line) => line.length > 0)
+    .map((line) => (line.length > 255 ? line.substring(0, 255) : line))
+}
+
 export interface UpdateRequestCoreAttributesPayload {
   title: string
   description: string
@@ -232,6 +279,9 @@ export async function getAssignedSubTasks(personId?: string): Promise<RequestDto
 }
 
 export const requestService = {
+  recordRequest,
+  normalizeTaskLine,
+  parseTaskListText,
   startWork,
   pauseWork,
   cancelRequest,

@@ -10,11 +10,11 @@ namespace Cakra.Modules.Request.Services;
 public sealed record InitialSubTaskDto(string Title, Guid? AssigneePersonId = null);
 
 /// <summary>
-/// Command to record a new operational Request in <c>CAPTURED</c> state (Architecture §7, §8 — UC-REQ-001).
+/// Command to record a new operational Request in <c>CAPTURED</c> state (Architecture §7, §8 — UC-REQ-001, CR-019).
 /// </summary>
 public sealed record RecordRequestCommand(
     string Title,
-    string Description,
+    string? Description = null,
     Guid? CustomerId = null,
     Guid? ProductId = null,
     string RequestType = "GENERAL",
@@ -22,7 +22,10 @@ public sealed record RecordRequestCommand(
     Guid? ActorPersonId = null,
     Guid? WorkPackageId = null,
     int? Complexity = null,
-    IReadOnlyList<InitialSubTaskDto>? InitialSubTasks = null) : IRequest<RequestDto>;
+    IReadOnlyList<InitialSubTaskDto>? InitialSubTasks = null) : IRequest<RequestDto>
+{
+    public string Description { get; init; } = Description ?? string.Empty;
+}
 
 public sealed class RecordRequestCommandValidator : AbstractValidator<RecordRequestCommand>
 {
@@ -31,9 +34,6 @@ public sealed class RecordRequestCommandValidator : AbstractValidator<RecordRequ
         RuleFor(x => x.Title)
             .NotEmpty().WithMessage("Request title is required.")
             .MaximumLength(255).WithMessage("Request title must not exceed 255 characters.");
-
-        RuleFor(x => x.Description)
-            .NotEmpty().WithMessage("Request description is required.");
 
         RuleFor(x => x.RequestType)
             .NotEmpty().WithMessage("Request type is required.")
