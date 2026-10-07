@@ -106,6 +106,15 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/operations/cockpit',
+    name: 'operations-cockpit',
+    component: () => import('@/views/OperationsCockpitView.vue'),
+    meta: {
+      requiresAuth: true,
+      screenId: 'SCR-WP-002',
+    },
+  },
+  {
     path: '/work-packages',
     name: 'work-packages',
     component: WorkPackageView,

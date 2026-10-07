@@ -12,11 +12,15 @@ import {
   normalizeTaskLine,
   parseTaskListText,
   recordRequest,
+  type RequestDto,
 } from '@/api/requests'
 import {
+  getOperationsCockpit,
   reorderWorkPackageRequests,
   updateWorkPackageContext,
   updateWorkPackageDeadline,
+  type FlowBarcodeDayDto,
+  type WorkPackageTelemetryDto,
 } from '@/api/workpackages'
 
 /**
@@ -59,6 +63,8 @@ export interface WorkPackageScopeItem {
   status: string
   requestStatus?: string
   priority?: string
+  complexity?: number
+  blockerNote?: string | null
   ownerPersonId?: string | null
   requestOwnerPersonId?: string | null
   ownerName?: string | null
@@ -67,6 +73,7 @@ export interface WorkPackageScopeItem {
   customerName?: string | null
   productId?: string | null
   productName?: string | null
+  request?: RequestDto | null
 }
 
 export interface WorkPackageItem {
@@ -177,6 +184,16 @@ const removingRequestId = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
 const warningMessage = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
+
+// Operational Telemetry state (CR-025 P4-S07)
+const telemetryByPackageId = ref<Record<string, WorkPackageTelemetryDto>>({})
+const isLoadingTelemetry = ref(false)
+const viewMode = ref<'table' | 'cards'>('table')
+
+// Decision Workbench & Simulation state (CR-025 P4-S08, Architecture §4 TD-007)
+const portfolioOrgThroughput = ref<number>(1.0)
+const simulatedDeadline = ref<string>('')
+const descopedRequestIds = ref<string[]>([])
 
 // Filter state for GET /api/v1/work-packages
 const filters = reactive({
@@ -351,16 +368,21 @@ function requestStatusBadgeClass(status: string | null | undefined): string {
     case 'CAPTURED':
       return 'text-bg-secondary'
     case 'EVALUATING':
+    case 'ASSIGNED':
       return 'text-bg-info'
     case 'ACCEPTED':
     case 'IN_PROGRESS':
       return 'text-bg-primary'
+    case 'PAUSED':
+      return 'text-bg-danger'
     case 'ESCALATED':
       return 'text-bg-warning'
     case 'COMPLETED':
       return 'text-bg-success'
     case 'REJECTED':
       return 'text-bg-danger'
+    case 'CANCELLED':
+      return 'text-bg-dark'
     default:
       return 'text-bg-secondary'
   }
@@ -466,6 +488,8 @@ function syncDetailForms(wp: WorkPackageItem): void {
   contextForm.productId = wp.productId ?? ''
   assignOwnerForm.newOwnerPersonId = wp.ownerPersonId ?? ''
   closePackageForm.reason = wp.closedReason ?? ''
+  simulatedDeadline.value = wp.deadline ? wp.deadline.slice(0, 10) : ''
+  descopedRequestIds.value = []
 }
 
 async function loadLookups(): Promise<void> {
@@ -498,6 +522,300 @@ async function loadLookups(): Promise<void> {
   }
 }
 
+async function fetchTelemetry(): Promise<void> {
+  isLoadingTelemetry.value = true
+  try {
+    const cockpit = await getOperationsCockpit()
+    const map: Record<string, WorkPackageTelemetryDto> = {}
+    if (cockpit?.packages) {
+      for (const pkg of cockpit.packages) {
+        map[pkg.id] = pkg
+      }
+    }
+    telemetryByPackageId.value = map
+    if (cockpit?.portfolioMetrics?.orgDailyThroughput) {
+      portfolioOrgThroughput.value = cockpit.portfolioMetrics.orgDailyThroughput
+    }
+  } catch (err) {
+    console.warn('Failed to fetch operations cockpit telemetry:', err)
+  } finally {
+    isLoadingTelemetry.value = false
+  }
+}
+
+function getTelemetry(wpId: string): WorkPackageTelemetryDto | null {
+  return telemetryByPackageId.value[wpId] ?? null
+}
+
+const selectedTelemetry = computed<WorkPackageTelemetryDto | null>(() => {
+  if (!selectedWorkPackage.value) return null
+  return telemetryByPackageId.value[selectedWorkPackage.value.id] ?? null
+})
+
+function getPressureBadgeClass(tier: string | undefined): string {
+  switch ((tier ?? '').toUpperCase()) {
+    case 'NOMINAL':
+      return 'bg-secondary text-white'
+    case 'ELEVATED':
+      return 'bg-primary text-white'
+    case 'CRITICAL':
+      return 'bg-warning text-dark'
+    case 'IMPOSSIBLE':
+      return 'bg-danger text-white'
+    case 'UNPLANNED':
+    default:
+      return 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle'
+  }
+}
+
+function getScopeDemandLabel(t?: WorkPackageTelemetryDto | null): string {
+  if (!t || t.pressureTier === 'UNPLANNED' || !t.deadline) {
+    return '[UNPLANNED]'
+  }
+  const share = t.orgCapacityShare != null ? Math.round(t.orgCapacityShare) : 0
+  return `[${share}% Org Output]`
+}
+
+function getWpScopeDemandBadge(wp: WorkPackageItem): { label: string; class: string; tooltip: string } {
+  const t = telemetryByPackageId.value[wp.id]
+  if (!t || t.pressureTier === 'UNPLANNED' || !wp.deadline) {
+    return {
+      label: '[UNPLANNED]',
+      class: 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle',
+      tooltip: 'No target deadline assigned (Unplanned pressure)',
+    }
+  }
+
+  const share = t.orgCapacityShare != null ? Math.round(t.orgCapacityShare) : 0
+  const label = `[${share}% Org Output]`
+  const tierClass = getPressureBadgeClass(t.pressureTier)
+  const burn = t.requiredDailyBurn != null ? t.requiredDailyBurn.toFixed(1) : '0.0'
+  const tooltip = `${burn} pts/day | ${share}% Org Output [${t.pressureTier}]`
+
+  return { label, class: tierClass, tooltip }
+}
+
+function getBarClass(day: FlowBarcodeDayDto): string {
+  if (day.blockedCount > 0) {
+    return 'bg-danger'
+  }
+  if (day.closedCount > 0) {
+    return 'bg-success'
+  }
+  if (day.stateMutationCount > 0) {
+    return 'bg-primary'
+  }
+  return 'bg-secondary-subtle'
+}
+
+function getBarHeight(day: FlowBarcodeDayDto, isLarge = false): string {
+  if (isLarge) {
+    if (day.blockedCount > 0 || day.closedCount > 0) {
+      return '26px'
+    }
+    if (day.stateMutationCount > 0) {
+      const h = Math.min(26, 10 + day.stateMutationCount * 4)
+      return `${h}px`
+    }
+    return '6px'
+  }
+
+  if (day.blockedCount > 0 || day.closedCount > 0) {
+    return '14px'
+  }
+  if (day.stateMutationCount > 0) {
+    const h = Math.min(14, 6 + day.stateMutationCount * 2)
+    return `${h}px`
+  }
+  return '4px'
+}
+
+function getBarTooltip(day: FlowBarcodeDayDto): string {
+  return `${day.date}: ${day.closedCount} closed, ${day.stateMutationCount} mutations, ${day.blockedCount} blocked`
+}
+
+// Decision Workbench & Simulation engine (CR-025 P4-S08, Architecture §4 TD-007)
+function getRequestComplexity(item: WorkPackageScopeItem): number {
+  if (typeof item.complexity === 'number' && item.complexity > 0) {
+    return item.complexity
+  }
+  if (typeof item.request?.complexity === 'number' && item.request.complexity > 0) {
+    return item.request.complexity
+  }
+  return 1
+}
+
+function isRequestPausedOrBlocked(item: WorkPackageScopeItem): boolean {
+  const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
+  return s === 'PAUSED'
+}
+
+function isRequestCompleted(item: WorkPackageScopeItem): boolean {
+  const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
+  return s === 'COMPLETED' || s === 'CANCELLED'
+}
+
+function getRequestStateAgingDays(item: WorkPackageScopeItem): number {
+  const dateStr =
+    item.updatedAt ||
+    item.request?.updatedAt ||
+    item.createdAt ||
+    item.request?.createdAt
+  if (!dateStr) return 0
+  const parsed = new Date(dateStr)
+  if (Number.isNaN(parsed.getTime())) return 0
+  const diffMs = Math.max(0, Date.now() - parsed.getTime())
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24))
+}
+
+function getRequestBlockerNote(item: WorkPackageScopeItem): string {
+  if (item.blockerNote && item.blockerNote.trim().length > 0) {
+    return item.blockerNote.trim()
+  }
+  if (item.request?.assignments && item.request.assignments.length > 0) {
+    const paused = [...item.request.assignments]
+      .reverse()
+      .find((a) => (a.newStatus || '').toUpperCase() === 'PAUSED')
+    if (paused?.notes && paused.notes.trim().length > 0) {
+      return paused.notes.trim()
+    }
+  }
+  if (item.request?.evaluationNotes && item.request.evaluationNotes.trim().length > 0) {
+    return item.request.evaluationNotes.trim()
+  }
+  return 'Work paused on request'
+}
+
+function computeWorkingDays(startDate: Date, targetDate: Date): number {
+  const start = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()))
+  const target = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate()))
+  if (target <= start) {
+    return 0
+  }
+  let workingDays = 0
+  const current = new Date(start)
+  current.setUTCDate(current.getUTCDate() + 1)
+  while (current <= target) {
+    const day = current.getUTCDay()
+    if (day !== 0 && day !== 6) {
+      workingDays++
+    }
+    current.setUTCDate(current.getUTCDate() + 1)
+  }
+  return workingDays
+}
+
+function determinePressureTier(orgCapacityShare: number | null, hasDeadline: boolean): string {
+  if (!hasDeadline || orgCapacityShare === null) {
+    return 'UNPLANNED'
+  }
+  if (orgCapacityShare < 20.0) {
+    return 'NOMINAL'
+  }
+  if (orgCapacityShare <= 50.0) {
+    return 'ELEVATED'
+  }
+  if (orgCapacityShare <= 100.0) {
+    return 'CRITICAL'
+  }
+  return 'IMPOSSIBLE'
+}
+
+function isDescoped(requestId: string): boolean {
+  return descopedRequestIds.value.includes(requestId)
+}
+
+function toggleDescope(requestId: string): void {
+  if (descopedRequestIds.value.includes(requestId)) {
+    descopedRequestIds.value = descopedRequestIds.value.filter((id) => id !== requestId)
+  } else {
+    descopedRequestIds.value = [...descopedRequestIds.value, requestId]
+  }
+}
+
+function resetSimulation(): void {
+  descopedRequestIds.value = []
+  simulatedDeadline.value = selectedWorkPackage.value?.deadline
+    ? selectedWorkPackage.value.deadline.slice(0, 10)
+    : ''
+}
+
+const uncompletedActiveScopeItems = computed(() =>
+  activeScopeItems.value.filter((item) => !isRequestCompleted(item)),
+)
+
+const baselineRemainingComplexity = computed(() => {
+  if (selectedTelemetry.value?.remainingComplexity != null) {
+    return selectedTelemetry.value.remainingComplexity
+  }
+  return uncompletedActiveScopeItems.value.reduce(
+    (sum, item) => sum + getRequestComplexity(item),
+    0,
+  )
+})
+
+const descopedComplexity = computed(() => {
+  const descopedSet = new Set(descopedRequestIds.value)
+  return uncompletedActiveScopeItems.value
+    .filter((item) => descopedSet.has(item.requestId))
+    .reduce((sum, item) => sum + getRequestComplexity(item), 0)
+})
+
+const simulatedRemainingComplexity = computed(() =>
+  Math.max(0, baselineRemainingComplexity.value - descopedComplexity.value),
+)
+
+const simulatedWorkingDaysRemaining = computed<number | null>(() => {
+  if (!simulatedDeadline.value) {
+    return null
+  }
+  const parts = simulatedDeadline.value.split('-').map(Number)
+  if (parts.length !== 3 || parts.some(isNaN)) {
+    return null
+  }
+  const targetDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]))
+  return computeWorkingDays(new Date(), targetDate)
+})
+
+const simulatedRequiredDailyBurn = computed<number | null>(() => {
+  if (!simulatedDeadline.value) {
+    return null
+  }
+  const days = simulatedWorkingDaysRemaining.value ?? 0
+  if (days <= 0) {
+    return simulatedRemainingComplexity.value
+  }
+  return Math.round((simulatedRemainingComplexity.value / days) * 100) / 100
+})
+
+const simulatedOrgCapacityShare = computed<number | null>(() => {
+  if (simulatedRequiredDailyBurn.value == null) {
+    return null
+  }
+  const effectiveCOrg = portfolioOrgThroughput.value > 0 ? portfolioOrgThroughput.value : 1.0
+  return Math.round((simulatedRequiredDailyBurn.value / effectiveCOrg) * 1000) / 10
+})
+
+const simulatedPressureTier = computed<string>(() =>
+  determinePressureTier(simulatedOrgCapacityShare.value, Boolean(simulatedDeadline.value)),
+)
+
+const isSimulationActive = computed(() => {
+  const currentDeadline = selectedWorkPackage.value?.deadline
+    ? selectedWorkPackage.value.deadline.slice(0, 10)
+    : ''
+  return descopedRequestIds.value.length > 0 || simulatedDeadline.value !== currentDeadline
+})
+
+const simulatedComparisonText = computed(() => {
+  const ptsText = `${simulatedRemainingComplexity.value} pts`
+  const descopeText = descopedComplexity.value > 0 ? ` (-${descopedComplexity.value} pts descope)` : ''
+  const burnText = simulatedRequiredDailyBurn.value != null ? `${simulatedRequiredDailyBurn.value.toFixed(1)} pts/day` : '— pts/day'
+  const shareText = simulatedOrgCapacityShare.value != null ? `${Math.round(simulatedOrgCapacityShare.value)}%` : '—%'
+  const tierText = simulatedPressureTier.value
+  return `Simulated: ${ptsText}${descopeText} | ${burnText} -> ${shareText} Org Output [${tierText}]`
+})
+
 async function loadWorkPackages(): Promise<void> {
   isLoadingList.value = true
   errorMessage.value = null
@@ -517,8 +835,11 @@ async function loadWorkPackages(): Promise<void> {
       params.productId = filters.productId.trim()
     }
 
-    const response = await httpClient.get<WorkPackageItem[]>('/work-packages', { params })
-    workPackages.value = response.data
+    const [packagesResponse] = await Promise.all([
+      httpClient.get<WorkPackageItem[]>('/work-packages', { params }),
+      fetchTelemetry(),
+    ])
+    workPackages.value = packagesResponse.data
   } catch (err) {
     errorMessage.value = extractErrorMessage(err, 'Failed to load work packages.')
   } finally {
@@ -717,6 +1038,7 @@ async function closeDetailPanel(): Promise<void> {
   selectedWorkPackage.value = null
   scopeItems.value = []
   resetScopeBulkState()
+  resetSimulation()
   if (routeWorkPackageId.value) {
     await router.push('/work-packages')
   }
@@ -1173,6 +1495,7 @@ watch(
   routeWorkPackageId,
   async (newId) => {
     resetScopeBulkState()
+    resetSimulation()
     if (newId) {
       await loadWorkPackageDetail(newId)
     } else {
@@ -1634,17 +1957,42 @@ onMounted(async () => {
           </select>
         </div>
 
-        <button
-          v-if="hasActiveFilters"
-          type="button"
-          class="btn btn-outline-secondary btn-sm py-0 px-2 ms-auto"
-          style="font-size: 11px; height: 26px; line-height: 24px"
-          :disabled="isLoadingList"
-          data-testid="clear-filters-button"
-          @click="handleResetFilters"
-        >
-          <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Reset
-        </button>
+        <div class="d-flex align-items-center gap-1 ms-auto">
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn btn-outline-secondary btn-sm py-0 px-2"
+            style="font-size: 11px; height: 26px; line-height: 24px"
+            :disabled="isLoadingList"
+            data-testid="clear-filters-button"
+            @click="handleResetFilters"
+          >
+            <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Reset
+          </button>
+
+          <div class="btn-group btn-group-sm" role="group" data-testid="wp-view-mode-toggle">
+            <button
+              type="button"
+              class="btn py-0 px-2"
+              :class="viewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'"
+              style="font-size: 11px; height: 26px; line-height: 24px"
+              data-testid="view-mode-table-button"
+              @click="viewMode = 'table'"
+            >
+              <i class="bi bi-table me-1"></i>Table
+            </button>
+            <button
+              type="button"
+              class="btn py-0 px-2"
+              :class="viewMode === 'cards' ? 'btn-primary' : 'btn-outline-secondary'"
+              style="font-size: 11px; height: 26px; line-height: 24px"
+              data-testid="view-mode-cards-button"
+              @click="viewMode = 'cards'"
+            >
+              <i class="bi bi-grid me-1"></i>Cards
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1654,25 +2002,27 @@ onMounted(async () => {
       <div :class="selectedWorkPackage || isLoadingDetail ? 'col-12 col-xl-7' : 'col-12'">
         <div class="card card-table shadow-none border mb-2">
           <div class="card-body p-0">
-            <div class="table-responsive">
+            <!-- Table View -->
+            <div v-if="viewMode === 'table'" class="table-responsive">
               <table
                 class="table table-hover align-middle mb-0 text-nowrap"
                 data-testid="work-packages-table"
               >
                 <thead class="table-light">
                   <tr>
-                    <th scope="col" style="width: 100px">ID</th>
-                    <th scope="col" style="min-width: 200px">Objective</th>
+                    <th scope="col" style="width: 85px">ID</th>
+                    <th scope="col" style="min-width: 220px">Objective &amp; Demand</th>
+                    <th scope="col" style="width: 140px">14d Flow</th>
                     <th scope="col">Owner</th>
                     <th scope="col">Customer</th>
                     <th scope="col">Product</th>
-                    <th scope="col" style="width: 130px">Deadline</th>
-                    <th scope="col" class="text-center" style="width: 80px">Status</th>
+                    <th scope="col" style="width: 110px">Deadline</th>
+                    <th scope="col" class="text-center" style="width: 75px">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="isLoadingList">
-                    <td colspan="7" class="text-center py-4 text-body-secondary small">
+                    <td colspan="8" class="text-center py-4 text-body-secondary small">
                       <span
                         class="spinner-border spinner-border-sm me-2"
                         role="status"
@@ -1684,7 +2034,7 @@ onMounted(async () => {
 
                   <tr v-else-if="workPackages.length === 0">
                     <td
-                      colspan="7"
+                      colspan="8"
                       class="text-center py-4 text-body-secondary small"
                       data-testid="empty-work-packages-row"
                     >
@@ -1715,7 +2065,7 @@ onMounted(async () => {
                       </router-link>
                     </td>
 
-                    <!-- Objective Column -->
+                    <!-- Objective & Demand Column -->
                     <td>
                       <div class="fw-medium text-truncate d-inline-block" style="max-width: 260px" data-testid="work-package-objective-cell">
                         {{ wp.objective || wp.name }}
@@ -1727,6 +2077,95 @@ onMounted(async () => {
                       >
                         {{ wp.name }}
                       </div>
+
+                      <!-- Scope Demand Badge & Health Invariant Pills -->
+                      <div class="d-flex flex-wrap align-items-center gap-1 mt-1" data-testid="wp-telemetry-strip">
+                        <!-- Scope Demand Badge -->
+                        <span
+                          class="badge"
+                          style="font-size: 9.5px; padding: 2px 5px"
+                          :class="getWpScopeDemandBadge(wp).class"
+                          :title="getWpScopeDemandBadge(wp).tooltip"
+                          data-testid="wp-scope-demand-badge"
+                        >
+                          {{ getWpScopeDemandBadge(wp).label }}
+                        </span>
+
+                        <!-- Health Invariant Pills -->
+                        <template v-if="getTelemetry(wp.id)">
+                          <span
+                            v-if="getTelemetry(wp.id)?.deadlineBreached"
+                            class="badge text-bg-danger"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                            data-testid="wp-health-breached-pill"
+                          >
+                            ! Deadline Breached
+                          </span>
+                          <span
+                            v-if="(getTelemetry(wp.id)?.blockedRequestsCount ?? 0) > 0"
+                            class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                            data-testid="wp-health-blocked-pill"
+                          >
+                            ! {{ getTelemetry(wp.id)?.blockedRequestsCount }} Blocked
+                          </span>
+                          <span
+                            v-if="getTelemetry(wp.id)?.isDormant"
+                            class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                            data-testid="wp-health-dormant-pill"
+                          >
+                            Dormant: {{ Math.round(getTelemetry(wp.id)?.dormantDays ?? 0) }}d
+                          </span>
+                          <span
+                            v-if="(getTelemetry(wp.id)?.activeWipCount ?? 0) > 0"
+                            class="badge bg-primary-subtle text-primary border border-primary-subtle"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                            data-testid="wp-health-wip-pill"
+                          >
+                            WIP: {{ getTelemetry(wp.id)?.activeWipCount }}
+                          </span>
+                          <span
+                            v-if="getTelemetry(wp.id)?.healthState === 'FLOWING'"
+                            class="badge bg-success-subtle text-success border border-success-subtle"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                            data-testid="wp-health-flowing-pill"
+                          >
+                            Flowing
+                          </span>
+                        </template>
+                      </div>
+                    </td>
+
+                    <!-- 14d Flow Barcode Column -->
+                    <td data-testid="work-package-flow-cell">
+                      <div v-if="getTelemetry(wp.id)" class="d-flex flex-column gap-1">
+                        <!-- Barcode Strip -->
+                        <div
+                          class="d-flex align-items-end gap-1 flow-barcode-strip"
+                          style="height: 16px"
+                          data-testid="flow-barcode-strip"
+                          :title="`14-day flow activity (Outflow: ${getTelemetry(wp.id)?.outflow14dCount}, Active WIP: ${getTelemetry(wp.id)?.activeWipCount})`"
+                        >
+                          <div
+                            v-for="(day, idx) in getTelemetry(wp.id)!.flowBarcode"
+                            :key="idx"
+                            class="barcode-bar rounded-pill"
+                            :class="getBarClass(day)"
+                            :style="{ height: getBarHeight(day), width: '4px' }"
+                            :title="getBarTooltip(day)"
+                            data-testid="flow-barcode-segment"
+                          ></div>
+                        </div>
+
+                        <!-- Mini Flow Inventory Stats -->
+                        <div class="text-body-secondary font-monospace" style="font-size: 9.5px" data-testid="wp-flow-inventory-stats">
+                          <span>WIP: {{ getTelemetry(wp.id)?.activeWipCount }}</span>
+                          <span class="mx-1">•</span>
+                          <span>14d: {{ getTelemetry(wp.id)?.outflow14dCount }}</span>
+                        </div>
+                      </div>
+                      <span v-else class="text-body-secondary font-monospace" style="font-size: 10px">—</span>
                     </td>
 
                     <!-- Owner Column -->
@@ -1769,6 +2208,163 @@ onMounted(async () => {
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- Card View Grid -->
+            <div v-else class="row g-2 p-2" data-testid="work-packages-cards-grid">
+              <div
+                v-if="isLoadingList"
+                class="col-12 text-center py-4 text-body-secondary small"
+              >
+                <span
+                  class="spinner-border spinner-border-sm me-2"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                Loading work packages...
+              </div>
+
+              <div
+                v-else-if="workPackages.length === 0"
+                class="col-12 text-center py-4 text-body-secondary small"
+              >
+                No work packages found matching the current filters.
+              </div>
+
+              <div
+                v-for="wp in workPackages"
+                v-else
+                :key="wp.id"
+                class="col-12 col-md-6 col-lg-6"
+              >
+                <div
+                  class="card h-100 shadow-none border wp-modern-card"
+                  :class="{ 'border-primary ring-1': selectedWorkPackage?.id === wp.id }"
+                  style="cursor: pointer"
+                  data-testid="work-package-card"
+                  @click="selectWorkPackage(wp.id)"
+                >
+                  <div class="card-body p-2 d-flex flex-column justify-content-between">
+                    <div>
+                      <!-- Card Header: Title & Status -->
+                      <div class="d-flex justify-content-between align-items-start gap-1 mb-1">
+                        <div class="text-truncate">
+                          <router-link
+                            :to="`/work-packages/${wp.id}`"
+                            class="fw-bold text-decoration-none small text-dark d-block text-truncate"
+                            data-testid="card-work-package-id-link"
+                            @click.stop="selectWorkPackage(wp.id)"
+                          >
+                            {{ wp.objective || wp.name }}
+                          </router-link>
+                          <span class="font-monospace text-body-secondary" style="font-size: 10px">
+                            {{ wp.id.slice(0, 8) }}
+                          </span>
+                        </div>
+                        <span
+                          class="badge flex-shrink-0"
+                          style="font-size: 10px; padding: 2px 6px"
+                          :class="statusBadgeClass(wp.status)"
+                          data-testid="card-work-package-status-badge"
+                        >
+                          {{ wp.status }}
+                        </span>
+                      </div>
+
+                      <!-- Scope Demand Badge & Health Invariant Pills -->
+                      <div class="d-flex flex-wrap align-items-center gap-1 mb-2">
+                        <span
+                          class="badge"
+                          style="font-size: 9.5px; padding: 2px 5px"
+                          :class="getWpScopeDemandBadge(wp).class"
+                          :title="getWpScopeDemandBadge(wp).tooltip"
+                          data-testid="card-scope-demand-badge"
+                        >
+                          {{ getWpScopeDemandBadge(wp).label }}
+                        </span>
+
+                        <template v-if="getTelemetry(wp.id)">
+                          <span
+                            v-if="getTelemetry(wp.id)?.deadlineBreached"
+                            class="badge text-bg-danger"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                          >
+                            ! Deadline Breached
+                          </span>
+                          <span
+                            v-if="(getTelemetry(wp.id)?.blockedRequestsCount ?? 0) > 0"
+                            class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                          >
+                            ! {{ getTelemetry(wp.id)?.blockedRequestsCount }} Blocked
+                          </span>
+                          <span
+                            v-if="getTelemetry(wp.id)?.isDormant"
+                            class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                          >
+                            Dormant: {{ Math.round(getTelemetry(wp.id)?.dormantDays ?? 0) }}d
+                          </span>
+                          <span
+                            v-if="(getTelemetry(wp.id)?.activeWipCount ?? 0) > 0"
+                            class="badge bg-primary-subtle text-primary border border-primary-subtle"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                          >
+                            WIP: {{ getTelemetry(wp.id)?.activeWipCount }}
+                          </span>
+                          <span
+                            v-if="getTelemetry(wp.id)?.healthState === 'FLOWING'"
+                            class="badge bg-success-subtle text-success border border-success-subtle"
+                            style="font-size: 9.5px; padding: 2px 5px"
+                          >
+                            Flowing
+                          </span>
+                        </template>
+                      </div>
+
+                      <!-- Metadata: Owner & Deadline -->
+                      <div class="row g-1 small text-body-secondary mb-2" style="font-size: 11px">
+                        <div class="col-6 text-truncate">
+                          <i class="bi bi-person me-1"></i>{{ resolveOwnerDisplay(wp) }}
+                        </div>
+                        <div class="col-6 text-truncate">
+                          <i class="bi bi-calendar-event me-1"></i>
+                          <span :class="{ 'text-danger fw-bold': isWorkPackageOverdue(wp) }">
+                            {{ wp.deadline ? formatDeadline(wp.deadline) : 'No Deadline' }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Flow Activity Barcode & Flow Inventory Stats -->
+                    <div v-if="getTelemetry(wp.id)" class="pt-2 border-top">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-body-secondary fw-medium" style="font-size: 10px">14-Day Activity Barcode</span>
+                        <div class="text-body-secondary font-monospace" style="font-size: 9.5px" data-testid="card-flow-stats">
+                          <span>WIP: {{ getTelemetry(wp.id)?.activeWipCount }}</span>
+                          <span class="mx-1">•</span>
+                          <span>Outflow: {{ getTelemetry(wp.id)?.outflow14dCount }}</span>
+                        </div>
+                      </div>
+                      <div
+                        class="d-flex align-items-end gap-1 flow-barcode-strip"
+                        style="height: 18px"
+                        data-testid="card-flow-barcode-strip"
+                        :title="`14-day flow activity (Outflow: ${getTelemetry(wp.id)?.outflow14dCount}, Active WIP: ${getTelemetry(wp.id)?.activeWipCount})`"
+                      >
+                        <div
+                          v-for="(day, idx) in getTelemetry(wp.id)!.flowBarcode"
+                          :key="idx"
+                          class="barcode-bar flex-grow-1 rounded-pill"
+                          :class="getBarClass(day)"
+                          :style="{ height: getBarHeight(day) }"
+                          :title="getBarTooltip(day)"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1879,6 +2475,346 @@ onMounted(async () => {
                 <span v-if="selectedWorkPackage.closedAt" class="text-body-secondary ms-1">
                   ({{ formatTimestamp(selectedWorkPackage.closedAt) }})
                 </span>
+              </div>
+            </div>
+
+            <!-- Operational Telemetry Spotlight (CR-025 P4-S07) -->
+            <div v-if="selectedTelemetry" class="mb-2 pb-2 border-bottom" data-testid="detail-telemetry-spotlight">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small fw-bold text-body-secondary" style="font-size: 11px">
+                  <i class="bi bi-speedometer2 me-1 text-primary"></i>Operational Telemetry &amp; Invariants
+                </span>
+                <span
+                  class="badge"
+                  style="font-size: 10px; padding: 2px 6px"
+                  :class="getPressureBadgeClass(selectedTelemetry.pressureTier)"
+                  data-testid="detail-scope-demand-badge"
+                >
+                  {{ getScopeDemandLabel(selectedTelemetry) }}
+                </span>
+              </div>
+
+              <!-- Scope Demand Density Card -->
+              <div class="p-2 rounded bg-body-tertiary border mb-2" data-testid="detail-scope-demand-card">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-semibold" style="font-size: 11px">Scope Demand Density</span>
+                  <span class="small font-monospace text-body-secondary" style="font-size: 11px">
+                    Tier: <strong>{{ selectedTelemetry.pressureTier }}</strong>
+                  </span>
+                </div>
+
+                <div class="row g-2 small" style="font-size: 11px">
+                  <div class="col-6">
+                    <div class="text-body-secondary">Required Daily Burn:</div>
+                    <div class="fw-bold font-monospace">
+                      {{ selectedTelemetry.requiredDailyBurn != null ? `${selectedTelemetry.requiredDailyBurn.toFixed(1)} pts/day` : '— (UNPLANNED)' }}
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-body-secondary">Org Capacity Share:</div>
+                    <div class="fw-bold font-monospace">
+                      {{ selectedTelemetry.orgCapacityShare != null ? `${selectedTelemetry.orgCapacityShare.toFixed(1)}% of C_org` : '—' }}
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-body-secondary">Working Days Remaining:</div>
+                    <div class="fw-bold font-monospace">
+                      {{ selectedTelemetry.workingDaysRemaining != null ? `${selectedTelemetry.workingDaysRemaining} business days` : '—' }}
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-body-secondary">Remaining Complexity:</div>
+                    <div class="fw-bold font-monospace">
+                      {{ selectedTelemetry.remainingComplexity }} / {{ selectedTelemetry.totalComplexity }} pts
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Health Invariants & Flow Inventory Facts -->
+              <div class="p-2 rounded bg-body-tertiary border mb-2" data-testid="detail-health-invariants-card">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-semibold" style="font-size: 11px">Observable Health Invariants</span>
+                  <span
+                    class="badge"
+                    style="font-size: 9.5px"
+                    :class="selectedTelemetry.healthState === 'FLOWING' ? 'text-bg-success' : 'text-bg-warning'"
+                  >
+                    State: {{ selectedTelemetry.healthState }}
+                  </span>
+                </div>
+
+                <!-- Invariant Pills -->
+                <div class="d-flex flex-wrap align-items-center gap-1 mb-2" data-testid="detail-health-pills">
+                  <span
+                    v-if="selectedTelemetry.deadlineBreached"
+                    class="badge text-bg-danger"
+                    style="font-size: 9.5px; padding: 2px 5px"
+                  >
+                    ! Deadline Breached
+                  </span>
+                  <span
+                    v-if="selectedTelemetry.blockedRequestsCount > 0"
+                    class="badge bg-danger-subtle text-danger border border-danger-subtle fw-semibold"
+                    style="font-size: 9.5px; padding: 2px 5px"
+                  >
+                    ! {{ selectedTelemetry.blockedRequestsCount }} Blocked
+                  </span>
+                  <span
+                    v-if="selectedTelemetry.isDormant"
+                    class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"
+                    style="font-size: 9.5px; padding: 2px 5px"
+                  >
+                    Dormant: {{ Math.round(selectedTelemetry.dormantDays) }}d
+                  </span>
+                  <span
+                    v-if="selectedTelemetry.activeWipCount > 0"
+                    class="badge bg-primary-subtle text-primary border border-primary-subtle"
+                    style="font-size: 9.5px; padding: 2px 5px"
+                  >
+                    WIP: {{ selectedTelemetry.activeWipCount }}
+                    <template v-if="selectedTelemetry.isWipStagnant">
+                      (Stagnant: {{ Math.round(selectedTelemetry.oldestActiveWipDays) }}d)
+                    </template>
+                  </span>
+                  <span
+                    v-if="selectedTelemetry.healthState === 'FLOWING'"
+                    class="badge bg-success-subtle text-success border border-success-subtle"
+                    style="font-size: 9.5px; padding: 2px 5px"
+                  >
+                    Flowing (Zero Invariant Violations)
+                  </span>
+                </div>
+
+                <!-- Flow Inventory Counters -->
+                <div class="row g-2 small border-top pt-1 mt-1" style="font-size: 11px">
+                  <div class="col-4">
+                    <div class="text-body-secondary">Active WIP:</div>
+                    <div class="fw-bold font-monospace" data-testid="detail-active-wip-count">
+                      {{ selectedTelemetry.activeWipCount }} requests
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="text-body-secondary">Oldest In-Flight:</div>
+                    <div class="fw-bold font-monospace" data-testid="detail-oldest-wip-days">
+                      {{ selectedTelemetry.activeWipCount > 0 ? `${Math.round(selectedTelemetry.oldestActiveWipDays)} days` : '—' }}
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="text-body-secondary">14d Outflow:</div>
+                    <div class="fw-bold font-monospace text-success" data-testid="detail-outflow-count">
+                      {{ selectedTelemetry.outflow14dCount }} completed
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 14-Day Flow Activity Barcode Spotlight -->
+              <div class="p-2 rounded bg-body-tertiary border" data-testid="detail-flow-barcode-card">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-semibold" style="font-size: 11px">14-Day Flow Activity Barcode</span>
+                  <div class="d-flex align-items-center gap-2 small text-body-secondary" style="font-size: 9.5px">
+                    <span><i class="bi bi-square-fill text-success me-1"></i>Closed</span>
+                    <span><i class="bi bi-square-fill text-primary me-1"></i>Mutated</span>
+                    <span><i class="bi bi-square-fill text-danger me-1"></i>Blocked</span>
+                  </div>
+                </div>
+
+                <div
+                  class="d-flex align-items-end gap-1 flow-barcode-strip py-1 bg-white border rounded px-2"
+                  style="height: 32px"
+                  data-testid="detail-flow-barcode-strip"
+                >
+                  <div
+                    v-for="(day, idx) in selectedTelemetry.flowBarcode"
+                    :key="idx"
+                    class="barcode-bar flex-grow-1 rounded-pill"
+                    :class="getBarClass(day)"
+                    :style="{ height: getBarHeight(day, true) }"
+                    :title="getBarTooltip(day)"
+                    data-testid="flow-barcode-segment"
+                  ></div>
+                </div>
+                <div class="d-flex justify-content-between text-body-secondary font-monospace mt-1 px-1" style="font-size: 9px">
+                  <span>{{ selectedTelemetry.flowBarcode[0]?.date || 'T-13' }}</span>
+                  <span>{{ selectedTelemetry.flowBarcode[selectedTelemetry.flowBarcode.length - 1]?.date || 'Today' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive Decision Workbench (CR-025 P4-S08, Architecture §4 TD-007) -->
+            <div class="mb-2 pb-2 border-bottom" data-testid="decision-workbench">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex align-items-center gap-1">
+                  <span class="small fw-bold text-body-secondary" style="font-size: 11px">
+                    <i class="bi bi-sliders me-1 text-primary"></i>Decision Workbench
+                  </span>
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace" style="font-size: 9.5px">
+                    Live Simulation
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-xs py-0 px-2"
+                  style="font-size: 10.5px; height: 22px; line-height: 20px"
+                  :disabled="!isSimulationActive"
+                  data-testid="reset-simulation-button"
+                  @click="resetSimulation"
+                >
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Simulation
+                </button>
+              </div>
+
+              <!-- Simulation Controls: Target Deadline Extension & De-Scope Selector -->
+              <div class="p-2 rounded bg-body-tertiary border mb-2">
+                <div class="row g-2 mb-2">
+                  <!-- Deadline Extension Simulator -->
+                  <div class="col-12 col-sm-6">
+                    <label for="simulateDeadlineInput" class="form-label small text-body-secondary mb-1" style="font-size: 11px">
+                      <i class="bi bi-calendar-event me-1"></i>Simulated Target Deadline:
+                    </label>
+                    <div class="input-group input-group-sm">
+                      <input
+                        id="simulateDeadlineInput"
+                        v-model="simulatedDeadline"
+                        type="date"
+                        class="form-control form-control-sm font-monospace"
+                        style="font-size: 12px; height: 28px"
+                        data-testid="simulate-deadline-input"
+                      />
+                      <button
+                        v-if="simulatedDeadline"
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm py-0 px-2"
+                        style="font-size: 11px"
+                        title="Clear simulated deadline"
+                        @click="simulatedDeadline = ''"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div class="form-text mt-0 text-body-secondary font-monospace" style="font-size: 10px">
+                      {{ simulatedWorkingDaysRemaining != null ? `${simulatedWorkingDaysRemaining} working days remaining` : 'No deadline (UNPLANNED)' }}
+                    </div>
+                  </div>
+
+                  <!-- De-Scope Simulation Counter -->
+                  <div class="col-12 col-sm-6">
+                    <div class="form-label small text-body-secondary mb-1" style="font-size: 11px">
+                      <i class="bi bi-dash-circle me-1"></i>Simulated De-Scope:
+                    </div>
+                    <div class="p-1 rounded bg-white border d-flex justify-content-between align-items-center" style="min-height: 28px">
+                      <span class="small font-monospace" style="font-size: 11px">
+                        <strong>{{ descopedRequestIds.length }}</strong> of {{ uncompletedActiveScopeItems.length }} uncompleted
+                      </span>
+                      <span v-if="descopedComplexity > 0" class="badge text-bg-warning font-monospace" style="font-size: 9.5px">
+                        -{{ descopedComplexity }} pts descope
+                      </span>
+                      <span v-else class="text-body-secondary small" style="font-size: 10.5px">
+                        0 pts descope
+                      </span>
+                    </div>
+                    <div class="form-text mt-0 text-body-secondary" style="font-size: 10px">
+                      Toggle checkboxes on requests to simulate scope reduction.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Simulation Request Selector Checklist (if uncompleted items exist) -->
+                <div v-if="uncompletedActiveScopeItems.length > 0" class="mb-2">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small fw-semibold text-body-secondary" style="font-size: 10.5px">
+                      De-Scope Simulation Selection:
+                    </span>
+                    <span class="small text-body-secondary font-monospace" style="font-size: 10px">
+                      {{ uncompletedActiveScopeItems.length }} candidates
+                    </span>
+                  </div>
+                  <div class="d-flex flex-column gap-1 bg-white border rounded p-1" style="max-height: 125px; overflow-y: auto">
+                    <label
+                      v-for="req in uncompletedActiveScopeItems"
+                      :key="req.requestId"
+                      class="form-check d-flex align-items-center gap-1 mb-0 py-1 px-2 rounded cursor-pointer"
+                      style="font-size: 11px"
+                    >
+                      <input
+                        type="checkbox"
+                        class="form-check-input mt-0"
+                        :checked="isDescoped(req.requestId)"
+                        data-testid="descope-request-checkbox"
+                        @change="toggleDescope(req.requestId)"
+                      />
+                      <span
+                        class="text-truncate flex-grow-1"
+                        :class="{ 'text-decoration-line-through text-body-secondary': isDescoped(req.requestId) }"
+                      >
+                        {{ req.title || req.requestTitle || req.requestId }}
+                      </span>
+                      <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace" style="font-size: 9.5px">
+                        C{{ getRequestComplexity(req) }} ({{ getRequestComplexity(req) }} pts)
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Real-Time Simulated Metrics Grid -->
+                <div class="row g-2 mb-2 small" style="font-size: 11px">
+                  <div class="col-4">
+                    <div class="p-1 rounded bg-white border text-center">
+                      <div class="text-body-secondary" style="font-size: 10px">Remaining Complexity</div>
+                      <div class="fw-bold font-monospace" data-testid="simulated-remaining-complexity">
+                        {{ simulatedRemainingComplexity }} pts
+                        <span v-if="descopedComplexity > 0" class="text-danger small" style="font-size: 9px">
+                          (-{{ descopedComplexity }})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="p-1 rounded bg-white border text-center">
+                      <div class="text-body-secondary" style="font-size: 10px">Required Daily Burn</div>
+                      <div class="fw-bold font-monospace" data-testid="simulated-daily-burn">
+                        {{ simulatedRequiredDailyBurn != null ? `${simulatedRequiredDailyBurn.toFixed(1)} pts/d` : '— (UNPLANNED)' }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="p-1 rounded bg-white border text-center">
+                      <div class="text-body-secondary" style="font-size: 10px">Org Capacity Share</div>
+                      <div class="fw-bold font-monospace" data-testid="simulated-org-capacity-share">
+                        {{ simulatedOrgCapacityShare != null ? `${simulatedOrgCapacityShare.toFixed(1)}%` : '—' }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live Comparison Display Banner -->
+                <div
+                  class="p-2 rounded border"
+                  :class="isSimulationActive ? 'bg-primary-subtle border-primary-subtle' : 'bg-white'"
+                >
+                  <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <div class="small font-monospace" data-testid="decision-simulation-comparison">
+                      {{ simulatedComparisonText }}
+                    </div>
+                    <span
+                      class="badge"
+                      style="font-size: 10px; padding: 2px 6px"
+                      :class="getPressureBadgeClass(simulatedPressureTier)"
+                      data-testid="simulated-pressure-badge"
+                    >
+                      [{{ simulatedPressureTier }}]
+                    </span>
+                  </div>
+
+                  <!-- Baseline Footnote when Simulation is Active -->
+                  <div v-if="isSimulationActive" class="text-body-secondary font-monospace mt-1 pt-1 border-top" style="font-size: 9.5px">
+                    Baseline: {{ baselineRemainingComplexity }} pts |
+                    {{ selectedTelemetry?.requiredDailyBurn != null ? `${selectedTelemetry.requiredDailyBurn.toFixed(1)} pts/day` : '—' }} -&gt;
+                    {{ selectedTelemetry?.orgCapacityShare != null ? `${selectedTelemetry.orgCapacityShare.toFixed(1)}% Org Output` : '—' }}
+                    [{{ selectedTelemetry?.pressureTier ?? 'UNPLANNED' }}]
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2350,10 +3286,11 @@ onMounted(async () => {
                 <li
                   v-for="(item, index) in activeScopeItems"
                   :key="item.id || item.requestId"
-                  class="list-group-item d-flex justify-content-between align-items-center gap-1 px-2 py-1 scope-request-item"
+                  class="list-group-item d-flex flex-column gap-1 px-2 py-2 scope-request-item"
                   :class="{
                     'is-dragging': draggedIndex === index,
                     'drop-target': dropTargetIndex === index && draggedIndex !== index,
+                    'bg-light text-muted opacity-75': isDescoped(item.requestId),
                   }"
                   :draggable="canModifyPackage"
                   :data-request-id="item.requestId"
@@ -2365,52 +3302,124 @@ onMounted(async () => {
                   @dragend="onDragEnd"
                   @drop="onDrop($event, index)"
                 >
-                  <div class="d-flex align-items-center me-auto text-truncate" style="max-width: 78%">
-                    <span
-                      v-if="canModifyPackage"
-                      class="drag-handle text-body-secondary me-2 flex-shrink-0"
-                      title="Drag to reorder"
-                      aria-label="Drag to reorder"
-                      data-testid="drag-handle"
-                    >
-                      <i class="bi bi-grip-vertical" aria-hidden="true"></i>
-                    </span>
-                    <div class="text-truncate">
-                      <div class="d-flex align-items-center gap-1 flex-wrap">
-                        <router-link
-                          :to="`/requests/${item.requestId}`"
-                          class="fw-medium text-decoration-none small text-truncate"
-                          style="font-size: 12px; max-width: 220px"
-                          data-testid="scope-request-link"
-                        >
-                          {{ item.title || item.requestTitle || item.requestId }}
-                        </router-link>
-                        <span
-                          v-if="item.status || item.requestStatus"
-                          class="badge"
-                          style="font-size: 9.5px; padding: 2px 4px"
-                          :class="requestStatusBadgeClass(item.status || item.requestStatus)"
-                        >
-                          {{ item.status || item.requestStatus }}
-                        </span>
+                  <div class="d-flex justify-content-between align-items-center gap-1 w-100">
+                    <div class="d-flex align-items-center me-auto text-truncate" style="max-width: 82%">
+                      <span
+                        v-if="canModifyPackage"
+                        class="drag-handle text-body-secondary me-2 flex-shrink-0"
+                        title="Drag to reorder"
+                        aria-label="Drag to reorder"
+                        data-testid="drag-handle"
+                      >
+                        <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+                      </span>
+
+                      <!-- Checkbox to simulate de-scoping -->
+                      <div class="form-check me-2 mb-0 flex-shrink-0" title="Simulate de-scoping this request">
+                        <input
+                          :id="`descope-chk-${item.requestId}`"
+                          type="checkbox"
+                          class="form-check-input"
+                          style="cursor: pointer"
+                          :checked="isDescoped(item.requestId)"
+                          :disabled="isRequestCompleted(item)"
+                          data-testid="descope-request-checkbox"
+                          @change="toggleDescope(item.requestId)"
+                        />
                       </div>
-                      <div class="text-body-secondary font-monospace" style="font-size: 10px">
-                        {{ item.requestId }}
+
+                      <div class="text-truncate">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                          <router-link
+                            :to="`/requests/${item.requestId}`"
+                            class="fw-medium text-decoration-none small text-truncate"
+                            :class="{ 'text-decoration-line-through text-body-secondary': isDescoped(item.requestId) }"
+                            style="font-size: 12px; max-width: 220px"
+                            data-testid="scope-request-link"
+                          >
+                            {{ item.title || item.requestTitle || item.requestId }}
+                          </router-link>
+
+                          <!-- Complexity Rating (1-5) -->
+                          <span
+                            class="badge bg-secondary-subtle text-secondary-emphasis border font-monospace"
+                            style="font-size: 9.5px; padding: 2px 4px"
+                            title="Complexity Rating (1-5)"
+                            data-testid="request-complexity-badge"
+                          >
+                            C{{ getRequestComplexity(item) }}
+                          </span>
+
+                          <!-- Status Badge -->
+                          <span
+                            v-if="item.status || item.requestStatus"
+                            class="badge"
+                            style="font-size: 9.5px; padding: 2px 4px"
+                            :class="requestStatusBadgeClass(item.status || item.requestStatus)"
+                            data-testid="request-status-badge"
+                          >
+                            {{ item.status || item.requestStatus }}
+                          </span>
+
+                          <!-- Blocker Badge if PAUSED -->
+                          <span
+                            v-if="isRequestPausedOrBlocked(item)"
+                            class="badge text-bg-danger"
+                            style="font-size: 9.5px; padding: 2px 4px"
+                            data-testid="request-blocker-badge"
+                          >
+                            <i class="bi bi-pause-circle-fill me-1"></i>BLOCKED
+                          </span>
+
+                          <!-- State Aging in days -->
+                          <span
+                            class="badge bg-light text-body-secondary border font-monospace"
+                            style="font-size: 9.5px; padding: 2px 4px"
+                            data-testid="request-aging-badge"
+                            :title="`${getRequestStateAgingDays(item)} days in current state`"
+                          >
+                            <i class="bi bi-clock-history me-1"></i>{{ getRequestStateAgingDays(item) }}d in state
+                          </span>
+
+                          <!-- De-scope Simulated Indicator -->
+                          <span
+                            v-if="isDescoped(item.requestId)"
+                            class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-monospace"
+                            style="font-size: 9px; padding: 2px 4px"
+                          >
+                            De-scoped
+                          </span>
+                        </div>
+
+                        <div class="text-body-secondary font-monospace" style="font-size: 10px">
+                          {{ item.requestId }}
+                        </div>
                       </div>
                     </div>
+
+                    <button
+                      v-if="canModifyPackage"
+                      type="button"
+                      class="btn btn-outline-danger btn-xs py-0 px-1 flex-shrink-0"
+                      style="font-size: 10px; height: 22px; line-height: 20px"
+                      :disabled="removingRequestId === item.requestId || isSubmittingAction || isReordering"
+                      data-testid="remove-request-button"
+                      @click="handleRemoveRequestFromScope(item.requestId)"
+                    >
+                      <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
                   </div>
 
-                  <button
-                    v-if="canModifyPackage"
-                    type="button"
-                    class="btn btn-outline-danger btn-xs py-0 px-1"
-                    style="font-size: 10px; height: 22px; line-height: 20px"
-                    :disabled="removingRequestId === item.requestId || isSubmittingAction || isReordering"
-                    data-testid="remove-request-button"
-                    @click="handleRemoveRequestFromScope(item.requestId)"
+                  <!-- Blocker Note if Paused/Blocked -->
+                  <div
+                    v-if="isRequestPausedOrBlocked(item) && getRequestBlockerNote(item)"
+                    class="small text-danger bg-danger-subtle px-2 py-1 rounded border border-danger-subtle font-monospace mt-1 ms-4"
+                    style="font-size: 10.5px"
+                    data-testid="request-blocker-note"
                   >
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>
-                  </button>
+                    <i class="bi bi-exclamation-octagon-fill me-1"></i>
+                    <strong>Blocker Note:</strong> {{ getRequestBlockerNote(item) }}
+                  </div>
                 </li>
               </ul>
 
@@ -2466,5 +3475,27 @@ onMounted(async () => {
 .scope-request-item.drop-target {
   border-top: 2px solid var(--bs-primary, #0d6efd) !important;
   background-color: rgba(13, 110, 253, 0.05);
+}
+
+.flow-barcode-strip {
+  min-width: 65px;
+}
+
+.barcode-bar {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  min-width: 3.5px;
+}
+
+.barcode-bar:hover {
+  transform: scaleY(1.15);
+  opacity: 0.85;
+}
+
+.wp-modern-card {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wp-modern-card:hover {
+  border-color: var(--bs-primary) !important;
 }
 </style>

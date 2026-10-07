@@ -1,6 +1,14 @@
+using Cakra.Modules.WorkPackage.Models;
 using MediatR;
 
 namespace Cakra.Modules.WorkPackage.Services;
+
+/// <summary>
+/// MediatR query to retrieve the executive Operations Cockpit read model containing portfolio metrics,
+/// 2D Pressure × Health triage matrix distribution, and telemetry models for all active Work Packages
+/// (Architecture CR-025 §4 TD-005).
+/// </summary>
+public sealed record GetOperationsCockpitQuery(DateTime? AsOfDateUtc = null) : IRequest<OperationsCockpitDto>;
 
 /// <summary>
 /// MediatR query to retrieve a Work Package by its unique identifier (Architecture §11).

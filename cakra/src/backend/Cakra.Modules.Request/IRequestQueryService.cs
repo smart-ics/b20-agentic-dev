@@ -253,5 +253,25 @@ public interface IRequestQueryService
     Task<IReadOnlyList<PersonWorkInProgressDto>> GetWorkInProgressOverview(
         CancellationToken cancellationToken = default)
         => GetWorkInProgressOverviewAsync(cancellationToken);
+
+    /// <summary>
+    /// Computes the empirical organization-wide daily throughput (C_org) across all completed requests
+    /// within the specified rolling window (Architecture CR-025 TD-001).
+    /// </summary>
+    /// <param name="windowDays">Rolling window in calendar days (defaults to 30).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Demonstrated daily complexity burn rate (minimum safety floor of 1.0).</returns>
+    Task<double> GetOrgDemonstratedDailyThroughputAsync(
+        int windowDays = 30,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(1.0);
+
+    /// <summary>
+    /// Convenience alias for <see cref="GetOrgDemonstratedDailyThroughputAsync"/> (Architecture CR-025 TD-001).
+    /// </summary>
+    Task<double> GetOrgDemonstratedDailyThroughput(
+        int windowDays = 30,
+        CancellationToken cancellationToken = default)
+        => GetOrgDemonstratedDailyThroughputAsync(windowDays, cancellationToken);
 }
 

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Cakra.Modules.WorkPackage;
 using Cakra.Modules.WorkPackage.Domain.Exceptions;
+using Cakra.Modules.WorkPackage.Models;
 using Cakra.Modules.WorkPackage.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -68,6 +69,25 @@ public sealed class WorkPackagesController : ApiControllerBase
 
         var items = await _mediator.Send(query, cancellationToken);
         return Ok(items);
+    }
+
+    /// <summary>
+    /// Retrieves executive operations cockpit telemetry, portfolio metrics, and the 2D Pressure × Health triage matrix
+    /// (Architecture CR-025 §4 TD-005; <c>SCR-WP-002</c>).
+    /// </summary>
+    [HttpGet("operations-cockpit")]
+    [Authorize]
+    [ProducesResponseType(typeof(OperationsCockpitDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<OperationsCockpitDto>> GetOperationsCockpit(
+        [FromQuery] DateTime? asOfDate = null,
+        [FromQuery] DateTime? asOfDateUtc = null,
+        CancellationToken cancellationToken = default)
+    {
+        var resolvedAsOfDate = asOfDateUtc ?? asOfDate;
+        var query = new GetOperationsCockpitQuery(resolvedAsOfDate);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>

@@ -54,6 +54,7 @@ const currentScreenTitle = computed(() => {
   if (path.startsWith('/requests/search')) return 'Request Search'
   if (path.startsWith('/requests/')) return 'Request Details'
   if (path.startsWith('/operations/wip')) return 'Work in Progress'
+  if (path.startsWith('/operations/cockpit')) return 'Operations Cockpit'
   if (path.startsWith('/work-packages')) return 'Work Packages'
   if (path.startsWith('/products')) return 'Product Catalog'
   if (path.startsWith('/analytics/customer-portfolio')) return 'Customer Portfolio'
@@ -148,6 +149,18 @@ const containerClass = computed(() => {
         >
           <i class="bi bi-hourglass-split nav-icon" aria-hidden="true"></i>
           <span v-show="!isCollapsed" class="nav-label">Work in Progress</span>
+        </router-link>
+
+        <router-link
+          class="sidebar-nav-item"
+          to="/operations/cockpit"
+          active-class="active"
+          data-testid="nav-operations-cockpit-link"
+          :title="isCollapsed ? 'Operations Cockpit' : undefined"
+          @click="closeMobile"
+        >
+          <i class="bi bi-speedometer2 nav-icon" aria-hidden="true"></i>
+          <span v-show="!isCollapsed" class="nav-label">Operations Cockpit</span>
         </router-link>
 
         <router-link

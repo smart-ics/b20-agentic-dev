@@ -218,6 +218,26 @@ public record WorkPackageRequestDto
 
     /// <summary>Full enriched <see cref="RequestDto"/> record from <see cref="IRequestQueryService"/>, when available.</summary>
     public RequestDto? Request { get; init; }
+
+    private int? _complexity;
+    /// <summary>Authoritative numerical complexity rating (1 to 5) from Request.</summary>
+    public int Complexity
+    {
+        get => _complexity ?? Request?.Complexity ?? 1;
+        init => _complexity = value;
+    }
+
+    private string? _blockerNote;
+    /// <summary>Blocker note recorded when work was paused, if currently paused.</summary>
+    public string? BlockerNote
+    {
+        get => _blockerNote ?? (
+            string.Equals(Status, "PAUSED", StringComparison.OrdinalIgnoreCase)
+                ? Request?.Assignments?.LastOrDefault(a => string.Equals(a.NewStatus, "PAUSED", StringComparison.OrdinalIgnoreCase))?.Notes
+                  ?? Request?.EvaluationNotes
+                : null);
+        init => _blockerNote = value;
+    }
 }
 
 /// <summary>

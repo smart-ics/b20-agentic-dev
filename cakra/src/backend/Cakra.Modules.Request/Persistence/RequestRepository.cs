@@ -195,6 +195,23 @@ internal sealed class RequestRepository : IRequestRepository
         return row is null ? null : HydrateFromRow(row);
     }
 
+    /// <inheritdoc />
+    public async Task<int> GetCompletedComplexitySumSinceAsync(
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT COALESCE(SUM(Complexity), 0)
+            FROM [request].[Requests]
+            WHERE Status = 'COMPLETED'
+              AND UpdatedAt >= @SinceUtc;
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        return await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition(sql, new { SinceUtc = sinceUtc }, cancellationToken: cancellationToken));
+    }
+
     private static Domain.Request HydrateFromRow(RequestRow row) => row.ToDomain();
 
     public async Task AddAsync(Domain.Request entity, CancellationToken cancellationToken = default)

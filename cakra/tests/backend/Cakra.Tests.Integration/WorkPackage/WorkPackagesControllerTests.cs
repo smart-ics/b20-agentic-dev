@@ -11,6 +11,7 @@ using Cakra.Modules.Organization.Commands;
 using Cakra.Modules.Product.Services;
 using Cakra.Modules.Request.Services;
 using Cakra.Modules.WorkPackage.Domain;
+using Cakra.Modules.WorkPackage.Models;
 using Dapper;
 using FluentAssertions;
 using MediatR;
@@ -136,6 +137,9 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
         var reqId = Guid.NewGuid();
 
         (await client.GetAsync("/api/v1/work-packages"))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        (await client.GetAsync("/api/v1/work-packages/operations-cockpit"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         (await client.GetAsync($"/api/v1/work-packages/{wpId}"))
@@ -765,6 +769,108 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
         closedUpdateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var closedProblem = await closedUpdateResponse.Content.ReadFromJsonAsync<JsonElement>();
         closedProblem.GetProperty("detail").GetString().Should().Contain("closed");
+    }
+
+    [Fact]
+    public async Task GetOperationsCockpit_returns_200_OK_with_valid_telemetry_matrix_and_metrics()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
+        using var client = seeded.Client;
+
+        // 1. Initial call when no active work packages exist yet
+        var initialResponse = await client.GetAsync("/api/v1/work-packages/operations-cockpit");
+        initialResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var initialCockpit = await initialResponse.Content.ReadFromJsonAsync<OperationsCockpitDto>(
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        initialCockpit.Should().NotBeNull();
+        initialCockpit!.PortfolioMetrics.Should().NotBeNull();
+        initialCockpit.PortfolioMetrics.TotalActiveWorkPackages.Should().Be(0);
+        initialCockpit.Matrix.Should().NotBeNull();
+        initialCockpit.Matrix.Cells.Should().ContainKey(WorkPackageHealthStates.Flowing);
+        initialCockpit.Packages.Should().BeEmpty();
+
+        // 2. Create a work package, associate requests, and activate it
+        var createResponse = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Radiology PACS Migration",
+            objective = "Migrate DICOM viewer storage to cloud cluster.",
+            ownerPersonId = seeded.Owner1Id,
+            customerId = seeded.Customer1Id,
+            productId = seeded.Product1Id,
+            deadline = DateTime.UtcNow.AddDays(14)
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdWp = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var wpId = createdWp.GetProperty("id").GetGuid();
+
+        // Add request to work package
+        var addReqResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/requests", new
+        {
+            requestId = seeded.Request1Id
+        });
+        addReqResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Activate work package
+        var activateResponse = await client.PostAsync($"/api/v1/work-packages/{wpId}/activate", null);
+        activateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 3. Query operations-cockpit without query params
+        var response = await client.GetAsync("/api/v1/work-packages/operations-cockpit");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var cockpit = await response.Content.ReadFromJsonAsync<OperationsCockpitDto>(
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        cockpit.Should().NotBeNull();
+
+        // Portfolio metrics assertions
+        cockpit!.PortfolioMetrics.TotalActiveWorkPackages.Should().Be(1);
+        cockpit.PortfolioMetrics.WithDeadlineCount.Should().Be(1);
+        cockpit.PortfolioMetrics.WithoutDeadlineCount.Should().Be(0);
+        cockpit.PortfolioMetrics.OrgDailyThroughput.Should().BeGreaterThanOrEqualTo(1.0);
+
+        // Matrix assertions
+        cockpit.Matrix.Cells.Should().ContainKeys(
+            WorkPackageHealthStates.DeadlineBreached,
+            WorkPackageHealthStates.ActiveBlockers,
+            WorkPackageHealthStates.Dormant,
+            WorkPackageHealthStates.WipStagnant,
+            WorkPackageHealthStates.Flowing);
+        cockpit.Matrix.RowTotals.Values.Sum().Should().Be(1);
+        cockpit.Matrix.ColumnTotals.Values.Sum().Should().Be(1);
+
+        // Packages assertions
+        cockpit.Packages.Should().HaveCount(1);
+        var pkg = cockpit.Packages.Single();
+        pkg.Id.Should().Be(wpId);
+        pkg.Name.Should().Be("Radiology PACS Migration");
+        pkg.Status.Should().Be(WorkPackageStatusNames.Active);
+        pkg.Deadline.Should().NotBeNull();
+        pkg.TotalRequestsCount.Should().Be(1);
+        pkg.PressureTier.Should().BeOneOf(
+            WorkPackagePressureTiers.Unplanned,
+            WorkPackagePressureTiers.Nominal,
+            WorkPackagePressureTiers.Elevated,
+            WorkPackagePressureTiers.Critical,
+            WorkPackagePressureTiers.Impossible);
+        pkg.HealthState.Should().BeOneOf(
+            WorkPackageHealthStates.DeadlineBreached,
+            WorkPackageHealthStates.ActiveBlockers,
+            WorkPackageHealthStates.Dormant,
+            WorkPackageHealthStates.WipStagnant,
+            WorkPackageHealthStates.Flowing);
+        pkg.FlowBarcode.Should().HaveCount(14);
+
+        // 4. Query with asOfDate query parameter
+        var asOf = DateTime.UtcNow.ToString("O");
+        var filteredResponse = await client.GetAsync($"/api/v1/work-packages/operations-cockpit?asOfDate={asOf}");
+        filteredResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var asOfUtcResponse = await client.GetAsync($"/api/v1/work-packages/operations-cockpit?asOfDateUtc={asOf}");
+        asOfUtcResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     private async Task<SeededWorkPackageTestContext> CreateAuthenticatedClientAndSeedContextAsync()

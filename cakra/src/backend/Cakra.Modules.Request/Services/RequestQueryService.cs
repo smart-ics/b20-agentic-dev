@@ -4,6 +4,7 @@ using Cakra.Modules.Customer;
 using Cakra.Modules.Organization;
 using Cakra.Modules.Product;
 using Cakra.Modules.Request.Domain;
+using Cakra.Modules.Request.Persistence;
 using Dapper;
 using MediatR;
 
@@ -29,6 +30,8 @@ public sealed class RequestQueryService :
     private readonly IOrganizationQueryService? _organizationQueryService;
     private readonly ICustomerQueryService? _customerQueryService;
     private readonly IProductQueryService? _productQueryService;
+    private readonly IRequestRepository _requestRepository;
+    private readonly ISystemClock? _clock;
 
     public RequestQueryService(
         IDbConnectionFactory connectionFactory,
@@ -36,12 +39,33 @@ public sealed class RequestQueryService :
         IOrganizationQueryService? organizationQueryService = null,
         ICustomerQueryService? customerQueryService = null,
         IProductQueryService? productQueryService = null)
+        : this(
+            connectionFactory,
+            currentContextProvider,
+            organizationQueryService,
+            customerQueryService,
+            productQueryService,
+            requestRepository: null,
+            clock: null)
+    {
+    }
+
+    internal RequestQueryService(
+        IDbConnectionFactory connectionFactory,
+        ICurrentContextProvider? currentContextProvider = null,
+        IOrganizationQueryService? organizationQueryService = null,
+        ICustomerQueryService? customerQueryService = null,
+        IProductQueryService? productQueryService = null,
+        IRequestRepository? requestRepository = null,
+        ISystemClock? clock = null)
     {
         _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
         _currentContextProvider = currentContextProvider;
         _organizationQueryService = organizationQueryService;
         _customerQueryService = customerQueryService;
         _productQueryService = productQueryService;
+        _requestRepository = requestRepository ?? new RequestRepository(_connectionFactory);
+        _clock = clock;
     }
 
     /// <inheritdoc />
@@ -813,6 +837,31 @@ public sealed class RequestQueryService :
     public Task<IReadOnlyList<PersonWorkInProgressDto>> GetWorkInProgressOverview(
         CancellationToken cancellationToken = default)
         => GetWorkInProgressOverviewAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<double> GetOrgDemonstratedDailyThroughputAsync(
+        int windowDays = 30,
+        CancellationToken cancellationToken = default)
+    {
+        if (windowDays <= 0)
+        {
+            return 1.0;
+        }
+
+        var utcNow = _clock?.UtcNow ?? DateTime.UtcNow;
+        var sinceUtc = utcNow.AddDays(-windowDays);
+
+        var totalComplexity = await _requestRepository.GetCompletedComplexitySumSinceAsync(sinceUtc, cancellationToken);
+        var throughput = (double)totalComplexity / windowDays;
+
+        return throughput <= 0.0 ? 1.0 : throughput;
+    }
+
+    /// <inheritdoc />
+    public Task<double> GetOrgDemonstratedDailyThroughput(
+        int windowDays = 30,
+        CancellationToken cancellationToken = default)
+        => GetOrgDemonstratedDailyThroughputAsync(windowDays, cancellationToken);
 
     /// <summary>
     /// Computes cumulative elapsed time spent in IN_PROGRESS status for a request across

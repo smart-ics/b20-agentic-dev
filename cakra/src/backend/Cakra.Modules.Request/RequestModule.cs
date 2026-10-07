@@ -44,7 +44,9 @@ public sealed class RequestModule : IModule
             sp.GetService<ICurrentContextProvider>(),
             sp.GetService<IOrganizationQueryService>(),
             sp.GetService<ICustomerQueryService>(),
-            sp.GetService<IProductQueryService>()));
+            sp.GetService<IProductQueryService>(),
+            sp.GetService<IRequestRepository>(),
+            sp.GetService<ISystemClock>()));
         services.AddScoped<IRequestQueryService>(sp => sp.GetRequiredService<RequestQueryService>());
     }
 }

@@ -361,6 +361,13 @@ public sealed class RequestCompletionAndQueriesTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<Cakra.Modules.Request.Domain.Request?>(
                 _requests.Values.FirstOrDefault(r => r.OwnerPersonId == ownerPersonId && r.Status == RequestStatus.InProgress));
+
+        public Task<int> GetCompletedComplexitySumSinceAsync(
+            DateTime sinceUtc,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_requests.Values
+                .Where(r => r.Status == RequestStatus.Completed && (r.UpdatedAt ?? r.CreatedAt) >= sinceUtc)
+                .Sum(r => r.Complexity));
     }
 
     private sealed class FakeOrganizationQueryService : IOrganizationQueryService

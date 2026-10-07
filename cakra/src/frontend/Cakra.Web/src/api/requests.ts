@@ -26,6 +26,24 @@ export interface InitialSubTaskInput {
   sortOrder?: number
 }
 
+export interface RequestAssignmentDto {
+  id: string
+  requestId: string
+  previousOwnerPersonId?: string | null
+  previousOwnerName?: string | null
+  assignedOwnerPersonId?: string | null
+  assignedOwnerName?: string | null
+  actorPersonId?: string | null
+  actorName?: string | null
+  previousStatus?: string | null
+  newStatus: string
+  assignedAtUtc: string
+  timestamp?: string
+  notes?: string | null
+  createdAt?: string
+  updatedAt?: string | null
+}
+
 export interface RequestDto {
   id: string
   requestId?: string
@@ -61,6 +79,7 @@ export interface RequestDto {
   completedSubTasksCount: number
   completionPercentage: number
   subTasks?: RequestSubTask[]
+  assignments?: RequestAssignmentDto[]
   createdAt: string
   updatedAt?: string | null
 }

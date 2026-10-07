@@ -57,5 +57,18 @@ public sealed class WorkPackageModule : IModule
             sp.GetService<IProductQueryService>(),
             sp.GetService<IRequestQueryService>()));
         services.AddScoped<IWorkPackageQueryService>(sp => sp.GetRequiredService<WorkPackageQueryService>());
+
+        // Work Package Telemetry Calculation Engine (Architecture CR-025 §4 TD-002, TD-003, TD-004, TD-005)
+        services.AddSingleton<WorkPackageTelemetryCalculator>();
+        services.AddSingleton<IWorkPackageTelemetryCalculator>(sp => sp.GetRequiredService<WorkPackageTelemetryCalculator>());
+
+        // Work Package Operations Cockpit Query Handler (Architecture CR-025 §4 TD-005)
+        services.AddScoped<GetOperationsCockpitQueryHandler>(sp => new GetOperationsCockpitQueryHandler(
+            sp.GetRequiredService<IWorkPackageQueryService>(),
+            sp.GetService<IRequestQueryService>(),
+            sp.GetRequiredService<IWorkPackageTelemetryCalculator>(),
+            sp.GetService<ISystemClock>()));
+        services.AddScoped<MediatR.IRequestHandler<GetOperationsCockpitQuery, Models.OperationsCockpitDto>>(sp =>
+            sp.GetRequiredService<GetOperationsCockpitQueryHandler>());
     }
 }

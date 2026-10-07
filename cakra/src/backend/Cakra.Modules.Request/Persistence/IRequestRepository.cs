@@ -43,4 +43,13 @@ internal interface IRequestRepository : IRepository<Domain.Request>
     Task<Domain.Request?> GetActiveInProgressByOwnerAsync(
         Guid ownerPersonId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Computes the sum of complexity for completed requests whose <c>UpdatedAt</c> timestamp
+    /// is greater than or equal to <paramref name="sinceUtc"/> (Architecture CR-025 TD-001).
+    /// </summary>
+    Task<int> GetCompletedComplexitySumSinceAsync(
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(0);
 }
