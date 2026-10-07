@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executive Infographic: MyHosWeb System Implementation (Rev 5)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @media print {
+      body { background-color: #ffffff !important; color: #0f172a !important; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased font-sans p-4 md:p-8 min-h-screen">
+
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- HEADER / HERO -->
+    <header class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-16 -bottom-16 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-3 py-1 text-xs font-semibold tracking-wider uppercase rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              Board of Directors Executive Briefing
+            </span>
+            <span class="px-3 py-1 text-xs font-semibold tracking-wider uppercase rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              6-Day Work Calendar Model
+            </span>
+          </div>
+          <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+            MyHosWeb System Implementation
+          </h1>
+          <p class="text-slate-400 text-sm md:text-base mt-1 max-w-2xl">
+            Integrated Hospital Information System (SIMRS) • Program Velocity & Governance Blueprint (Rev 5)
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-right">
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-medium">Target Go-Live</p>
+            <p class="text-2xl font-black text-cyan-400">27 Jan 2027</p>
+            <p class="text-xs text-emerald-400 font-medium">⚡ 5.5 Weeks Ahead of Baseline</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- TOP 4 KPI CARDS -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg relative overflow-hidden group hover:border-slate-700 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Effort</span>
+          <span class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="text-3xl font-black text-white">1,114 <span class="text-lg font-normal text-slate-400">Days</span></div>
+          <p class="text-xs text-slate-400 mt-1">8,912 Person-Hours across 303 tasks</p>
+        </div>
+        <div class="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-indigo-500 h-full w-full"></div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg relative overflow-hidden group hover:border-slate-700 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Hospital Workspaces</span>
+          <span class="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="text-3xl font-black text-white">34 <span class="text-lg font-normal text-slate-400">Units</span></div>
+          <p class="text-xs text-slate-400 mt-1">13 Clinical & Administrative Modules</p>
+        </div>
+        <div class="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-cyan-500 h-full w-full"></div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg relative overflow-hidden group hover:border-slate-700 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Concurrency Velocity</span>
+          <span class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="text-3xl font-black text-white">9 <span class="text-lg font-normal text-slate-400">Parallel Streams</span></div>
+          <p class="text-xs text-slate-400 mt-1">48 Hrs/Week • 15.5 Working Weeks</p>
+        </div>
+        <div class="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-emerald-500 h-full w-full"></div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg relative overflow-hidden group hover:border-slate-700 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Schedule Compression</span>
+          <span class="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="text-3xl font-black text-white">-35 <span class="text-lg font-normal text-slate-400">Days</span></div>
+          <p class="text-xs text-emerald-400 mt-1">Feb 24 cutover vs March 3 baseline</p>
+        </div>
+        <div class="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-amber-500 h-full w-full"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 3 STRATEGIC GOVERNANCE GATES -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+            Board Governance: 3 Strategic Release Gates
+          </h2>
+          <p class="text-slate-400 text-xs mt-1">Phased delivery milestones allowing progressive clinical validation and early revenue capture</p>
+        </div>
+        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-800 px-3 py-1 rounded-full">Phase Milestones</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+        
+        <!-- GATE 1 -->
+        <div class="bg-slate-950/60 border border-cyan-500/30 rounded-xl p-5 relative overflow-hidden group hover:border-cyan-500/60 transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="px-2.5 py-1 text-xs font-bold bg-cyan-500/20 text-cyan-300 rounded-md border border-cyan-500/30">
+              GATE 1
+            </span>
+            <span class="text-sm font-bold text-white">26 Nov 2026</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Front Office & Revenue Close</h3>
+          <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+            Patient registration, clinic consultation, bed admission, and cashier financial balancing.
+          </p>
+          <div class="space-y-1.5 text-xs text-slate-300">
+            <div class="flex items-center gap-2"><span class="text-cyan-400">✓</span> SC-01 Admisi Booking & Reg</div>
+            <div class="flex items-center gap-2"><span class="text-cyan-400">✓</span> SC-05 Poli Rawat Jalan</div>
+            <div class="flex items-center gap-2"><span class="text-cyan-400">✓</span> SC-06 Bed Management Ranap</div>
+            <div class="flex items-center gap-2"><span class="text-cyan-400">✓</span> SC-02 Tata Rek & SC-03 Kasir</div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs font-medium text-emerald-400">
+            ● Early Roll-off: Sulis & Erkoc available
+          </div>
+        </div>
+
+        <!-- GATE 2 -->
+        <div class="bg-slate-950/60 border border-indigo-500/30 rounded-xl p-5 relative overflow-hidden group hover:border-indigo-500/60 transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="px-2.5 py-1 text-xs font-bold bg-indigo-500/20 text-indigo-300 rounded-md border border-indigo-500/30">
+              GATE 2
+            </span>
+            <span class="text-sm font-bold text-white">30 Dec 2026</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Clinical Support & Supply Chain</h3>
+          <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+            E-prescription dispensing, inventory batch tracking, surgical theater management, and Kemenkes compliance.
+          </p>
+          <div class="space-y-1.5 text-xs text-slate-300">
+            <div class="flex items-center gap-2"><span class="text-indigo-400">✓</span> SC-10 Kamar Operasi (OK)</div>
+            <div class="flex items-center gap-2"><span class="text-indigo-400">✓</span> SC-04 Rekam Medis (RL Kemenkes)</div>
+            <div class="flex items-center gap-2"><span class="text-indigo-400">✓</span> SC-12 Gudang Logistik</div>
+            <div class="flex items-center gap-2"><span class="text-indigo-400">✓</span> SC-11 Apotek / Farmasi (5 Units)</div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs font-medium text-indigo-400">
+            ● Roll-off: Arie, Rizal, Roso, Jude
+          </div>
+        </div>
+
+        <!-- GATE 3 -->
+        <div class="bg-slate-950/60 border border-emerald-500/30 rounded-xl p-5 relative overflow-hidden group hover:border-emerald-500/60 transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="px-2.5 py-1 text-xs font-bold bg-emerald-500/20 text-emerald-300 rounded-md border border-emerald-500/30">
+              GATE 3
+            </span>
+            <span class="text-sm font-bold text-emerald-400">27 Jan 2027</span>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Final Cutover & Hospital Go-Live</h3>
+          <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+            Diagnostic imaging PACS, laboratory analyzer interfacing, hospital procurement, and final end-to-end integration.
+          </p>
+          <div class="space-y-1.5 text-xs text-slate-300">
+            <div class="flex items-center gap-2"><span class="text-emerald-400">✓</span> SC-07 IGD Triage (2 Jan)</div>
+            <div class="flex items-center gap-2"><span class="text-emerald-400">✓</span> SC-13 Purchasing PO & Invoicing (7 Jan)</div>
+            <div class="flex items-center gap-2"><span class="text-emerald-400">✓</span> SC-08 Laboratorium Klinis</div>
+            <div class="flex items-center gap-2"><span class="text-emerald-400">✓</span> SC-09 Radiologi PACS (27 Jan)</div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs font-medium text-emerald-400">
+            ● Complete Hospital Production Readiness
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- RESOURCE TIMELINE & CAPACITY (GANTT STYLE) -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
+            Resource Stream Timeline & Workload (9 Parallel Leads)
+          </h2>
+          <p class="text-slate-400 text-xs mt-1">Visualizing parallel execution spans and critical path trajectory</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs">
+          <span class="flex items-center gap-1.5 text-slate-300"><span class="w-3 h-3 rounded bg-cyan-500"></span> Standard Stream</span>
+          <span class="flex items-center gap-1.5 text-slate-300"><span class="w-3 h-3 rounded bg-rose-500"></span> Critical Path (We)</span>
+          <span class="flex items-center gap-1.5 text-slate-300"><span class="w-3 h-3 rounded bg-emerald-500"></span> Early Roll-Off</span>
+        </div>
+      </div>
+
+      <!-- GANTT BARS -->
+      <div class="space-y-3.5">
+
+        <!-- We (Critical Path) -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-rose-500/30">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">We</span>
+              <span class="text-slate-400">Diagnostics: Laboratorium (3) & Radiologi (3)</span>
+              <span class="px-2 py-0.5 rounded text-[11px] bg-rose-500/20 text-rose-300 font-semibold">CRITICAL PATH</span>
+            </div>
+            <div class="font-mono text-slate-300">186 Days • 1,488h • Finish: <strong class="text-rose-400">Jan 27, 2027</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-gradient-to-r from-rose-500 to-amber-500 h-full w-full rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Arif -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Arif</span>
+              <span class="text-slate-400">Front Office: Admisi (3) & IGD (2)</span>
+            </div>
+            <div class="font-mono text-slate-300">180 Days • 1,440h • Finish: <strong>Jan 02, 2027</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-cyan-500 h-full w-[95%] rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Fikri -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Fikri</span>
+              <span class="text-slate-400">Poli Rawat Jalan (2) & Purchasing PO/Invoicing (2)</span>
+            </div>
+            <div class="font-mono text-slate-300">152 Days • 1,216h • Finish: <strong>Jan 07, 2027</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-cyan-500 h-full w-[82%] rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Jude -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Jude</span>
+              <span class="text-slate-400">Farmasi & Apotek: Antrian, Telaah, Dispensing, Serah, Inventory (5)</span>
+            </div>
+            <div class="font-mono text-slate-300">138 Days • 1,104h • Finish: <strong>Dec 30, 2026</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-indigo-500 h-full w-[74%] rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Roso -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Roso</span>
+              <span class="text-slate-400">Gudang Logistik: Penerimaan DO, Inventory, Retur Beli (3)</span>
+            </div>
+            <div class="font-mono text-slate-300">106 Days • 848h • Finish: <strong>Dec 11, 2026</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-indigo-500 h-full w-[57%] rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Rizal -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Rizal</span>
+              <span class="text-slate-400">Rekam Medis: Berkas RM, Casemix/ICD, Pelaporan RL (3)</span>
+            </div>
+            <div class="font-mono text-slate-300">102 Days • 816h • Finish: <strong>Dec 09, 2026</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-indigo-500 h-full w-[55%] rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Arie -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Arie</span>
+              <span class="text-slate-400">Kamar Operasi: Scheduling, Operative Management, Inventory (3)</span>
+            </div>
+            <div class="font-mono text-slate-300">98 Days • 784h • Finish: <strong>Dec 07, 2026</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-indigo-500 h-full w-[53%] rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Erkoc -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-emerald-500/20">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Erkoc</span>
+              <span class="text-slate-400">Finance: Tata Rekening & Kasir Closing (3)</span>
+              <span class="px-2 py-0.5 rounded text-[11px] bg-emerald-500/20 text-emerald-300 font-semibold">EARLY ROLL-OFF</span>
+            </div>
+            <div class="font-mono text-slate-300">80 Days • 640h • Finish: <strong class="text-emerald-400">Nov 26, 2026</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-emerald-500 h-full w-[43%] rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Sulis -->
+        <div class="bg-slate-950/50 p-3 rounded-xl border border-emerald-500/20">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">Sulis</span>
+              <span class="text-slate-400">Inpatient: Bed Management & Ward Inventory (2)</span>
+              <span class="px-2 py-0.5 rounded text-[11px] bg-emerald-500/20 text-emerald-300 font-semibold">EARLY ROLL-OFF</span>
+            </div>
+            <div class="font-mono text-slate-300">72 Days • 576h • Finish: <strong class="text-emerald-400">Nov 21, 2026</strong></div>
+          </div>
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+            <div class="bg-emerald-500 h-full w-[38%] rounded-full"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 2-COLUMN SECTION: LIFECYCLE BREAKDOWN & STRATEGIC RECOMMENDATIONS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- 7-STAGE ENGINEERING LIFECYCLE -->
+      <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-teal-400"></span>
+          Standardized 7-Stage Delivery Rigor
+        </h2>
+        <p class="text-xs text-slate-400 mb-5">Each of the 34 workspaces uniformly passes 7 quality gates</p>
+
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="font-medium text-slate-200">1. Core Business Logic & Rules</span>
+            <span class="font-mono text-cyan-400 font-bold">1,808h (99 tasks)</span>
+          </div>
+          <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="font-medium text-slate-200">2. UI Design & UX Prototype</span>
+            <span class="font-mono text-cyan-400 font-bold">584h (34 tasks)</span>
+          </div>
+          <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="font-medium text-slate-200">3. BFF (Backend-For-Frontend) Services</span>
+            <span class="font-mono text-cyan-400 font-bold">296h (34 tasks)</span>
+          </div>
+          <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="font-medium text-slate-200">4. Domain Architecture & Modeling</span>
+            <span class="font-mono text-cyan-400 font-bold">272h (34 tasks)</span>
+          </div>
+          <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="font-medium text-slate-200">5. Software Development</span>
+            <span class="font-mono text-cyan-400 font-bold">272h (34 tasks)</span>
+          </div>
+          <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="font-medium text-slate-200">6. Quality Assurance & Testing</span>
+            <span class="font-mono text-cyan-400 font-bold">680h (34 tasks)</span>
+          </div>
+          <div class="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+            <span class="font-medium text-slate-200">7. Staging Deployment & Cutover</span>
+            <span class="font-mono text-cyan-400 font-bold">544h (34 tasks)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- BOARD DECISIONS & RECOMMENDATIONS -->
+      <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            Strategic Board Actions & Governance
+          </h2>
+          <p class="text-xs text-slate-400 mb-5">Key recommendations submitted for Board authorization</p>
+
+          <div class="space-y-3.5">
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <div class="flex items-center gap-2 font-bold text-white text-xs mb-1">
+                <span class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-[10px]">1</span>
+                Baseline Approval
+              </div>
+              <p class="text-xs text-slate-400 pl-7 leading-relaxed">
+                Ratify January 27, 2027 as project baseline, locking in 5.5 weeks of schedule savings from 6-day work weeks.
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <div class="flex items-center gap-2 font-bold text-white text-xs mb-1">
+                <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px]">2</span>
+                Critical Path Reallocation
+              </div>
+              <p class="text-xs text-slate-400 pl-7 leading-relaxed">
+                Approve redeploying Sulis (available Nov 21) & Erkoc (available Nov 26) to pair with We on Radiology to secure the finish line.
+              </p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <div class="flex items-center gap-2 font-bold text-white text-xs mb-1">
+                <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">3</span>
+                Clinical Change Readiness
+              </div>
+              <p class="text-xs text-slate-400 pl-7 leading-relaxed">
+                Commission hospital clinical department simulation beginning at Gate 1 (Nov 26) to guarantee smooth go-live cutover.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <span>Source: workspace-task-rev-5-ms-project.mpp</span>
+          <span>Prepared for Board of Directors</span>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
