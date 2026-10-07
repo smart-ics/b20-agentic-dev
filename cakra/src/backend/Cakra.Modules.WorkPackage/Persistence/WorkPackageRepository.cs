@@ -41,6 +41,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
+                [Deadline],
                 [ClosedReason],
                 [ClosedAt],
                 [CreatedAt],
@@ -92,6 +93,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
+                [Deadline],
                 [ClosedReason],
                 [ClosedAt],
                 [CreatedAt],
@@ -159,6 +161,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
+                [Deadline],
                 [ClosedReason],
                 [ClosedAt],
                 [CreatedAt],
@@ -171,6 +174,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 @OwnerPersonId,
                 @CustomerId,
                 @ProductId,
+                @Deadline,
                 @ClosedReason,
                 @ClosedAt,
                 @CreatedAt,
@@ -217,6 +221,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
             entity.OwnerPersonId,
             entity.CustomerId,
             entity.ProductId,
+            entity.Deadline,
             entity.ClosedReason,
             entity.ClosedAt,
             entity.CreatedAt,
@@ -256,6 +261,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 [OwnerPersonId] = @OwnerPersonId,
                 [CustomerId] = @CustomerId,
                 [ProductId] = @ProductId,
+                [Deadline] = @Deadline,
                 [ClosedReason] = @ClosedReason,
                 [ClosedAt] = @ClosedAt,
                 [UpdatedAt] = @UpdatedAt
@@ -316,6 +322,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
             entity.OwnerPersonId,
             entity.CustomerId,
             entity.ProductId,
+            entity.Deadline,
             entity.ClosedReason,
             entity.ClosedAt,
             entity.UpdatedAt
@@ -523,6 +530,7 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
         public Guid OwnerPersonId { get; init; }
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
+        public DateTime? Deadline { get; init; }
         public string? ClosedReason { get; init; }
         public DateTime? ClosedAt { get; init; }
         public DateTime CreatedAt { get; init; }
@@ -542,7 +550,8 @@ internal sealed class WorkPackageRepository : IWorkPackageRepository
                 ClosedAt,
                 CreatedAt,
                 UpdatedAt,
-                requests);
+                requests,
+                Deadline);
         }
     }
 

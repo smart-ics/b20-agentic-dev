@@ -11,7 +11,8 @@ public sealed record CreateWorkPackageCommand(
     string Objective,
     Guid OwnerPersonId,
     Guid? CustomerId = null,
-    Guid? ProductId = null) : IRequest<WorkPackageDto>;
+    Guid? ProductId = null,
+    DateTime? Deadline = null) : IRequest<WorkPackageDto>;
 
 public sealed class CreateWorkPackageCommandValidator : AbstractValidator<CreateWorkPackageCommand>
 {
@@ -195,6 +196,23 @@ public sealed class ReorderWorkPackageRequestsCommandValidator : AbstractValidat
         RuleFor(x => x.OrderedRequestIds)
             .NotNull().WithMessage("Ordered request IDs list is required.")
             .NotEmpty().WithMessage("Ordered request IDs list cannot be empty.");
+    }
+}
+
+/// <summary>
+/// Command to update or clear the target deadline date of a <see cref="Domain.WorkPackage"/>
+/// (CR-023; Architecture §4 TD-004).
+/// </summary>
+public sealed record UpdateWorkPackageDeadlineCommand(
+    Guid WorkPackageId,
+    DateTime? Deadline) : IRequest<WorkPackageDto>;
+
+public sealed class UpdateWorkPackageDeadlineCommandValidator : AbstractValidator<UpdateWorkPackageDeadlineCommand>
+{
+    public UpdateWorkPackageDeadlineCommandValidator()
+    {
+        RuleFor(x => x.WorkPackageId)
+            .NotEmpty().WithMessage("Work package ID is required.");
     }
 }
 

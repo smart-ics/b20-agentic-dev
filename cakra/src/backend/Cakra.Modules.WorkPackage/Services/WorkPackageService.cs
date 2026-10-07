@@ -23,6 +23,7 @@ namespace Cakra.Modules.WorkPackage.Services;
 public sealed class WorkPackageService :
     IWorkPackageService,
     IRequestHandler<CreateWorkPackageCommand, WorkPackageDto>,
+    IRequestHandler<UpdateWorkPackageDeadlineCommand, WorkPackageDto>,
     IRequestHandler<UpdateObjectiveCommand, WorkPackageDto>,
     IRequestHandler<AssignOwnerCommand, WorkPackageDto>,
     IRequestHandler<AssignWorkPackageOwnerCommand, WorkPackageDto>,
@@ -100,6 +101,7 @@ public sealed class WorkPackageService :
         Guid ownerPersonId,
         Guid? customerId = null,
         Guid? productId = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -136,7 +138,8 @@ public sealed class WorkPackageService :
             ownerPersonId: ownerPersonId,
             customerId: customerId,
             productId: productId,
-            createdAtUtc: now);
+            createdAtUtc: now,
+            deadline: deadline);
 
         await _workPackageRepository.AddAsync(workPackage, cancellationToken);
         await DispatchDomainEventsAsync(workPackage, cancellationToken);
@@ -184,6 +187,34 @@ public sealed class WorkPackageService :
         _logger.LogInformation(
             "WorkPackage {WorkPackageId} objective updated by ActorPersonId {ActorPersonId}",
             workPackage.Id,
+            ResolveActorPersonId(workPackage.OwnerPersonId));
+
+        return WorkPackageDto.FromDomain(workPackage);
+    }
+
+    /// <inheritdoc />
+    public async Task<WorkPackageDto> UpdateDeadlineAsync(
+        Guid workPackageId,
+        DateTime? deadline,
+        CancellationToken cancellationToken = default)
+    {
+        if (workPackageId == Guid.Empty)
+        {
+            throw new ArgumentException("WorkPackageId cannot be empty.", nameof(workPackageId));
+        }
+
+        var workPackage = await GetRequiredWorkPackageAsync(workPackageId, cancellationToken);
+
+        var now = UtcNow;
+        workPackage.UpdateDeadline(deadline, now);
+
+        await _workPackageRepository.UpdateAsync(workPackage, cancellationToken);
+        await DispatchDomainEventsAsync(workPackage, cancellationToken);
+
+        _logger.LogInformation(
+            "WorkPackage {WorkPackageId} deadline updated to {Deadline} by ActorPersonId {ActorPersonId}",
+            workPackage.Id,
+            workPackage.Deadline,
             ResolveActorPersonId(workPackage.OwnerPersonId));
 
         return WorkPackageDto.FromDomain(workPackage);
@@ -432,6 +463,16 @@ public sealed class WorkPackageService :
             request.OwnerPersonId,
             request.CustomerId,
             request.ProductId,
+            request.Deadline,
+            cancellationToken);
+    }
+
+    public Task<WorkPackageDto> Handle(UpdateWorkPackageDeadlineCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return UpdateDeadlineAsync(
+            request.WorkPackageId,
+            request.Deadline,
             cancellationToken);
     }
 

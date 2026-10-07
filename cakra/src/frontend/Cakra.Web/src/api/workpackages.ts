@@ -47,6 +47,7 @@ export interface WorkPackageDto {
   productId?: string | null
   productName?: string | null
   productCode?: string | null
+  deadline?: string | null
   closedReason?: string | null
   closedAt?: string | null
   createdAt: string
@@ -63,6 +64,11 @@ export interface CreateWorkPackagePayload {
   ownerPersonId: string
   customerId?: string | null
   productId?: string | null
+  deadline?: string | null
+}
+
+export interface UpdateWorkPackageDeadlinePayload {
+  deadline: string | null
 }
 
 export interface UpdateWorkPackageObjectivePayload {
@@ -131,6 +137,17 @@ export async function updateWorkPackageObjective(
   payload: UpdateWorkPackageObjectivePayload,
 ): Promise<WorkPackageDto> {
   const response = await httpClient.put<WorkPackageDto>(`/work-packages/${id}/objective`, payload)
+  return response.data
+}
+
+/**
+ * Updates or clears the target deadline date of a work package (CR-023).
+ */
+export async function updateWorkPackageDeadline(
+  id: string,
+  payload: UpdateWorkPackageDeadlinePayload,
+): Promise<WorkPackageDto> {
+  const response = await httpClient.put<WorkPackageDto>(`/work-packages/${id}/deadline`, payload)
   return response.data
 }
 
@@ -211,6 +228,7 @@ export const workPackageService = {
   getWorkPackageScope,
   createWorkPackage,
   updateWorkPackageObjective,
+  updateWorkPackageDeadline,
   assignWorkPackageOwner,
   activateWorkPackage,
   closeWorkPackage,

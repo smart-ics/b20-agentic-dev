@@ -13,7 +13,10 @@ import {
   parseTaskListText,
   recordRequest,
 } from '@/api/requests'
-import { reorderWorkPackageRequests } from '@/api/workpackages'
+import {
+  reorderWorkPackageRequests,
+  updateWorkPackageDeadline,
+} from '@/api/workpackages'
 
 /**
  * SCR-WP-001: Work Package Screen
@@ -79,6 +82,7 @@ export interface WorkPackageItem {
   productId?: string | null
   productName?: string | null
   productCode?: string | null
+  deadline?: string | null
   closedReason?: string | null
   closedAt?: string | null
   createdAt: string
@@ -189,6 +193,7 @@ const createForm = reactive({
   ownerPersonId: '',
   customerId: '',
   productId: '',
+  deadline: '',
 })
 // Quick capture candidate tasks for create modal (CR-019)
 const createRawTasks = ref('')
@@ -198,6 +203,10 @@ const createCandidateTasks = ref<string[]>([])
 const objectiveForm = reactive({
   name: '',
   objective: '',
+})
+
+const deadlineForm = reactive({
+  deadline: '',
 })
 
 const assignOwnerForm = reactive({
@@ -400,6 +409,35 @@ function formatTimestamp(value: string | null | undefined): string {
   return parsed.toLocaleString()
 }
 
+function formatDeadline(value: string | null | undefined): string {
+  if (!value) {
+    return '—'
+  }
+  if (value.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10)
+  }
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+  return parsed.toISOString().slice(0, 10)
+}
+
+function isWorkPackageOverdue(wp: WorkPackageItem | null | undefined): boolean {
+  if (!wp?.deadline) return false
+  if (wp.status === 'CLOSED') return false
+  const dateStr = wp.deadline.slice(0, 10)
+  const parts = dateStr.split('-').map(Number)
+  const deadlineDate =
+    parts.length === 3 && !parts.some(isNaN)
+      ? new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0)
+      : new Date(wp.deadline)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  deadlineDate.setHours(0, 0, 0, 0)
+  return deadlineDate < today
+}
+
 function deriveNameFromObjective(objective: string, explicitName?: string): string {
   if (explicitName && explicitName.trim().length > 0) {
     return explicitName.trim().slice(0, 255)
@@ -410,6 +448,7 @@ function deriveNameFromObjective(objective: string, explicitName?: string): stri
 function syncDetailForms(wp: WorkPackageItem): void {
   objectiveForm.name = wp.name ?? ''
   objectiveForm.objective = wp.objective ?? ''
+  deadlineForm.deadline = wp.deadline ? wp.deadline.slice(0, 10) : ''
   assignOwnerForm.newOwnerPersonId = wp.ownerPersonId ?? ''
   closePackageForm.reason = wp.closedReason ?? ''
 }
@@ -555,12 +594,14 @@ function openCreateModal(): void {
   createForm.ownerPersonId = activePersons.value[0]?.id ?? ''
   createForm.customerId = ''
   createForm.productId = ''
+  createForm.deadline = ''
   createRawTasks.value = ''
   createCandidateTasks.value = []
   showCreateForm.value = true
 }
 
 function closeCreateModal(): void {
+  createForm.deadline = ''
   createRawTasks.value = ''
   createCandidateTasks.value = []
   showCreateForm.value = false
@@ -586,6 +627,7 @@ async function handleCreateWorkPackage(): Promise<void> {
       ownerPersonId: createForm.ownerPersonId,
       customerId: createForm.customerId.trim() || null,
       productId: createForm.productId.trim() || null,
+      deadline: createForm.deadline ? createForm.deadline : null,
     })
 
     const created = response.data
@@ -623,6 +665,7 @@ async function handleCreateWorkPackage(): Promise<void> {
     }
 
     showCreateForm.value = false
+    createForm.deadline = ''
     createRawTasks.value = ''
     createCandidateTasks.value = []
 
@@ -700,6 +743,46 @@ async function handleUpdateObjective(): Promise<void> {
   } finally {
     isSubmittingAction.value = false
   }
+}
+
+async function handleUpdateDeadline(newDeadline?: string | null): Promise<void> {
+  if (!selectedWorkPackage.value || !canModifyPackage.value) {
+    return
+  }
+
+  isSubmittingAction.value = true
+  errorMessage.value = null
+  successMessage.value = null
+
+  const targetDeadline =
+    newDeadline !== undefined
+      ? newDeadline
+      : deadlineForm.deadline
+        ? deadlineForm.deadline
+        : null
+
+  try {
+    const wpId = selectedWorkPackage.value.id
+    const updated = await updateWorkPackageDeadline(wpId, {
+      deadline: targetDeadline,
+    })
+
+    selectedWorkPackage.value = updated
+    syncDetailForms(updated)
+    successMessage.value = targetDeadline
+      ? 'Work package deadline updated successfully.'
+      : 'Work package deadline cleared successfully.'
+    await loadWorkPackages()
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(err, 'Failed to update work package deadline.')
+  } finally {
+    isSubmittingAction.value = false
+  }
+}
+
+async function handleClearDeadline(): Promise<void> {
+  deadlineForm.deadline = ''
+  await handleUpdateDeadline(null)
 }
 
 async function handleAssignOwner(): Promise<void> {
@@ -1204,7 +1287,7 @@ onMounted(async () => {
             </div>
 
             <!-- Owner Select (Required) -->
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <label for="createWorkPackageOwner" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Owner <span class="text-danger">*</span>
               </label>
@@ -1228,7 +1311,7 @@ onMounted(async () => {
             </div>
 
             <!-- Customer Select (Optional) -->
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <label for="createWorkPackageCustomer" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Customer (Optional)
               </label>
@@ -1251,7 +1334,7 @@ onMounted(async () => {
             </div>
 
             <!-- Product Select (Optional) -->
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <label for="createWorkPackageProduct" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                 Product (Optional)
               </label>
@@ -1271,6 +1354,21 @@ onMounted(async () => {
                   {{ resolveProductOptionLabel(product) }}
                 </option>
               </select>
+            </div>
+
+            <!-- Target Deadline (Optional) -->
+            <div class="col-12 col-md-3">
+              <label for="createWorkPackageDeadline" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                Target Deadline (Optional)
+              </label>
+              <input
+                id="createWorkPackageDeadline"
+                v-model="createForm.deadline"
+                type="date"
+                class="form-control form-control-sm"
+                :disabled="isSubmittingCreate"
+                data-testid="create-deadline-input"
+              />
             </div>
           </div>
 
@@ -1522,12 +1620,13 @@ onMounted(async () => {
                     <th scope="col">Owner</th>
                     <th scope="col">Customer</th>
                     <th scope="col">Product</th>
+                    <th scope="col" style="width: 130px">Deadline</th>
                     <th scope="col" class="text-center" style="width: 80px">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="isLoadingList">
-                    <td colspan="6" class="text-center py-4 text-body-secondary small">
+                    <td colspan="7" class="text-center py-4 text-body-secondary small">
                       <span
                         class="spinner-border spinner-border-sm me-2"
                         role="status"
@@ -1539,7 +1638,7 @@ onMounted(async () => {
 
                   <tr v-else-if="workPackages.length === 0">
                     <td
-                      colspan="6"
+                      colspan="7"
                       class="text-center py-4 text-body-secondary small"
                       data-testid="empty-work-packages-row"
                     >
@@ -1597,6 +1696,17 @@ onMounted(async () => {
                     <!-- Product Column -->
                     <td>
                       <span class="small">{{ resolveProductDisplay(wp) }}</span>
+                    </td>
+
+                    <!-- Deadline Column -->
+                    <td>
+                      <div v-if="wp.deadline" class="d-flex align-items-center gap-1">
+                        <span class="small font-monospace" style="font-size: 11.5px">{{ formatDeadline(wp.deadline) }}</span>
+                        <span v-if="isWorkPackageOverdue(wp)" class="badge text-bg-danger" style="font-size: 9.5px" data-testid="wp-overdue-badge">
+                          Overdue
+                        </span>
+                      </div>
+                      <span v-else class="text-body-secondary small" style="font-size: 11px">—</span>
                     </td>
 
                     <!-- Status Column -->
@@ -1696,6 +1806,21 @@ onMounted(async () => {
                   <span class="text-body-secondary">Product:</span>
                   <span class="ms-1">{{ resolveProductDisplay(selectedWorkPackage) }}</span>
                 </div>
+                <div class="col-6">
+                  <span class="text-body-secondary">Deadline:</span>
+                  <span v-if="selectedWorkPackage.deadline" class="ms-1 font-monospace" data-testid="detail-deadline-display">
+                    {{ formatDeadline(selectedWorkPackage.deadline) }}
+                    <span
+                      v-if="isWorkPackageOverdue(selectedWorkPackage)"
+                      class="badge text-bg-danger ms-1"
+                      style="font-size: 9.5px"
+                      data-testid="wp-overdue-badge"
+                    >
+                      Overdue
+                    </span>
+                  </span>
+                  <span v-else class="text-body-secondary ms-1">—</span>
+                </div>
               </div>
 
               <div
@@ -1775,6 +1900,48 @@ onMounted(async () => {
                   data-testid="assign-owner-submit-button"
                 >
                   Reassign
+                </button>
+              </form>
+            </div>
+
+            <!-- Target Deadline Section (PUT /api/v1/work-packages/${id}/deadline) -->
+            <div v-if="canModifyPackage" class="mb-2 pb-2 border-bottom" data-testid="detail-deadline-section">
+              <form
+                novalidate
+                class="d-flex align-items-center gap-1"
+                data-testid="update-deadline-form"
+                @submit.prevent="handleUpdateDeadline()"
+              >
+                <label for="detailDeadlineInput" class="small fw-semibold text-body-secondary mb-0 text-nowrap" style="font-size: 11px">
+                  <i class="bi bi-calendar-event me-1 text-primary"></i>Deadline:
+                </label>
+                <input
+                  id="detailDeadlineInput"
+                  v-model="deadlineForm.deadline"
+                  type="date"
+                  class="form-control form-control-sm"
+                  style="font-size: 12px; height: 26px"
+                  :disabled="!canModifyPackage || isSubmittingAction"
+                  data-testid="detail-deadline-input"
+                />
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-outline-primary text-nowrap py-0 px-2"
+                  style="font-size: 11px; height: 26px; line-height: 24px"
+                  :disabled="!canModifyPackage || isSubmittingAction"
+                  data-testid="save-deadline-button"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary text-nowrap py-0 px-2"
+                  style="font-size: 11px; height: 26px; line-height: 24px"
+                  :disabled="!canModifyPackage || isSubmittingAction || (!selectedWorkPackage?.deadline && !deadlineForm.deadline)"
+                  data-testid="clear-deadline-button"
+                  @click="handleClearDeadline"
+                >
+                  Clear
                 </button>
               </form>
             </div>

@@ -304,6 +304,122 @@ public sealed class WorkPackageServiceTests
     }
 
     [Fact]
+    public async Task CreateWorkPackage_WithDeadline_SetsNormalizedDeadline()
+    {
+        var rawDeadline = new DateTime(2026, 11, 15, 14, 30, 0, DateTimeKind.Local);
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package with Deadline",
+            "Objective with target deadline",
+            _activeOwnerId,
+            deadline: rawDeadline);
+
+        dto.Deadline.Should().Be(new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc));
+
+        var persisted = await _repository.GetByIdAsync(dto.Id);
+        persisted.Should().NotBeNull();
+        persisted!.Deadline.Should().Be(new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task CreateWorkPackage_ViaMediatRCommand_WithDeadline_SetsDeadline()
+    {
+        var deadline = new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc);
+        var command = new CreateWorkPackageCommand(
+            "MediatR Package",
+            "Objective",
+            _activeOwnerId,
+            Deadline: deadline);
+
+        var dto = await _service.Handle(command, CancellationToken.None);
+        dto.Deadline.Should().Be(deadline);
+    }
+
+    [Fact]
+    public async Task UpdateDeadline_WithValidDate_UpdatesDeadlineAndTimestamp()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package to update deadline",
+            "Objective",
+            _activeOwnerId);
+
+        dto.Deadline.Should().BeNull();
+
+        _clock.Advance(TimeSpan.FromHours(2));
+        var newDeadline = new DateTime(2026, 12, 25, 0, 0, 0, DateTimeKind.Utc);
+
+        var updated = await _service.UpdateDeadlineAsync(dto.Id, newDeadline);
+        updated.Deadline.Should().Be(newDeadline);
+        updated.UpdatedAt.Should().Be(_clock.UtcNow);
+
+        var persisted = await _repository.GetByIdAsync(dto.Id);
+        persisted!.Deadline.Should().Be(newDeadline);
+        persisted.UpdatedAt.Should().Be(_clock.UtcNow);
+    }
+
+    [Fact]
+    public async Task UpdateDeadline_ViaMediatRCommand_UpdatesDeadline()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "MediatR update deadline",
+            "Objective",
+            _activeOwnerId);
+
+        var deadline = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        var command = new UpdateWorkPackageDeadlineCommand(dto.Id, deadline);
+
+        var updated = await _service.Handle(command, CancellationToken.None);
+        updated.Deadline.Should().Be(deadline);
+    }
+
+    [Fact]
+    public async Task UpdateDeadline_ClearingDeadline_SetsNull()
+    {
+        var initialDeadline = new DateTime(2026, 10, 31, 0, 0, 0, DateTimeKind.Utc);
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package to clear deadline",
+            "Objective",
+            _activeOwnerId,
+            deadline: initialDeadline);
+
+        dto.Deadline.Should().Be(initialDeadline);
+
+        var updated = await _service.UpdateDeadlineAsync(dto.Id, null);
+        updated.Deadline.Should().BeNull();
+
+        var persisted = await _repository.GetByIdAsync(dto.Id);
+        persisted!.Deadline.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateDeadline_OnClosedPackage_ThrowsWorkPackageDomainException()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package to close",
+            "Objective",
+            _activeOwnerId);
+
+        await _service.CloseWorkPackageAsync(dto.Id, "Finished");
+
+        var act = async () => await _service.UpdateDeadlineAsync(
+            dto.Id,
+            new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        await act.Should().ThrowAsync<WorkPackageDomainException>()
+            .WithMessage("*Cannot update deadline for closed Work Package*");
+    }
+
+    [Fact]
+    public async Task UpdateDeadline_WithEmptyId_ThrowsArgumentException()
+    {
+        var act = async () => await _service.UpdateDeadlineAsync(
+            Guid.Empty,
+            new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*WorkPackageId cannot be empty*");
+    }
+
+    [Fact]
     public void CommandValidators_ValidateRequiredFields()
     {
         new CreateWorkPackageCommandValidator()
@@ -341,6 +457,14 @@ public sealed class WorkPackageServiceTests
         new ReorderWorkPackageRequestsCommandValidator()
             .Validate(new ReorderWorkPackageRequestsCommand(Guid.NewGuid(), Array.Empty<Guid>()))
             .IsValid.Should().BeFalse();
+
+        new UpdateWorkPackageDeadlineCommandValidator()
+            .Validate(new UpdateWorkPackageDeadlineCommand(Guid.Empty, DateTime.UtcNow))
+            .IsValid.Should().BeFalse();
+
+        new UpdateWorkPackageDeadlineCommandValidator()
+            .Validate(new UpdateWorkPackageDeadlineCommand(Guid.NewGuid(), null))
+            .IsValid.Should().BeTrue();
     }
 
     private sealed class InMemoryWorkPackageRepository : IWorkPackageRepository

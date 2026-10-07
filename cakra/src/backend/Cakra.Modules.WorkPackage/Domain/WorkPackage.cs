@@ -32,6 +32,9 @@ public sealed class WorkPackage : EntityBase
     /// <summary>Optional Product associated with this Work Package.</summary>
     public Guid? ProductId { get; private set; }
 
+    /// <summary>Optional target deadline date normalized to UTC midnight (Architecture CR-023 §4 TD-002).</summary>
+    public DateTime? Deadline { get; private set; }
+
     /// <summary>Reason recorded when the Work Package is closed, or <c>null</c> if not closed.</summary>
     public string? ClosedReason { get; private set; }
 
@@ -55,7 +58,7 @@ public sealed class WorkPackage : EntityBase
     }
 
     /// <summary>
-    /// Factory method to create a new Work Package in DRAFT status (Architecture §11).
+    /// Factory method to create a new Work Package in DRAFT status (Architecture §11, CR-023 §4 TD-002).
     /// </summary>
     public static WorkPackage Create(
         string name,
@@ -64,7 +67,8 @@ public sealed class WorkPackage : EntityBase
         Guid? customerId = null,
         Guid? productId = null,
         Guid? id = null,
-        DateTime? createdAtUtc = null)
+        DateTime? createdAtUtc = null,
+        DateTime? deadline = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -97,6 +101,7 @@ public sealed class WorkPackage : EntityBase
             OwnerPersonId = ownerPersonId,
             CustomerId = customerId,
             ProductId = productId,
+            Deadline = NormalizeDeadline(deadline),
             Status = WorkPackageStatus.Draft,
             CreatedAt = timestamp,
             UpdatedAt = null
@@ -200,6 +205,28 @@ public sealed class WorkPackage : EntityBase
 
         Name = name.Trim();
         Objective = objective.Trim();
+        UpdatedAt = updatedAtUtc ?? DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Updates the target deadline date for the Work Package (Architecture CR-023 §4 TD-002).
+    /// Allowed in DRAFT and ACTIVE states; throws WorkPackageDomainException when CLOSED.
+    /// </summary>
+    public void UpdateDeadline(DateTime? deadline, DateTime? updatedAtUtc = null)
+    {
+        if (Status == WorkPackageStatus.Closed)
+        {
+            throw new WorkPackageDomainException(
+                $"Cannot update deadline for closed Work Package '{Id}'.");
+        }
+
+        var normalizedNewDeadline = NormalizeDeadline(deadline);
+        if (normalizedNewDeadline == Deadline)
+        {
+            return;
+        }
+
+        Deadline = normalizedNewDeadline;
         UpdatedAt = updatedAtUtc ?? DateTime.UtcNow;
     }
 
@@ -415,6 +442,16 @@ public sealed class WorkPackage : EntityBase
     private void AddDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
 
     /// <summary>
+    /// Normalizes a non-null deadline date to UTC midnight (00:00:00Z) per Architecture CR-023 §4 TD-002.
+    /// </summary>
+    private static DateTime? NormalizeDeadline(DateTime? deadline)
+    {
+        if (!deadline.HasValue) return null;
+        var d = deadline.Value;
+        return new DateTime(d.Year, d.Month, d.Day, 0, 0, 0, DateTimeKind.Utc);
+    }
+
+    /// <summary>
     /// Rehydrates a WorkPackage aggregate from persistence storage without emitting domain events.
     /// </summary>
     public static WorkPackage Rehydrate(
@@ -429,7 +466,8 @@ public sealed class WorkPackage : EntityBase
         DateTime? closedAt,
         DateTime createdAt,
         DateTime? updatedAt,
-        IEnumerable<WorkPackageRequest>? requests = null)
+        IEnumerable<WorkPackageRequest>? requests = null,
+        DateTime? deadline = null)
     {
         var package = new WorkPackage
         {
@@ -443,7 +481,8 @@ public sealed class WorkPackage : EntityBase
             ClosedReason = closedReason,
             ClosedAt = closedAt,
             CreatedAt = createdAt,
-            UpdatedAt = updatedAt
+            UpdatedAt = updatedAt,
+            Deadline = NormalizeDeadline(deadline)
         };
 
         if (requests is not null)

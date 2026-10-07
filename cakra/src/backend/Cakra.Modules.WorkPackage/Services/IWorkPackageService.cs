@@ -17,6 +17,7 @@ public interface IWorkPackageService
         Guid ownerPersonId,
         Guid? customerId = null,
         Guid? productId = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -28,8 +29,9 @@ public interface IWorkPackageService
         Guid ownerPersonId,
         Guid? customerId = null,
         Guid? productId = null,
+        DateTime? deadline = null,
         CancellationToken cancellationToken = default)
-        => CreateWorkPackageAsync(name, objective, ownerPersonId, customerId, productId, cancellationToken);
+        => CreateWorkPackageAsync(name, objective, ownerPersonId, customerId, productId, deadline, cancellationToken);
 
     /// <summary>
     /// Updates the descriptive title and objective of an existing non-closed Work Package (Architecture §11 — UC-WP-001).
@@ -157,5 +159,22 @@ public interface IWorkPackageService
         IReadOnlyList<Guid> orderedRequestIds,
         CancellationToken cancellationToken = default)
         => ReorderRequestsAsync(workPackageId, orderedRequestIds, cancellationToken);
+
+    /// <summary>
+    /// Updates or clears the target deadline date of an existing non-closed Work Package (Architecture CR-023 §4 TD-002, TD-004).
+    /// </summary>
+    Task<WorkPackageDto> UpdateDeadlineAsync(
+        Guid workPackageId,
+        DateTime? deadline,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="UpdateDeadlineAsync"/> (Architecture CR-023 §4).
+    /// </summary>
+    Task<WorkPackageDto> UpdateDeadline(
+        Guid workPackageId,
+        DateTime? deadline,
+        CancellationToken cancellationToken = default)
+        => UpdateDeadlineAsync(workPackageId, deadline, cancellationToken);
 }
 

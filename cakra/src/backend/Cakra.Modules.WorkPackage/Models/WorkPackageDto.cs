@@ -55,6 +55,9 @@ public record WorkPackageDto
     /// <summary>Resolved product code, when enriched via <c>IProductQueryService</c>.</summary>
     public string? ProductCode { get; init; }
 
+    /// <summary>Optional target deadline date normalized to UTC midnight (Architecture CR-023 §4 TD-004).</summary>
+    public DateTime? Deadline { get; init; }
+
     /// <summary>Reason recorded when the Work Package is closed, or <c>null</c> if not closed.</summary>
     public string? ClosedReason { get; init; }
 
@@ -101,6 +104,7 @@ public record WorkPackageDto
             OwnerPersonId = workPackage.OwnerPersonId,
             CustomerId = workPackage.CustomerId,
             ProductId = workPackage.ProductId,
+            Deadline = workPackage.Deadline,
             ClosedReason = workPackage.ClosedReason,
             ClosedAt = workPackage.ClosedAt,
             CreatedAt = workPackage.CreatedAt,

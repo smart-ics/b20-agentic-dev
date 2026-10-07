@@ -157,6 +157,11 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
             objective = "Updated Objective"
         })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
+        (await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/deadline", new
+        {
+            deadline = "2026-11-01"
+        })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
         (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/assign-owner", new
         {
             newOwnerPersonId = Guid.NewGuid()
@@ -570,6 +575,79 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
         await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/close", new { reason = "Finished" });
         var closedReorderResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/requests/reorder", reorderPayload);
         closedReorderResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task WorkPackage_deadline_endpoint_supports_creation_updating_clearing_and_rejects_closed()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
+        using var client = seeded.Client;
+
+        // 1. Create with deadline via POST /api/v1/work-packages
+        var targetDeadline = new DateTime(2026, 11, 20, 0, 0, 0, DateTimeKind.Utc);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Work Package With Initial Deadline",
+            objective = "Validate deadline creation and updates via REST API.",
+            ownerPersonId = seeded.Owner1Id,
+            customerId = seeded.Customer1Id,
+            productId = seeded.Product1Id,
+            deadline = targetDeadline
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var wpId = created.GetProperty("id").GetGuid();
+        created.GetProperty("deadline").GetDateTime().Should().Be(targetDeadline);
+
+        // 2. Verify GET /api/v1/work-packages/{id} preserves deadline
+        var getResponse = await client.GetAsync($"/api/v1/work-packages/{wpId}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var retrieved = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        retrieved.GetProperty("deadline").GetDateTime().Should().Be(targetDeadline);
+
+        // 3. Update deadline via PUT /api/v1/work-packages/{id}/deadline
+        var updatedDeadline = new DateTime(2026, 12, 15, 0, 0, 0, DateTimeKind.Utc);
+        var updateResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/deadline", new
+        {
+            deadline = updatedDeadline
+        });
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        updated.GetProperty("deadline").GetDateTime().Should().Be(updatedDeadline);
+
+        // 4. Clear deadline via PUT /api/v1/work-packages/{id}/deadline with null
+        var clearResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/deadline", new
+        {
+            deadline = (DateTime?)null
+        });
+        clearResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cleared = await clearResponse.Content.ReadFromJsonAsync<JsonElement>();
+        cleared.GetProperty("deadline").ValueKind.Should().Be(JsonValueKind.Null);
+
+        // 5. Non-existent work package -> 404 NotFound
+        var notFoundResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{Guid.NewGuid()}/deadline", new
+        {
+            deadline = updatedDeadline
+        });
+        notFoundResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // 6. Close work package
+        var closeResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/close", new
+        {
+            reason = "Completed all scope"
+        });
+        closeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 7. Update deadline on closed work package -> 400 BadRequest
+        var closedUpdateResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/deadline", new
+        {
+            deadline = updatedDeadline
+        });
+        closedUpdateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private async Task<SeededWorkPackageTestContext> CreateAuthenticatedClientAndSeedContextAsync()

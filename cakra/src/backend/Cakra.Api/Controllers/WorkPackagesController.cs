@@ -146,7 +146,8 @@ public sealed class WorkPackagesController : ApiControllerBase
             Objective: request?.ResolvedObjective ?? string.Empty,
             OwnerPersonId: request?.ResolvedOwnerPersonId ?? Guid.Empty,
             CustomerId: FirstNonEmptyGuid(request?.CustomerId),
-            ProductId: FirstNonEmptyGuid(request?.ProductId));
+            ProductId: FirstNonEmptyGuid(request?.ProductId),
+            Deadline: request?.Deadline);
 
         try
         {
@@ -209,6 +210,42 @@ public sealed class WorkPackagesController : ApiControllerBase
                 "Updated objective for work package '{WorkPackageId}' ({Name}).",
                 enriched.Id,
                 enriched.Name);
+
+            return Ok(enriched);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or WorkPackageDomainException)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Updates or clears the target deadline date of an existing work package
+    /// (<c>WorkPackageService.UpdateDeadline</c>; Architecture CR-023 §4 TD-004).
+    /// </summary>
+    [HttpPut("{id:guid}/deadline")]
+    [ProducesResponseType(typeof(WorkPackageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateDeadline(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] UpdateWorkPackageDeadlineBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new UpdateWorkPackageDeadlineCommand(
+            WorkPackageId: id,
+            Deadline: request?.Deadline);
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _workPackageQueryService.GetWorkPackageByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Updated deadline for work package '{WorkPackageId}' to '{Deadline}'.",
+                enriched.Id,
+                enriched.Deadline);
 
             return Ok(enriched);
         }
@@ -526,6 +563,7 @@ public sealed class WorkPackagesController : ApiControllerBase
         public Guid? OwnerId { get; set; }
         public Guid? CustomerId { get; set; }
         public Guid? ProductId { get; set; }
+        public DateTime? Deadline { get; set; }
 
         public string ResolvedObjective => Objective ?? string.Empty;
 
@@ -554,6 +592,14 @@ public sealed class WorkPackagesController : ApiControllerBase
 
         public Guid ResolvedOwnerPersonId =>
             FirstNonEmptyGuid(OwnerPersonId, OwnerId) ?? Guid.Empty;
+    }
+
+    /// <summary>
+    /// Request payload for <c>PUT /api/v1/work-packages/{id}/deadline</c> (<c>UpdateDeadline</c>).
+    /// </summary>
+    public sealed class UpdateWorkPackageDeadlineBody
+    {
+        public DateTime? Deadline { get; set; }
     }
 
     /// <summary>

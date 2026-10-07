@@ -61,6 +61,7 @@ public sealed class WorkPackageQueryService :
                 wp.[OwnerPersonId],
                 wp.[CustomerId],
                 wp.[ProductId],
+                wp.[Deadline],
                 wp.[ClosedReason],
                 wp.[ClosedAt],
                 wp.[CreatedAt],
@@ -112,6 +113,7 @@ public sealed class WorkPackageQueryService :
                 wp.[OwnerPersonId],
                 wp.[CustomerId],
                 wp.[ProductId],
+                wp.[Deadline],
                 wp.[ClosedReason],
                 wp.[ClosedAt],
                 wp.[CreatedAt],
@@ -240,6 +242,7 @@ public sealed class WorkPackageQueryService :
                 wp.[OwnerPersonId],
                 wp.[CustomerId],
                 wp.[ProductId],
+                wp.[Deadline],
                 wp.[ClosedReason],
                 wp.[ClosedAt],
                 wp.[CreatedAt],
@@ -456,6 +459,7 @@ public sealed class WorkPackageQueryService :
         public Guid OwnerPersonId { get; init; }
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
+        public DateTime? Deadline { get; init; }
         public string? ClosedReason { get; init; }
         public DateTime? ClosedAt { get; init; }
         public DateTime CreatedAt { get; init; }
@@ -473,6 +477,7 @@ public sealed class WorkPackageQueryService :
                 OwnerPersonId = OwnerPersonId,
                 CustomerId = CustomerId,
                 ProductId = ProductId,
+                Deadline = Deadline,
                 ClosedReason = ClosedReason,
                 ClosedAt = ClosedAt,
                 CreatedAt = CreatedAt,
