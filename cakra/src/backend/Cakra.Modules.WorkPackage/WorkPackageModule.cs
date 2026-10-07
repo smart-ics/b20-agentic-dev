@@ -44,6 +44,11 @@ public sealed class WorkPackageModule : IModule
             sp.GetService<ILogger<WorkPackageService>>()));
         services.AddScoped<IWorkPackageService>(sp => sp.GetRequiredService<WorkPackageService>());
 
+        // Request Recorded Work Package Handler (CR-019 / Architecture §7 - MediatR INotificationHandler<RequestRecorded> auto-discovered by AddCakraCore)
+        services.AddScoped<RequestRecordedWorkPackageHandler>(sp => new RequestRecordedWorkPackageHandler(
+            sp.GetRequiredService<IWorkPackageService>(),
+            sp.GetService<ILogger<RequestRecordedWorkPackageHandler>>()));
+
         // Published Cross-Module Query Service (Architecture §7, §11, §15, §20, §21)
         services.AddScoped<WorkPackageQueryService>(sp => new WorkPackageQueryService(
             sp.GetRequiredService<IDbConnectionFactory>(),

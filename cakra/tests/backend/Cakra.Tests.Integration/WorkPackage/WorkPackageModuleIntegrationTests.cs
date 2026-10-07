@@ -540,6 +540,67 @@ public sealed class WorkPackageModuleIntegrationTests : IAsyncLifetime
             .Should().HaveCount(inProgressHistoryBefore.Count);
     }
 
+    [Fact]
+    public async Task RecordRequest_WithWorkPackageId_AutomaticallyLinksRequestToWorkPackageScope_CR019()
+    {
+        if (!_sqlServerAvailable) return;
+
+        using var scope = _factory!.Services.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var workPackageQueryService = scope.ServiceProvider.GetRequiredService<IWorkPackageQueryService>();
+        var currentContext = scope.ServiceProvider.GetRequiredService<ICurrentContextProvider>() as CurrentContextProvider;
+
+        // 1. Arrange organizational and package context
+        var owner = await mediator.Send(new CreatePersonCommand("Quick", "CaptureOwner", $"owner.{Guid.NewGuid():N}@cakra.id"));
+        var customer = await mediator.Send(new CreateCustomerCommand($"QCCUST-{Guid.NewGuid():N}"[..15], "QC Customer", HasActiveMaintenanceContract: true));
+        var product = await mediator.Send(new CreateProductCommand($"QCPROD-{Guid.NewGuid():N}"[..14], "QC Product", "QC Product Description", owner.Id));
+
+        currentContext?.Initialize(Guid.NewGuid(), owner.Id, new[] { "Management" });
+
+        var createdWp = await mediator.Send(new CreateWorkPackageCommand(
+            Name: "Bulk Quick Capture Work Package",
+            Objective: "Verify automatic membership linking when requests are recorded with WorkPackageId.",
+            OwnerPersonId: owner.Id,
+            CustomerId: customer.Id,
+            ProductId: product.Id));
+
+        // 2. Act: Record multiple requests passing WorkPackageId (simulating bulk quick capture)
+        var req1 = await mediator.Send(new RecordRequestCommand(
+            Title: "Quick task 1 from notes",
+            Description: "",
+            CustomerId: customer.Id,
+            ProductId: product.Id,
+            WorkPackageId: createdWp.Id,
+            ActorPersonId: owner.Id));
+
+        var req2 = await mediator.Send(new RecordRequestCommand(
+            Title: "Quick task 2 from notes",
+            Description: "",
+            CustomerId: customer.Id,
+            ProductId: product.Id,
+            WorkPackageId: createdWp.Id,
+            ActorPersonId: owner.Id));
+
+        // 3. Assert: workpackage.WorkPackageRequests is populated and query service reflects linked scope
+        var scopeItems = await workPackageQueryService.GetWorkPackageScopeAsync(createdWp.Id);
+        scopeItems.Should().HaveCount(2);
+        scopeItems.Select(s => s.RequestId).Should().Contain(new[] { req1.Id, req2.Id });
+        scopeItems.All(s => s.IsActive).Should().BeTrue();
+
+        var refreshedWp = await workPackageQueryService.GetWorkPackageByIdAsync(createdWp.Id);
+        refreshedWp.Should().NotBeNull();
+        refreshedWp!.ActiveRequests.Should().HaveCount(2);
+        refreshedWp.ActiveRequests.Select(r => r.RequestId).Should().Contain(new[] { req1.Id, req2.Id });
+
+        // Verify database table workpackage.WorkPackageRequests directly
+        await using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync();
+        var rowCount = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM [workpackage].[WorkPackageRequests] WHERE [WorkPackageId] = @WpId AND [RemovedAt] IS NULL",
+            new { WpId = createdWp.Id });
+        rowCount.Should().Be(2);
+    }
+
     private sealed class ForeignKeyInfo
     {
         public string ForeignKeyName { get; init; } = string.Empty;
