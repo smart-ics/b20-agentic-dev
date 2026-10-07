@@ -13,6 +13,16 @@ import RequestDetailView from '@/views/RequestDetailView.vue'
 import RequestSearchView from '@/views/RequestSearchView.vue'
 import WorkPackageView from '@/views/WorkPackageView.vue'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    guestOnly?: boolean
+    screenId?: string
+    containerWidth?: 'narrow' | 'wide'
+    requiresRole?: string
+  }
+}
+
 // Vue Router 4 configuration (Architecture §9, §10, §11, §12, §13, §14, §19.4, §19.5; CR-017).
 // Routes `/login` to SCR-AUTH-001 (`LoginView.vue`), `/feed` to SCR-FEED-001 (`FeedView.vue`),
 // `/products` to SCR-PRD-001 (`ProductCatalogView.vue`), `/requests` redirects to `/feed` (CR-017),
@@ -92,6 +102,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       screenId: 'SCR-REQ-006',
+      containerWidth: 'narrow',
     },
   },
   {

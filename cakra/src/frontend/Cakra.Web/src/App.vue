@@ -61,6 +61,13 @@ const currentScreenTitle = computed(() => {
   if (path.startsWith('/analytics/programmer-workload')) return 'Programmer Workload'
   return 'Operational Overview'
 })
+
+// Dynamic container width: 'narrow' (1024px) for focused operational feeds, 'wide' (1440px) default
+const containerClass = computed(() => {
+  const width = route.meta.containerWidth
+  if (width === 'narrow') return 'cakra-shell-narrow'
+  return 'cakra-shell-wide'
+})
 </script>
 
 <template>
@@ -343,7 +350,7 @@ const currentScreenTitle = computed(() => {
 
       <!-- Page Content View -->
       <main class="cakra-page-content">
-        <div class="cakra-shell-container py-2">
+        <div class="cakra-shell-container py-2" :class="containerClass">
           <router-view />
         </div>
       </main>
