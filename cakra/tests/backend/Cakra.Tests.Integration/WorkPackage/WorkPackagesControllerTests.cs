@@ -162,6 +162,12 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
             deadline = "2026-11-01"
         })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
+        (await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/context", new
+        {
+            customerId = Guid.NewGuid(),
+            productId = Guid.NewGuid()
+        })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
         (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/assign-owner", new
         {
             newOwnerPersonId = Guid.NewGuid()
@@ -648,6 +654,117 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
             deadline = updatedDeadline
         });
         closedUpdateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task WorkPackage_context_endpoint_supports_updating_clearing_and_rejects_closed()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
+        using var client = seeded.Client;
+
+        // 1. Create a work package initially without customer/product
+        var createResponse = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Context Test Work Package",
+            objective = "Validate customer and product context update endpoint.",
+            ownerPersonId = seeded.Owner1Id
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var wpId = created.GetProperty("id").GetGuid();
+        created.GetProperty("customerId").ValueKind.Should().Be(JsonValueKind.Null);
+        created.GetProperty("productId").ValueKind.Should().Be(JsonValueKind.Null);
+
+        // 2. Update context via PUT /api/v1/work-packages/{id}/context (Customer1 & Product1)
+        var updateResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/context", new
+        {
+            customerId = seeded.Customer1Id,
+            productId = seeded.Product1Id
+        });
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        updated.GetProperty("customerId").GetGuid().Should().Be(seeded.Customer1Id);
+        updated.GetProperty("customerName").GetString().Should().Be("RSUP Dr. Sardjito");
+        updated.GetProperty("productId").GetGuid().Should().Be(seeded.Product1Id);
+        updated.GetProperty("productName").GetString().Should().Be("MyHospital Billing");
+
+        // Verify persistence via GET /api/v1/work-packages/{id}
+        var getResponse = await client.GetAsync($"/api/v1/work-packages/{wpId}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var retrieved = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        retrieved.GetProperty("customerId").GetGuid().Should().Be(seeded.Customer1Id);
+        retrieved.GetProperty("productId").GetGuid().Should().Be(seeded.Product1Id);
+
+        // 3. Update to Customer2 and Product2
+        var update2Response = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/context", new
+        {
+            customerId = seeded.Customer2Id,
+            productId = seeded.Product2Id
+        });
+        update2Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated2 = await update2Response.Content.ReadFromJsonAsync<JsonElement>();
+        updated2.GetProperty("customerId").GetGuid().Should().Be(seeded.Customer2Id);
+        updated2.GetProperty("customerName").GetString().Should().Be("RSUD Kota Yogyakarta");
+        updated2.GetProperty("productId").GetGuid().Should().Be(seeded.Product2Id);
+        updated2.GetProperty("productName").GetString().Should().Be("PenaEl Pharmacy");
+
+        // 4. Clear Customer and Product by setting them to null
+        var clearResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/context", new
+        {
+            customerId = (Guid?)null,
+            productId = (Guid?)null
+        });
+        clearResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cleared = await clearResponse.Content.ReadFromJsonAsync<JsonElement>();
+        cleared.GetProperty("customerId").ValueKind.Should().Be(JsonValueKind.Null);
+        cleared.GetProperty("productId").ValueKind.Should().Be(JsonValueKind.Null);
+
+        // Verify cleared in database via GET
+        var getClearedResponse = await client.GetAsync($"/api/v1/work-packages/{wpId}");
+        getClearedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var retrievedCleared = await getClearedResponse.Content.ReadFromJsonAsync<JsonElement>();
+        retrievedCleared.GetProperty("customerId").ValueKind.Should().Be(JsonValueKind.Null);
+        retrievedCleared.GetProperty("productId").ValueKind.Should().Be(JsonValueKind.Null);
+
+        // 5. Non-existent work package -> 404 NotFound ProblemDetails
+        var notFoundResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{Guid.NewGuid()}/context", new
+        {
+            customerId = seeded.Customer1Id
+        });
+        notFoundResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // 6. Non-existent or invalid Customer/Product -> 400 BadRequest or 404 NotFound ProblemDetails
+        var invalidCustomerResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/context", new
+        {
+            customerId = Guid.NewGuid()
+        });
+        invalidCustomerResponse.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.NotFound);
+
+        var invalidProductResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/context", new
+        {
+            productId = Guid.NewGuid()
+        });
+        invalidProductResponse.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.NotFound);
+
+        // 7. Close work package and verify updating context is rejected with 400 BadRequest
+        var closeResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/close", new
+        {
+            reason = "Completed"
+        });
+        closeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Updating context on closed package -> 400 BadRequest
+        var closedUpdateResponse = await client.PutAsJsonAsync($"/api/v1/work-packages/{wpId}/context", new
+        {
+            customerId = seeded.Customer1Id,
+            productId = seeded.Product1Id
+        });
+        closedUpdateResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var closedProblem = await closedUpdateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        closedProblem.GetProperty("detail").GetString().Should().Contain("closed");
     }
 
     private async Task<SeededWorkPackageTestContext> CreateAuthenticatedClientAndSeedContextAsync()

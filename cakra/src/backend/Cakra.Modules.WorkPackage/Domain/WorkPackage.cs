@@ -231,6 +231,43 @@ public sealed class WorkPackage : EntityBase
     }
 
     /// <summary>
+    /// Updates the Customer and Product context associations of the Work Package (Architecture CR-024).
+    /// Allowed in DRAFT and ACTIVE states; throws WorkPackageDomainException when CLOSED.
+    /// </summary>
+    public void UpdateContext(Guid? customerId, Guid? productId, DateTime? updatedAtUtc = null)
+    {
+        if (Status == WorkPackageStatus.Closed)
+        {
+            throw new WorkPackageDomainException(
+                $"Cannot update context for closed Work Package '{Id}'.");
+        }
+
+        var normalizedCustomerId = customerId == Guid.Empty ? null : customerId;
+        var normalizedProductId = productId == Guid.Empty ? null : productId;
+
+        if (normalizedCustomerId == CustomerId && normalizedProductId == ProductId)
+        {
+            return;
+        }
+
+        var previousCustomerId = CustomerId;
+        var previousProductId = ProductId;
+
+        CustomerId = normalizedCustomerId;
+        ProductId = normalizedProductId;
+        var timestamp = updatedAtUtc ?? DateTime.UtcNow;
+        UpdatedAt = timestamp;
+
+        AddDomainEvent(new WorkPackageContextChanged(
+            Id,
+            previousCustomerId,
+            CustomerId,
+            previousProductId,
+            ProductId,
+            timestamp));
+    }
+
+    /// <summary>
     /// Reassigns ownership of the Work Package to a new Person (Architecture §11).
     /// Emits <see cref="WorkPackageOwnerChanged"/> when the owner actually changes.
     /// </summary>

@@ -15,6 +15,7 @@ import {
 } from '@/api/requests'
 import {
   reorderWorkPackageRequests,
+  updateWorkPackageContext,
   updateWorkPackageDeadline,
 } from '@/api/workpackages'
 
@@ -209,6 +210,11 @@ const deadlineForm = reactive({
   deadline: '',
 })
 
+const contextForm = reactive({
+  customerId: '',
+  productId: '',
+})
+
 const assignOwnerForm = reactive({
   newOwnerPersonId: '',
 })
@@ -283,6 +289,13 @@ const isSelectedClosed = computed(() => selectedStatus.value === 'CLOSED')
 const canActivate = computed(() => isSelectedDraft.value)
 const canClose = computed(() => isSelectedDraft.value || isSelectedActive.value)
 const canModifyPackage = computed(() => !isSelectedClosed.value)
+
+const isContextDirty = computed(() => {
+  if (!selectedWorkPackage.value) return false
+  const currentCust = selectedWorkPackage.value.customerId ?? ''
+  const currentProd = selectedWorkPackage.value.productId ?? ''
+  return contextForm.customerId !== currentCust || contextForm.productId !== currentProd
+})
 
 const activeScopeItems = computed(() =>
   scopeItems.value.filter((item) => item.isActive && !item.removedAt),
@@ -449,6 +462,8 @@ function syncDetailForms(wp: WorkPackageItem): void {
   objectiveForm.name = wp.name ?? ''
   objectiveForm.objective = wp.objective ?? ''
   deadlineForm.deadline = wp.deadline ? wp.deadline.slice(0, 10) : ''
+  contextForm.customerId = wp.customerId ?? ''
+  contextForm.productId = wp.productId ?? ''
   assignOwnerForm.newOwnerPersonId = wp.ownerPersonId ?? ''
   closePackageForm.reason = wp.closedReason ?? ''
 }
@@ -783,6 +798,37 @@ async function handleUpdateDeadline(newDeadline?: string | null): Promise<void> 
 async function handleClearDeadline(): Promise<void> {
   deadlineForm.deadline = ''
   await handleUpdateDeadline(null)
+}
+
+async function handleUpdateContext(): Promise<void> {
+  if (!selectedWorkPackage.value || !canModifyPackage.value) {
+    return
+  }
+
+  isSubmittingAction.value = true
+  errorMessage.value = null
+  successMessage.value = null
+
+  try {
+    const wpId = selectedWorkPackage.value.id
+    const updated = await updateWorkPackageContext(wpId, {
+      customerId: contextForm.customerId || null,
+      productId: contextForm.productId || null,
+    })
+
+    selectedWorkPackage.value = updated
+    const index = workPackages.value.findIndex((wp) => wp.id === updated.id)
+    if (index !== -1) {
+      workPackages.value[index] = { ...workPackages.value[index], ...updated }
+    }
+    syncDetailForms(updated)
+    successMessage.value = 'Work package customer and product context updated successfully.'
+    await loadWorkPackages()
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(err, 'Failed to update work package customer and product context.')
+  } finally {
+    isSubmittingAction.value = false
+  }
 }
 
 async function handleAssignOwner(): Promise<void> {
@@ -1943,6 +1989,72 @@ onMounted(async () => {
                 >
                   Clear
                 </button>
+              </form>
+            </div>
+
+            <!-- Customer & Product Context Section (PUT /api/v1/work-packages/${id}/context) -->
+            <div v-if="canModifyPackage" class="mb-2 pb-2 border-bottom" data-testid="detail-context-section">
+              <form
+                novalidate
+                data-testid="update-context-form"
+                @submit.prevent="handleUpdateContext"
+              >
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <span class="small fw-semibold text-body-secondary" style="font-size: 11px">
+                    <i class="bi bi-tags me-1 text-primary"></i>Customer &amp; Product:
+                  </span>
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-outline-primary text-nowrap py-0 px-2"
+                    style="font-size: 11px; height: 26px; line-height: 24px"
+                    :disabled="!canModifyPackage || isSubmittingAction || !isContextDirty"
+                    data-testid="save-context-button"
+                  >
+                    Save Context
+                  </button>
+                </div>
+                <div class="row g-2">
+                  <div class="col-12 col-sm-6">
+                    <label for="detailCustomerSelect" class="form-label small text-body-secondary mb-1" style="font-size: 11px">Customer</label>
+                    <select
+                      id="detailCustomerSelect"
+                      v-model="contextForm.customerId"
+                      class="form-select form-select-sm"
+                      style="font-size: 12px; height: 28px"
+                      :disabled="!canModifyPackage || isSubmittingAction"
+                      data-testid="detail-customer-select"
+                    >
+                      <option value="">-- None / Unassigned --</option>
+                      <option
+                        v-for="customer in activeCustomers"
+                        :key="customer.id"
+                        :value="customer.id"
+                      >
+                        {{ resolveCustomerOptionLabel(customer) }}
+                      </option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <label for="detailProductSelect" class="form-label small text-body-secondary mb-1" style="font-size: 11px">Product</label>
+                    <select
+                      id="detailProductSelect"
+                      v-model="contextForm.productId"
+                      class="form-select form-select-sm"
+                      style="font-size: 12px; height: 28px"
+                      :disabled="!canModifyPackage || isSubmittingAction"
+                      data-testid="detail-product-select"
+                    >
+                      <option value="">-- None / Unassigned --</option>
+                      <option
+                        v-for="product in activeProducts"
+                        :key="product.id"
+                        :value="product.id"
+                      >
+                        {{ resolveProductOptionLabel(product) }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
               </form>
             </div>
 

@@ -420,6 +420,177 @@ public sealed class WorkPackageServiceTests
     }
 
     [Fact]
+    public async Task UpdateContext_WithValidReferences_UpdatesPackageAndDispatchesEvent()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Context Test Package",
+            "Objective",
+            _activeOwnerId);
+
+        _eventDispatcher.Clear();
+        _clock.Advance(TimeSpan.FromHours(1));
+
+        var updated = await _service.UpdateContextAsync(dto.Id, _activeCustomerId, _activeProductId);
+
+        updated.CustomerId.Should().Be(_activeCustomerId);
+        updated.ProductId.Should().Be(_activeProductId);
+        updated.UpdatedAt.Should().Be(_clock.UtcNow);
+
+        var persisted = await _repository.GetByIdAsync(dto.Id);
+        persisted.Should().NotBeNull();
+        persisted!.CustomerId.Should().Be(_activeCustomerId);
+        persisted.ProductId.Should().Be(_activeProductId);
+
+        _eventDispatcher.DispatchedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<WorkPackageContextChanged>()
+            .Which.Should().Match<WorkPackageContextChanged>(e =>
+                e.WorkPackageId == dto.Id &&
+                e.PreviousCustomerId == null &&
+                e.NewCustomerId == _activeCustomerId &&
+                e.PreviousProductId == null &&
+                e.NewProductId == _activeProductId);
+    }
+
+    [Fact]
+    public async Task UpdateContext_ClearingReferences_SetsNullAndDispatchesEvent()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Context Package to Clear",
+            "Objective",
+            _activeOwnerId,
+            customerId: _activeCustomerId,
+            productId: _activeProductId);
+
+        _eventDispatcher.Clear();
+        _clock.Advance(TimeSpan.FromHours(2));
+
+        var updated = await _service.UpdateContextAsync(dto.Id, null, null);
+
+        updated.CustomerId.Should().BeNull();
+        updated.ProductId.Should().BeNull();
+        updated.UpdatedAt.Should().Be(_clock.UtcNow);
+
+        var persisted = await _repository.GetByIdAsync(dto.Id);
+        persisted.Should().NotBeNull();
+        persisted!.CustomerId.Should().BeNull();
+        persisted.ProductId.Should().BeNull();
+
+        _eventDispatcher.DispatchedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<WorkPackageContextChanged>()
+            .Which.Should().Match<WorkPackageContextChanged>(e =>
+                e.WorkPackageId == dto.Id &&
+                e.PreviousCustomerId == _activeCustomerId &&
+                e.NewCustomerId == null &&
+                e.PreviousProductId == _activeProductId &&
+                e.NewProductId == null);
+    }
+
+    [Fact]
+    public async Task UpdateContext_WithInactiveCustomer_ThrowsInvalidOperationException()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package",
+            "Objective",
+            _activeOwnerId);
+
+        var act = async () => await _service.UpdateContextAsync(dto.Id, _inactiveCustomerId, null);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Customer*not active*");
+    }
+
+    [Fact]
+    public async Task UpdateContext_WithNonexistentCustomer_ThrowsKeyNotFoundException()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package",
+            "Objective",
+            _activeOwnerId);
+
+        var act = async () => await _service.UpdateContextAsync(dto.Id, Guid.NewGuid(), null);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage("*Customer*");
+    }
+
+    [Fact]
+    public async Task UpdateContext_WithInactiveProduct_ThrowsInvalidOperationException()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package",
+            "Objective",
+            _activeOwnerId);
+
+        var act = async () => await _service.UpdateContextAsync(dto.Id, null, _inactiveProductId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Product*not active*");
+    }
+
+    [Fact]
+    public async Task UpdateContext_WithNonexistentProduct_ThrowsKeyNotFoundException()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package",
+            "Objective",
+            _activeOwnerId);
+
+        var act = async () => await _service.UpdateContextAsync(dto.Id, null, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage("*Product*");
+    }
+
+    [Fact]
+    public async Task UpdateContext_WithNonexistentWorkPackage_ThrowsKeyNotFoundException()
+    {
+        var act = async () => await _service.UpdateContextAsync(Guid.NewGuid(), _activeCustomerId, _activeProductId);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage("*WorkPackage*");
+    }
+
+    [Fact]
+    public async Task UpdateContext_OnClosedPackage_ThrowsWorkPackageDomainException()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Package to close",
+            "Objective",
+            _activeOwnerId);
+
+        await _service.CloseWorkPackageAsync(dto.Id, "Finished");
+
+        var act = async () => await _service.UpdateContextAsync(dto.Id, _activeCustomerId, null);
+
+        await act.Should().ThrowAsync<WorkPackageDomainException>()
+            .WithMessage("*Cannot update context for closed Work Package*");
+    }
+
+    [Fact]
+    public async Task UpdateContext_WithEmptyId_ThrowsArgumentException()
+    {
+        var act = async () => await _service.UpdateContextAsync(Guid.Empty, _activeCustomerId, null);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*WorkPackageId cannot be empty*");
+    }
+
+    [Fact]
+    public async Task Handle_UpdateWorkPackageContextCommand_ExecutesSuccessfully()
+    {
+        var dto = await _service.CreateWorkPackageAsync(
+            "Command test package",
+            "Objective",
+            _activeOwnerId);
+
+        var command = new UpdateWorkPackageContextCommand(dto.Id, _activeCustomerId, _activeProductId);
+        var updated = await _service.Handle(command, CancellationToken.None);
+
+        updated.CustomerId.Should().Be(_activeCustomerId);
+        updated.ProductId.Should().Be(_activeProductId);
+    }
+
+    [Fact]
     public void CommandValidators_ValidateRequiredFields()
     {
         new CreateWorkPackageCommandValidator()
@@ -464,6 +635,14 @@ public sealed class WorkPackageServiceTests
 
         new UpdateWorkPackageDeadlineCommandValidator()
             .Validate(new UpdateWorkPackageDeadlineCommand(Guid.NewGuid(), null))
+            .IsValid.Should().BeTrue();
+
+        new UpdateWorkPackageContextCommandValidator()
+            .Validate(new UpdateWorkPackageContextCommand(Guid.Empty, null, null))
+            .IsValid.Should().BeFalse();
+
+        new UpdateWorkPackageContextCommandValidator()
+            .Validate(new UpdateWorkPackageContextCommand(Guid.NewGuid(), null, null))
             .IsValid.Should().BeTrue();
     }
 

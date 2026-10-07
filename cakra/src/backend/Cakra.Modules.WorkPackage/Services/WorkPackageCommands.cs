@@ -216,3 +216,21 @@ public sealed class UpdateWorkPackageDeadlineCommandValidator : AbstractValidato
     }
 }
 
+/// <summary>
+/// Command to update or clear the Customer and Product context associations of a <see cref="Domain.WorkPackage"/>
+/// (CR-024; Architecture §4 TD-004).
+/// </summary>
+public sealed record UpdateWorkPackageContextCommand(
+    Guid WorkPackageId,
+    Guid? CustomerId,
+    Guid? ProductId) : IRequest<WorkPackageDto>;
+
+public sealed class UpdateWorkPackageContextCommandValidator : AbstractValidator<UpdateWorkPackageContextCommand>
+{
+    public UpdateWorkPackageContextCommandValidator()
+    {
+        RuleFor(x => x.WorkPackageId)
+            .NotEmpty().WithMessage("Work package ID is required.");
+    }
+}
+

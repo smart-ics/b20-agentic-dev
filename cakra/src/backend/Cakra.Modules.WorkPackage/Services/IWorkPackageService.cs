@@ -176,5 +176,25 @@ public interface IWorkPackageService
         DateTime? deadline,
         CancellationToken cancellationToken = default)
         => UpdateDeadlineAsync(workPackageId, deadline, cancellationToken);
+
+    /// <summary>
+    /// Updates or clears the Customer and Product context associations of an existing non-closed Work Package
+    /// (Architecture CR-024 §4 TD-002, TD-004).
+    /// </summary>
+    Task<WorkPackageDto> UpdateContextAsync(
+        Guid workPackageId,
+        Guid? customerId,
+        Guid? productId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="UpdateContextAsync"/> (Architecture CR-024 §4).
+    /// </summary>
+    Task<WorkPackageDto> UpdateContext(
+        Guid workPackageId,
+        Guid? customerId,
+        Guid? productId,
+        CancellationToken cancellationToken = default)
+        => UpdateContextAsync(workPackageId, customerId, productId, cancellationToken);
 }
 

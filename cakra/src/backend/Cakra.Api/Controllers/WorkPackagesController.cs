@@ -256,6 +256,43 @@ public sealed class WorkPackagesController : ApiControllerBase
     }
 
     /// <summary>
+    /// Updates or clears the Customer and Product context associations of an existing work package (CR-024).
+    /// </summary>
+    [HttpPut("{id:guid}/context")]
+    [ProducesResponseType(typeof(WorkPackageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateContext(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] UpdateWorkPackageContextBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new UpdateWorkPackageContextCommand(
+            WorkPackageId: id,
+            CustomerId: FirstNonEmptyGuid(request?.CustomerId),
+            ProductId: FirstNonEmptyGuid(request?.ProductId));
+
+        try
+        {
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _workPackageQueryService.GetWorkPackageByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Updated context for work package '{WorkPackageId}' (Customer: '{CustomerId}', Product: '{ProductId}').",
+                enriched.Id,
+                enriched.CustomerId,
+                enriched.ProductId);
+
+            return Ok(enriched);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or WorkPackageDomainException or ArgumentException)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Reassigns ownership of a work package to an active organizational person
     /// (<c>WorkPackageService.AssignOwner</c>; Architecture §7, §8, §11 — <c>UC-WP-001</c>, <c>SCR-WP-001</c>).
     /// </summary>
@@ -600,6 +637,15 @@ public sealed class WorkPackagesController : ApiControllerBase
     public sealed class UpdateWorkPackageDeadlineBody
     {
         public DateTime? Deadline { get; set; }
+    }
+
+    /// <summary>
+    /// Request payload for <c>PUT /api/v1/work-packages/{id}/context</c> (<c>UpdateContext</c>).
+    /// </summary>
+    public sealed class UpdateWorkPackageContextBody
+    {
+        public Guid? CustomerId { get; set; }
+        public Guid? ProductId { get; set; }
     }
 
     /// <summary>

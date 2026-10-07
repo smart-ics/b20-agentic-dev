@@ -31,7 +31,8 @@ public sealed class WorkPackageService :
     IRequestHandler<RemoveRequestFromWorkPackageCommand, WorkPackageDto>,
     IRequestHandler<ActivateWorkPackageCommand, WorkPackageDto>,
     IRequestHandler<CloseWorkPackageCommand, WorkPackageDto>,
-    IRequestHandler<ReorderWorkPackageRequestsCommand, WorkPackageDto>
+    IRequestHandler<ReorderWorkPackageRequestsCommand, WorkPackageDto>,
+    IRequestHandler<UpdateWorkPackageContextCommand, WorkPackageDto>
 {
     private readonly IWorkPackageRepository _workPackageRepository;
     private readonly IOrganizationQueryService _organizationQueryService;
@@ -215,6 +216,46 @@ public sealed class WorkPackageService :
             "WorkPackage {WorkPackageId} deadline updated to {Deadline} by ActorPersonId {ActorPersonId}",
             workPackage.Id,
             workPackage.Deadline,
+            ResolveActorPersonId(workPackage.OwnerPersonId));
+
+        return WorkPackageDto.FromDomain(workPackage);
+    }
+
+    /// <inheritdoc />
+    public async Task<WorkPackageDto> UpdateContextAsync(
+        Guid workPackageId,
+        Guid? customerId,
+        Guid? productId,
+        CancellationToken cancellationToken = default)
+    {
+        if (workPackageId == Guid.Empty)
+        {
+            throw new ArgumentException("WorkPackageId cannot be empty.", nameof(workPackageId));
+        }
+
+        var workPackage = await GetRequiredWorkPackageAsync(workPackageId, cancellationToken);
+
+        if (customerId.HasValue && customerId.Value != Guid.Empty)
+        {
+            await ValidateCustomerAsync(customerId.Value, cancellationToken);
+        }
+
+        if (productId.HasValue && productId.Value != Guid.Empty)
+        {
+            await ValidateProductAsync(productId.Value, cancellationToken);
+        }
+
+        var now = UtcNow;
+        workPackage.UpdateContext(customerId, productId, now);
+
+        await _workPackageRepository.UpdateAsync(workPackage, cancellationToken);
+        await DispatchDomainEventsAsync(workPackage, cancellationToken);
+
+        _logger.LogInformation(
+            "WorkPackage {WorkPackageId} context updated (CustomerId: {CustomerId}, ProductId: {ProductId}) by ActorPersonId {ActorPersonId}",
+            workPackage.Id,
+            workPackage.CustomerId,
+            workPackage.ProductId,
             ResolveActorPersonId(workPackage.OwnerPersonId));
 
         return WorkPackageDto.FromDomain(workPackage);
@@ -543,6 +584,16 @@ public sealed class WorkPackageService :
         return ReorderRequestsAsync(
             request.WorkPackageId,
             request.OrderedRequestIds,
+            cancellationToken);
+    }
+
+    public Task<WorkPackageDto> Handle(UpdateWorkPackageContextCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return UpdateContextAsync(
+            request.WorkPackageId,
+            request.CustomerId,
+            request.ProductId,
             cancellationToken);
     }
 

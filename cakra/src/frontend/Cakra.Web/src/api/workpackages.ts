@@ -71,6 +71,11 @@ export interface UpdateWorkPackageDeadlinePayload {
   deadline: string | null
 }
 
+export interface UpdateWorkPackageContextPayload {
+  customerId?: string | null
+  productId?: string | null
+}
+
 export interface UpdateWorkPackageObjectivePayload {
   name?: string
   objective: string
@@ -152,6 +157,17 @@ export async function updateWorkPackageDeadline(
 }
 
 /**
+ * Updates or clears the Customer and Product context associations of a work package (CR-024).
+ */
+export async function updateWorkPackageContext(
+  id: string,
+  payload: UpdateWorkPackageContextPayload,
+): Promise<WorkPackageDto> {
+  const response = await httpClient.put<WorkPackageDto>(`/work-packages/${id}/context`, payload)
+  return response.data
+}
+
+/**
  * Assigns or reassigns the owner of a work package.
  */
 export async function assignWorkPackageOwner(
@@ -229,6 +245,7 @@ export const workPackageService = {
   createWorkPackage,
   updateWorkPackageObjective,
   updateWorkPackageDeadline,
+  updateWorkPackageContext,
   assignWorkPackageOwner,
   activateWorkPackage,
   closeWorkPackage,
