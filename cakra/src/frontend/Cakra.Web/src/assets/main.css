@@ -1,3 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ==========================================================================
    CAKRA - High-Density ICS Operational Workspace Design System
    Architecture §19.4 | Color Hunt Palette: #364F6B, #3FC1C9, #F5F5F5, #FC5185
@@ -134,15 +140,191 @@
   --cakra-container-padding: clamp(0.75rem, 1.5vw, 1.5rem);
 }
 
+/* Executive Dark Theme Token Mappings (CR-026 Architecture TD-003) */
+html.dark,
+[data-bs-theme="dark"] {
+  --cakra-bg-canvas: #020617;
+  --cakra-bg-surface: #0f172a;
+  --cakra-bg-subtle: #090d16;
+  --cakra-border: #1e293b;
+  --cakra-border-subtle: #1e293b;
+  --cakra-border-strong: #334155;
+  --cakra-text-main: #ffffff;
+  --cakra-text-muted: #94a3b8;
+  --cakra-text-subtle: #64748b;
+  --bs-body-bg: #020617;
+  --bs-body-color: #f1f5f9;
+  --bs-tertiary-bg: #090d16;
+  --bs-secondary-bg: #0f172a;
+  --bs-border-color: #1e293b;
+}
+
+html.dark .form-control,
+html.dark .form-select,
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+html.dark .form-control:focus,
+html.dark .form-select:focus,
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+  background-color: #0f172a;
+  border-color: #22d3ee;
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+}
+
+html.dark .form-control::placeholder,
+[data-bs-theme="dark"] .form-control::placeholder {
+  color: #64748b;
+}
+
+html.dark .form-label,
+[data-bs-theme="dark"] .form-label {
+  color: #cbd5e1;
+}
+
+html.dark .form-check-input,
+[data-bs-theme="dark"] .form-check-input {
+  background-color: #0f172a;
+  border-color: #334155;
+}
+
+html.dark .form-check-input:checked,
+[data-bs-theme="dark"] .form-check-input:checked {
+  background-color: #0891b2;
+  border-color: #06b6d4;
+}
+
+html.dark .card,
+[data-bs-theme="dark"] .card {
+  background-color: rgba(15, 23, 42, 0.9);
+  border-color: #1e293b;
+  color: #f1f5f9;
+}
+
+html.dark .card-header,
+[data-bs-theme="dark"] .card-header {
+  border-color: #1e293b;
+  color: #ffffff;
+}
+
+html.dark .bg-body-tertiary,
+[data-bs-theme="dark"] .bg-body-tertiary {
+  background-color: rgba(2, 6, 23, 0.6) !important;
+}
+
+html.dark .table thead th,
+[data-bs-theme="dark"] .table thead th {
+  background-color: #0f172a;
+  border-color: #1e293b;
+  color: #94a3b8;
+}
+
+html.dark .table tbody td,
+[data-bs-theme="dark"] .table tbody td {
+  border-color: #1e293b;
+  color: #f1f5f9;
+}
+
+html.dark .table-hover tbody tr:hover,
+[data-bs-theme="dark"] .table-hover tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.5);
+  color: #ffffff;
+}
+
+html.dark .table-active,
+[data-bs-theme="dark"] .table-active {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+}
+
+html.dark .modal-content,
+[data-bs-theme="dark"] .modal-content {
+  background-color: #0f172a;
+  border-color: #1e293b;
+  color: #f1f5f9;
+}
+
+html.dark .modal-header,
+[data-bs-theme="dark"] .modal-header {
+  background-color: rgba(2, 6, 23, 0.6);
+  border-bottom-color: #1e293b;
+  color: #ffffff;
+}
+
+html.dark .modal-footer,
+[data-bs-theme="dark"] .modal-footer {
+  background-color: rgba(2, 6, 23, 0.6);
+  border-top-color: #1e293b;
+}
+
+html.dark .modal-backdrop,
+[data-bs-theme="dark"] .modal-backdrop {
+  background-color: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+html.dark .op-screen-header,
+[data-bs-theme="dark"] .op-screen-header {
+  border-bottom-color: #1e293b;
+}
+
+html.dark .op-screen-title,
+[data-bs-theme="dark"] .op-screen-title {
+  color: #ffffff;
+}
+
+html.dark .op-toolbar,
+[data-bs-theme="dark"] .op-toolbar {
+  background-color: rgba(15, 23, 42, 0.7);
+  border-color: #1e293b;
+  color: #f1f5f9;
+}
+
+html.dark .op-metric-ribbon,
+[data-bs-theme="dark"] .op-metric-ribbon {
+  background-color: rgba(15, 23, 42, 0.85);
+  border-color: #1e293b;
+}
+
+html.dark .op-stat-item,
+[data-bs-theme="dark"] .op-stat-item {
+  border-right-color: #1e293b;
+}
+
+html.dark .op-stat-val,
+[data-bs-theme="dark"] .op-stat-val {
+  color: #f1f5f9;
+}
+
+html.dark .btn-outline-secondary,
+[data-bs-theme="dark"] .btn-outline-secondary {
+  color: #cbd5e1;
+  border-color: #334155;
+  background-color: rgba(15, 23, 42, 0.6);
+}
+
+html.dark .btn-outline-secondary:hover,
+[data-bs-theme="dark"] .btn-outline-secondary:hover {
+  background-color: #1e293b;
+  border-color: #475569;
+  color: #ffffff;
+}
+
 /* ==========================================================================
    Typography Scale (Linear / GitHub / DevOps Compact Style)
    ========================================================================== */
 
 /* Root Typography Baseline */
 html, body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
+  letter-spacing: -0.011em;
   color: var(--cakra-text-main);
   background-color: var(--cakra-bg-canvas);
   -webkit-font-smoothing: antialiased;
@@ -161,8 +343,8 @@ h6, .h6 { font-size: 0.75rem; font-weight: 600; line-height: 1.4; margin-bottom:
 p { margin-bottom: 0.4rem; }
 
 /* Code and Monospace */
-code, kbd, samp, pre, .font-monospace {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+code, kbd, samp, pre, .font-monospace, .font-mono, [data-telemetry] {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 11.5px;
 }
 
@@ -200,13 +382,13 @@ code, kbd, samp, pre, .font-monospace {
   top: 0;
   left: 0;
   z-index: 1030;
-  background: linear-gradient(180deg, #223245 0%, #2c4158 50%, #364f6b 100%);
-  color: var(--cakra-ice);
+  background: linear-gradient(180deg, #020617 0%, #0f172a 50%, #1e1b4b 100%);
+  color: #f1f5f9;
   display: flex;
   flex-direction: column;
   transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  border-right: 1px solid rgba(63, 193, 201, 0.18);
-  box-shadow: 2px 0 10px rgba(34, 50, 69, 0.4);
+  border-right: 1px solid #1e293b;
+  box-shadow: 2px 0 10px rgba(2, 6, 23, 0.6);
 }
 
 .cakra-sidebar.is-collapsed {
@@ -220,8 +402,9 @@ code, kbd, samp, pre, .font-monospace {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  border-bottom: 1px solid rgba(63, 193, 201, 0.18);
-  background-color: rgba(34, 50, 69, 0.95);
+  border-bottom: 1px solid #1e293b;
+  background-color: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(8px);
   flex-shrink: 0;
 }
 
@@ -334,15 +517,15 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .sidebar-nav-item.active {
-  background: linear-gradient(90deg, rgba(63, 193, 201, 0.28) 0%, rgba(63, 193, 201, 0.08) 100%);
-  color: #ffffff;
+  background-color: rgba(6, 182, 212, 0.1);
+  color: #67e8f9;
   font-weight: 600;
-  box-shadow: 0 1px 4px rgba(34, 50, 69, 0.4);
-  border-left: 2.5px solid var(--cakra-cyan);
+  box-shadow: 0 1px 4px rgba(2, 6, 23, 0.4);
+  border-left: 2px solid #22d3ee;
 }
 
 .sidebar-nav-item.active .nav-icon {
-  color: #ffffff;
+  color: #22d3ee;
 }
 
 .cakra-sidebar.is-collapsed .sidebar-nav-item {
@@ -352,14 +535,15 @@ code, kbd, samp, pre, .font-monospace {
 
 .cakra-sidebar.is-collapsed .sidebar-nav-item.active {
   border-left: none;
-  border-bottom: 2px solid var(--cakra-cyan);
+  border-bottom: 2px solid #22d3ee;
 }
 
 /* Sidebar Footer */
 .sidebar-footer {
-  border-top: 1px solid rgba(63, 193, 201, 0.18);
+  border-top: 1px solid #1e293b;
   padding: 0.4rem 0.5rem;
-  background-color: rgba(34, 50, 69, 0.95);
+  background-color: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -473,8 +657,9 @@ code, kbd, samp, pre, .font-monospace {
 
 .cakra-topbar {
   height: var(--topbar-height);
-  background-color: #ffffff;
-  border-bottom: 1px solid var(--cakra-border);
+  background-color: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #1e293b;
   box-shadow: var(--cakra-shadow-xs);
   padding: 0 0.85rem;
   display: flex;
@@ -508,13 +693,13 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .cakra-role-badge {
-  background: #364f6b !important;
-  color: #ffffff !important;
+  background: #1e293b !important;
+  color: #67e8f9 !important;
   font-weight: 600;
   font-size: 0.7rem;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  border: 1px solid rgba(63, 193, 201, 0.4);
+  border: 1px solid rgba(6, 182, 212, 0.3);
 }
 
 .cakra-page-content {
@@ -540,9 +725,10 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .cakra-app-footer {
-  border-top: 1px solid var(--cakra-border);
+  border-top: 1px solid #1e293b;
   padding: 0.3rem 0;
-  background-color: #ffffff;
+  background-color: rgba(2, 6, 23, 0.9);
+  backdrop-filter: blur(8px);
   color: var(--cakra-text-muted);
   font-size: 0.68rem;
 }
@@ -565,8 +751,8 @@ code, kbd, samp, pre, .font-monospace {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(34, 50, 69, 0.65);
-    backdrop-filter: blur(3px);
+    background-color: rgba(2, 6, 23, 0.75);
+    backdrop-filter: blur(4px);
     z-index: 1025;
   }
 }
@@ -579,12 +765,12 @@ code, kbd, samp, pre, .font-monospace {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(circle at 50% 20%, #364f6b 0%, #202e3e 100%);
+  background: radial-gradient(circle at 50% 20%, #0f172a 0%, #020617 100%);
 }
 
 .cakra-unauth-header {
-  border-bottom: 1px solid rgba(63, 193, 201, 0.2);
-  background-color: rgba(34, 50, 69, 0.85);
+  border-bottom: 1px solid #1e293b;
+  background-color: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(10px);
 }
 
@@ -606,10 +792,10 @@ code, kbd, samp, pre, .font-monospace {
 }
 
 .cakra-unauth-footer {
-  border-top: 1px solid rgba(63, 193, 201, 0.15);
+  border-top: 1px solid #1e293b;
   background-color: transparent;
   font-size: 0.72rem;
-  color: rgba(245, 245, 245, 0.75) !important;
+  color: #64748b !important;
 }
 
 /* ==========================================================================
@@ -1307,5 +1493,99 @@ code, kbd, samp, pre, .font-monospace {
   color: var(--cakra-text-muted);
   font-size: 0.76rem;
   font-weight: 500;
+}
+
+/* Executive Dark Theme Overrides for Operational Feed (CR-026) */
+html.dark .op-feed-row,
+html.dark .op-feed-card,
+[data-bs-theme="dark"] .op-feed-row,
+[data-bs-theme="dark"] .op-feed-card {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .op-feed-row:hover,
+html.dark .op-feed-card:hover,
+[data-bs-theme="dark"] .op-feed-row:hover,
+[data-bs-theme="dark"] .op-feed-card:hover {
+  background-color: rgba(15, 23, 42, 1) !important;
+  border-color: #334155 !important;
+  box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.05) !important;
+}
+
+html.dark .op-reaction-palette,
+[data-bs-theme="dark"] .op-reaction-palette {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dark .op-comment-bubble,
+[data-bs-theme="dark"] .op-comment-bubble {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .op-feed-end-milestone,
+[data-bs-theme="dark"] .op-feed-end-milestone {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+  border-color: #1e293b !important;
+  color: #94a3b8 !important;
+}
+
+html.dark .op-feed-end-milestone:hover,
+[data-bs-theme="dark"] .op-feed-end-milestone:hover {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border-color: #22d3ee !important;
+}
+
+html.dark .op-feed-retry-box,
+[data-bs-theme="dark"] .op-feed-retry-box {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+html.dark .op-action-btn:hover,
+[data-bs-theme="dark"] .op-action-btn:hover {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+/* Guard against Bootstrap 5 utility !important specificity */
+html.dark .dark\:bg-slate-900\/90,
+[data-bs-theme="dark"] .dark\:bg-slate-900\/90 {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+html.dark .dark\:bg-slate-900\/95,
+[data-bs-theme="dark"] .dark\:bg-slate-900\/95 {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+html.dark .dark\:bg-slate-900,
+[data-bs-theme="dark"] .dark\:bg-slate-900 {
+  background-color: #0f172a !important;
+}
+
+html.dark .dark\:bg-slate-950\/60,
+[data-bs-theme="dark"] .dark\:bg-slate-950\/60 {
+  background-color: rgba(2, 6, 23, 0.6) !important;
+}
+
+html.dark .dark\:bg-slate-950,
+[data-bs-theme="dark"] .dark\:bg-slate-950 {
+  background-color: #020617 !important;
+}
+
+html.dark .dark\:bg-slate-800,
+[data-bs-theme="dark"] .dark\:bg-slate-800 {
+  background-color: #1e293b !important;
+}
+
+html.dark .dark\:bg-slate-800\/80,
+[data-bs-theme="dark"] .dark\:bg-slate-800\/80 {
+  background-color: rgba(30, 41, 59, 0.8) !important;
 }
 

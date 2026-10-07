@@ -431,15 +431,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="item" class="card shadow-xs border-0 h-100 d-flex flex-column" data-testid="feed-dossier-panel">
+  <div v-if="item" class="bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg h-100 d-flex flex-column text-slate-900 dark:text-slate-100 overflow-hidden" data-testid="feed-dossier-panel">
     <!-- Dossier Header: Telemetry & State Machine (Principle 3) -->
-    <div class="card-header bg-white border-bottom py-2 px-3">
+    <div class="bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 py-3 px-4">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
         <div class="d-flex flex-wrap align-items-center gap-1.5 min-w-0">
           <!-- Exception badge -->
           <span
             v-if="item.isException"
-            class="badge bg-danger"
+            class="badge bg-rose-500/15 text-rose-400 border border-rose-500/30 font-mono fs-11"
           >
             <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
             {{ item.exceptionType || 'EXCEPTION' }}
@@ -447,83 +447,83 @@ onMounted(() => {
 
           <!-- Source badge -->
           <span
-            class="badge"
-            :class="item.source === 'SYSTEM_GENERATED' ? 'bg-info bg-opacity-10 text-info border border-info border-opacity-25' : 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25'"
+            class="badge font-mono fs-11"
+            :class="item.source === 'SYSTEM_GENERATED' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30' : 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30'"
           >
             {{ item.source === 'SYSTEM_GENERATED' ? 'STATE FACT' : 'OPS POST' }}
           </span>
 
           <!-- Reference ID -->
-          <span class="badge text-bg-light border font-monospace text-primary fw-bold">
+          <span class="badge bg-slate-100 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 border border-slate-300 dark:border-slate-700 font-mono fw-bold fs-11">
             {{ effectiveRequestDisplay }}
           </span>
 
           <!-- Authoritative State -->
-          <span class="badge text-bg-light border text-secondary font-monospace">
+          <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-mono fs-11">
             STATE: {{ item.status || 'ACTIVE' }}
           </span>
         </div>
 
-        <div class="d-flex align-items-center gap-2 font-monospace fs-11 text-muted">
+        <div class="d-flex align-items-center gap-2 font-mono fs-11 text-slate-500 dark:text-slate-400">
           <i class="bi bi-clock me-0.5" aria-hidden="true"></i>
           {{ formatTimestamp(item.createdAt) }} ({{ formatRelativeTime(item.createdAt) }})
         </div>
       </div>
 
       <!-- Post Title -->
-      <h2 class="h6 fw-bold text-dark mt-2 mb-0 text-break">
+      <h2 class="h6 fw-bold text-slate-900 dark:text-white mt-2 mb-0 text-break">
         {{ item.title }}
       </h2>
     </div>
 
     <!-- Dossier Body: Decision Callout, Context Grid, Observation, Signals & Ledger -->
-    <div class="card-body p-3 overflow-y-auto flex-grow-1 d-flex flex-column gap-3">
+    <div class="p-4 overflow-y-auto flex-grow-1 d-flex flex-column gap-3 text-slate-900 dark:text-slate-100">
       <!-- PRINCIPLE 1 & 4: DECISION REQUIRED CALLOUT -->
       <div
         v-if="decisionNeeded"
-        class="p-2.5 rounded-2 border border-primary border-opacity-25 bg-primary bg-opacity-10"
+        class="p-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-slate-900 dark:text-slate-100"
       >
-        <div class="d-flex align-items-center gap-1.5 text-primary fw-bold fs-11 text-uppercase font-monospace mb-1">
+        <div class="d-flex align-items-center gap-1.5 text-cyan-600 dark:text-cyan-400 fw-bold fs-11 text-uppercase font-mono mb-1">
           <i class="bi bi-signpost-2-fill" aria-hidden="true"></i>
           Decision Required (Principles 1 &amp; 4)
         </div>
-        <p class="fs-12 fw-semibold text-dark mb-1">
+        <p class="fs-12 fw-semibold text-slate-900 dark:text-white mb-1">
           {{ decisionNeeded }}
         </p>
-        <div class="fs-11 text-muted">
-          <strong class="text-secondary">Expected Impact:</strong> {{ expectedImpact }}
+        <div class="fs-11 text-slate-500 dark:text-slate-400">
+          <strong class="text-slate-700 dark:text-slate-300">Expected Impact:</strong> {{ expectedImpact }}
         </div>
       </div>
 
       <!-- CONTEXT & ACCOUNTABILITY GRID (PRINCIPLE 12 & 16) -->
-      <div class="p-2 rounded-2 bg-light border fs-12">
+      <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 fs-12">
         <div class="row g-2">
           <div class="col-6 col-md-3">
-            <span class="text-muted d-block fs-11">Customer:</span>
-            <strong class="text-dark text-truncate d-block" :title="customerDisplay">{{ customerDisplay }}</strong>
+            <span class="text-slate-500 dark:text-slate-400 d-block fs-11">Customer:</span>
+            <strong class="text-slate-900 dark:text-white text-truncate d-block fw-semibold" :title="customerDisplay">{{ customerDisplay }}</strong>
           </div>
           <div class="col-6 col-md-3">
-            <span class="text-muted d-block fs-11">Product:</span>
-            <strong class="text-dark text-truncate d-block" :title="productDisplay">{{ productDisplay }}</strong>
+            <span class="text-slate-500 dark:text-slate-400 d-block fs-11">Product:</span>
+            <strong class="text-slate-900 dark:text-white text-truncate d-block fw-semibold" :title="productDisplay">{{ productDisplay }}</strong>
           </div>
           <div class="col-6 col-md-3">
-            <span class="text-muted d-block fs-11">Accountable Owner (P.12):</span>
-            <span v-if="isUnowned" class="badge bg-warning text-dark font-monospace">
+            <span class="text-slate-500 dark:text-slate-400 d-block fs-11">Accountable Owner (P.12):</span>
+            <span v-if="isUnowned" class="badge bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono fs-11">
               ⚠️ UNOWNED
             </span>
-            <strong v-else class="text-dark text-truncate d-block" :title="ownerDisplay">{{ ownerDisplay }}</strong>
+            <strong v-else class="text-slate-900 dark:text-white text-truncate d-block fw-semibold" :title="ownerDisplay">{{ ownerDisplay }}</strong>
           </div>
           <div class="col-6 col-md-3">
-            <span class="text-muted d-block fs-11">Logged By:</span>
-            <span class="text-secondary text-truncate d-block">{{ item.author || item.authorName || 'SYSTEM' }}</span>
+            <span class="text-slate-500 dark:text-slate-400 d-block fs-11">Logged By:</span>
+            <span class="text-slate-700 dark:text-slate-300 text-truncate d-block">{{ item.author || item.authorName || 'SYSTEM' }}</span>
           </div>
         </div>
       </div>
 
       <!-- OPERATIONAL NARRATIVE -->
       <div>
-        <span class="fs-11 fw-bold text-muted text-uppercase d-block mb-1">Operational Observation</span>
-        <div class="p-2.5 rounded-2 bg-white border fs-12 text-secondary text-break leading-normal">
+        <span class="fs-11 fw-bold text-slate-500 dark:text-slate-400 text-uppercase d-block mb-1">Operational Observation</span>
+        <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 fs-12 text-slate-700 dark:text-slate-300 text-break leading-normal">
           {{ item.contentExcerpt || item.summary || 'No detailed excerpt provided.' }}
         </div>
       </div>
@@ -531,16 +531,16 @@ onMounted(() => {
       <!-- STRUCTURED OPERATIONAL SIGNALS (Post Domain §5) -->
       <div>
         <div class="d-flex justify-content-between align-items-center mb-1.5">
-          <span class="fs-11 fw-bold text-muted text-uppercase">Operational Signals (Post Domain §5)</span>
-          <span class="fs-11 text-muted">Click to register operational signal</span>
+          <span class="fs-11 fw-bold text-slate-500 dark:text-slate-400 text-uppercase">Operational Signals (Post Domain §5)</span>
+          <span class="fs-11 text-slate-500 dark:text-slate-400">Click to register operational signal</span>
         </div>
 
         <div class="row g-1.5">
           <div v-for="sig in OPERATIONAL_SIGNALS" :key="sig.type" class="col-6 col-sm-3">
             <button
               type="button"
-              class="btn btn-sm w-100 text-start p-1.5 rounded-2 border d-flex flex-column justify-content-between"
-              :class="activeUserReaction === sig.type ? 'btn-primary active text-white' : 'btn-light text-dark'"
+              class="btn btn-sm w-100 text-start p-2 rounded-lg border d-flex flex-column justify-content-between transition"
+              :class="activeUserReaction === sig.type ? 'bg-cyan-600 text-white dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40 shadow-sm' : 'bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'"
               :title="sig.description"
               :disabled="isTogglingReaction"
               @click="toggleSignal(sig.type)"
@@ -550,7 +550,7 @@ onMounted(() => {
                   <i class="bi me-1" :class="sig.iconClass" aria-hidden="true"></i>
                   {{ sig.shortLabel }}
                 </span>
-                <span class="badge" :class="activeUserReaction === sig.type ? 'bg-white text-primary' : 'bg-secondary text-white'">
+                <span class="badge font-mono" :class="activeUserReaction === sig.type ? 'bg-white/20 text-white dark:bg-cyan-500/40 dark:text-cyan-200' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'">
                   {{ localReactionCounts[sig.type] || 0 }}
                 </span>
               </div>
@@ -563,60 +563,60 @@ onMounted(() => {
       <!-- PRINCIPLE 6: FACTS BEFORE OPINIONS (Audited Discussion Thread) -->
       <div class="d-flex flex-column gap-2 flex-grow-1">
         <div class="d-flex justify-content-between align-items-center">
-          <span class="fs-11 fw-bold text-muted text-uppercase">
+          <span class="fs-11 fw-bold text-slate-500 dark:text-slate-400 text-uppercase">
             Audited Thread: Facts vs Assessments (Principle 6 &amp; 14)
           </span>
-          <span class="fs-11 text-muted">{{ comments.length }} entries</span>
+          <span class="fs-11 text-slate-500 dark:text-slate-400 font-mono">{{ comments.length }} entries</span>
         </div>
 
         <!-- Comments List -->
-        <div class="d-flex flex-column gap-1.5 overflow-y-auto max-h-48" style="max-height: 220px;">
-          <div v-if="isLoadingComments" class="text-center py-3 text-muted fs-11">
-            <div class="spinner-border spinner-border-sm text-primary me-1" role="status"></div>
+        <div class="d-flex flex-column gap-2 overflow-y-auto max-h-48" style="max-height: 220px;">
+          <div v-if="isLoadingComments" class="text-center py-3 text-slate-400 fs-11">
+            <div class="spinner-border spinner-border-sm text-cyan-500 me-1" role="status"></div>
             Loading operational thread...
           </div>
 
-          <div v-else-if="comments.length === 0" class="text-muted fs-11 text-center py-2 bg-light rounded-2 border">
+          <div v-else-if="comments.length === 0" class="text-slate-400 dark:text-slate-500 fs-11 text-center py-2.5 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800">
             No audited work notes or factual telemetry attached yet.
           </div>
 
           <div
             v-for="comment in comments"
             :key="comment.id || comment.commentId"
-            class="p-2 rounded-2 bg-white border fs-12"
+            class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 fs-12 shadow-xs"
           >
-            <div class="d-flex justify-content-between align-items-center font-monospace fs-11 text-muted mb-1">
+            <div class="d-flex justify-content-between align-items-center font-mono fs-11 text-slate-500 dark:text-slate-400 mb-1">
               <span class="d-flex align-items-center gap-1.5">
                 <!-- Fact vs Assessment Badge -->
                 <span
                   v-if="(comment.content || '').startsWith('[FACT]')"
-                  class="badge bg-info bg-opacity-15 text-info border border-info border-opacity-25"
+                  class="badge bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-mono"
                 >
                   FACT
                 </span>
                 <span
                   v-else-if="(comment.content || '').startsWith('[ASSESSMENT]')"
-                  class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-25"
+                  class="badge bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono"
                 >
                   ASSESSMENT
                 </span>
-                <span v-else class="badge bg-light text-secondary border">NOTE</span>
+                <span v-else class="badge bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 font-mono">NOTE</span>
 
-                <strong class="text-dark">{{ comment.author || comment.authorName || 'Engineer' }}</strong>
+                <strong class="text-slate-900 dark:text-white">{{ comment.author || comment.authorName || 'Engineer' }}</strong>
               </span>
               <span>{{ formatRelativeTime(comment.createdAt) }}</span>
             </div>
-            <p class="mb-0 text-dark text-break">
+            <p class="mb-0 text-slate-700 dark:text-slate-300 text-break">
               {{ (comment.content || '').replace(/^\[(FACT|ASSESSMENT)\]\s*/, '') }}
             </p>
           </div>
         </div>
 
         <!-- Note Composer -->
-        <form class="d-flex gap-1.5 mt-auto pt-1 border-top" @submit.prevent="submitWorkNote">
+        <form class="d-flex gap-1.5 mt-auto pt-2 border-top border-slate-200 dark:border-slate-800" @submit.prevent="submitWorkNote">
           <select
             v-model="newNoteType"
-            class="form-select form-select-sm fs-11"
+            class="form-select form-select-sm fs-11 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg"
             style="width: 130px;"
             aria-label="Note classification type"
           >
@@ -626,7 +626,7 @@ onMounted(() => {
           <input
             v-model="newNoteContent"
             type="text"
-            class="form-control form-control-sm fs-12"
+            class="form-control form-control-sm fs-12 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 rounded-lg"
             placeholder="Record observable fact or engineering assessment..."
             :disabled="isSubmittingNote"
           />
@@ -640,7 +640,7 @@ onMounted(() => {
           </button>
         </form>
 
-        <div v-if="noteError" class="text-danger fs-11">
+        <div v-if="noteError" class="text-rose-400 fs-11">
           <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
           {{ noteError }}
         </div>
@@ -648,12 +648,12 @@ onMounted(() => {
     </div>
 
     <!-- Dossier Footer: Quick Operational Actions -->
-    <div class="card-footer bg-light border-top py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 py-2.5 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
       <div>
         <button
           v-if="effectiveRequestId"
           type="button"
-          class="btn btn-sm btn-link text-decoration-none p-0 fw-semibold text-primary"
+          class="btn btn-sm btn-link text-decoration-none p-0 fw-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
           @click="navigateToRequest"
         >
           <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
@@ -665,7 +665,7 @@ onMounted(() => {
         <button
           v-if="isUnowned"
           type="button"
-          class="btn btn-sm btn-outline-warning text-dark font-monospace"
+          class="btn btn-sm border border-amber-500/30 text-amber-500 dark:text-amber-400 hover:bg-amber-500/10 font-mono"
           @click="handleClaim"
         >
           <i class="bi bi-person-check-fill me-1" aria-hidden="true"></i>
@@ -674,7 +674,7 @@ onMounted(() => {
 
         <button
           type="button"
-          class="btn btn-sm btn-outline-secondary"
+          class="btn btn-sm btn-outline-secondary dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
           @click="emit('open-modal', item)"
         >
           <i class="bi bi-arrows-angle-expand me-1" aria-hidden="true"></i>
@@ -685,8 +685,10 @@ onMounted(() => {
   </div>
 
   <!-- Empty state when no item selected -->
-  <div v-else class="card shadow-xs border-0 h-100 d-flex align-items-center justify-content-center p-4 text-center text-muted">
-    <i class="bi bi-activity fs-2 d-block mb-2 text-secondary opacity-50" aria-hidden="true"></i>
-    <p class="fs-12 fw-semibold mb-0">Select an operational event to view its decision context &amp; dossier.</p>
+  <div v-else class="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg h-100 d-flex align-items-center justify-content-center p-5 text-center text-slate-400 dark:text-slate-500">
+    <div>
+      <i class="bi bi-activity fs-2 d-block mb-2 text-cyan-500 opacity-60" aria-hidden="true"></i>
+      <p class="fs-12 fw-semibold mb-0">Select an operational event to view its decision context &amp; dossier.</p>
+    </div>
   </div>
 </template>

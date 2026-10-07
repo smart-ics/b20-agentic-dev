@@ -128,20 +128,20 @@ async function handleSubmit(): Promise<void> {
   <section class="container py-4" data-screen-id="SCR-AUTH-001">
     <div class="row justify-content-center align-items-center" style="min-height: 60vh">
       <div class="col-12 col-sm-9 col-md-6 col-lg-4">
-        <div class="card shadow-sm border rounded-3 overflow-hidden">
+        <div class="card shadow-2xl border border-slate-800 rounded-3 overflow-hidden bg-slate-900/90 text-slate-100">
           <div class="card-body p-3 p-md-4">
             <div class="text-center mb-3">
-              <div class="mb-2 d-inline-flex p-2 rounded-2 bg-primary bg-opacity-10 text-primary">
+              <div class="mb-2 d-inline-flex p-2 rounded-2 bg-cyan-950/60 border border-cyan-800/50 text-cyan-400">
                 <i
                   class="bi fs-4"
                   :class="mode === 'signin' ? 'bi-shield-lock-fill' : 'bi-person-plus-fill'"
                   aria-hidden="true"
                 ></i>
               </div>
-              <h1 class="h5 fw-bold mb-0">
+              <h1 class="h5 fw-bold mb-0 text-slate-100">
                 {{ mode === 'signin' ? 'Sign In to CAKRA' : 'Sign Up for CAKRA' }}
               </h1>
-              <p class="text-body-secondary small mb-0" style="font-size: 11.5px">
+              <p class="text-slate-400 small mb-0" style="font-size: 11.5px">
                 ICS Operational System &bull; Architecture &sect;19.4
               </p>
             </div>
@@ -191,7 +191,7 @@ async function handleSubmit(): Promise<void> {
               data-testid="login-form"
             >
               <div class="mb-2">
-                <label for="username" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                <label for="username" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                   Username or Email
                 </label>
                 <input
@@ -199,7 +199,7 @@ async function handleSubmit(): Promise<void> {
                   v-model="username"
                   type="text"
                   name="username"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-950/60 border-slate-700 text-slate-100 focus:border-cyan-400"
                   placeholder="Enter username or email"
                   autocomplete="username"
                   required
@@ -209,7 +209,7 @@ async function handleSubmit(): Promise<void> {
               </div>
 
               <div class="mb-3">
-                <label for="password" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                <label for="password" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                   Password
                 </label>
                 <input
@@ -217,7 +217,7 @@ async function handleSubmit(): Promise<void> {
                   v-model="password"
                   type="password"
                   name="password"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-950/60 border-slate-700 text-slate-100 focus:border-cyan-400"
                   placeholder="Enter password"
                   autocomplete="current-password"
                   required
@@ -251,7 +251,7 @@ async function handleSubmit(): Promise<void> {
               data-testid="signup-form"
             >
               <div class="mb-2">
-                <label for="signup-username" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                <label for="signup-username" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                   Username
                 </label>
                 <input
@@ -259,7 +259,7 @@ async function handleSubmit(): Promise<void> {
                   v-model="username"
                   type="text"
                   name="username"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-950/60 border-slate-700 text-slate-100 focus:border-cyan-400"
                   placeholder="Enter username"
                   autocomplete="username"
                   required
@@ -269,7 +269,7 @@ async function handleSubmit(): Promise<void> {
               </div>
 
               <div class="mb-2">
-                <label for="signup-email" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                <label for="signup-email" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                   Email
                 </label>
                 <input
@@ -277,7 +277,7 @@ async function handleSubmit(): Promise<void> {
                   v-model="email"
                   type="email"
                   name="email"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-950/60 border-slate-700 text-slate-100 focus:border-cyan-400"
                   placeholder="Enter email address"
                   autocomplete="email"
                   required
@@ -287,7 +287,7 @@ async function handleSubmit(): Promise<void> {
               </div>
 
               <div class="mb-2">
-                <label for="signup-password" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                <label for="signup-password" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                   Password
                 </label>
                 <input
@@ -295,7 +295,7 @@ async function handleSubmit(): Promise<void> {
                   v-model="password"
                   type="password"
                   name="password"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-950/60 border-slate-700 text-slate-100 focus:border-cyan-400"
                   placeholder="Enter password (min. 8 characters)"
                   autocomplete="new-password"
                   required
@@ -305,7 +305,7 @@ async function handleSubmit(): Promise<void> {
               </div>
 
               <div class="mb-3">
-                <label for="signup-confirm-password" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                <label for="signup-confirm-password" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                   Confirm Password
                 </label>
                 <input
@@ -313,7 +313,7 @@ async function handleSubmit(): Promise<void> {
                   v-model="confirmPassword"
                   type="password"
                   name="confirmPassword"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-950/60 border-slate-700 text-slate-100 focus:border-cyan-400"
                   placeholder="Confirm password"
                   autocomplete="new-password"
                   required
@@ -340,13 +340,13 @@ async function handleSubmit(): Promise<void> {
             </form>
 
             <!-- Mode Toggle Link -->
-            <div class="text-center mt-3 pt-2 border-top">
-              <span class="text-body-secondary small me-1" style="font-size: 11.5px">
+            <div class="text-center mt-3 pt-2 border-t border-slate-800">
+              <span class="text-slate-400 small me-1" style="font-size: 11.5px">
                 {{ mode === 'signin' ? "Don't have an account?" : 'Already have an account?' }}
               </span>
               <button
                 type="button"
-                class="btn btn-link p-0 small fw-semibold text-decoration-none"
+                class="btn btn-link p-0 small fw-semibold text-decoration-none text-cyan-400"
                 style="font-size: 11.5px"
                 data-testid="toggle-auth-mode"
                 @click="toggleMode"

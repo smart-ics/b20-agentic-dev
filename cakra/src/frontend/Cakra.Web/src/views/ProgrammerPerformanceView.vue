@@ -293,7 +293,7 @@ onMounted(async () => {
           <select
             id="performancePersonSelect"
             v-model="filters.personId"
-            class="form-select form-select-sm"
+            class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             style="min-width: 170px; max-width: 250px;"
             :disabled="isLoadingPersons || isLoadingReport"
             data-testid="person-selector"
@@ -315,7 +315,7 @@ onMounted(async () => {
             id="startMonthInput"
             v-model="filters.startMonth"
             type="month"
-            class="form-control form-control-sm"
+            class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             style="width: 130px;"
             placeholder="YYYY-MM"
             :disabled="isLoadingReport"
@@ -329,7 +329,7 @@ onMounted(async () => {
             id="endMonthInput"
             v-model="filters.endMonth"
             type="month"
-            class="form-control form-control-sm"
+            class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             style="width: 130px;"
             placeholder="YYYY-MM"
             :disabled="isLoadingReport"
@@ -415,8 +415,8 @@ onMounted(async () => {
       </div>
 
       <!-- Monthly Performance Series Table -->
-      <div class="card border mb-2">
-        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+      <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
+        <div class="card-header bg-slate-950/60 border-b border-slate-800 py-1 px-3 d-flex justify-content-between align-items-center">
           <span class="fw-semibold">
             <i class="bi bi-calendar3 me-1 text-primary" aria-hidden="true"></i>
             Monthly Performance Summary
@@ -487,8 +487,8 @@ onMounted(async () => {
       </div>
 
       <!-- Daily Workload Snapshots Table -->
-      <div class="card border mb-2">
-        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+      <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
+        <div class="card-header bg-slate-950/60 border-b border-slate-800 py-1 px-3 d-flex justify-content-between align-items-center">
           <span class="fw-semibold">
             <i class="bi bi-clock-history me-1 text-secondary" aria-hidden="true"></i>
             Daily Workload Snapshots
@@ -562,8 +562,8 @@ onMounted(async () => {
       </div>
 
       <!-- Monthly Customer Performance Snapshots Table (if present) -->
-      <div v-if="monthlyCustomerSnapshots.length > 0" class="card border">
-        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+      <div v-if="monthlyCustomerSnapshots.length > 0" class="card bg-slate-900/90 border border-slate-800 text-slate-100">
+        <div class="card-header bg-slate-950/60 border-b border-slate-800 py-1 px-3 d-flex justify-content-between align-items-center">
           <span class="fw-semibold">
             <i class="bi bi-building-check me-1 text-info" aria-hidden="true"></i>
             Monthly Customer Performance Snapshots

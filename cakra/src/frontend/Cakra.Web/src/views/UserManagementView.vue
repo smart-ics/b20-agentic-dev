@@ -313,17 +313,17 @@ onMounted(async () => {
     </div>
 
     <!-- Loading Skeleton / Spinner State -->
-    <div v-if="isLoading" class="p-5 text-center bg-white border rounded" data-testid="users-loading-state">
-      <div class="spinner-border text-primary spinner-border-sm mb-2" role="status">
+    <div v-if="isLoading" class="p-5 text-center bg-slate-900/90 border border-slate-800 rounded text-slate-400" data-testid="users-loading-state">
+      <div class="spinner-border text-cyan-400 spinner-border-sm mb-2" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
-      <div class="text-body-secondary small">Loading user accounts...</div>
+      <div class="text-slate-400 small">Loading user accounts...</div>
     </div>
 
     <!-- User Accounts Table -->
-    <div v-else class="table-responsive bg-white border rounded">
+    <div v-else class="table-responsive bg-slate-900/90 border border-slate-800 rounded text-slate-100 shadow-md">
       <table class="table table-hover align-middle mb-0" data-testid="users-table">
-        <thead class="table-light fs-11 text-uppercase text-body-secondary">
+        <thead class="table-dark fs-11 text-uppercase text-slate-400">
           <tr>
             <th scope="col" style="min-width: 130px">Username</th>
             <th scope="col" style="min-width: 160px">Person Name</th>

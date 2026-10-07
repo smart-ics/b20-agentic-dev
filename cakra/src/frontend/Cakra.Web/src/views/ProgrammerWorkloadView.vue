@@ -319,7 +319,7 @@ onMounted(async () => {
           <select
             id="workloadPersonSelect"
             v-model="selectedPersonId"
-            class="form-select form-select-sm"
+            class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             :disabled="isLoadingPersons || isLoadingWorkloads"
             data-testid="workload-person-selector"
             @change="handleFilterChange"
@@ -402,8 +402,8 @@ onMounted(async () => {
     </div>
 
     <!-- Programmer Workload Breakdown Table -->
-    <div v-else class="card card-table shadow-none border mb-2">
-      <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center bg-body-tertiary">
+    <div v-else class="card card-table shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
+      <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center bg-slate-950/60 border-b border-slate-800">
         <span class="fw-semibold small">
           <i class="bi bi-bar-chart-steps me-1 text-primary" aria-hidden="true"></i>
           Active Workload by Programmer &amp; Lifecycle Sub-State
@@ -517,10 +517,10 @@ onMounted(async () => {
     <!-- Selected / Expanded Programmer Active Request Queue Card -->
     <div
       v-if="selectedPersonWorkload"
-      class="card card-table shadow-none border mb-2"
+      class="card card-table shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2"
       data-testid="expanded-programmer-queue-card"
     >
-      <div class="card-header py-1 px-2 d-flex flex-wrap justify-content-between align-items-center gap-2 bg-body-tertiary">
+      <div class="card-header py-1 px-2 d-flex flex-wrap justify-content-between align-items-center gap-2 bg-slate-950/60 border-b border-slate-800">
         <div class="d-flex align-items-center gap-2">
           <span class="fw-semibold small">
             <i class="bi bi-person-lines-fill me-1 text-primary" aria-hidden="true"></i>
@@ -573,7 +573,7 @@ onMounted(async () => {
                 <td>
                   <router-link
                     :to="`/requests/${resolveRequestId(req)}`"
-                    class="fw-medium text-decoration-none text-truncate d-inline-block"
+                    class="fw-medium text-decoration-none text-slate-100 hover:text-cyan-400 text-truncate d-inline-block"
                     style="max-width: 320px"
                   >
                     {{ req.title }}

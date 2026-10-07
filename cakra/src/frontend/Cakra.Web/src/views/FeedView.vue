@@ -640,25 +640,25 @@ onUnmounted(() => {
       <!-- Left Column: Operational Feed Stream (~67% / 8 cols on xl+) -->
       <div class="col-12 col-xl-8 col-xxl-8">
         <!-- Compact Screen Header -->
-        <div class="op-screen-header">
+        <div class="op-screen-header mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div class="d-flex align-items-center gap-2">
-            <h1 class="op-screen-title">
-              <i class="bi bi-activity text-primary" aria-hidden="true"></i>
+            <h1 class="op-screen-title fs-5 fw-bold text-slate-900 dark:text-white mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-activity text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>
               Operational Feed
             </h1>
-            <span class="badge text-bg-light border text-secondary font-monospace">SCR-FEED-001</span>
-            <span class="text-body-secondary small ms-1">
+            <span class="badge bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-mono text-xs">SCR-FEED-001</span>
+            <span class="text-slate-500 dark:text-slate-400 small ms-1 font-mono">
               &bull; {{ totalCount }} events
             </span>
           </div>
 
           <div class="d-flex align-items-center gap-2">
             <!-- View Mode Switcher -->
-            <div class="btn-group btn-group-sm" role="group" aria-label="Feed View Mode">
+            <div class="btn-group btn-group-sm rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700" role="group" aria-label="Feed View Mode">
               <button
                 type="button"
-                class="btn py-1 px-2.5 fs-11"
-                :class="viewMode === 'stream' ? 'btn-primary' : 'btn-outline-secondary'"
+                class="btn py-1 px-2.5 fs-11 font-medium transition"
+                :class="viewMode === 'stream' ? 'bg-cyan-600 text-white dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30' : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'"
                 @click="viewMode = 'stream'"
                 title="Cards Timeline Stream"
               >
@@ -667,8 +667,8 @@ onUnmounted(() => {
               </button>
               <button
                 type="button"
-                class="btn py-1 px-2.5 fs-11"
-                :class="viewMode === 'ledger' ? 'btn-primary' : 'btn-outline-secondary'"
+                class="btn py-1 px-2.5 fs-11 font-medium transition"
+                :class="viewMode === 'ledger' ? 'bg-cyan-600 text-white dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30' : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'"
                 @click="viewMode = 'ledger'"
                 title="High-Density Split Ledger Table"
               >
@@ -679,7 +679,7 @@ onUnmounted(() => {
 
             <button
               type="button"
-              class="btn btn-primary btn-sm"
+              class="btn btn-sm btn-primary py-1 px-2.5 font-medium shadow-sm"
               data-testid="create-request-btn"
               @click="showCreateRequestModal = true"
             >
@@ -688,7 +688,7 @@ onUnmounted(() => {
             </button>
             <button
               type="button"
-              class="btn btn-outline-secondary btn-sm"
+              class="btn btn-sm btn-outline-secondary dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white py-1 px-2.5 font-medium"
               :disabled="isLoadingFeed"
               data-testid="refresh-feed-btn"
               @click="loadFeed"
@@ -700,76 +700,74 @@ onUnmounted(() => {
         </div>
 
         <!-- Universal Search Bar (Dedicated Full-Width Input + Quick Filter Chips) -->
-        <div class="op-feed-universal-search card shadow-xs border-0 mb-3" data-testid="feed-universal-search">
-          <div class="card-body p-2">
-            <div class="input-group input-group-sm mb-2">
-              <span class="input-group-text bg-white border-end-0 text-muted">
-                <i class="bi bi-search" aria-hidden="true"></i>
-              </span>
-              <input
-                id="feedUniversalSearch"
-                v-model="searchTerm"
-                type="text"
-                class="form-control form-control-sm border-start-0 border-end-0 ps-0"
-                placeholder="Search by product, customer, user, request, or comment text..."
-                data-testid="feed-universal-search-input"
-                @input="handleSearchInput"
-              />
-              <button
-                v-if="searchTerm.trim().length > 0"
-                type="button"
-                class="btn btn-outline-secondary border-start-0 border bg-white text-muted"
-                data-testid="feed-search-clear-btn"
-                aria-label="Clear Search"
-                @click="clearSearch"
-              >
-                <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
-              </button>
-            </div>
+        <div class="op-feed-universal-search bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg p-2.5 mb-3" data-testid="feed-universal-search">
+          <div class="input-group input-group-sm mb-2 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800">
+            <span class="input-group-text bg-slate-50 dark:bg-slate-950/80 border-0 text-slate-400">
+              <i class="bi bi-search" aria-hidden="true"></i>
+            </span>
+            <input
+              id="feedUniversalSearch"
+              v-model="searchTerm"
+              type="text"
+              class="form-control form-control-sm border-0 bg-slate-50 dark:bg-slate-950/80 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 shadow-none ps-0"
+              placeholder="Search by product, customer, user, request, or comment text..."
+              data-testid="feed-universal-search-input"
+              @input="handleSearchInput"
+            />
+            <button
+              v-if="searchTerm.trim().length > 0"
+              type="button"
+              class="btn btn-sm border-0 bg-slate-50 dark:bg-slate-950/80 text-slate-400 hover:text-slate-200"
+              data-testid="feed-search-clear-btn"
+              aria-label="Clear Search"
+              @click="clearSearch"
+            >
+              <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+            </button>
+          </div>
 
-            <!-- Quick Filter Chips -->
-            <div class="d-flex align-items-center gap-1.5 overflow-x-auto fs-11">
-              <button
-                type="button"
-                class="btn btn-sm py-0.5 px-2 rounded-pill fs-11"
-                :class="activeFilter === 'ALL' ? 'btn-primary' : 'btn-outline-secondary'"
-                @click="activeFilter = 'ALL'"
-              >
-                All ({{ totalCount }})
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm py-0.5 px-2 rounded-pill fs-11 d-inline-flex align-items-center gap-1"
-                :class="activeFilter === 'EXCEPTIONS' ? 'btn-danger' : 'btn-outline-danger'"
-                @click="activeFilter = 'EXCEPTIONS'"
-              >
-                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-                Exceptions ({{ exceptionCount }})
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm py-0.5 px-2 rounded-pill fs-11"
-                :class="activeFilter === 'REQUESTS' ? 'btn-info text-white' : 'btn-outline-secondary'"
-                @click="activeFilter = 'REQUESTS'"
-              >
-                Requests Only
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm py-0.5 px-2 rounded-pill fs-11"
-                :class="activeFilter === 'SYSTEM' ? 'btn-secondary text-white' : 'btn-outline-secondary'"
-                @click="activeFilter = 'SYSTEM'"
-              >
-                System Facts
-              </button>
-            </div>
+          <!-- Quick Filter Chips -->
+          <div class="d-flex align-items-center gap-1.5 overflow-x-auto fs-11">
+            <button
+              type="button"
+              class="btn btn-sm py-0.5 px-2.5 rounded-pill fs-11 font-medium transition"
+              :class="activeFilter === 'ALL' ? 'bg-slate-900 text-white dark:bg-cyan-500/20 dark:text-cyan-300 dark:border dark:border-cyan-500/30 shadow-xs' : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80 hover:text-slate-900 dark:hover:text-slate-200'"
+              @click="activeFilter = 'ALL'"
+            >
+              All ({{ totalCount }})
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm py-0.5 px-2.5 rounded-pill fs-11 font-medium d-inline-flex align-items-center gap-1 transition"
+              :class="activeFilter === 'EXCEPTIONS' ? 'bg-rose-500 text-white dark:bg-rose-500/20 dark:text-rose-300 dark:border dark:border-rose-500/30 shadow-xs' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 hover:bg-rose-100 dark:hover:bg-rose-900/60'"
+              @click="activeFilter === 'EXCEPTIONS'"
+            >
+              <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+              Exceptions ({{ exceptionCount }})
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm py-0.5 px-2.5 rounded-pill fs-11 font-medium transition"
+              :class="activeFilter === 'REQUESTS' ? 'bg-indigo-600 text-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:border dark:border-indigo-500/30 shadow-xs' : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80 hover:text-slate-900 dark:hover:text-slate-200'"
+              @click="activeFilter === 'REQUESTS'"
+            >
+              Requests Only
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm py-0.5 px-2.5 rounded-pill fs-11 font-medium transition"
+              :class="activeFilter === 'SYSTEM' ? 'bg-purple-600 text-white dark:bg-purple-500/20 dark:text-purple-300 dark:border dark:border-purple-500/30 shadow-xs' : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80 hover:text-slate-900 dark:hover:text-slate-200'"
+              @click="activeFilter === 'SYSTEM'"
+            >
+              System Facts
+            </button>
           </div>
         </div>
 
         <!-- Error Alert -->
         <div
           v-if="errorMessage"
-          class="alert alert-danger alert-dismissible fade show d-flex align-items-center justify-content-between py-1 px-2 mb-2"
+          class="alert alert-danger alert-dismissible fade show d-flex align-items-center justify-content-between py-2 px-3 mb-2 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400"
           role="alert"
           data-testid="feed-error-alert"
         >
@@ -779,7 +777,7 @@ onUnmounted(() => {
           </div>
           <button
             type="button"
-            class="btn-close py-1 px-2"
+            class="btn-close py-2 px-2"
             aria-label="Close"
             @click="errorMessage = null"
           ></button>
@@ -788,78 +786,74 @@ onUnmounted(() => {
         <!-- Request Created Success Alert (TD-004) -->
         <div
           v-if="createdRequestAlert"
-          class="alert alert-success alert-dismissible fade show"
+          class="alert alert-success alert-dismissible fade show rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
           role="alert"
           data-testid="request-created-success-alert"
         >
           <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
           Request <strong>{{ createdRequestAlert.id }}</strong> recorded successfully. Post published to feed.
-          <router-link :to="`/requests/${createdRequestAlert.id}`" class="alert-link ms-2">View Request Detail &rarr;</router-link>
+          <router-link :to="`/requests/${createdRequestAlert.id}`" class="alert-link text-cyan-400 ms-2">View Request Detail &rarr;</router-link>
           <button type="button" class="btn-close" aria-label="Close" @click="createdRequestAlert = null"></button>
         </div>
 
         <!-- Loading State -->
         <div
           v-if="isLoadingFeed && feedItems.length === 0"
-          class="card border-0 shadow-xs my-2"
+          class="bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg my-2 p-5 text-center"
           data-testid="feed-loading-state"
         >
-          <div class="card-body py-4 text-center">
-            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
-              <span class="visually-hidden">Loading operational feed...</span>
-            </div>
-            <p class="text-body-secondary small mb-0">Loading operational feed stream...</p>
+          <div class="spinner-border spinner-border-sm text-cyan-500 mb-2" role="status">
+            <span class="visually-hidden">Loading operational feed...</span>
           </div>
+          <p class="text-slate-500 dark:text-slate-400 small mb-0">Loading operational feed stream...</p>
         </div>
 
         <!-- Empty State -->
         <div
           v-else-if="!isLoadingFeed && feedItems.length === 0"
-          class="card border-0 shadow-xs my-2"
+          class="bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg my-2 p-5 text-center"
           data-testid="feed-empty-state"
         >
-          <div class="card-body py-4 text-center">
-            <i class="bi bi-inbox text-body-secondary fs-4 d-block mb-1" aria-hidden="true"></i>
-            <h2 class="h6 fw-semibold mb-1">
-              {{ searchTerm.trim().length > 0 ? `No feed items matching '${searchTerm.trim()}'` : 'No Operational Feed Items Found' }}
-            </h2>
-            <p class="text-body-secondary small mb-2">
-              <template v-if="searchTerm.trim().length > 0">
-                No visible feed items match your search query across products, customers, authors, requests, or comments.
-              </template>
-              <template v-else>
-                No operational posts or system events have been recorded in the feed yet.
-              </template>
-            </p>
-            <div v-if="searchTerm.trim().length > 0" class="d-flex justify-content-center gap-2">
-              <button
-                type="button"
-                class="btn btn-outline-secondary btn-sm"
-                data-testid="feed-empty-clear-btn"
-                @click="clearSearch"
-              >
-                Clear Search
-              </button>
-            </div>
+          <i class="bi bi-inbox text-slate-400 dark:text-slate-500 fs-3 d-block mb-2" aria-hidden="true"></i>
+          <h2 class="h6 fw-semibold text-slate-900 dark:text-white mb-1">
+            {{ searchTerm.trim().length > 0 ? `No feed items matching '${searchTerm.trim()}'` : 'No Operational Feed Items Found' }}
+          </h2>
+          <p class="text-slate-500 dark:text-slate-400 small mb-3">
+            <template v-if="searchTerm.trim().length > 0">
+              No visible feed items match your search query across products, customers, authors, requests, or comments.
+            </template>
+            <template v-else>
+              No operational posts or system events have been recorded in the feed yet.
+            </template>
+          </p>
+          <div v-if="searchTerm.trim().length > 0" class="d-flex justify-content-center gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              data-testid="feed-empty-clear-btn"
+              @click="clearSearch"
+            >
+              Clear Search
+            </button>
           </div>
         </div>
 
         <!-- Operational Feed Stream / Ledger Container -->
         <div v-else class="d-flex flex-column gap-2" data-testid="feed-card-list">
           <!-- High-Density Ledger Mode -->
-          <div v-if="viewMode === 'ledger'" class="card border-0 shadow-xs overflow-hidden mb-1">
+          <div v-if="viewMode === 'ledger'" class="bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg overflow-hidden mb-1">
             <div class="table-responsive">
-              <table class="table table-hover table-sm align-middle mb-0 op-ledger-table fs-12">
-                <thead class="table-light text-secondary font-monospace fs-11">
+              <table class="table table-hover table-sm align-middle mb-0 op-ledger-table fs-12 dark:text-slate-200">
+                <thead class="bg-slate-100 dark:bg-slate-950/80 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-mono fs-11">
                   <tr>
-                    <th class="py-2 px-2" style="width: 70px;">TIME</th>
-                    <th class="py-2 px-2" style="width: 100px;">SEVERITY</th>
-                    <th class="py-2 px-2" style="width: 110px;">REFERENCE</th>
-                    <th class="py-2 px-2" style="width: 110px;">OWNER</th>
-                    <th class="py-2 px-2" style="width: 130px;">CONTEXT</th>
-                    <th class="py-2 px-2">EVENT TITLE</th>
-                    <th class="py-2 px-2" style="width: 90px;">SIGNALS</th>
-                    <th class="py-2 px-2 text-end" style="width: 70px;">ACTION</th>
+                    <th class="py-2.5 px-3" style="width: 75px;">TIME</th>
+                    <th class="py-2.5 px-3" style="width: 105px;">SEVERITY</th>
+                    <th class="py-2.5 px-3" style="width: 115px;">REFERENCE</th>
+                    <th class="py-2.5 px-3" style="width: 115px;">OWNER</th>
+                    <th class="py-2.5 px-3" style="width: 135px;">CONTEXT</th>
+                    <th class="py-2.5 px-3">EVENT TITLE</th>
+                    <th class="py-2.5 px-3" style="width: 95px;">SIGNALS</th>
+                    <th class="py-2.5 px-3 text-end" style="width: 75px;">ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -898,10 +892,10 @@ onUnmounted(() => {
           <!-- Bottom Loading Spinner (TD-004) -->
           <div
             v-if="isLoadingMore"
-            class="op-feed-bottom-loading my-2"
+            class="op-feed-bottom-loading my-2 text-slate-400"
             data-testid="feed-bottom-loading"
           >
-            <div class="spinner-border spinner-border-sm text-primary" role="status">
+            <div class="spinner-border spinner-border-sm text-cyan-500" role="status">
               <span class="visually-hidden">Loading more items...</span>
             </div>
             <span>Loading more feed items...</span>
@@ -910,10 +904,10 @@ onUnmounted(() => {
           <!-- Load More Error & Retry (TD-004) -->
           <div
             v-if="loadMoreError"
-            class="op-feed-retry-box my-2"
+            class="op-feed-retry-box my-2 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3"
             data-testid="feed-load-more-error"
           >
-            <div class="d-flex align-items-center gap-1.5 text-danger small">
+            <div class="d-flex align-items-center gap-1.5 text-rose-400 small">
               <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
               <span>{{ loadMoreError }}</span>
             </div>
@@ -930,12 +924,12 @@ onUnmounted(() => {
           <!-- End of Feed Milestone (TD-004) -->
           <div
             v-if="!hasMore && feedItems.length > 0"
-            class="op-feed-end-milestone my-2"
+            class="op-feed-end-milestone my-3 bg-slate-50 dark:bg-slate-900/70 border border-dashed border-slate-300 dark:border-slate-800 rounded-xl p-4 text-center"
             data-testid="feed-end-milestone"
           >
-            <i class="bi bi-check2-circle text-success fs-5 d-block mb-1" aria-hidden="true"></i>
-            <span class="small fw-semibold text-secondary">You're all caught up</span>
-            <p class="text-muted fs-11 mb-0">All {{ totalCount }} operational feed events have been loaded.</p>
+            <i class="bi bi-check2-circle text-emerald-500 dark:text-emerald-400 fs-4 d-block mb-1" aria-hidden="true"></i>
+            <span class="small fw-semibold text-slate-800 dark:text-slate-200">You're all caught up</span>
+            <p class="text-slate-500 dark:text-slate-400 fs-11 mb-0">All {{ totalCount }} operational feed events have been loaded.</p>
           </div>
 
           <!-- IntersectionObserver Sentinel (TD-001) -->
@@ -958,33 +952,33 @@ onUnmounted(() => {
           />
 
           <!-- Summary Metrics / Active Status in Stream Mode -->
-          <div v-else class="card shadow-xs">
-            <div class="card-header py-1.5 px-3">
-              <span class="fw-semibold small">
-                <i class="bi bi-activity me-1 text-primary" aria-hidden="true"></i>
+          <div v-else class="bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg overflow-hidden text-slate-900 dark:text-slate-100">
+            <div class="bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 py-2.5 px-3.5">
+              <span class="fw-semibold small d-flex align-items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                <i class="bi bi-activity text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>
                 Operational Stream Summary
               </span>
             </div>
-            <div class="card-body py-2 px-3">
-              <div class="d-flex flex-column gap-2">
-                <div class="d-flex justify-content-between align-items-center border-bottom pb-1.5">
-                  <span class="text-body-secondary fs-11">Total Stream Events</span>
-                  <span class="fw-bold fs-12 text-dark">{{ totalCount }}</span>
+            <div class="p-3.5">
+              <div class="d-flex flex-column gap-2.5">
+                <div class="d-flex justify-content-between align-items-center border-b border-slate-100 dark:border-slate-800/80 pb-2">
+                  <span class="text-slate-500 dark:text-slate-400 fs-11">Total Stream Events</span>
+                  <span class="fw-bold font-mono fs-12 text-slate-900 dark:text-white">{{ totalCount }}</span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center border-bottom pb-1.5">
-                  <span class="text-body-secondary fs-11">Exceptions Loaded</span>
+                <div class="d-flex justify-content-between align-items-center border-b border-slate-100 dark:border-slate-800/80 pb-2">
+                  <span class="text-slate-500 dark:text-slate-400 fs-11">Exceptions Loaded</span>
                   <span
-                    class="badge"
-                    :class="exceptionCount > 0 ? 'bg-danger' : 'bg-light text-secondary border'"
+                    class="badge font-mono"
+                    :class="exceptionCount > 0 ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'"
                   >
                     {{ exceptionCount }}
                   </span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
-                  <span class="text-body-secondary fs-11">Stream Filter Status</span>
+                  <span class="text-slate-500 dark:text-slate-400 fs-11">Stream Filter Status</span>
                   <span
-                    class="badge"
-                    :class="hasActiveFilters ? 'bg-info bg-opacity-10 text-info border border-info border-opacity-25' : 'bg-light text-secondary border'"
+                    class="badge font-mono"
+                    :class="hasActiveFilters ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'"
                   >
                     {{ hasActiveFilters ? 'Filtered' : 'Unfiltered' }}
                   </span>

@@ -279,28 +279,28 @@ onMounted(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow border">
+        <div class="modal-content shadow-2xl border border-slate-800 bg-slate-900/95 text-slate-100">
           <!-- Modal Header -->
-          <div class="modal-header py-2 px-3 bg-body-tertiary">
+          <div class="modal-header py-2 px-3 bg-slate-950/60 border-b border-slate-800">
             <h2 id="userAccountModalTitle" class="modal-title h6 fw-bold mb-0 d-flex align-items-center gap-2">
               <i
                 v-if="isEditMode"
-                class="bi bi-person-gear text-primary"
+                class="bi bi-person-gear text-cyan-400"
                 aria-hidden="true"
               ></i>
               <i
                 v-else
-                class="bi bi-person-plus-fill text-primary"
+                class="bi bi-person-plus-fill text-cyan-400"
                 aria-hidden="true"
               ></i>
               <span>{{ modalTitle }}</span>
-              <span class="badge text-bg-light border text-secondary font-monospace" style="font-size: 10px">
+              <span class="badge bg-slate-800 border border-slate-700 text-slate-300 font-monospace" style="font-size: 10px">
                 SCR-USR-002
               </span>
             </h2>
             <button
               type="button"
-              class="btn-close py-1 px-2"
+              class="btn-close btn-close-white py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting"
               @click="handleClose"
@@ -329,14 +329,14 @@ onMounted(() => {
 
               <!-- Create Mode: Person Selector -->
               <div v-if="!isEditMode" class="mb-2">
-                <label for="userModalPersonSelect" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="userModalPersonSelect" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Organizational Person <span class="text-danger">*</span>
                 </label>
                 <div class="position-relative">
                   <select
                     id="userModalPersonSelect"
                     v-model="personId"
-                    class="form-select form-select-sm"
+                    class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :class="{ 'is-invalid': validationErrors.personId }"
                     :disabled="isSubmitting || isLoadingPersons"
                     data-testid="select-person"
@@ -360,12 +360,12 @@ onMounted(() => {
 
               <!-- Edit Mode: Person Name (Read-Only) -->
               <div v-else class="mb-2">
-                <label class="form-label mb-1 small fw-medium text-body-secondary" style="font-size: 11.5px">
+                <label class="form-label mb-1 small fw-medium text-slate-400" style="font-size: 11.5px">
                   Organizational Person
                 </label>
                 <input
                   type="text"
-                  class="form-control form-control-sm bg-body-tertiary"
+                  class="form-control form-control-sm bg-slate-950/60 border-slate-700 text-slate-300"
                   :value="props.user?.personName || '—'"
                   readonly
                   disabled
@@ -375,14 +375,14 @@ onMounted(() => {
 
               <!-- Create Mode: Username -->
               <div v-if="!isEditMode" class="mb-2">
-                <label for="userModalUsername" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="userModalUsername" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Username <span class="text-danger">*</span>
                 </label>
                 <input
                   id="userModalUsername"
                   v-model="username"
                   type="text"
-                  class="form-control form-control-sm font-monospace"
+                  class="form-control form-control-sm font-monospace bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.username }"
                   placeholder="e.g. john.doe"
                   :disabled="isSubmitting"
@@ -395,12 +395,12 @@ onMounted(() => {
 
               <!-- Edit Mode: Username (Read-Only) -->
               <div v-else class="mb-2">
-                <label class="form-label mb-1 small fw-medium text-body-secondary" style="font-size: 11.5px">
+                <label class="form-label mb-1 small fw-medium text-slate-400" style="font-size: 11.5px">
                   Username
                 </label>
                 <input
                   type="text"
-                  class="form-control form-control-sm font-monospace bg-body-tertiary"
+                  class="form-control form-control-sm font-monospace bg-slate-950/60 border-slate-700 text-slate-300"
                   :value="props.user?.username || '—'"
                   readonly
                   disabled
@@ -410,14 +410,14 @@ onMounted(() => {
 
               <!-- Email Address -->
               <div class="mb-2">
-                <label for="userModalEmail" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="userModalEmail" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Email Address <span class="text-danger">*</span>
                 </label>
                 <input
                   id="userModalEmail"
                   v-model="email"
                   type="email"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.email }"
                   placeholder="e.g. john.doe@example.com"
                   :disabled="isSubmitting"
@@ -430,14 +430,14 @@ onMounted(() => {
 
               <!-- Create Mode: Initial Password -->
               <div v-if="!isEditMode" class="mb-2">
-                <label for="userModalPassword" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="userModalPassword" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Initial Password <span class="text-danger">*</span>
                 </label>
                 <input
                   id="userModalPassword"
                   v-model="password"
                   type="password"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.password }"
                   placeholder="Minimum 8 characters"
                   :disabled="isSubmitting"
@@ -450,14 +450,14 @@ onMounted(() => {
 
               <!-- Edit Mode: Optional New Password (Reset) -->
               <div v-else class="mb-2">
-                <label for="userModalNewPassword" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="userModalNewPassword" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Reset Password (Optional)
                 </label>
                 <input
                   id="userModalNewPassword"
                   v-model="newPassword"
                   type="password"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.newPassword }"
                   placeholder="Leave blank to keep current password (min 8 chars if resetting)"
                   :disabled="isSubmitting"
@@ -466,20 +466,20 @@ onMounted(() => {
                 <div v-if="validationErrors.newPassword" class="invalid-feedback small" style="font-size: 11px">
                   {{ validationErrors.newPassword }}
                 </div>
-                <div class="form-text small" style="font-size: 10.5px">
+                <div class="form-text small text-slate-400" style="font-size: 10.5px">
                   Only enter a new password if you wish to reset this user's credentials.
                 </div>
               </div>
 
               <!-- Status Dropdown -->
               <div class="mb-1">
-                <label for="userModalStatus" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="userModalStatus" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Account Status <span class="text-danger">*</span>
                 </label>
                 <select
                   id="userModalStatus"
                   v-model="status"
-                  class="form-select form-select-sm"
+                  class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :disabled="isSubmitting"
                   data-testid="select-status"
                 >
@@ -487,14 +487,14 @@ onMounted(() => {
                   <option v-if="isEditMode" value="LOCKED">LOCKED</option>
                   <option value="SUSPENDED">SUSPENDED</option>
                 </select>
-                <div v-if="isEditMode && props.user?.status === 'LOCKED' && status === 'ACTIVE'" class="form-text text-success small" style="font-size: 10.5px">
+                <div v-if="isEditMode && props.user?.status === 'LOCKED' && status === 'ACTIVE'" class="form-text text-emerald-400 small" style="font-size: 10.5px">
                   <i class="bi bi-info-circle me-1" aria-hidden="true"></i>Setting status to ACTIVE will reset failed login attempts to 0.
                 </div>
               </div>
             </div>
 
             <!-- Modal Footer -->
-            <div class="modal-footer py-2 px-3 bg-body-tertiary">
+            <div class="modal-footer py-2 px-3 bg-slate-950/60 border-t border-slate-800">
               <button
                 type="button"
                 class="btn btn-outline-secondary btn-sm"
@@ -528,6 +528,6 @@ onMounted(() => {
     </div>
 
     <!-- Backdrop -->
-    <div class="modal-backdrop fade show" @click="handleClose"></div>
+    <div class="modal-backdrop fade show" style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);" @click="handleClose"></div>
   </div>
 </template>

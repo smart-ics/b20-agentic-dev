@@ -237,28 +237,28 @@ onBeforeUnmount(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow border">
+        <div class="modal-content shadow-2xl border border-slate-800 bg-slate-900/95 text-slate-100">
           <!-- Modal Header -->
-          <div class="modal-header py-2 px-3 bg-body-tertiary">
+          <div class="modal-header py-2 px-3 bg-slate-950/60 border-b border-slate-800">
             <h2 id="customerModalTitle" class="modal-title h6 fw-bold mb-0 d-flex align-items-center gap-2">
               <i
                 v-if="isEditMode"
-                class="bi bi-building-gear text-primary"
+                class="bi bi-building-gear text-cyan-400"
                 aria-hidden="true"
               ></i>
               <i
                 v-else
-                class="bi bi-building-add text-primary"
+                class="bi bi-building-add text-cyan-400"
                 aria-hidden="true"
               ></i>
               <span>{{ modalTitle }}</span>
-              <span class="badge text-bg-light border text-secondary font-monospace" style="font-size: 10px">
+              <span class="badge bg-slate-800 border border-slate-700 text-slate-300 font-monospace" style="font-size: 10px">
                 SCR-CUST-002
               </span>
             </h2>
             <button
               type="button"
-              class="btn-close py-1 px-2"
+              class="btn-close btn-close-white py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting"
               @click="handleClose"
@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
 
               <!-- Customer Code -->
               <div class="mb-2">
-                <label for="customerCodeInput" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="customerCodeInput" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Customer Code <span class="text-danger">*</span>
                 </label>
                 <input
@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
                   v-model="customerCode"
                   type="text"
                   maxlength="50"
-                  class="form-control form-control-sm font-monospace text-uppercase"
+                  class="form-control form-control-sm font-monospace text-uppercase bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.customerCode }"
                   placeholder="e.g. CUST-001"
                   :disabled="isSubmitting || isEditMode"
@@ -305,14 +305,14 @@ onBeforeUnmount(() => {
                 <div v-if="validationErrors.customerCode" class="invalid-feedback small" style="font-size: 11px">
                   {{ validationErrors.customerCode }}
                 </div>
-                <div v-if="isEditMode" class="form-text text-muted" style="font-size: 10.5px">
+                <div v-if="isEditMode" class="form-text text-slate-400" style="font-size: 10.5px">
                   Customer Code is immutable and cannot be modified.
                 </div>
               </div>
 
               <!-- Customer Name -->
               <div class="mb-3">
-                <label for="customerNameInput" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="customerNameInput" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Customer Name <span class="text-danger">*</span>
                 </label>
                 <input
@@ -320,7 +320,7 @@ onBeforeUnmount(() => {
                   v-model="customerName"
                   type="text"
                   maxlength="200"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.customerName }"
                   placeholder="e.g. Acme Corporation"
                   :disabled="isSubmitting"
@@ -337,24 +337,24 @@ onBeforeUnmount(() => {
                   <input
                     id="hasActiveMaintenanceContractSwitch"
                     v-model="hasActiveMaintenanceContract"
-                    class="form-check-input"
+                    class="form-check-input bg-slate-900 border-slate-700"
                     type="checkbox"
                     role="switch"
                     :disabled="isSubmitting"
                     data-testid="switch-maintenance-contract"
                   />
-                  <label class="form-check-label small fw-medium" for="hasActiveMaintenanceContractSwitch" style="font-size: 11.5px">
+                  <label class="form-check-label small fw-medium text-slate-300" for="hasActiveMaintenanceContractSwitch" style="font-size: 11.5px">
                     Has Active Maintenance Contract
                   </label>
                 </div>
-                <div class="form-text text-muted ms-4 ps-2" style="font-size: 10.5px">
+                <div class="form-text text-slate-400 ms-4 ps-2" style="font-size: 10.5px">
                   Indicates whether this customer is under an active maintenance contract.
                 </div>
               </div>
             </div>
 
             <!-- Modal Footer -->
-            <div class="modal-footer py-2 px-3 bg-body-tertiary">
+            <div class="modal-footer py-2 px-3 bg-slate-950/60 border-t border-slate-800">
               <button
                 type="button"
                 class="btn btn-outline-secondary btn-sm"
@@ -388,6 +388,6 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Backdrop -->
-    <div class="modal-backdrop fade show" @click="handleClose"></div>
+    <div class="modal-backdrop fade show" style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);" @click="handleClose"></div>
   </div>
 </template>

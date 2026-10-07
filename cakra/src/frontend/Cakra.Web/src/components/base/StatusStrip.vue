@@ -2,8 +2,9 @@
 export interface StatusStripItem {
   label: string
   value: string | number
-  color?: 'primary' | 'success' | 'warning' | 'danger' | 'secondary'
+  color?: 'primary' | 'success' | 'warning' | 'danger' | 'secondary' | 'cyan' | 'indigo' | 'emerald' | 'amber' | 'rose'
   dot?: boolean
+  progress?: number
   testId?: string
   dataTestId?: string
 }
@@ -14,110 +15,144 @@ export interface StatusStripProps {
 
 defineProps<StatusStripProps>()
 
-function itemColorClass(color?: StatusStripItem['color']): string {
-  if (!color) return ''
-  return `status-strip__color--${color}`
+function resolveProgress(item: StatusStripItem): number {
+  if (typeof item.progress === 'number') {
+    return Math.min(Math.max(item.progress, 0), 100)
+  }
+  if (typeof item.value === 'string' && item.value.includes('%')) {
+    const num = parseFloat(item.value)
+    if (!Number.isNaN(num)) {
+      return Math.min(Math.max(num, 0), 100)
+    }
+  }
+  return 100
+}
+
+function valueColorClass(color?: StatusStripItem['color']): string {
+  switch (color) {
+    case 'cyan':
+      return 'text-cyan-600 dark:text-cyan-400'
+    case 'success':
+    case 'emerald':
+      return 'text-emerald-600 dark:text-emerald-400'
+    case 'warning':
+    case 'amber':
+      return 'text-amber-600 dark:text-amber-400'
+    case 'danger':
+    case 'rose':
+      return 'text-rose-600 dark:text-rose-400'
+    case 'indigo':
+      return 'text-indigo-600 dark:text-indigo-400'
+    case 'secondary':
+      return 'text-slate-600 dark:text-slate-300'
+    case 'primary':
+    default:
+      return 'text-slate-900 dark:text-white'
+  }
+}
+
+function dotColorClass(color?: StatusStripItem['color']): string {
+  switch (color) {
+    case 'cyan':
+      return 'bg-cyan-500'
+    case 'success':
+    case 'emerald':
+      return 'bg-emerald-500'
+    case 'warning':
+    case 'amber':
+      return 'bg-amber-500'
+    case 'danger':
+    case 'rose':
+      return 'bg-rose-500'
+    case 'indigo':
+      return 'bg-indigo-500'
+    case 'secondary':
+      return 'bg-slate-500'
+    case 'primary':
+    default:
+      return 'bg-cyan-400'
+  }
+}
+
+function gaugeBarColorClass(color?: StatusStripItem['color']): string {
+  switch (color) {
+    case 'cyan':
+      return 'bg-cyan-500'
+    case 'success':
+    case 'emerald':
+      return 'bg-emerald-500'
+    case 'warning':
+    case 'amber':
+      return 'bg-amber-500'
+    case 'danger':
+    case 'rose':
+      return 'bg-rose-500'
+    case 'indigo':
+      return 'bg-indigo-500'
+    case 'secondary':
+      return 'bg-slate-500'
+    case 'primary':
+    default:
+      return 'bg-cyan-500'
+  }
 }
 </script>
 
 <template>
-  <div class="status-strip">
-    <template v-for="(item, index) in items" :key="index">
-      <span v-if="index > 0" class="status-strip__divider" aria-hidden="true">|</span>
-      <div class="status-strip__item">
-        <slot name="item" :item="item" :index="index">
+  <div class="status-strip flex flex-wrap items-stretch gap-3 w-full">
+    <div
+      v-for="(item, index) in items"
+      :key="index"
+      class="status-strip__item flex-1 min-w-[140px] bg-white border border-slate-200 dark:bg-slate-900/90 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-sm dark:shadow-lg dark:backdrop-blur-sm transition-all"
+    >
+      <slot name="item" :item="item" :index="index">
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <span class="status-strip__label text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 truncate">
+            {{ item.label }}
+          </span>
           <span
             v-if="item.dot"
-            class="status-strip__dot"
-            :class="itemColorClass(item.color)"
+            class="status-strip__dot w-2 h-2 rounded-full flex-shrink-0 animate-pulse"
+            :class="dotColorClass(item.color)"
             aria-hidden="true"
           />
+        </div>
+
+        <div class="flex items-baseline gap-2 mb-2">
           <span
-            class="status-strip__value"
-            :class="itemColorClass(item.color)"
+            class="status-strip__value text-3xl font-black tracking-tight"
+            :class="valueColorClass(item.color)"
             :data-testid="item.testId || item.dataTestId"
           >
             {{ item.value }}
           </span>
-          <span class="status-strip__label">
-            {{ item.label }}
-          </span>
-        </slot>
-      </div>
-    </template>
+        </div>
+
+        <!-- Dark gauge track -->
+        <div class="status-strip__gauge bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden w-full">
+          <div
+            class="h-full rounded-full transition-all duration-500"
+            :class="gaugeBarColorClass(item.color)"
+            :style="{ width: `${resolveProgress(item)}%` }"
+          />
+        </div>
+      </slot>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .status-strip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.375rem 0.75rem;
-  background-color: var(--cakra-bg-surface, #ffffff);
-  border: 1px solid var(--cakra-border, #e2e8f0);
-  border-radius: var(--cakra-radius-md, 8px);
-  box-shadow: var(--cakra-shadow-xs, 0 1px 2px 0 rgb(0 0 0 / 0.04));
-  font-size: 0.75rem;
-  line-height: 1.25;
-  color: var(--cakra-text-main, #0f172a);
   box-sizing: border-box;
 }
 
-.status-strip__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  white-space: nowrap;
+:global(.dark) .status-strip__item {
+  background-color: rgba(15, 23, 42, 0.9);
+  border-color: #1e293b;
 }
 
-.status-strip__divider {
-  color: var(--cakra-border-strong, #cbd5e1);
-  font-weight: 300;
-  user-select: none;
-  font-size: 0.75rem;
-  line-height: 1;
-}
-
-.status-strip__value {
-  font-weight: 700;
-  color: var(--cakra-text-main, #0f172a);
+:global(.dark) .status-strip__value {
   font-feature-settings: 'tnum';
   font-variant-numeric: tabular-nums;
-}
-
-.status-strip__label {
-  color: var(--cakra-text-muted, #475569);
-  font-weight: 400;
-}
-
-/* Color Semantics */
-.status-strip__color--primary {
-  color: var(--cakra-primary, #364f6b);
-}
-
-.status-strip__color--success {
-  color: #059669;
-}
-
-.status-strip__color--warning {
-  color: #d97706;
-}
-
-.status-strip__color--danger {
-  color: #e11d48;
-}
-
-.status-strip__color--secondary {
-  color: var(--cakra-text-muted, #475569);
-}
-
-/* Dots */
-.status-strip__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--cakra-radius-full, 9999px);
-  background-color: currentColor;
-  flex-shrink: 0;
 }
 </style>

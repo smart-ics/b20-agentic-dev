@@ -1187,8 +1187,8 @@ onMounted(async () => {
       <!-- Main Content Column (Left) -->
       <div class="col-12 col-lg-8">
         <!-- Request Detail Card -->
-        <div class="card shadow-none border mb-2" data-testid="request-detail-card">
-          <div class="card-header py-1 px-2 bg-body-tertiary d-flex align-items-center justify-content-between flex-wrap gap-1">
+        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-detail-card">
+          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
             <h2 class="h6 mb-0 fw-bold" data-testid="request-detail-title">{{ request.title }}</h2>
             <button
               v-if="canEditCoreAttributes"
@@ -1206,7 +1206,7 @@ onMounted(async () => {
               Description
             </div>
             <div
-              class="p-2 rounded bg-body-tertiary border mb-2 small"
+              class="p-2 rounded bg-slate-950/60 border border-slate-800/80 mb-2 small text-slate-200"
               style="white-space: pre-wrap; font-size: 12.5px; line-height: 1.4"
               data-testid="request-detail-description"
             >
@@ -1273,8 +1273,8 @@ onMounted(async () => {
         </div>
 
         <!-- Sub-Tasks Checklist Card (CR-006, Architecture §4 TD-001..TD-003, TD-010) -->
-        <div class="card shadow-none border mb-2" data-testid="request-subtasks-card">
-          <div class="card-header py-1 px-2 bg-body-tertiary d-flex align-items-center justify-content-between flex-wrap gap-1">
+        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-subtasks-card">
+          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
             <div class="d-flex align-items-center gap-2">
               <span class="fw-semibold small">
                 <i class="bi bi-check2-square me-1 text-primary" aria-hidden="true"></i>
@@ -1443,8 +1443,8 @@ onMounted(async () => {
         </div>
 
         <!-- Lifecycle Actions Card (CR-016 TD-001..003) -->
-        <div class="card shadow-none border mb-2" data-testid="request-actions-card">
-          <div class="card-header py-1 px-2 bg-body-tertiary d-flex align-items-center justify-content-between">
+        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-actions-card">
+          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between">
             <span class="fw-semibold small">
               <i class="bi bi-sliders me-1 text-primary" aria-hidden="true"></i>
               Lifecycle Actions
@@ -1860,15 +1860,15 @@ onMounted(async () => {
           v-if="showPauseModal"
           class="modal fade show d-block"
           tabindex="-1"
-          style="background-color: rgba(0, 0, 0, 0.5)"
+          style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);"
           data-testid="pause-work-modal"
           role="dialog"
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header py-2">
-                <h5 class="modal-title h6 mb-0">
+            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
+              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-amber-400">
                   <i class="bi bi-pause-circle me-1 text-warning"></i>Pause Work
                 </h5>
                 <button
@@ -1890,14 +1890,14 @@ onMounted(async () => {
                   <textarea
                     id="modalPauseNote"
                     v-model="pauseForm.note"
-                    class="form-control form-control-sm"
+                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     rows="3"
                     placeholder="Document reason for pause or external blocker..."
                     :disabled="isSubmittingAction"
                     data-testid="modal-pause-note-input"
                   ></textarea>
                 </div>
-                <div class="modal-footer py-1">
+                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -1926,15 +1926,15 @@ onMounted(async () => {
           v-if="showCancelModal"
           class="modal fade show d-block"
           tabindex="-1"
-          style="background-color: rgba(0, 0, 0, 0.5)"
+          style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);"
           data-testid="cancel-request-modal"
           role="dialog"
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header py-2">
-                <h5 class="modal-title h6 mb-0 text-danger">
+            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
+              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-rose-400">
                   <i class="bi bi-x-circle me-1 text-danger"></i>Cancel Request
                 </h5>
                 <button
@@ -1956,7 +1956,7 @@ onMounted(async () => {
                   <textarea
                     id="modalCancelReason"
                     v-model="cancelForm.reason"
-                    class="form-control form-control-sm"
+                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     rows="3"
                     placeholder="Explain why this request is being cancelled..."
                     required
@@ -1964,7 +1964,7 @@ onMounted(async () => {
                     data-testid="modal-cancel-reason-input"
                   ></textarea>
                 </div>
-                <div class="modal-footer py-1">
+                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -1993,15 +1993,15 @@ onMounted(async () => {
           v-if="showEditModal"
           class="modal fade show d-block"
           tabindex="-1"
-          style="background-color: rgba(0, 0, 0, 0.5)"
+          style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);"
           data-testid="edit-request-modal"
           role="dialog"
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header py-2">
-                <h5 class="modal-title h6 mb-0">
+            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
+              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-cyan-400">
                   <i class="bi bi-pencil-square me-1 text-primary"></i>Edit Request Details
                 </h5>
                 <button
@@ -2121,7 +2121,7 @@ onMounted(async () => {
                   </div>
                 </div>
 
-                <div class="modal-footer py-1">
+                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -2150,8 +2150,8 @@ onMounted(async () => {
       <!-- Properties & History Column (Right) -->
       <div class="col-12 col-lg-4">
         <!-- Properties Card -->
-        <div class="card shadow-none border mb-2" data-testid="request-information-card">
-          <div class="card-header py-1 px-2 bg-body-tertiary fw-semibold small">
+        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-information-card">
+          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 fw-semibold small">
             <i class="bi bi-info-circle me-1 text-primary" aria-hidden="true"></i>
             Properties
           </div>
@@ -2291,8 +2291,8 @@ onMounted(async () => {
         </div>
 
         <!-- State History Timeline Card -->
-        <div class="card card-table shadow-none border mb-2" data-testid="request-history-card">
-          <div class="card-header py-1 px-2 bg-body-tertiary d-flex justify-content-between align-items-center">
+        <div class="card card-table shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-history-card">
+          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex justify-content-between align-items-center">
             <span class="fw-semibold small">
               <i class="bi bi-clock-history me-1 text-primary" aria-hidden="true"></i>
               State History
@@ -2373,8 +2373,8 @@ onMounted(async () => {
         </div>
 
         <!-- Embedded Comments & Discussion Card (CR-016 TD-005) -->
-        <div class="card shadow-none border mb-2" data-testid="request-comments-card">
-          <div class="card-header py-1 px-2 bg-body-tertiary d-flex justify-content-between align-items-center">
+        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-comments-card">
+          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex justify-content-between align-items-center">
             <span class="fw-semibold small">
               <i class="bi bi-chat-left-text me-1 text-primary" aria-hidden="true"></i>
               Comments &amp; Discussion

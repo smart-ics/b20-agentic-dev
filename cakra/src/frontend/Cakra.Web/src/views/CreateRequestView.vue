@@ -289,8 +289,8 @@ onMounted(async () => {
     </div>
 
     <!-- Create Request Form Card -->
-    <div class="card shadow-none border mb-2">
-      <div class="card-header py-1 px-2 bg-body-tertiary fw-semibold small">
+    <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
+      <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 fw-semibold small text-white">
         <i class="bi bi-file-earmark-plus me-1 text-primary" aria-hidden="true"></i>
         New Request Specifications
       </div>
@@ -312,7 +312,7 @@ onMounted(async () => {
                 v-model="form.title"
                 type="text"
                 name="title"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 placeholder="Brief summary or subject of the request"
                 maxlength="255"
                 required
@@ -330,7 +330,7 @@ onMounted(async () => {
                 id="requestType"
                 v-model="form.requestType"
                 name="requestType"
-                class="form-select form-select-sm"
+                class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 :disabled="isSubmitting"
                 data-testid="request-type-select"
               >
@@ -349,7 +349,7 @@ onMounted(async () => {
                 id="requestPriority"
                 v-model="form.priority"
                 name="priority"
-                class="form-select form-select-sm"
+                class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 :disabled="isSubmitting"
                 data-testid="request-priority-select"
               >
@@ -368,7 +368,7 @@ onMounted(async () => {
                 id="requestCustomer"
                 v-model="form.customerId"
                 name="customerId"
-                class="form-select form-select-sm"
+                class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 :disabled="isSubmitting || isLoadingLookups"
                 data-testid="request-customer-select"
               >
@@ -392,7 +392,7 @@ onMounted(async () => {
                 id="requestProduct"
                 v-model="form.productId"
                 name="productId"
-                class="form-select form-select-sm"
+                class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 :disabled="isSubmitting || isLoadingLookups"
                 data-testid="request-product-select"
               >
@@ -416,7 +416,7 @@ onMounted(async () => {
                 id="requestComplexity"
                 v-model.number="form.complexity"
                 name="complexity"
-                class="form-select form-select-sm"
+                class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 :disabled="isSubmitting"
                 data-testid="request-complexity-select"
               >
@@ -438,7 +438,7 @@ onMounted(async () => {
                 v-model="form.deadline"
                 type="date"
                 name="deadline"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 :disabled="isSubmitting"
                 data-testid="create-deadline-input"
               />
@@ -453,7 +453,7 @@ onMounted(async () => {
                 id="requestDescription"
                 v-model="form.description"
                 name="description"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 rows="4"
                 placeholder="Detailed description and operational context of the request"
                 required
@@ -477,13 +477,13 @@ onMounted(async () => {
               <!-- Added Sub-Tasks List -->
               <div
                 v-if="initialSubTasks.length > 0"
-                class="border rounded p-2 mb-2 bg-body-tertiary"
+                class="border border-slate-800 rounded p-2 mb-2 bg-slate-950/60"
                 data-testid="initial-subtasks-list"
               >
                 <div
                   v-for="(subTask, index) in initialSubTasks"
                   :key="subTask.id"
-                  class="d-flex align-items-center justify-content-between gap-2 p-1.5 mb-1 bg-white border rounded small"
+                  class="d-flex align-items-center justify-content-between gap-2 p-1.5 mb-1 bg-slate-900 border border-slate-800 rounded small text-slate-100"
                   data-testid="initial-subtask-item"
                 >
                   <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">

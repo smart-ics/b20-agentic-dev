@@ -79,39 +79,39 @@ onBeforeUnmount(() => {
     <Transition name="slide-over" :duration="250">
       <div
         v-if="modelValue"
-        class="slide-over-drawer"
+        class="slide-over-drawer fixed inset-0 z-[1050] overflow-hidden"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="title ? 'slide-over-drawer-title' : undefined"
       >
         <div
-          class="slide-over-drawer__backdrop"
+          class="slide-over-drawer__backdrop fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[1] transition-opacity duration-200"
           aria-hidden="true"
           @click="close"
         />
 
         <div
-          class="slide-over-drawer__panel"
+          class="slide-over-drawer__panel fixed top-0 right-0 bottom-0 h-full bg-white dark:bg-slate-900/95 dark:backdrop-blur border-l border-slate-200 dark:border-slate-800 shadow-2xl z-[2] flex flex-col overflow-hidden box-border transition-transform duration-250 ease-out text-slate-900 dark:text-slate-100"
           :class="`slide-over-drawer__panel--${width}`"
         >
-          <header class="slide-over-drawer__header">
+          <header class="slide-over-drawer__header p-5 md:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 flex-shrink-0 bg-white dark:bg-slate-900/95">
             <slot name="header" :close="close">
-              <div class="slide-over-drawer__header-lead">
-                <h2 id="slide-over-drawer-title" class="slide-over-drawer__title">
+              <div class="slide-over-drawer__header-lead flex-1 min-w-0">
+                <h2 id="slide-over-drawer-title" class="slide-over-drawer__title text-lg font-bold tracking-tight text-slate-900 dark:text-white m-0 break-words">
                   {{ title }}
                 </h2>
-                <p v-if="subtitle" class="slide-over-drawer__subtitle">
+                <p v-if="subtitle" class="slide-over-drawer__subtitle text-xs text-slate-500 dark:text-slate-400 mt-1 mb-0 leading-relaxed">
                   {{ subtitle }}
                 </p>
               </div>
               <button
                 type="button"
-                class="slide-over-drawer__close-btn"
+                class="slide-over-drawer__close-btn inline-flex items-center justify-center w-8 h-8 p-0 bg-transparent border-0 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer flex-shrink-0"
                 aria-label="Close drawer"
                 @click="close"
               >
                 <svg
-                  class="slide-over-drawer__close-icon"
+                  class="slide-over-drawer__close-icon w-5 h-5"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -124,11 +124,11 @@ onBeforeUnmount(() => {
             </slot>
           </header>
 
-          <div class="slide-over-drawer__body">
+          <div class="slide-over-drawer__body p-6 overflow-y-auto flex-1 text-slate-800 dark:text-slate-200">
             <slot :close="close" />
           </div>
 
-          <footer v-if="$slots.footer" class="slide-over-drawer__footer">
+          <footer v-if="$slots.footer" class="slide-over-drawer__footer p-4 px-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 flex-shrink-0 bg-white dark:bg-slate-900/95">
             <slot name="footer" :close="close" />
           </footer>
         </div>
@@ -143,33 +143,6 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 1050;
   overflow: hidden;
-}
-
-.slide-over-drawer__backdrop {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 1;
-  transition: opacity 0.25s ease;
-}
-
-.slide-over-drawer__panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  height: 100%;
-  background-color: var(--cakra-bg-surface, #ffffff);
-  border-left: 1px solid var(--cakra-border, #e2e8f0);
-  box-shadow: var(--cakra-shadow-xl, 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.05));
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-sizing: border-box;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Panel Widths */
@@ -188,96 +161,18 @@ onBeforeUnmount(() => {
   max-width: 640px;
 }
 
-/* Header */
-.slide-over-drawer__header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--cakra-border, #e2e8f0);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-shrink: 0;
-  background-color: var(--cakra-bg-surface, #ffffff);
-}
-
-.slide-over-drawer__header-lead {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.slide-over-drawer__title {
-  font-size: 1.125rem; /* 18px */
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--cakra-text-main, #0f172a);
-  margin: 0;
-  word-break: break-word;
-}
-
-.slide-over-drawer__subtitle {
-  font-size: 0.8125rem; /* 13px */
-  color: var(--cakra-text-muted, #475569);
-  margin: 0.25rem 0 0 0;
-  line-height: 1.4;
-}
-
-.slide-over-drawer__close-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: var(--cakra-radius-md, 8px);
-  color: var(--cakra-text-muted, #475569);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.slide-over-drawer__close-btn:hover {
-  background-color: var(--cakra-bg-subtle, #f1f5f9);
-  color: var(--cakra-text-main, #0f172a);
-}
-
-.slide-over-drawer__close-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-/* Body */
-.slide-over-drawer__body {
-  padding: 1.5rem;
-  overflow-y: auto;
-  flex: 1 1 auto;
-  color: var(--cakra-text-main, #0f172a);
-}
-
+/* Body Scrollbar */
 .slide-over-drawer__body::-webkit-scrollbar {
   width: 6px;
 }
 
 .slide-over-drawer__body::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
-  border-radius: var(--cakra-radius-full, 9999px);
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
 }
 
 .slide-over-drawer__body::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
-}
-
-/* Footer */
-.slide-over-drawer__footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--cakra-border, #e2e8f0);
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  flex-shrink: 0;
-  background-color: var(--cakra-bg-surface, #ffffff);
+  background: rgba(148, 163, 184, 0.5);
 }
 
 /* Slide Over Transitions */

@@ -9,11 +9,17 @@ import './assets/main.css'
 import App from './App.vue'
 import { router } from './router'
 import { useAuthStore } from './stores/auth'
+import { useThemeStore } from './stores/theme'
 
 const app = createApp(App)
 
 // Pinia is the shared client-side state store (Architecture §19.4).
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
+
+// Initialize theme state and synchronize DOM classes/attributes
+const themeStore = useThemeStore()
+themeStore.initTheme()
 
 // Vue Router 4 client-side navigation (Architecture §19.4).
 app.use(router)

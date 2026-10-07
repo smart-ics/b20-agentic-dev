@@ -281,28 +281,28 @@ onMounted(async () => {
     <!-- Filter & Search Toolbar (Prototype Visual Parity) -->
     <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2.5 mb-3 text-xs">
       <!-- Quick Filter Pills -->
-      <div class="d-inline-flex align-items-center gap-1 p-1 rounded-3 bg-white border shadow-xs">
+      <div class="d-inline-flex align-items-center gap-1 p-1 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs">
         <button
           type="button"
-          class="btn btn-sm py-1 px-2.5 rounded-2 font-medium"
-          :class="activeFilter === 'all' ? 'btn-dark shadow-xs' : 'btn-light text-secondary border-0'"
-          @click="activeFilter = 'all'"
+          class="btn btn-sm py-1 px-2.5 rounded-lg font-medium transition"
+          :class="activeFilter === 'all' ? 'bg-slate-900 text-white dark:bg-cyan-500/20 dark:text-cyan-300 dark:border dark:border-cyan-500/30 shadow-xs' : 'btn-light dark:bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-0'"
+          @click="activeFilter === 'all'"
         >
           All People ({{ totalActivePeople }})
         </button>
         <button
           type="button"
-          class="btn btn-sm py-1 px-2.5 rounded-2 font-medium"
-          :class="activeFilter === 'working' ? 'btn-dark shadow-xs' : 'btn-light text-secondary border-0'"
-          @click="activeFilter = 'working'"
+          class="btn btn-sm py-1 px-2.5 rounded-lg font-medium transition"
+          :class="activeFilter === 'working' ? 'bg-slate-900 text-white dark:bg-cyan-500/20 dark:text-cyan-300 dark:border dark:border-cyan-500/30 shadow-xs' : 'btn-light dark:bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-0'"
+          @click="activeFilter === 'working'"
         >
           Working Now ({{ totalInProgressTasks }})
         </button>
         <button
           type="button"
-          class="btn btn-sm py-1 px-2.5 rounded-2 font-medium"
-          :class="activeFilter === 'paused' ? 'btn-dark shadow-xs' : 'btn-light text-secondary border-0'"
-          @click="activeFilter = 'paused'"
+          class="btn btn-sm py-1 px-2.5 rounded-lg font-medium transition"
+          :class="activeFilter === 'paused' ? 'bg-slate-900 text-white dark:bg-cyan-500/20 dark:text-cyan-300 dark:border dark:border-cyan-500/30 shadow-xs' : 'btn-light dark:bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-0'"
+          @click="activeFilter === 'paused'"
         >
           Has Paused ({{ countHasPaused }})
         </button>
@@ -314,27 +314,27 @@ onMounted(async () => {
           v-model="searchQuery"
           type="text"
           placeholder="Filter person, task, customer..."
-          class="form-control form-control-sm ps-4"
+          class="form-control form-control-sm ps-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 shadow-none"
         />
-        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2.5 text-muted small" aria-hidden="true"></i>
+        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2.5 text-slate-400 dark:text-slate-500 small" aria-hidden="true"></i>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading && persons.length === 0" class="text-center py-5 text-body-secondary" data-testid="wip-loading">
-      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+    <div v-if="isLoading && persons.length === 0" class="text-center py-5 text-slate-500 dark:text-slate-400" data-testid="wip-loading">
+      <span class="spinner-border spinner-border-sm me-2 text-cyan-500" role="status" aria-hidden="true"></span>
       Loading live operational board...
     </div>
 
     <!-- Empty State -->
     <div
       v-else-if="!isLoading && sortedPersons.length === 0"
-      class="text-center py-5 text-body-secondary bg-white rounded border shadow-xs p-4"
+      class="text-center py-5 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4"
       data-testid="wip-empty-state"
     >
-      <i class="bi bi-check2-circle text-success fs-2 mb-2 d-block" aria-hidden="true"></i>
-      <h6 class="fw-bold text-dark mb-1">No Active Work in Progress</h6>
-      <p class="text-muted small mb-0">
+      <i class="bi bi-check2-circle text-emerald-500 dark:text-emerald-400 fs-2 mb-2 d-block" aria-hidden="true"></i>
+      <h6 class="fw-bold text-slate-900 dark:text-white mb-1">No Active Work in Progress</h6>
+      <p class="text-slate-500 dark:text-slate-400 small mb-0">
         There are currently no active or paused tasks across operations.
       </p>
     </div>
@@ -342,7 +342,7 @@ onMounted(async () => {
     <!-- Filtered Empty State -->
     <div
       v-else-if="!isLoading && persons.length > 0 && filteredPersons.length === 0"
-      class="text-center py-5 text-body-secondary bg-white rounded border shadow-xs p-4"
+      class="text-center py-5 bg-white dark:bg-slate-900/90 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 text-slate-500 dark:text-slate-400"
     >
       <p class="small mb-0">No people match the selected filter.</p>
     </div>
@@ -362,7 +362,7 @@ onMounted(async () => {
         :data-person-id="person.personId"
       >
         <!-- 1. Person Presence & Identity Row -->
-        <header class="d-flex align-items-center justify-content-between pb-2 mb-3 border-bottom border-light-subtle">
+        <header class="d-flex align-items-center justify-content-between pb-2 mb-3 border-bottom border-slate-200 dark:border-slate-800/80">
           <div class="d-flex align-items-center gap-3 overflow-hidden">
             <!-- BaseAvatar with integrated presence beacon -->
             <BaseAvatar
@@ -373,7 +373,7 @@ onMounted(async () => {
 
             <div class="overflow-hidden">
               <div class="d-flex align-items-center gap-2">
-                <h2 class="fs-6 fw-bold mb-0 text-dark text-truncate" :title="person.personName">
+                <h2 class="fs-6 fw-bold mb-0 text-slate-900 dark:text-white text-truncate" :title="person.personName">
                   {{ person.personName }}
                 </h2>
                 <!-- Working status badge using BaseBadge -->
@@ -394,7 +394,7 @@ onMounted(async () => {
                   Paused Only
                 </BaseBadge>
               </div>
-              <span v-if="person.email" class="text-body-secondary small text-truncate d-block mt-0.5">
+              <span v-if="person.email" class="text-slate-500 dark:text-slate-400 small text-truncate d-block mt-0.5">
                 {{ person.email }}
               </span>
             </div>
@@ -428,10 +428,10 @@ onMounted(async () => {
               <!-- Task details -->
               <div class="flex-grow-1 overflow-hidden pe-sm-3">
                 <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                  <span class="text-amber-500 fw-bold small d-inline-flex align-items-center gap-1">
+                  <span class="text-amber-500 fw-bold small d-inline-flex align-items-center gap-1 font-mono">
                     ⚡ In progress
                   </span>
-                  <span class="text-body-secondary small">·</span>
+                  <span class="text-slate-400 small">·</span>
                   <BaseBadge
                     :variant="priorityBadgeVariant(person.inProgressTask.priority)"
                     size="sm"
@@ -440,7 +440,7 @@ onMounted(async () => {
                     {{ person.inProgressTask.priority }}
                   </BaseBadge>
                   <span
-                    class="text-body-secondary small text-truncate"
+                    class="text-slate-500 dark:text-slate-400 small text-truncate"
                     data-testid="task-customer-badge"
                   >
                     {{ resolveCustomerDisplay(person.inProgressTask) }}
@@ -448,10 +448,10 @@ onMounted(async () => {
                   </span>
                 </div>
 
-                <h3 class="fs-6 fw-bold text-dark mb-1 text-truncate hover-primary" :title="person.inProgressTask.title">
+                <h3 class="fs-6 fw-bold text-slate-900 dark:text-white mb-1 text-truncate hover-primary" :title="person.inProgressTask.title">
                   <router-link
                     :to="`/requests/${person.inProgressTask.requestId}`"
-                    class="text-dark text-decoration-none"
+                    class="text-slate-900 dark:text-white dark:hover:text-cyan-400 text-decoration-none"
                     data-testid="task-title-link"
                     @click.stop
                   >
@@ -461,13 +461,13 @@ onMounted(async () => {
 
                 <p
                   v-if="person.inProgressTask.description"
-                  class="text-body-secondary small mb-1 text-truncate"
+                  class="text-slate-600 dark:text-slate-300 small mb-1 text-truncate"
                 >
                   {{ person.inProgressTask.description }}
                 </p>
 
                 <!-- Clean metadata footnote -->
-                <div class="d-flex align-items-center justify-content-between text-body-secondary fs-11 mt-2 pt-2 border-top border-light-subtle">
+                <div class="d-flex align-items-center justify-content-between text-slate-500 dark:text-slate-400 fs-11 mt-2 pt-2 border-top border-slate-200 dark:border-slate-800/80">
                   <span
                     v-if="person.inProgressTask.lastStartedAt"
                     :title="`Started at ${formatTimestamp(person.inProgressTask.lastStartedAt)}`"
@@ -476,7 +476,7 @@ onMounted(async () => {
                   </span>
                   <router-link
                     :to="`/requests/${person.inProgressTask.requestId}`"
-                    class="text-muted text-decoration-none font-monospace fs-11 opacity-75 hover-underline"
+                    class="text-slate-400 dark:text-slate-500 text-decoration-none font-mono fs-11 hover-underline dark:hover:text-cyan-400"
                     data-testid="task-id-link"
                     :title="person.inProgressTask.requestId"
                     @click.stop
@@ -487,28 +487,28 @@ onMounted(async () => {
               </div>
 
               <!-- Prominent Elapsed Time & Inspect Action -->
-              <div class="d-flex flex-sm-column align-items-center align-items-sm-end justify-content-between flex-shrink-0 pt-2 pt-sm-0 border-top border-sm-0">
+              <div class="d-flex flex-sm-column align-items-center align-items-sm-end justify-content-between flex-shrink-0 pt-2 pt-sm-0 border-top border-slate-200 dark:border-slate-800 border-sm-0">
                 <div class="text-sm-end">
                   <div class="d-flex align-items-baseline gap-1">
                     <span
-                      class="elapsed-time-counter fw-bold text-dark d-block"
+                      class="elapsed-time-counter fw-bold text-slate-900 dark:text-white font-mono d-block"
                       :title="`${person.inProgressTask.totalInProgressHours} hrs`"
                       data-testid="in-progress-time-badge"
                     >
                       {{ person.inProgressTask.totalInProgressFormatted }}
                     </span>
-                    <span class="text-body-secondary fs-11">elapsed</span>
+                    <span class="text-slate-500 dark:text-slate-400 fs-11">elapsed</span>
                   </div>
                 </div>
 
                 <div class="d-flex align-items-center gap-2 mt-sm-1">
-                  <span class="text-primary small fw-medium d-inline-flex align-items-center gap-1 hover-primary">
+                  <span class="text-cyan-600 dark:text-cyan-400 small fw-medium d-inline-flex align-items-center gap-1 hover-primary">
                     <span>Inspect</span>
                     <i class="bi bi-arrow-right" aria-hidden="true"></i>
                   </span>
                   <router-link
                     :to="`/requests/${person.inProgressTask.requestId}`"
-                    class="btn btn-sm btn-link text-secondary text-decoration-none p-0 d-inline-flex align-items-center gap-1 opacity-75 hover-primary"
+                    class="btn btn-sm btn-link text-slate-500 dark:text-slate-400 text-decoration-none p-0 d-inline-flex align-items-center gap-1 hover-primary"
                     data-testid="task-view-link"
                     @click.stop
                   >
@@ -522,19 +522,19 @@ onMounted(async () => {
           <!-- Clean idle placeholder -->
           <div
             v-else
-            class="p-3 rounded bg-light-subtle text-body-secondary small fst-italic"
+            class="p-3 rounded-lg bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/60 text-slate-500 dark:text-slate-400 small fst-italic"
             data-testid="idle-placeholder"
           >
-            <i class="bi bi-moon-stars me-1.5 text-secondary" aria-hidden="true"></i>
+            <i class="bi bi-moon-stars me-1.5 text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
             No task currently in progress
           </div>
         </div>
 
         <!-- 3. Paused Work (Secondary, subtle list using BaseCard flat) -->
-        <footer class="paused-work-section pt-2 border-top border-light-subtle">
+        <footer class="paused-work-section pt-2 border-top border-slate-200 dark:border-slate-800/80">
           <div class="d-flex align-items-center justify-content-between mb-2">
             <div class="d-flex align-items-center gap-2">
-              <span class="fs-11 fw-bold text-uppercase text-body-secondary letter-spacing-1">
+              <span class="fs-11 fw-bold text-uppercase text-slate-500 dark:text-slate-400 letter-spacing-1">
                 Paused
               </span>
               <BaseBadge variant="neutral" size="sm">
@@ -546,7 +546,7 @@ onMounted(async () => {
           <!-- Empty paused state (quiet and non-alarmist) -->
           <div
             v-if="!person.pausedTasks || person.pausedTasks.length === 0"
-            class="text-body-secondary small fst-italic"
+            class="text-slate-400 dark:text-slate-500 small fst-italic"
             data-testid="empty-paused-tasks"
           >
             No paused work
@@ -571,10 +571,10 @@ onMounted(async () => {
             >
               <div class="d-flex align-items-center justify-content-between w-100">
                 <div class="d-flex align-items-center gap-2 overflow-hidden pe-2">
-                  <span class="text-secondary opacity-75 fs-11" aria-hidden="true">⏸</span>
+                  <span class="text-slate-400 dark:text-slate-500 fs-11" aria-hidden="true">⏸</span>
                   <router-link
                     :to="`/requests/${task.requestId}`"
-                    class="text-dark text-decoration-none fw-medium small text-truncate hover-primary"
+                    class="text-slate-800 dark:text-slate-200 dark:hover:text-cyan-400 text-decoration-none fw-medium small text-truncate hover-primary"
                     data-testid="paused-task-title-link"
                     @click.stop
                   >
@@ -588,7 +588,7 @@ onMounted(async () => {
                     {{ task.priority }}
                   </BaseBadge>
                   <span
-                    class="text-body-secondary fs-11 text-truncate d-none d-md-inline"
+                    class="text-slate-500 dark:text-slate-400 fs-11 text-truncate d-none d-md-inline"
                     data-testid="paused-task-customer-badge"
                   >
                     · {{ resolveCustomerDisplay(task) }}
@@ -606,13 +606,13 @@ onMounted(async () => {
 
                 <div class="d-flex align-items-center gap-2 flex-shrink-0">
                   <span
-                    class="fw-semibold small text-body-secondary"
+                    class="fw-semibold small text-slate-500 dark:text-slate-400 font-mono"
                     :title="`${task.totalInProgressHours} hrs`"
                     data-testid="paused-time-badge"
                   >
                     {{ task.totalInProgressFormatted }}
                   </span>
-                  <span class="text-secondary small">→</span>
+                  <span class="text-slate-400 dark:text-slate-500 small">→</span>
                   <router-link
                     :to="`/requests/${task.requestId}`"
                     class="d-none"
@@ -638,7 +638,7 @@ onMounted(async () => {
     >
       <template v-if="selectedTask">
         <!-- Status & Request ID Row -->
-        <div class="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom">
+        <div class="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom dark:border-slate-800">
           <div class="d-flex align-items-center gap-2">
             <BaseBadge
               :variant="selectedTaskType === 'in-progress' ? 'success' : 'warning'"
@@ -658,36 +658,36 @@ onMounted(async () => {
 
         <!-- Description -->
         <div class="mb-4">
-          <h6 class="text-uppercase text-secondary fs-11 fw-bold letter-spacing-1 mb-1">Description</h6>
-          <p class="text-secondary small mb-0 lh-base">
+          <h6 class="text-uppercase text-slate-500 dark:text-slate-400 fs-11 fw-bold letter-spacing-1 mb-1">Description</h6>
+          <p class="text-slate-700 dark:text-slate-300 small mb-0 lh-base">
             {{ selectedTask.description || 'No detailed description provided.' }}
           </p>
         </div>
 
         <!-- Quick Metrics Grid -->
-        <div class="row g-3 py-3 border-top border-bottom mb-4 text-xs">
+        <div class="row g-3 py-3 border-top border-bottom dark:border-slate-800 mb-4 text-xs">
           <div class="col-6">
-            <span class="text-uppercase text-body-secondary fs-11 fw-semibold d-block letter-spacing-1">Assigned Owner</span>
-            <span class="fw-semibold text-dark mt-1 d-block">
+            <span class="text-uppercase text-slate-500 dark:text-slate-400 fs-11 fw-semibold d-block letter-spacing-1">Assigned Owner</span>
+            <span class="fw-semibold text-slate-900 dark:text-white mt-1 d-block">
               {{ selectedPerson?.personName || '—' }}
             </span>
           </div>
           <div class="col-6">
-            <span class="text-uppercase text-body-secondary fs-11 fw-semibold d-block letter-spacing-1">Elapsed Duration</span>
-            <span class="fw-bold text-teal mt-1 d-block">
+            <span class="text-uppercase text-slate-500 dark:text-slate-400 fs-11 fw-semibold d-block letter-spacing-1">Elapsed Duration</span>
+            <span class="fw-bold text-cyan-600 dark:text-cyan-400 font-mono mt-1 d-block">
               {{ selectedTask.totalInProgressFormatted }}
-              <span class="text-muted fw-normal fs-11">({{ selectedTask.totalInProgressHours }} hrs)</span>
+              <span class="text-slate-500 dark:text-slate-400 fw-normal fs-11">({{ selectedTask.totalInProgressHours }} hrs)</span>
             </span>
           </div>
           <div class="col-6">
-            <span class="text-uppercase text-body-secondary fs-11 fw-semibold d-block letter-spacing-1">Customer</span>
-            <span class="fw-semibold text-dark mt-1 d-block text-truncate">
+            <span class="text-uppercase text-slate-500 dark:text-slate-400 fs-11 fw-semibold d-block letter-spacing-1">Customer</span>
+            <span class="fw-semibold text-slate-900 dark:text-white mt-1 d-block text-truncate">
               {{ resolveCustomerDisplay(selectedTask) }}
             </span>
           </div>
           <div class="col-6">
-            <span class="text-uppercase text-body-secondary fs-11 fw-semibold d-block letter-spacing-1">Priority & Type</span>
-            <span class="fw-semibold text-dark mt-1 d-block">
+            <span class="text-uppercase text-slate-500 dark:text-slate-400 fs-11 fw-semibold d-block letter-spacing-1">Priority & Type</span>
+            <span class="fw-semibold text-slate-900 dark:text-white mt-1 d-block">
               {{ selectedTask.priority }} · {{ selectedTask.requestType || 'General' }}
             </span>
           </div>
@@ -695,15 +695,15 @@ onMounted(async () => {
 
         <!-- Operational Timing -->
         <div class="mb-4">
-          <span class="text-uppercase text-body-secondary fs-11 fw-semibold d-block letter-spacing-1 mb-2">Operational Timing</span>
-          <div class="p-3 rounded bg-light border small space-y-2">
+          <span class="text-uppercase text-slate-500 dark:text-slate-400 fs-11 fw-semibold d-block letter-spacing-1 mb-2">Operational Timing</span>
+          <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 small space-y-2">
             <div class="d-flex justify-content-between mb-1">
-              <span class="text-secondary">Work session started:</span>
-              <span class="fw-medium text-dark">{{ formatTimestamp(selectedTask.lastStartedAt) }}</span>
+              <span class="text-slate-500 dark:text-slate-400">Work session started:</span>
+              <span class="fw-medium text-slate-900 dark:text-white font-mono">{{ formatTimestamp(selectedTask.lastStartedAt) }}</span>
             </div>
             <div class="d-flex justify-content-between">
-              <span class="text-secondary">Created:</span>
-              <span class="fw-medium text-dark">{{ formatTimestamp(selectedTask.createdAt) }}</span>
+              <span class="text-slate-500 dark:text-slate-400">Created:</span>
+              <span class="fw-medium text-slate-900 dark:text-white font-mono">{{ formatTimestamp(selectedTask.createdAt) }}</span>
             </div>
           </div>
         </div>
@@ -712,9 +712,9 @@ onMounted(async () => {
       <!-- Action Footer -->
       <template #footer="{ close }">
         <div class="d-flex align-items-center justify-content-between w-100 gap-2">
-          <span class="text-muted small">Press ESC to dismiss</span>
+          <span class="text-slate-500 dark:text-slate-400 small">Press ESC to dismiss</span>
           <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-secondary btn-sm" @click="close">
+            <button type="button" class="btn btn-outline-secondary btn-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700" @click="close">
               Close
             </button>
             <button
@@ -753,6 +753,10 @@ onMounted(async () => {
   color: var(--cakra-primary, #364f6b) !important;
 }
 
+:global(.dark) .hover-primary:hover {
+  color: #22d3ee !important;
+}
+
 .hover-underline:hover {
   text-decoration: underline !important;
 }
@@ -771,6 +775,10 @@ onMounted(async () => {
 
 .active-task-card {
   border-left: 3px solid var(--cakra-primary, #364f6b) !important;
+}
+
+:global(.dark) .active-task-card {
+  border-left: 3px solid #22d3ee !important;
 }
 
 .elapsed-time-counter {

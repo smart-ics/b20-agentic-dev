@@ -441,7 +441,7 @@ onMounted(async () => {
           <select
             id="searchCustomerSelect"
             v-model="searchFilters.customerId"
-            class="form-select form-select-sm"
+            class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             style="min-width: 130px; max-width: 180px;"
             :disabled="isSearching || isLoadingLookups"
             data-testid="search-customer-select"
@@ -463,7 +463,7 @@ onMounted(async () => {
           <select
             id="searchProductSelect"
             v-model="searchFilters.productId"
-            class="form-select form-select-sm"
+            class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             style="min-width: 130px; max-width: 170px;"
             :disabled="isSearching || isLoadingLookups"
             data-testid="search-product-select"
@@ -485,7 +485,7 @@ onMounted(async () => {
           <select
             id="searchStatusSelect"
             v-model="searchFilters.status"
-            class="form-select form-select-sm"
+            class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             style="min-width: 110px; max-width: 140px;"
             :disabled="isSearching"
             data-testid="search-status-select"
@@ -503,7 +503,7 @@ onMounted(async () => {
             id="searchKeywordInput"
             v-model="searchFilters.searchTerm"
             type="search"
-            class="form-control form-control-sm"
+            class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             placeholder="Search keywords..."
             :disabled="isSearching"
             data-testid="search-keyword-input"
@@ -536,7 +536,7 @@ onMounted(async () => {
     </div>
 
     <!-- Search Results Table Card -->
-    <div class="card border mb-2">
+    <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
       <div class="table-responsive">
         <table
           class="table table-hover align-middle mb-0"
@@ -680,7 +680,7 @@ onMounted(async () => {
 
       <!-- Compact Pagination Controls -->
       <div
-        class="card-footer bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-1 px-3"
+        class="card-footer bg-slate-950/60 border-t border-slate-800 d-flex flex-wrap justify-content-between align-items-center gap-2 py-1 px-3"
         data-testid="search-pagination"
       >
         <div class="small text-body-secondary fs-11">
@@ -722,8 +722,8 @@ onMounted(async () => {
     </div>
 
     <!-- Selected Request State History Panel -->
-    <div class="card border" data-testid="selected-request-history-panel">
-      <div class="card-header py-1.5 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="card bg-slate-900/90 border border-slate-800 text-slate-100" data-testid="selected-request-history-panel">
+      <div class="card-header bg-slate-950/60 border-b border-slate-800 py-1.5 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div class="d-flex align-items-center gap-1.5">
           <i class="bi bi-clock-history text-primary" aria-hidden="true"></i>
           <span class="fw-semibold">State History</span>

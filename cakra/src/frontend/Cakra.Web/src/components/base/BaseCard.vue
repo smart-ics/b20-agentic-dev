@@ -15,12 +15,65 @@ const props = withDefaults(defineProps<BaseCardProps>(), {
   hoverEffect: false,
 })
 
+const variantClasses = computed(() => {
+  switch (props.variant) {
+    case 'bordered':
+      return 'bg-white border border-slate-200 shadow-sm text-slate-900 dark:bg-slate-900/90 dark:border-slate-800 dark:shadow-lg dark:text-slate-100'
+    case 'flat':
+      return 'bg-slate-100 border border-transparent text-slate-900 dark:bg-slate-950/60 dark:border-slate-800/80 dark:text-slate-100'
+    case 'ghost':
+      return 'bg-transparent border border-transparent text-slate-900 dark:text-slate-100'
+    case 'elevated':
+      return 'bg-white border border-slate-200 shadow-md text-slate-900 dark:bg-slate-900 dark:border-slate-700/80 dark:shadow-2xl dark:text-slate-100'
+    default:
+      return 'bg-white border border-slate-200 shadow-sm text-slate-900 dark:bg-slate-900/90 dark:border-slate-800 dark:shadow-lg dark:text-slate-100'
+  }
+})
+
+const paddingClasses = computed(() => {
+  switch (props.padding) {
+    case 'none':
+      return 'p-0'
+    case 'sm':
+      return 'p-3'
+    case 'lg':
+      return 'p-5'
+    case 'md':
+    default:
+      return 'p-4'
+  }
+})
+
+const roundedClasses = computed(() => {
+  switch (props.rounded) {
+    case 'sm':
+      return 'rounded-md'
+    case 'md':
+      return 'rounded-lg'
+    case 'xl':
+      return 'rounded-2xl'
+    case 'lg':
+    default:
+      return props.variant === 'elevated' ? 'rounded-2xl' : 'rounded-xl'
+  }
+})
+
+const hoverClasses = computed(() => {
+  if (!props.hoverEffect) return ''
+  return 'transition duration-200 ease-in-out hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md dark:hover:shadow-cyan-500/5 hover:-translate-y-0.5'
+})
+
 const computedClasses = computed(() => [
   'base-card',
   `base-card--${props.variant}`,
   `base-card--padding-${props.padding}`,
   `base-card--rounded-${props.rounded}`,
   { 'base-card--hover': props.hoverEffect },
+  'box-border transition-colors',
+  variantClasses.value,
+  paddingClasses.value,
+  roundedClasses.value,
+  hoverClasses.value,
 ])
 </script>
 
@@ -33,84 +86,37 @@ const computedClasses = computed(() => [
 <style scoped>
 .base-card {
   box-sizing: border-box;
-  color: var(--cakra-text-main, #0f172a);
 }
 
-/* Card Variants */
-.base-card--bordered {
-  background: var(--cakra-bg-surface, #ffffff);
-  border: 1px solid var(--cakra-border, #e2e8f0);
-  box-shadow: var(--cakra-shadow-xs, 0 1px 2px 0 rgb(0 0 0 / 0.04));
+/* Scoped dark-mode fallbacks */
+:global(.dark) .base-card--bordered {
+  background-color: rgba(15, 23, 42, 0.9);
+  border-color: #1e293b;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  color: #f1f5f9;
 }
 
-.base-card--flat {
-  background: var(--cakra-bg-subtle, #f1f5f9);
-  border: 1px solid transparent;
-  box-shadow: none;
+:global(.dark) .base-card--flat {
+  background-color: rgba(2, 6, 23, 0.6);
+  border-color: rgba(30, 41, 59, 0.8);
+  color: #f1f5f9;
 }
 
-.base-card--ghost {
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
+:global(.dark) .base-card--ghost {
+  background-color: transparent;
+  border-color: transparent;
+  color: #f1f5f9;
 }
 
-.base-card--elevated {
-  background: var(--cakra-bg-surface, #ffffff);
-  border: 1px solid var(--cakra-border-subtle, #f1f5f9);
-  box-shadow: var(--cakra-shadow-md, 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04));
+:global(.dark) .base-card--elevated {
+  background-color: #0f172a;
+  border-color: rgba(51, 65, 85, 0.8);
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+  color: #f1f5f9;
 }
 
-/* Padding Variants */
-.base-card--padding-none {
-  padding: 0;
-}
-
-.base-card--padding-sm {
-  padding: 0.5rem 0.75rem;
-}
-
-.base-card--padding-md {
-  padding: 1rem;
-}
-
-.base-card--padding-lg {
-  padding: 1.25rem;
-}
-
-/* Border Radius Variants */
-.base-card--rounded-sm {
-  border-radius: var(--cakra-radius-sm, 6px);
-}
-
-.base-card--rounded-md {
-  border-radius: var(--cakra-radius-md, 8px);
-}
-
-.base-card--rounded-lg {
-  border-radius: var(--cakra-radius-lg, 12px);
-}
-
-.base-card--rounded-xl {
-  border-radius: var(--cakra-radius-xl, 16px);
-}
-
-/* Hover Effect */
-.base-card--hover {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
-}
-
-.base-card--bordered.base-card--hover:hover {
-  border-color: var(--cakra-border-strong, #cbd5e1);
-  box-shadow: var(--cakra-shadow-sm, 0 1px 3px 0 rgb(0 0 0 / 0.08));
-}
-
-.base-card--flat.base-card--hover:hover {
-  background-color: var(--cakra-slate-100, #f1f5f9);
-}
-
-.base-card--elevated.base-card--hover:hover {
-  box-shadow: var(--cakra-shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 0.08));
-  transform: translateY(-1px);
+:global(.dark) .base-card--hover:hover {
+  border-color: #334155;
+  box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.05);
 }
 </style>

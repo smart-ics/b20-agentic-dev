@@ -936,7 +936,7 @@ const statusAccentClass = computed<string>(() => {
 
 <template>
   <article
-    class="op-feed-row op-feed-card p-3 mb-2.5 rounded-2 bg-white shadow-sm transition-all position-relative"
+    class="op-feed-row op-feed-card p-3.5 mb-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-sm dark:shadow-lg transition-all position-relative"
     :class="statusAccentClass"
     :data-testid="`feed-card-${resolvedPostId}`"
   >
@@ -946,7 +946,7 @@ const statusAccentClass = computed<string>(() => {
         <!-- Event Type Badge (SYS / ESCALATION) with muted calm colors -->
         <span
           v-if="isEscalation"
-          class="badge font-monospace fs-11 fw-medium bg-danger-subtle text-danger border border-danger-subtle"
+          class="badge font-mono fs-11 fw-medium bg-rose-500/15 text-rose-400 border border-rose-500/30"
           data-testid="feed-card-exception-badge"
         >
           <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
@@ -955,7 +955,7 @@ const statusAccentClass = computed<string>(() => {
 
         <span
           v-else-if="isSystemGenerated"
-          class="badge font-monospace fs-11 fw-medium bg-info-subtle text-info-emphasis border border-info-subtle"
+          class="badge font-mono fs-11 fw-medium bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
         >
           SYS
         </span>
@@ -964,7 +964,7 @@ const statusAccentClass = computed<string>(() => {
         <RouterLink
           v-if="effectiveRequestId"
           :to="`/requests/${effectiveRequestId}`"
-          class="badge font-monospace fs-11 fw-medium bg-light text-secondary border border-secondary-subtle text-decoration-none text-hover-primary"
+          class="badge font-mono fs-11 fw-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-decoration-none hover:text-cyan-600 dark:hover:text-cyan-400"
           data-testid="feed-card-request-link"
           :title="requestTooltipTitle"
           @click.stop="navigateToRequest(effectiveRequestId)"
@@ -976,7 +976,7 @@ const statusAccentClass = computed<string>(() => {
         <RouterLink
           v-if="effectiveWorkPackageId"
           :to="`/work-packages/${effectiveWorkPackageId}`"
-          class="badge font-monospace fs-11 fw-medium bg-light text-secondary border border-secondary-subtle text-decoration-none"
+          class="badge font-mono fs-11 fw-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-decoration-none hover:text-cyan-600 dark:hover:text-cyan-400"
           data-testid="feed-card-work-package-link"
           @click.stop
         >
@@ -985,12 +985,12 @@ const statusAccentClass = computed<string>(() => {
       </div>
 
       <!-- Right Header Actions: Author, Timestamp, and Quick Reaction Pill -->
-      <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0 text-muted fs-11">
+      <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0 text-slate-500 dark:text-slate-400 fs-11">
         <span class="d-none d-sm-inline" data-testid="feed-card-author">
           <i class="bi bi-person me-0.5" aria-hidden="true"></i>
           {{ authorDisplay }}
         </span>
-        <span class="text-secondary-emphasis" data-testid="feed-card-created-at">
+        <span class="text-slate-500 dark:text-slate-400 font-mono" data-testid="feed-card-created-at">
           <i class="bi bi-clock me-0.5" aria-hidden="true"></i>
           {{ formatTimestamp(item.createdAt) }}
         </span>
@@ -1004,7 +1004,7 @@ const statusAccentClass = computed<string>(() => {
           <!-- Floating Reaction Palette -->
           <div
             v-if="showReactionPalette"
-            class="op-reaction-palette"
+            class="op-reaction-palette border border-slate-200 dark:border-slate-700 shadow-xl rounded-full"
             data-testid="feed-card-palette"
             @mouseenter="onReactionAreaMouseEnter"
             @mouseleave="onReactionAreaMouseLeave"
@@ -1026,8 +1026,8 @@ const statusAccentClass = computed<string>(() => {
           <!-- React Action Button (Compact Pill) -->
           <button
             type="button"
-            class="btn btn-sm py-0.5 px-2 rounded-pill fs-11 font-medium d-inline-flex align-items-center gap-1 border border-light-subtle"
-            :class="activeReactionMeta ? `${activeReactionMeta.colorClass} border-primary bg-primary bg-opacity-10 fw-semibold` : 'btn-light text-secondary'"
+            class="btn btn-sm py-0.5 px-2 rounded-pill fs-11 font-medium d-inline-flex align-items-center gap-1 border transition"
+            :class="activeReactionMeta ? `${activeReactionMeta.colorClass} border-cyan-500/30 bg-cyan-500/15 fw-semibold` : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'"
             data-testid="feed-card-react-btn"
             :disabled="isTogglingReaction"
             @click.stop="toggleQuickSeenReaction"
@@ -1038,7 +1038,7 @@ const statusAccentClass = computed<string>(() => {
               aria-hidden="true"
             ></i>
             <span>{{ activeReactionMeta ? activeReactionMeta.label : 'Seen' }}</span>
-            <span v-if="totalReactionCount > 0" class="fw-bold font-monospace ms-0.5" data-testid="feed-card-reaction-count">({{ totalReactionCount }})</span>
+            <span v-if="totalReactionCount > 0" class="fw-bold font-mono ms-0.5" data-testid="feed-card-reaction-count">({{ totalReactionCount }})</span>
           </button>
         </div>
       </div>
@@ -1048,7 +1048,7 @@ const statusAccentClass = computed<string>(() => {
     <div class="mb-1">
       <button
         type="button"
-        class="btn btn-link text-dark fw-semibold text-start p-0 text-decoration-none feed-title-link w-100"
+        class="btn btn-link text-slate-900 dark:text-white dark:hover:text-cyan-400 fw-semibold text-start p-0 text-decoration-none feed-title-link w-100"
         data-testid="feed-card-title"
         :title="item.title"
         @click.stop="openModal"
@@ -1060,7 +1060,7 @@ const statusAccentClass = computed<string>(() => {
     <!-- Row 3: Feed Message / Content Excerpt (Clear & Readable) -->
     <div
       v-if="shouldShowExcerpt"
-      class="text-body-secondary fs-12 mb-2 line-clamp-2 cursor-pointer lh-base"
+      class="text-slate-600 dark:text-slate-300 fs-12 mb-2 line-clamp-2 cursor-pointer lh-base"
       data-testid="feed-card-excerpt"
       :title="contentExcerpt"
       @click="openModal"
@@ -1069,35 +1069,35 @@ const statusAccentClass = computed<string>(() => {
     </div>
 
     <!-- Row 3: Metadata Footer & Engagement Summary (Customer, Product, Signals, Comment trigger) -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-1.5 pt-1 border-top border-light-subtle">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-1.5 pt-1.5 border-top border-slate-200 dark:border-slate-800/80">
       <!-- Left Metadata Chips -->
       <div class="d-flex flex-wrap align-items-center gap-1.5 min-w-0">
         <!-- Customer Tag -->
         <span
           v-if="customerDisplayCode"
-          class="badge bg-light text-dark border text-truncate font-monospace fs-11"
+          class="badge bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-truncate font-mono fs-11"
           style="max-width: 140px; cursor: help;"
           data-testid="feed-card-customer"
           :title="customerTooltipName"
         >
-          <i class="bi bi-building me-1 text-secondary" aria-hidden="true"></i>
+          <i class="bi bi-building me-1 text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
           {{ customerDisplayCode }}
         </span>
 
         <!-- Product Tag -->
         <span
           v-if="productDisplayCode"
-          class="badge bg-light text-dark border text-truncate font-monospace fs-11"
+          class="badge bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-truncate font-mono fs-11"
           style="max-width: 130px; cursor: help;"
           data-testid="feed-card-product"
           :title="productTooltipName"
         >
-          <i class="bi bi-box-seam me-1 text-secondary" aria-hidden="true"></i>
+          <i class="bi bi-box-seam me-1 text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
           {{ productDisplayCode }}
         </span>
 
         <!-- Reactions breakdown badges -->
-        <div class="d-flex align-items-center gap-1 text-muted fs-11 ms-1" data-testid="feed-card-reaction-summary">
+        <div class="d-flex align-items-center gap-1 text-slate-500 dark:text-slate-400 fs-11 ms-1" data-testid="feed-card-reaction-summary">
           <span v-if="totalReactionCount > 0" class="d-flex align-items-center gap-0.5">
             <span
               v-for="opt in presentReactionOptions"
@@ -1116,8 +1116,8 @@ const statusAccentClass = computed<string>(() => {
         <!-- Comment Toggle Button (Expand/Collapse drawer) -->
         <button
           type="button"
-          class="btn btn-sm py-0 px-2 rounded-pill fs-11 d-inline-flex align-items-center gap-1 border transition-colors"
-          :class="isCommentsOpen ? 'btn-primary text-white' : 'btn-light text-secondary'"
+          class="btn btn-sm py-0.5 px-2.5 rounded-pill fs-11 d-inline-flex align-items-center gap-1 border transition"
+          :class="isCommentsOpen ? 'bg-cyan-600 text-white dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'"
           data-testid="feed-card-comment-btn"
           @click.stop="toggleComments"
           title="Toggle comments drawer"
@@ -1129,7 +1129,7 @@ const statusAccentClass = computed<string>(() => {
         <!-- View Full Thread Button -->
         <button
           type="button"
-          class="btn btn-sm btn-link text-decoration-none py-0 px-1 fs-11 text-body-secondary"
+          class="btn btn-sm btn-link text-decoration-none py-0 px-1 fs-11 text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400"
           data-testid="feed-card-open-modal-btn"
           @click.stop="openModal"
         >
@@ -1139,10 +1139,10 @@ const statusAccentClass = computed<string>(() => {
     </div>
 
     <!-- Collapsible Comments Section (Opens smoothly on demand) -->
-    <div v-if="isCommentsOpen" class="pt-2 border-top mt-2 bg-light bg-opacity-50 rounded-2 p-2">
+    <div v-if="isCommentsOpen" class="pt-2.5 border-top border-slate-200 dark:border-slate-800 mt-2 bg-slate-50 dark:bg-slate-950/60 rounded-xl p-2.5">
       <!-- Loading comments spinner -->
-      <div v-if="isLoadingComments" class="text-center py-2 text-muted fs-11">
-        <div class="spinner-border spinner-border-sm text-primary me-1" role="status"></div>
+      <div v-if="isLoadingComments" class="text-center py-2 text-slate-400 fs-11">
+        <div class="spinner-border spinner-border-sm text-cyan-500 me-1" role="status"></div>
         <span>Loading comments...</span>
       </div>
 
@@ -1153,7 +1153,7 @@ const statusAccentClass = computed<string>(() => {
       >
         <button
           type="button"
-          class="btn btn-link btn-sm text-decoration-none p-0 text-muted fs-11 fw-semibold"
+          class="btn btn-link btn-sm text-decoration-none p-0 text-slate-500 dark:text-slate-400 hover:text-cyan-400 fs-11 fw-semibold"
           data-testid="feed-card-expand-comments-btn"
           @click.stop="showAllComments = true"
         >
@@ -1165,7 +1165,7 @@ const statusAccentClass = computed<string>(() => {
       <!-- Comments List (Speech Bubbles) -->
       <div
         v-if="displayedComments.length > 0"
-        class="d-flex flex-column gap-1.5 mb-2"
+        class="d-flex flex-column gap-2 mb-2"
         data-testid="feed-card-comments-list"
       >
         <div
@@ -1181,21 +1181,21 @@ const statusAccentClass = computed<string>(() => {
 
           <!-- Speech Bubble -->
           <div class="flex-grow-1">
-            <div class="op-comment-bubble d-inline-block max-w-100">
+            <div class="op-comment-bubble d-inline-block max-w-100 border border-slate-200 dark:border-slate-800 rounded-2xl px-3 py-2 shadow-xs text-slate-800 dark:text-slate-200">
               <div class="d-flex align-items-baseline gap-2">
-                <span class="fw-semibold text-dark fs-12">{{ formatCommentAuthor(comment) }}</span>
-                <span class="text-muted fs-10" :title="formatTimestamp(comment.createdAt)">
+                <span class="fw-semibold text-slate-900 dark:text-white fs-12">{{ formatCommentAuthor(comment) }}</span>
+                <span class="text-slate-400 dark:text-slate-500 font-mono fs-10" :title="formatTimestamp(comment.createdAt)">
                   {{ formatRelativeTime(comment.createdAt) }}
                 </span>
               </div>
-              <div class="text-secondary fs-12 mt-0.5 text-break">
+              <div class="text-slate-700 dark:text-slate-300 fs-12 mt-0.5 text-break">
                 {{ comment.content }}
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div v-else-if="!isLoadingComments && localCommentCount === 0" class="text-muted fs-11 mb-2 ps-1 fst-italic">
+      <div v-else-if="!isLoadingComments && localCommentCount === 0" class="text-slate-400 dark:text-slate-500 fs-11 mb-2 ps-1 fst-italic">
         No comments yet. Write an operational note below.
       </div>
 
@@ -1212,7 +1212,7 @@ const statusAccentClass = computed<string>(() => {
             ref="commentTextareaRef"
             v-model="newCommentText"
             rows="1"
-            class="form-control form-control-sm pe-5 fs-12 rounded-3 bg-white"
+            class="form-control form-control-sm pe-5 fs-12 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 shadow-none"
             placeholder="Write an operational comment... (Enter to submit, Shift+Enter for newline)"
             data-testid="feed-card-comment-input"
             :disabled="isSubmittingComment"
@@ -1222,7 +1222,7 @@ const statusAccentClass = computed<string>(() => {
           <!-- Inline Send Button -->
           <button
             type="button"
-            class="btn btn-sm btn-link text-primary position-absolute end-0 top-50 translate-middle-y me-1 p-1"
+            class="btn btn-sm btn-link text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 position-absolute end-0 top-50 translate-middle-y me-1 p-1"
             :class="{ 'opacity-25': !newCommentText.trim() || isSubmittingComment }"
             :disabled="!newCommentText.trim() || isSubmittingComment"
             data-testid="feed-card-comment-submit-btn"
@@ -1240,7 +1240,7 @@ const statusAccentClass = computed<string>(() => {
       </div>
 
       <!-- Inline Comment Error Message -->
-      <div v-if="commentError" class="text-danger fs-11 mt-1 ps-4">
+      <div v-if="commentError" class="text-rose-400 fs-11 mt-1 ps-4">
         <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
         {{ commentError }}
       </div>
@@ -1250,15 +1250,24 @@ const statusAccentClass = computed<string>(() => {
 
 <style scoped>
 .op-feed-card {
-  border: 1px solid #e5e7eb !important;
-  background-color: #ffffff;
   border-left-width: 4px !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  background-color: #ffffff;
+  border-color: #e2e8f0;
 }
 
-.op-feed-card:hover {
-  border-color: #d1d5db !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+:global(html.dark) .op-feed-card,
+:global([data-bs-theme="dark"]) .op-feed-card {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+:global(html.dark) .op-feed-card:hover,
+:global([data-bs-theme="dark"]) .op-feed-card:hover {
+  background-color: rgba(15, 23, 42, 1) !important;
+  border-color: #334155 !important;
+  box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.05) !important;
 }
 
 /* 4px Left Status Accent Bars */
@@ -1267,31 +1276,21 @@ const statusAccentClass = computed<string>(() => {
 }
 
 .status-accent-cyan {
-  border-left-color: #06b6d4 !important;
+  border-left-color: #22d3ee !important;
 }
 
 .status-accent-blue {
-  border-left-color: #3b82f6 !important;
+  border-left-color: #38bdf8 !important;
 }
 
 .status-accent-gray {
-  border-left-color: #9ca3af !important;
+  border-left-color: #64748b !important;
 }
 
 .feed-title-link {
-  color: #111827 !important;
   font-size: 0.875rem; /* 14px */
   line-height: 1.35;
   transition: color 0.15s ease;
-}
-
-.feed-title-link:hover {
-  color: #2563eb !important;
-}
-
-.text-hover-primary:hover {
-  color: #2563eb !important;
-  text-decoration: underline !important;
 }
 
 .line-clamp-2 {

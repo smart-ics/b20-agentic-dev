@@ -408,10 +408,10 @@ onMounted(async () => {
     <!-- Create Product Inline Form Card -->
     <div
       v-if="showCreateForm"
-      class="card shadow-none border border-primary mb-2"
+      class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2"
       data-testid="create-product-modal"
     >
-      <div class="card-header py-1 px-2 bg-primary text-white d-flex justify-content-between align-items-center">
+      <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 text-white d-flex justify-content-between align-items-center">
         <span class="fw-semibold small">
           <i class="bi bi-box-seam me-1" aria-hidden="true"></i>Create New Product
         </span>
@@ -433,7 +433,7 @@ onMounted(async () => {
                 id="createProductCode"
                 v-model="createForm.code"
                 type="text"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 placeholder="e.g. MYHOSPITAL"
                 maxlength="50"
                 required
@@ -450,7 +450,7 @@ onMounted(async () => {
                 id="createProductName"
                 v-model="createForm.name"
                 type="text"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 placeholder="e.g. MyHospital"
                 maxlength="200"
                 required
@@ -466,7 +466,7 @@ onMounted(async () => {
               <select
                 id="createProductOwner"
                 v-model="createForm.ownerPersonId"
-                class="form-select form-select-sm"
+                class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 required
                 :disabled="isSubmitting"
                 data-testid="create-product-owner-select"
@@ -490,7 +490,7 @@ onMounted(async () => {
                 id="createProductDescription"
                 v-model="createForm.description"
                 type="text"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 maxlength="1000"
                 placeholder="Brief summary of product's business scope"
                 :disabled="isSubmitting"
@@ -530,13 +530,13 @@ onMounted(async () => {
     <!-- Edit Product Inline Form Card -->
     <div
       v-if="editingProduct"
-      class="card shadow-none border border-secondary mb-2"
+      class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2"
       data-testid="edit-product-modal"
     >
-      <div class="card-header py-1 px-2 bg-body-tertiary d-flex justify-content-between align-items-center">
+      <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex justify-content-between align-items-center">
         <span class="fw-semibold small">
           <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>
-          Edit Product: <code class="text-primary">{{ editForm.code }}</code>
+          Edit Product: <code class="text-cyan-400">{{ editForm.code }}</code>
         </span>
         <button
           type="button"
@@ -552,7 +552,7 @@ onMounted(async () => {
               <label class="form-label mb-0 small fw-medium" style="font-size: 11px">Product Code</label>
               <input
                 type="text"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100"
                 :value="editForm.code"
                 disabled
                 readonly
@@ -567,7 +567,7 @@ onMounted(async () => {
                 id="editProductName"
                 v-model="editForm.name"
                 type="text"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 maxlength="200"
                 required
                 :disabled="isSubmitting"
@@ -582,7 +582,7 @@ onMounted(async () => {
               <select
                 id="editProductOwner"
                 v-model="editForm.ownerPersonId"
-                class="form-select form-select-sm"
+                class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 required
                 :disabled="isSubmitting"
                 data-testid="edit-product-owner-select"
@@ -605,7 +605,7 @@ onMounted(async () => {
                 id="editProductDescription"
                 v-model="editForm.description"
                 type="text"
-                class="form-control form-control-sm"
+                class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                 maxlength="1000"
                 :disabled="isSubmitting"
                 data-testid="edit-product-description-input"
@@ -613,7 +613,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
+          <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-t border-slate-800">
             <button
               type="button"
               class="btn btn-outline-secondary btn-sm"
@@ -642,7 +642,7 @@ onMounted(async () => {
     </div>
 
     <!-- Product Catalog Table -->
-    <div class="card card-table shadow-none border mb-2">
+    <div class="card card-table shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
       <div class="card-body p-0">
         <div class="table-responsive">
           <table

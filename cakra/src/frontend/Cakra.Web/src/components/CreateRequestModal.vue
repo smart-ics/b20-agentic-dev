@@ -261,15 +261,15 @@ onBeforeUnmount(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content shadow border">
-          <div class="modal-header py-1 px-3 bg-body-tertiary">
+        <div class="modal-content shadow-2xl border border-slate-800 bg-slate-900/95 text-slate-100">
+          <div class="modal-header py-1 px-3 bg-slate-950/60 border-b border-slate-800">
             <h2 id="createRequestModalTitle" class="modal-title h6 fw-bold mb-0">
-              <i class="bi bi-file-earmark-plus me-1 text-primary" aria-hidden="true"></i>
+              <i class="bi bi-file-earmark-plus me-1 text-cyan-400" aria-hidden="true"></i>
               Create New Request
             </h2>
             <button
               type="button"
-              class="btn-close py-1 px-2"
+              class="btn-close btn-close-white py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting"
               @click="handleClose"
@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
               <div class="row g-2">
                 <!-- Title -->
                 <div class="col-12 col-md-8">
-                  <label for="createRequestTitle" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                  <label for="createRequestTitle" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                     Title <span class="text-danger">*</span>
                   </label>
                   <input
@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
                     v-model="form.title"
                     type="text"
                     name="title"
-                    class="form-control form-control-sm"
+                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :class="{ 'is-invalid': validationErrors.title }"
                     placeholder="Brief summary or subject of the request"
                     maxlength="255"
@@ -321,14 +321,14 @@ onBeforeUnmount(() => {
 
                 <!-- Request Type -->
                 <div class="col-6 col-md-2">
-                  <label for="createRequestType" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                  <label for="createRequestType" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                     Type
                   </label>
                   <select
                     id="createRequestType"
                     v-model="form.requestType"
                     name="requestType"
-                    class="form-select form-select-sm"
+                    class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :disabled="isSubmitting"
                     data-testid="request-type-select"
                   >
@@ -340,14 +340,14 @@ onBeforeUnmount(() => {
 
                 <!-- Priority -->
                 <div class="col-6 col-md-2">
-                  <label for="createRequestPriority" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                  <label for="createRequestPriority" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                     Priority
                   </label>
                   <select
                     id="createRequestPriority"
                     v-model="form.priority"
                     name="priority"
-                    class="form-select form-select-sm"
+                    class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :disabled="isSubmitting"
                     data-testid="request-priority-select"
                   >
@@ -359,14 +359,14 @@ onBeforeUnmount(() => {
 
                 <!-- Customer Select -->
                 <div class="col-12 col-md-3">
-                  <label for="createRequestCustomer" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                  <label for="createRequestCustomer" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                     Customer (Optional)
                   </label>
                   <select
                     id="createRequestCustomer"
                     v-model="form.customerId"
                     name="customerId"
-                    class="form-select form-select-sm"
+                    class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :disabled="isSubmitting || isLoadingLookups"
                     data-testid="request-customer-select"
                   >
@@ -383,14 +383,14 @@ onBeforeUnmount(() => {
 
                 <!-- Product Select -->
                 <div class="col-12 col-md-3">
-                  <label for="createRequestProduct" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                  <label for="createRequestProduct" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                     Product (Optional)
                   </label>
                   <select
                     id="createRequestProduct"
                     v-model="form.productId"
                     name="productId"
-                    class="form-select form-select-sm"
+                    class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :disabled="isSubmitting || isLoadingLookups"
                     data-testid="request-product-select"
                   >
@@ -407,14 +407,14 @@ onBeforeUnmount(() => {
 
                 <!-- Complexity Select -->
                 <div class="col-6 col-md-3">
-                  <label for="createRequestComplexity" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                  <label for="createRequestComplexity" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                     Complexity
                   </label>
                   <select
                     id="createRequestComplexity"
                     v-model.number="form.complexity"
                     name="complexity"
-                    class="form-select form-select-sm"
+                    class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :disabled="isSubmitting"
                     data-testid="request-complexity-select"
                   >
@@ -428,7 +428,7 @@ onBeforeUnmount(() => {
 
                 <!-- Target Deadline -->
                 <div class="col-6 col-md-3">
-                  <label for="createDeadlineInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                  <label for="createDeadlineInput" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                     Deadline (Optional)
                   </label>
                   <input
@@ -436,7 +436,7 @@ onBeforeUnmount(() => {
                     v-model="form.deadline"
                     type="date"
                     name="deadline"
-                    class="form-control form-control-sm"
+                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :disabled="isSubmitting"
                     data-testid="create-deadline-input"
                   />
@@ -444,14 +444,14 @@ onBeforeUnmount(() => {
 
                 <!-- Description -->
                 <div class="col-12">
-                  <label for="createRequestDescription" class="form-label mb-0 small fw-medium" style="font-size: 11px">
+                  <label for="createRequestDescription" class="form-label mb-0 small fw-medium text-slate-300" style="font-size: 11px">
                     Description <span class="text-danger">*</span>
                   </label>
                   <textarea
                     id="createRequestDescription"
                     v-model="form.description"
                     name="description"
-                    class="form-control form-control-sm"
+                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                     :class="{ 'is-invalid': validationErrors.description }"
                     rows="4"
                     placeholder="Detailed description and operational context of the request"
@@ -466,7 +466,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <div class="modal-footer py-1 px-3 bg-body-tertiary">
+            <div class="modal-footer py-1 px-3 bg-slate-950/60 border-t border-slate-800">
               <button
                 type="button"
                 class="btn btn-outline-secondary btn-sm py-0 px-2"
@@ -500,6 +500,6 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Backdrop -->
-    <div class="modal-backdrop fade show" @click="handleClose"></div>
+    <div class="modal-backdrop fade show" style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);" @click="handleClose"></div>
   </div>
 </template>

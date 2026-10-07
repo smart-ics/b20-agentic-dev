@@ -265,110 +265,110 @@ function formatTimeOnly(value?: string | null): string {
 
 <template>
   <tr
-    class="op-ledger-row cursor-pointer"
+    class="op-ledger-row cursor-pointer transition border-b border-slate-200 dark:border-slate-800/80"
     :class="{
-      'table-active bg-primary bg-opacity-10': isSelected,
-      'border-start border-4 border-danger': item.isException,
+      'bg-cyan-500/10 dark:bg-cyan-500/15': isSelected,
+      'border-start border-4 border-rose-500': item.isException,
     }"
     :data-testid="`feed-ledger-row-${resolvedPostId}`"
     @click="emit('select', item)"
   >
     <!-- Timestamp -->
-    <td class="font-monospace fs-11 text-muted text-nowrap py-1.5 px-2">
+    <td class="font-mono fs-11 text-slate-500 dark:text-slate-400 text-nowrap py-2 px-3">
       {{ formatTimeOnly(item.createdAt) }}
     </td>
 
     <!-- Severity & Decision Badge -->
-    <td class="text-nowrap py-1.5 px-2">
+    <td class="text-nowrap py-2 px-3">
       <span
         v-if="item.isException"
-        class="badge bg-danger font-monospace fs-11"
+        class="badge bg-rose-500/15 text-rose-400 border border-rose-500/30 font-mono fs-11"
       >
         {{ item.exceptionType || 'EXCEPTION' }}
       </span>
       <span
         v-else-if="item.source === 'SYSTEM_GENERATED'"
-        class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 font-monospace fs-11"
+        class="badge bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-mono fs-11"
       >
         STATE FACT
       </span>
       <span
         v-else
-        class="badge bg-light text-secondary border font-monospace fs-11"
+        class="badge bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-mono fs-11"
       >
         OPS POST
       </span>
     </td>
 
     <!-- Reference Link -->
-    <td class="font-monospace fs-11 text-nowrap py-1.5 px-2">
+    <td class="font-mono fs-11 text-nowrap py-2 px-3">
       <router-link
         v-if="effectiveRequestId"
         :to="`/requests/${effectiveRequestId}`"
-        class="fw-bold text-decoration-none text-primary"
+        class="fw-bold text-decoration-none text-cyan-600 dark:text-cyan-400 hover:underline"
         @click.stop
       >
         {{ effectiveRequestDisplay }}
       </router-link>
-      <span v-else class="text-muted">
+      <span v-else class="text-slate-400 dark:text-slate-500">
         {{ effectiveRequestDisplay }}
       </span>
     </td>
 
     <!-- Accountable Owner (Principle 12) -->
-    <td class="text-nowrap py-1.5 px-2">
-      <span v-if="isUnowned" class="badge bg-warning text-dark font-monospace fs-11">
+    <td class="text-nowrap py-2 px-3">
+      <span v-if="isUnowned" class="badge bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono fs-11">
         ⚠️ UNOWNED
       </span>
-      <span v-else class="text-dark fs-12 text-truncate d-inline-block max-w-120" :title="ownerDisplay">
+      <span v-else class="text-slate-800 dark:text-slate-200 fs-12 text-truncate d-inline-block max-w-120 font-medium" :title="ownerDisplay">
         {{ ownerDisplay }}
       </span>
     </td>
 
     <!-- Customer & Product Context -->
-    <td class="py-1.5 px-2 text-nowrap">
+    <td class="py-2 px-3 text-nowrap">
       <span
         v-if="customerDisplayCode"
-        class="badge bg-light text-dark border text-truncate font-monospace fs-11 d-inline-block me-1"
+        class="badge bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-truncate font-mono fs-11 d-inline-block me-1"
         style="max-width: 120px; cursor: help;"
         :title="customerTooltipName"
       >
-        <i class="bi bi-building me-1 text-secondary" aria-hidden="true"></i>
+        <i class="bi bi-building me-1 text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
         {{ customerDisplayCode }}
       </span>
       <span
         v-if="productDisplayCode"
-        class="badge bg-light text-dark border text-truncate font-monospace fs-11 d-inline-block"
+        class="badge bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-truncate font-mono fs-11 d-inline-block"
         style="max-width: 120px; cursor: help;"
         :title="productTooltipName"
       >
-        <i class="bi bi-box-seam me-1 text-secondary" aria-hidden="true"></i>
+        <i class="bi bi-box-seam me-1 text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
         {{ productDisplayCode }}
       </span>
     </td>
 
     <!-- Event Summary & Title -->
-    <td class="py-1.5 px-2">
-      <div class="fw-semibold text-dark fs-12 text-truncate max-w-350" :title="item.title">
+    <td class="py-2 px-3">
+      <div class="fw-semibold text-slate-900 dark:text-white fs-12 text-truncate max-w-350" :title="item.title">
         {{ item.title }}
       </div>
-      <div v-if="item.contentExcerpt" class="text-muted fs-11 text-truncate max-w-350" :title="item.contentExcerpt">
+      <div v-if="item.contentExcerpt" class="text-slate-500 dark:text-slate-400 fs-11 text-truncate max-w-350" :title="item.contentExcerpt">
         {{ item.contentExcerpt }}
       </div>
     </td>
 
     <!-- Operational Signals -->
-    <td class="font-monospace fs-11 text-nowrap py-1.5 px-2">
+    <td class="font-mono fs-11 text-nowrap py-2 px-3">
       <span
         class="badge me-1"
-        :class="ackCount > 0 ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' : 'bg-light text-muted border'"
+        :class="ackCount > 0 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700/80'"
         title="Acknowledged"
       >
         ACK:{{ ackCount }}
       </span>
       <span
         v-if="expCount > 0"
-        class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25"
+        class="badge bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
         title="Experienced"
       >
         EXP:{{ expCount }}
@@ -376,10 +376,10 @@ function formatTimeOnly(value?: string | null): string {
     </td>
 
     <!-- Quick Actions -->
-    <td class="text-end text-nowrap py-1.5 px-2">
+    <td class="text-end text-nowrap py-2 px-3">
       <button
         type="button"
-        class="btn btn-outline-primary btn-sm py-0 px-1.5 fs-11"
+        class="btn btn-sm py-0.5 px-2 fs-11 rounded border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-cyan-500 dark:hover:border-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition"
         @click.stop="emit('open-modal', item)"
       >
         Inspect
@@ -394,5 +394,8 @@ function formatTimeOnly(value?: string | null): string {
 .max-w-350 { max-width: 350px; }
 .op-ledger-row:hover {
   background-color: #f1f5f9;
+}
+:global(.dark) .op-ledger-row:hover {
+  background-color: rgba(30, 41, 59, 0.5);
 }
 </style>

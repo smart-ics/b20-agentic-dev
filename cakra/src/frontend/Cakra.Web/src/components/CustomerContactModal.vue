@@ -289,21 +289,21 @@ onBeforeUnmount(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow border">
+        <div class="modal-content shadow-2xl border border-slate-800 bg-slate-900/95 text-slate-100">
           <!-- Modal Header -->
-          <div class="modal-header py-2 px-3 bg-body-tertiary">
+          <div class="modal-header py-2 px-3 bg-slate-950/60 border-b border-slate-800">
             <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-people-fill text-primary" aria-hidden="true"></i>
+              <i class="bi bi-people-fill text-cyan-400" aria-hidden="true"></i>
               <h2 id="customerContactModalTitle" class="modal-title h6 fw-bold mb-0">
                 Customer Contacts
               </h2>
-              <span class="badge text-bg-light border text-secondary font-monospace" style="font-size: 10px">
+              <span class="badge bg-slate-800 border border-slate-700 text-slate-300 font-monospace" style="font-size: 10px">
                 SCR-CUST-003
               </span>
             </div>
             <button
               type="button"
-              class="btn-close py-1 px-2"
+              class="btn-close btn-close-white py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting"
               @click="handleClose"
@@ -661,7 +661,7 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Modal Footer -->
-          <div class="modal-footer py-2 px-3 bg-body-tertiary">
+          <div class="modal-footer py-2 px-3 bg-slate-950/60 border-t border-slate-800">
             <button
               type="button"
               class="btn btn-secondary btn-sm"
@@ -678,6 +678,6 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Backdrop -->
-    <div class="modal-backdrop fade show" @click="handleClose"></div>
+    <div class="modal-backdrop fade show" style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);" @click="handleClose"></div>
   </div>
 </template>

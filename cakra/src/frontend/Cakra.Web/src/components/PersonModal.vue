@@ -232,28 +232,28 @@ onBeforeUnmount(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow border">
+        <div class="modal-content shadow-2xl border border-slate-800 bg-slate-900/95 text-slate-100">
           <!-- Modal Header -->
-          <div class="modal-header py-2 px-3 bg-body-tertiary">
+          <div class="modal-header py-2 px-3 bg-slate-950/60 border-b border-slate-800">
             <h2 id="personModalTitle" class="modal-title h6 fw-bold mb-0 d-flex align-items-center gap-2">
               <i
                 v-if="isEditMode"
-                class="bi bi-person-gear text-primary"
+                class="bi bi-person-gear text-cyan-400"
                 aria-hidden="true"
               ></i>
               <i
                 v-else
-                class="bi bi-person-plus-fill text-primary"
+                class="bi bi-person-plus-fill text-cyan-400"
                 aria-hidden="true"
               ></i>
               <span>{{ modalTitle }}</span>
-              <span class="badge text-bg-light border text-secondary font-monospace" style="font-size: 10px">
+              <span class="badge bg-slate-800 border border-slate-700 text-slate-300 font-monospace" style="font-size: 10px">
                 SCR-ORG-002
               </span>
             </h2>
             <button
               type="button"
-              class="btn-close py-1 px-2"
+              class="btn-close btn-close-white py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting"
               @click="handleClose"
@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
 
               <!-- First Name -->
               <div class="mb-2">
-                <label for="personFirstName" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="personFirstName" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   First Name <span class="text-danger">*</span>
                 </label>
                 <input
@@ -290,7 +290,7 @@ onBeforeUnmount(() => {
                   v-model="firstName"
                   type="text"
                   maxlength="100"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.firstName }"
                   placeholder="e.g. John"
                   :disabled="isSubmitting"
@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
 
               <!-- Last Name -->
               <div class="mb-2">
-                <label for="personLastName" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="personLastName" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Last Name <span class="text-danger">*</span>
                 </label>
                 <input
@@ -311,7 +311,7 @@ onBeforeUnmount(() => {
                   v-model="lastName"
                   type="text"
                   maxlength="100"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.lastName }"
                   placeholder="e.g. Doe"
                   :disabled="isSubmitting"
@@ -324,7 +324,7 @@ onBeforeUnmount(() => {
 
               <!-- Email Address -->
               <div class="mb-2">
-                <label for="personEmail" class="form-label mb-1 small fw-medium" style="font-size: 11.5px">
+                <label for="personEmail" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Email Address <span class="text-danger">*</span>
                 </label>
                 <input
@@ -332,7 +332,7 @@ onBeforeUnmount(() => {
                   v-model="email"
                   type="email"
                   maxlength="255"
-                  class="form-control form-control-sm"
+                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.email }"
                   placeholder="e.g. john.doe@example.com"
                   :disabled="isSubmitting"
@@ -345,7 +345,7 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Modal Footer -->
-            <div class="modal-footer py-2 px-3 bg-body-tertiary">
+            <div class="modal-footer py-2 px-3 bg-slate-950/60 border-t border-slate-800">
               <button
                 type="button"
                 class="btn btn-outline-secondary btn-sm"
@@ -379,6 +379,6 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Backdrop -->
-    <div class="modal-backdrop fade show" @click="handleClose"></div>
+    <div class="modal-backdrop fade show" style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);" @click="handleClose"></div>
   </div>
 </template>

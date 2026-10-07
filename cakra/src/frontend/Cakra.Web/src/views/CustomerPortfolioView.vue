@@ -350,7 +350,7 @@ onMounted(async () => {
           <select
             id="customerPortfolioSelect"
             v-model="selectedCustomerId"
-            class="form-select form-select-sm"
+            class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
             style="min-width: 180px; max-width: 280px;"
             :disabled="isLoadingCustomers || isLoadingPortfolio"
             data-testid="customer-selector"
@@ -465,8 +465,8 @@ onMounted(async () => {
       </div>
 
       <!-- Paused Requests (PAUSED) Table -->
-      <div v-if="openBlockersList.length > 0" class="card border border-warning mb-2">
-        <div class="card-header bg-warning-subtle text-warning-emphasis py-1 px-3 d-flex justify-content-between align-items-center">
+      <div v-if="openBlockersList.length > 0" class="card bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
+        <div class="card-header bg-slate-950/60 border-b border-slate-800 text-amber-400 py-1 px-3 d-flex justify-content-between align-items-center">
           <span class="fw-semibold">
             <i class="bi bi-pause-circle-fill me-1" aria-hidden="true"></i>
             Paused Requests (PAUSED)
@@ -496,7 +496,7 @@ onMounted(async () => {
                   <td>
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="fw-semibold text-decoration-none text-dark"
+                      class="fw-semibold text-decoration-none text-slate-100 hover:text-cyan-400"
                     >
                       {{ item.title }}
                     </router-link>
@@ -535,8 +535,8 @@ onMounted(async () => {
       </div>
 
       <!-- Active Requests Table -->
-      <div class="card border mb-2">
-        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+      <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
+        <div class="card-header bg-slate-950/60 border-b border-slate-800 py-1 px-3 d-flex justify-content-between align-items-center">
           <span class="fw-semibold">
             <i class="bi bi-list-task me-1 text-primary" aria-hidden="true"></i>
             Active Requests
@@ -569,7 +569,7 @@ onMounted(async () => {
                   <td>
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="fw-semibold text-decoration-none text-dark text-truncate d-inline-block"
+                      class="fw-semibold text-decoration-none text-slate-100 hover:text-cyan-400 text-truncate d-inline-block"
                       style="max-width: 380px;"
                     >
                       {{ item.title }}
@@ -607,8 +607,8 @@ onMounted(async () => {
       </div>
 
       <!-- Recent Completions (COMPLETED) Table -->
-      <div class="card border">
-        <div class="card-header py-1 px-3 d-flex justify-content-between align-items-center">
+      <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 mb-2">
+        <div class="card-header bg-slate-950/60 border-b border-slate-800 py-1 px-3 d-flex justify-content-between align-items-center">
           <span class="fw-semibold">
             <i class="bi bi-check2-circle me-1 text-success" aria-hidden="true"></i>
             Recent Completions (COMPLETED)
@@ -642,7 +642,7 @@ onMounted(async () => {
                   <td>
                     <router-link
                       :to="`/requests/${resolveRequestId(item)}`"
-                      class="fw-semibold text-decoration-none text-dark text-truncate d-inline-block"
+                      class="fw-semibold text-decoration-none text-slate-100 hover:text-cyan-400 text-truncate d-inline-block"
                       style="max-width: 320px;"
                     >
                       {{ item.title }}
@@ -675,8 +675,8 @@ onMounted(async () => {
     </template>
 
     <!-- Empty Prompt when no customer selected -->
-    <div v-else class="card border">
-      <div class="card-body text-center py-4 text-body-secondary small">
+    <div v-else class="card bg-slate-900/90 border border-slate-800 text-slate-100">
+      <div class="card-body text-center py-4 text-slate-400 small">
         <i class="bi bi-building fs-3 d-block mb-1" aria-hidden="true"></i>
         Select an active customer above to inspect their real-time request portfolio, paused requests, and recent completions.
       </div>

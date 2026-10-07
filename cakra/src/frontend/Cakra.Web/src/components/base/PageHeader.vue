@@ -16,13 +16,19 @@ withDefaults(defineProps<PageHeaderProps>(), {
 </script>
 
 <template>
-  <header class="page-header">
-    <div class="page-header__lead">
-      <div class="page-header__title-row">
-        <h1 class="page-header__title">{{ title }}</h1>
+  <header class="page-header flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 box-border">
+    <div class="page-header__lead flex flex-col gap-1 min-w-0">
+      <div class="page-header__title-row flex items-center gap-2.5 flex-wrap">
+        <span
+          class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.6)] flex-shrink-0"
+          aria-hidden="true"
+        />
+        <h1 class="page-header__title m-0 text-2xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
+          {{ title }}
+        </h1>
         <BaseBadge
           v-if="live"
-          variant="success"
+          variant="emerald"
           :pulse="true"
           size="sm"
           class="page-header__live-badge"
@@ -31,22 +37,24 @@ withDefaults(defineProps<PageHeaderProps>(), {
         </BaseBadge>
         <BaseBadge
           v-if="screenId"
-          variant="neutral"
+          variant="slate"
           size="sm"
-          class="page-header__screen-id-badge"
+          class="page-header__screen-id-badge font-mono uppercase tracking-wider text-[11px]"
           :data-screen-id="screenId"
         >
           {{ screenId }}
         </BaseBadge>
       </div>
-      <p v-if="subtitle" class="page-header__subtitle">{{ subtitle }}</p>
+      <p v-if="subtitle" class="page-header__subtitle m-0 text-sm text-slate-500 dark:text-slate-400 leading-normal">
+        {{ subtitle }}
+      </p>
     </div>
 
-    <div v-if="$slots.stats || $slots.actions || $slots.default" class="page-header__controls">
-      <div v-if="$slots.stats" class="page-header__stats">
+    <div v-if="$slots.stats || $slots.actions || $slots.default" class="page-header__controls flex items-center flex-wrap gap-2.5">
+      <div v-if="$slots.stats" class="page-header__stats flex items-center">
         <slot name="stats" />
       </div>
-      <div v-if="$slots.actions || $slots.default" class="page-header__actions">
+      <div v-if="$slots.actions || $slots.default" class="page-header__actions flex items-center gap-2">
         <slot name="actions">
           <slot />
         </slot>
@@ -57,77 +65,22 @@ withDefaults(defineProps<PageHeaderProps>(), {
 
 <style scoped>
 .page-header {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--cakra-border, #e2e8f0);
   box-sizing: border-box;
 }
 
-@media (min-width: 768px) {
-  .page-header {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
+:global(.dark) .page-header {
+  border-bottom-color: #1e293b;
 }
 
-.page-header__lead {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 0;
+:global(.dark) .page-header__title {
+  color: #ffffff;
 }
 
-.page-header__title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  flex-wrap: wrap;
-}
-
-.page-header__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--cakra-text-main, #0f172a);
-  letter-spacing: -0.015em;
-}
-
-@media (max-width: 576px) {
-  .page-header__title {
-    font-size: 1.25rem;
-  }
-}
-
-.page-header__subtitle {
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  color: var(--cakra-text-muted, #475569);
-}
-
-.page-header__controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.625rem;
-}
-
-.page-header__stats {
-  display: flex;
-  align-items: center;
-}
-
-.page-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+:global(.dark) .page-header__subtitle {
+  color: #94a3b8;
 }
 
 .page-header__screen-id-badge {
-  font-family: var(--bs-font-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-family: var(--bs-font-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace);
 }
 </style>
