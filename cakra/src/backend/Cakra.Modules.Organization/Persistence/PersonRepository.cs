@@ -1,6 +1,7 @@
 using System.Data;
 using Cakra.Core.Infrastructure.Persistence;
 using Cakra.Modules.Organization.Domain;
+using Cakra.Modules.Organization.Models;
 using Dapper;
 
 namespace Cakra.Modules.Organization.Persistence;
@@ -31,6 +32,32 @@ internal sealed class PersonRepository : IPersonRepository
             new CommandDefinition(sql, new { Id = id }, cancellationToken: cancellationToken));
     }
 
+    /// <inheritdoc />
+    public async Task<PersonDto?> GetPersonDtoByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                p.[Id],
+                p.[FirstName],
+                p.[LastName],
+                p.[Email],
+                p.[Status],
+                p.[CreatedAt],
+                p.[UpdatedAt],
+                STRING_AGG(r.[Name], ',') WITHIN GROUP (ORDER BY r.[Name]) AS [RolesRaw]
+            FROM [organization].[Persons] p
+            LEFT JOIN [organization].[RoleAssignments] ra ON p.[Id] = ra.[PersonId] AND ra.[RevokedAt] IS NULL
+            LEFT JOIN [organization].[Roles] r ON ra.[RoleId] = r.[Id]
+            WHERE p.[Id] = @Id
+            GROUP BY p.[Id], p.[FirstName], p.[LastName], p.[Email], p.[Status], p.[CreatedAt], p.[UpdatedAt];
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        var row = await connection.QuerySingleOrDefaultAsync<PersonDtoRow>(
+            new CommandDefinition(sql, new { Id = id }, cancellationToken: cancellationToken));
+        return row?.ToDto();
+    }
+
     public async Task<IReadOnlyList<Person>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -43,6 +70,32 @@ internal sealed class PersonRepository : IPersonRepository
         var result = await connection.QueryAsync<Person>(
             new CommandDefinition(sql, cancellationToken: cancellationToken));
         return result.AsList();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PersonDto>> GetAllPersonDtosAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                p.[Id],
+                p.[FirstName],
+                p.[LastName],
+                p.[Email],
+                p.[Status],
+                p.[CreatedAt],
+                p.[UpdatedAt],
+                STRING_AGG(r.[Name], ',') WITHIN GROUP (ORDER BY r.[Name]) AS [RolesRaw]
+            FROM [organization].[Persons] p
+            LEFT JOIN [organization].[RoleAssignments] ra ON p.[Id] = ra.[PersonId] AND ra.[RevokedAt] IS NULL
+            LEFT JOIN [organization].[Roles] r ON ra.[RoleId] = r.[Id]
+            GROUP BY p.[Id], p.[FirstName], p.[LastName], p.[Email], p.[Status], p.[CreatedAt], p.[UpdatedAt]
+            ORDER BY p.[LastName], p.[FirstName];
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        var rows = await connection.QueryAsync<PersonDtoRow>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken));
+        return rows.Select(r => r.ToDto()).ToList();
     }
 
     public async Task<IReadOnlyList<Person>> GetActiveAsync(CancellationToken cancellationToken = default)

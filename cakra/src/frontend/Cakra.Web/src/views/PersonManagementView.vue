@@ -8,6 +8,7 @@ import {
   listAllPersons,
   type PersonDto,
 } from '@/api/persons'
+import BaseBadge from '@/components/base/BaseBadge.vue'
 import PersonModal from '@/components/PersonModal.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -68,12 +69,31 @@ const filteredPersons = computed(() => {
       const lastMatch = (p.lastName || '').toLowerCase().includes(query)
       const emailMatch = (p.email || '').toLowerCase().includes(query)
       const fullMatch = (p.fullName || '').toLowerCase().includes(query)
-      return firstMatch || lastMatch || emailMatch || fullMatch
+      const roleMatch = (p.roles || []).some((r) => r.toLowerCase().includes(query))
+      return firstMatch || lastMatch || emailMatch || fullMatch || roleMatch
     })
   }
 
   return list
 })
+
+function roleBadgeVariant(roleName: string): 'cyan' | 'indigo' | 'emerald' | 'purple' | 'amber' | 'slate' {
+  switch (roleName.trim().toLowerCase()) {
+    case 'administrator':
+    case 'admin':
+      return 'purple'
+    case 'management':
+      return 'indigo'
+    case 'operational user':
+      return 'cyan'
+    case 'programmer':
+      return 'emerald'
+    case 'implementator':
+      return 'amber'
+    default:
+      return 'slate'
+  }
+}
 
 function statusBadgeClass(status: string): string {
   switch (status?.toUpperCase()) {
@@ -122,6 +142,7 @@ async function handlePersonSaved(savedPerson: PersonDto): Promise<void> {
   successMessage.value = `Person '${displayName}' saved successfully.`
   await loadPersons()
 }
+const onPersonSaved = handlePersonSaved
 
 async function handleActivate(person: PersonDto): Promise<void> {
   const targetId = person.id || person.personId
@@ -284,7 +305,7 @@ onMounted(async () => {
           v-model="searchQuery"
           type="text"
           class="form-control border-start-0"
-          placeholder="Search first name, last name, email..."
+          placeholder="Search first name, last name, email, roles..."
           data-testid="person-search-input"
         />
         <button
@@ -336,6 +357,7 @@ onMounted(async () => {
             <th scope="col" style="min-width: 140px">First Name</th>
             <th scope="col" style="min-width: 140px">Last Name</th>
             <th scope="col" style="min-width: 200px">Email</th>
+            <th scope="col" style="min-width: 180px">Roles</th>
             <th scope="col" class="text-center" style="width: 110px">Status</th>
             <th scope="col" class="text-end" style="width: 170px">Actions</th>
           </tr>
@@ -343,7 +365,7 @@ onMounted(async () => {
         <tbody class="fs-12">
           <!-- Empty State -->
           <tr v-if="filteredPersons.length === 0">
-            <td colspan="5" class="text-center py-5 text-body-secondary" data-testid="empty-persons-state">
+            <td colspan="6" class="text-center py-5 text-body-secondary" data-testid="empty-persons-state">
               <i class="bi bi-people display-6 d-block mb-2 text-muted" aria-hidden="true"></i>
               <div class="fw-semibold">No persons found.</div>
               <div class="small mb-2">
@@ -381,6 +403,29 @@ onMounted(async () => {
             <td>
               <span class="text-body-secondary font-monospace" style="font-size: 11.5px">
                 {{ person.email }}
+              </span>
+            </td>
+
+            <!-- Roles -->
+            <td>
+              <div
+                v-if="person.roles && person.roles.length > 0"
+                class="d-flex flex-wrap gap-1"
+                data-testid="person-roles"
+              >
+                <BaseBadge
+                  v-for="role in person.roles"
+                  :key="role"
+                  :variant="roleBadgeVariant(role)"
+                  size="sm"
+                  class="text-nowrap"
+                  :data-testid="`role-badge-${role.toLowerCase().replace(/\s+/g, '-')}`"
+                >
+                  {{ role }}
+                </BaseBadge>
+              </div>
+              <span v-else class="text-slate-500 text-xs italic" data-testid="no-roles-placeholder">
+                No roles
               </span>
             </td>
 
@@ -462,7 +507,7 @@ onMounted(async () => {
       :mode="modalMode"
       :person="selectedPerson"
       @close="handleModalClose"
-      @saved="handlePersonSaved"
+      @saved="onPersonSaved"
     />
   </section>
 </template>

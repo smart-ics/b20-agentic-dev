@@ -60,6 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => currentUser.value !== null)
   const roles = computed(() => currentUser.value?.roles ?? [])
+  const user = computed(() => currentUser.value)
 
   function setCurrentUser(user: CurrentUser | null): void {
     currentUser.value = user
@@ -222,6 +223,7 @@ export const useAuthStore = defineStore('auth', () => {
     registrationMessage,
     isAuthenticated,
     roles,
+    user,
     setCurrentUser,
     clear,
     clearError,

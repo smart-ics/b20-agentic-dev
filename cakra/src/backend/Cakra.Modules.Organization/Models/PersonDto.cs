@@ -14,6 +14,7 @@ public sealed record PersonDto
     public string Status { get; init; } = Domain.Person.StatusActive;
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+    public IReadOnlyList<string> Roles { get; init; } = Array.Empty<string>();
 
     public string FullName => string.IsNullOrWhiteSpace(LastName)
         ? FirstName

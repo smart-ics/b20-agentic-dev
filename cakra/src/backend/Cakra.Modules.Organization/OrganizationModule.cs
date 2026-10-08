@@ -1,4 +1,5 @@
 using Cakra.Core;
+using Cakra.Core.Infrastructure.Persistence;
 using Cakra.Modules.Organization.Persistence;
 using Cakra.Modules.Organization.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,7 +43,15 @@ public sealed class OrganizationModule : IModule
         services.AddScoped<IOrganizationService>(sp => sp.GetRequiredService<OrganizationService>());
 
         // Published Cross-Module Query Service (Architecture §7, §14, §15, §20)
-        services.AddScoped<OrganizationQueryService>();
+        services.AddScoped<OrganizationQueryService>(sp => new OrganizationQueryService(
+            sp.GetRequiredService<IDbConnectionFactory>(),
+            sp.GetRequiredService<IRoleRepository>()));
         services.AddScoped<IOrganizationQueryService>(sp => sp.GetRequiredService<OrganizationQueryService>());
+
+        // Command Validators with internal dependencies
+        services.AddScoped<FluentValidation.IValidator<Commands.UpdatePersonCommand>>(sp =>
+            new Commands.UpdatePersonCommandValidator(
+                sp.GetRequiredService<IRoleRepository>(),
+                sp.GetRequiredService<IRoleAssignmentRepository>()));
     }
 }

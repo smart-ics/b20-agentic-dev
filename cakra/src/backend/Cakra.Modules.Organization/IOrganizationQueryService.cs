@@ -1,3 +1,5 @@
+using Cakra.Modules.Organization.Models;
+
 namespace Cakra.Modules.Organization;
 
 /// <summary>
@@ -101,4 +103,17 @@ public interface IOrganizationQueryService
     /// </summary>
     IReadOnlyList<PersonResponsibilityDto> GetPersonResponsibilities(Guid personId) =>
         GetPersonResponsibilitiesAsync(personId, CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Retrieves all master roles ordered by name (Architecture CR-027 §4 TD-004, §5, §6).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<IReadOnlyList<RoleDto>> ListAllRolesAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<RoleDto>>(Array.Empty<RoleDto>());
+
+    /// <summary>
+    /// Synchronous convenience overload for <see cref="ListAllRolesAsync"/> (Architecture CR-027 §5, §6).
+    /// </summary>
+    IReadOnlyList<RoleDto> ListAllRoles() =>
+        ListAllRolesAsync(CancellationToken.None).GetAwaiter().GetResult();
 }

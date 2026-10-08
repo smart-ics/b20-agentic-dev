@@ -50,6 +50,7 @@ public sealed class OrganizationService : IOrganizationService
         string firstName,
         string lastName,
         string email,
+        IReadOnlyList<Guid> roleIds,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(firstName);
@@ -83,8 +84,42 @@ public sealed class OrganizationService : IOrganizationService
                 cancellationToken);
         }
 
+        if (roleIds is not null)
+        {
+            foreach (var roleId in roleIds.Distinct())
+            {
+                _ = await _roleRepository.GetByIdAsync(roleId, cancellationToken)
+                    ?? throw new KeyNotFoundException($"Role '{roleId}' was not found.");
+
+                var assignment = new RoleAssignment
+                {
+                    PersonId = person.Id,
+                    RoleId = roleId,
+                    AssignedAt = now,
+                    RevokedAt = null
+                };
+
+                await _roleAssignmentRepository.AssignAsync(assignment, cancellationToken);
+
+                if (_eventDispatcher is not null)
+                {
+                    await _eventDispatcher.DispatchAsync(
+                        new RoleAssigned(person.Id, roleId, now, Guid.NewGuid(), now),
+                        cancellationToken);
+                }
+            }
+        }
+
         return person;
     }
+
+    /// <inheritdoc />
+    public Task<Person> CreatePersonAsync(
+        string firstName,
+        string lastName,
+        string email,
+        CancellationToken cancellationToken = default) =>
+        CreatePersonAsync(firstName, lastName, email, Array.Empty<Guid>(), cancellationToken);
 
     /// <inheritdoc />
     public async Task<Person> UpdatePersonAsync(
@@ -92,6 +127,8 @@ public sealed class OrganizationService : IOrganizationService
         string firstName,
         string lastName,
         string email,
+        IReadOnlyList<Guid> roleIds,
+        Guid? actorPersonId = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(firstName);
@@ -111,14 +148,88 @@ public sealed class OrganizationService : IOrganizationService
             }
         }
 
+        var now = UtcNow;
+
+        // Self-demotion check (TD-004):
+        // If ActorPersonId == TargetPersonId, verify that the Administrator role is not removed.
+        if (actorPersonId.HasValue && actorPersonId.Value == personId)
+        {
+            var adminRole = await _roleRepository.GetByNameAsync("Administrator", cancellationToken);
+            if (adminRole is not null)
+            {
+                var activeAssignments = await _roleAssignmentRepository.GetActiveByPersonIdAsync(personId, cancellationToken);
+                var isCurrentlyAdmin = activeAssignments.Any(a => a.RoleId == adminRole.Id);
+                if (isCurrentlyAdmin && (roleIds is null || !roleIds.Contains(adminRole.Id)))
+                {
+                    throw new InvalidOperationException("Cannot remove the Administrator role from your own person record.");
+                }
+            }
+        }
+
         person.FirstName = firstName.Trim();
         person.LastName = lastName.Trim();
         person.Email = normalizedEmail;
-        person.UpdatedAt = UtcNow;
+        person.UpdatedAt = now;
 
         await _personRepository.UpdateAsync(person, cancellationToken);
+
+        // Role set reconciliation (TD-002):
+        if (roleIds is not null)
+        {
+            var currentActiveAssignments = await _roleAssignmentRepository.GetActiveByPersonIdAsync(personId, cancellationToken);
+            var currentActiveRoleIds = currentActiveAssignments.Select(a => a.RoleId).ToHashSet();
+            var desiredRoleIds = roleIds.Distinct().ToHashSet();
+
+            var toRevoke = currentActiveRoleIds.Except(desiredRoleIds).ToList();
+            var toAdd = desiredRoleIds.Except(currentActiveRoleIds).ToList();
+
+            foreach (var roleId in toRevoke)
+            {
+                await _roleAssignmentRepository.RevokeAsync(personId, roleId, now, cancellationToken);
+
+                if (_eventDispatcher is not null)
+                {
+                    await _eventDispatcher.DispatchAsync(
+                        new RoleRevoked(personId, roleId, now, Guid.NewGuid(), now),
+                        cancellationToken);
+                }
+            }
+
+            foreach (var roleId in toAdd)
+            {
+                _ = await _roleRepository.GetByIdAsync(roleId, cancellationToken)
+                    ?? throw new KeyNotFoundException($"Role '{roleId}' was not found.");
+
+                var assignment = new RoleAssignment
+                {
+                    PersonId = personId,
+                    RoleId = roleId,
+                    AssignedAt = now,
+                    RevokedAt = null
+                };
+
+                await _roleAssignmentRepository.AssignAsync(assignment, cancellationToken);
+
+                if (_eventDispatcher is not null)
+                {
+                    await _eventDispatcher.DispatchAsync(
+                        new RoleAssigned(personId, roleId, now, Guid.NewGuid(), now),
+                        cancellationToken);
+                }
+            }
+        }
+
         return person;
     }
+
+    /// <inheritdoc />
+    public Task<Person> UpdatePersonAsync(
+        Guid personId,
+        string firstName,
+        string lastName,
+        string email,
+        CancellationToken cancellationToken = default) =>
+        UpdatePersonAsync(personId, firstName, lastName, email, null!, null, cancellationToken);
 
     /// <inheritdoc />
     public async Task<Team> CreateTeamAsync(

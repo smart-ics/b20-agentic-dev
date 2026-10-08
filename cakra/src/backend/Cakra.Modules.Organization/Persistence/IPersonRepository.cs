@@ -16,4 +16,12 @@ internal interface IPersonRepository : IRepository<Person>
 
     /// <summary>Updates the lifecycle status of a person.</summary>
     Task UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken = default);
+
+    /// <summary>Retrieves a person DTO by identifier, aggregating active role names in a single query (Architecture CR-027 §4 TD-003).</summary>
+    Task<PersonDto?> GetPersonDtoByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<PersonDto?>(null);
+
+    /// <summary>Retrieves all person DTOs, aggregating active role names in a single query (Architecture CR-027 §4 TD-003).</summary>
+    Task<IReadOnlyList<PersonDto>> GetAllPersonDtosAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PersonDto>>(Array.Empty<PersonDto>());
 }

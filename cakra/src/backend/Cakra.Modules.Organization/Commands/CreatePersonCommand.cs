@@ -6,12 +6,22 @@ using MediatR;
 namespace Cakra.Modules.Organization.Commands;
 
 /// <summary>
-/// Command to create a new organizational <see cref="Person"/> (Architecture §7, §19.2).
+/// Command to create a new organizational <see cref="Person"/> with assigned roles (Architecture §7, §19.2; CR-027).
 /// </summary>
 public sealed record CreatePersonCommand(
     string FirstName,
     string LastName,
-    string Email) : IRequest<Person>;
+    string Email,
+    IReadOnlyList<Guid>? RoleIds) : IRequest<Person>
+{
+    public bool IsLegacy { get; init; }
+
+    public CreatePersonCommand(string firstName, string lastName, string email)
+        : this(firstName, lastName, email, Array.Empty<Guid>())
+    {
+        IsLegacy = true;
+    }
+}
 
 /// <summary>
 /// FluentValidation validator for <see cref="CreatePersonCommand"/>.
@@ -32,6 +42,10 @@ public sealed class CreatePersonCommandValidator : AbstractValidator<CreatePerso
             .NotEmpty().WithMessage("Email is required.")
             .EmailAddress().WithMessage("Email must be a valid email address.")
             .MaximumLength(255);
+
+        RuleFor(x => x.RoleIds)
+            .NotEmpty().WithMessage("At least one role must be assigned.")
+            .When(x => !x.IsLegacy);
     }
 }
 
@@ -54,6 +68,7 @@ public sealed class CreatePersonCommandHandler : IRequestHandler<CreatePersonCom
             request.FirstName,
             request.LastName,
             request.Email,
+            request.RoleIds ?? Array.Empty<Guid>(),
             cancellationToken);
     }
 }

@@ -38,10 +38,13 @@ public class OrganizationServiceTests
     }
 
     [Fact]
-    public async Task CreatePersonCommand_creates_active_person_and_dispatches_PersonCreated_event()
+    public async Task CreatePersonCommand_creates_active_person_and_dispatches_PersonCreated_and_RoleAssigned_events()
     {
+        var role = await _service.CreateRoleAsync("Developer");
+        _eventDispatcher.DispatchedEvents.Clear();
+
         var handler = new CreatePersonCommandHandler(_service);
-        var command = new CreatePersonCommand("Alice", "Pratama", "alice.pratama@cakra.id");
+        var command = new CreatePersonCommand("Alice", "Pratama", "alice.pratama@cakra.id", new[] { role.Id });
 
         var person = await handler.Handle(command, CancellationToken.None);
 
@@ -56,19 +59,27 @@ public class OrganizationServiceTests
         var persisted = await _personRepository.GetByIdAsync(person.Id);
         persisted.Should().NotBeNull();
 
-        _eventDispatcher.DispatchedEvents.Should().ContainSingle()
+        var assignments = await _roleAssignmentRepository.GetActiveByPersonIdAsync(person.Id);
+        assignments.Should().ContainSingle(a => a.RoleId == role.Id);
+
+        _eventDispatcher.DispatchedEvents.Should().HaveCount(2);
+        _eventDispatcher.DispatchedEvents.Should().ContainSingle(e => e is PersonCreated)
             .Which.Should().BeOfType<PersonCreated>()
             .Which.PersonId.Should().Be(person.Id);
+        _eventDispatcher.DispatchedEvents.Should().ContainSingle(e => e is RoleAssigned)
+            .Which.Should().BeOfType<RoleAssigned>()
+            .Which.RoleId.Should().Be(role.Id);
     }
 
     [Fact]
     public async Task CreatePersonCommand_rejects_duplicate_email()
     {
+        var role = await _service.CreateRoleAsync("Tester");
         var handler = new CreatePersonCommandHandler(_service);
-        await handler.Handle(new CreatePersonCommand("Alice", "One", "dup@cakra.id"), CancellationToken.None);
+        await handler.Handle(new CreatePersonCommand("Alice", "One", "dup@cakra.id", new[] { role.Id }), CancellationToken.None);
 
         var act = async () => await handler.Handle(
-            new CreatePersonCommand("Bob", "Two", "dup@cakra.id"),
+            new CreatePersonCommand("Bob", "Two", "dup@cakra.id", new[] { role.Id }),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -78,12 +89,13 @@ public class OrganizationServiceTests
     [Fact]
     public async Task UpdatePersonCommand_updates_person_attributes_and_timestamp()
     {
-        var created = await _service.CreatePersonAsync("Budi", "Santoso", "budi@cakra.id");
+        var role = await _service.CreateRoleAsync("Architect");
+        var created = await _service.CreatePersonAsync("Budi", "Santoso", "budi@cakra.id", new[] { role.Id });
         _clock.UtcNow = _clock.UtcNow.AddMinutes(15);
 
         var handler = new UpdatePersonCommandHandler(_service);
         var updated = await handler.Handle(
-            new UpdatePersonCommand(created.Id, "Budi", "Wijaya", "budi.wijaya@cakra.id"),
+            new UpdatePersonCommand(created.Id, "Budi", "Wijaya", "budi.wijaya@cakra.id", new[] { role.Id }),
             CancellationToken.None);
 
         updated.FirstName.Should().Be("Budi");
@@ -217,13 +229,15 @@ public class OrganizationServiceTests
     [Fact]
     public void Command_validators_reject_invalid_inputs()
     {
-        new CreatePersonCommandValidator()
-            .Validate(new CreatePersonCommand("", "", "not-an-email"))
-            .IsValid.Should().BeFalse();
+        var createValidation = new CreatePersonCommandValidator()
+            .Validate(new CreatePersonCommand("", "", "not-an-email", Array.Empty<Guid>()));
+        createValidation.IsValid.Should().BeFalse();
+        createValidation.Errors.Should().Contain(e => e.PropertyName == "RoleIds" && e.ErrorMessage == "At least one role must be assigned.");
 
-        new UpdatePersonCommandValidator()
-            .Validate(new UpdatePersonCommand(Guid.Empty, "", "", "bad"))
-            .IsValid.Should().BeFalse();
+        var updateValidation = new UpdatePersonCommandValidator()
+            .Validate(new UpdatePersonCommand(Guid.Empty, "", "", "bad", Array.Empty<Guid>()));
+        updateValidation.IsValid.Should().BeFalse();
+        updateValidation.Errors.Should().Contain(e => e.PropertyName == "RoleIds" && e.ErrorMessage == "At least one role must be assigned.");
 
         new CreateTeamCommandValidator()
             .Validate(new CreateTeamCommand(""))
@@ -252,6 +266,171 @@ public class OrganizationServiceTests
         new DeactivatePersonCommandValidator()
             .Validate(new DeactivatePersonCommand(Guid.Empty))
             .IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreatePersonCommandValidator_rejects_empty_RoleIds()
+    {
+        var validator = new CreatePersonCommandValidator();
+        var command = new CreatePersonCommand("John", "Doe", "john.doe@cakra.id", Array.Empty<Guid>());
+
+        var result = validator.Validate(command);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "RoleIds" && e.ErrorMessage == "At least one role must be assigned.");
+    }
+
+    [Fact]
+    public void UpdatePersonCommandValidator_rejects_empty_RoleIds()
+    {
+        var validator = new UpdatePersonCommandValidator();
+        var command = new UpdatePersonCommand(Guid.NewGuid(), "John", "Doe", "john.doe@cakra.id", Array.Empty<Guid>());
+
+        var result = validator.Validate(command);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "RoleIds" && e.ErrorMessage == "At least one role must be assigned.");
+    }
+
+    [Fact]
+    public async Task CreatePersonCommand_assigns_multiple_roles_atomically_and_dispatches_events()
+    {
+        var role1 = await _service.CreateRoleAsync("Lead");
+        var role2 = await _service.CreateRoleAsync("Developer");
+        _eventDispatcher.DispatchedEvents.Clear();
+
+        var handler = new CreatePersonCommandHandler(_service);
+        var command = new CreatePersonCommand("Dewi", "Lestari", "dewi@cakra.id", new[] { role1.Id, role2.Id });
+
+        var person = await handler.Handle(command, CancellationToken.None);
+
+        var activeRoles = await _roleAssignmentRepository.GetActiveByPersonIdAsync(person.Id);
+        activeRoles.Should().HaveCount(2);
+        activeRoles.Select(a => a.RoleId).Should().BeEquivalentTo(new[] { role1.Id, role2.Id });
+
+        _eventDispatcher.DispatchedEvents.Should().HaveCount(3); // PersonCreated + 2x RoleAssigned
+        _eventDispatcher.DispatchedEvents.OfType<PersonCreated>().Should().ContainSingle();
+        _eventDispatcher.DispatchedEvents.OfType<RoleAssigned>().Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task UpdatePersonCommand_performs_role_set_reconciliation_adding_and_revoking_roles()
+    {
+        var role1 = await _service.CreateRoleAsync("RoleA");
+        var role2 = await _service.CreateRoleAsync("RoleB");
+        var role3 = await _service.CreateRoleAsync("RoleC");
+
+        var created = await _service.CreatePersonAsync("Indra", "Gunawan", "indra@cakra.id", new[] { role1.Id, role2.Id });
+        _eventDispatcher.DispatchedEvents.Clear();
+
+        // Update to have RoleB and RoleC (keep RoleB, revoke RoleA, add RoleC)
+        var handler = new UpdatePersonCommandHandler(_service);
+        var command = new UpdatePersonCommand(created.Id, "Indra", "Gunawan", "indra@cakra.id", new[] { role2.Id, role3.Id });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        var activeRoles = await _roleAssignmentRepository.GetActiveByPersonIdAsync(created.Id);
+        activeRoles.Should().HaveCount(2);
+        activeRoles.Select(a => a.RoleId).Should().BeEquivalentTo(new[] { role2.Id, role3.Id });
+
+        _eventDispatcher.DispatchedEvents.OfType<RoleRevoked>().Should().ContainSingle(e => e.RoleId == role1.Id);
+        _eventDispatcher.DispatchedEvents.OfType<RoleAssigned>().Should().ContainSingle(e => e.RoleId == role3.Id);
+    }
+
+    [Fact]
+    public async Task UpdatePersonCommand_throws_InvalidOperationException_when_administrator_removes_admin_role_from_self()
+    {
+        var adminRole = await _service.CreateRoleAsync("Administrator");
+        var devRole = await _service.CreateRoleAsync("Programmer");
+
+        var adminPerson = await _service.CreatePersonAsync("Super", "Admin", "admin@cakra.id", new[] { adminRole.Id });
+
+        var handler = new UpdatePersonCommandHandler(_service);
+
+        // Attempt self-demotion: Actor is the person being updated, roleIds does not contain Administrator
+        var demoteCommand = new UpdatePersonCommand(
+            adminPerson.Id,
+            "Super",
+            "Admin",
+            "admin@cakra.id",
+            new[] { devRole.Id },
+            ActorPersonId: adminPerson.Id);
+
+        var act = async () => await handler.Handle(demoteCommand, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Cannot remove the Administrator role from your own person record.");
+    }
+
+    [Fact]
+    public async Task UpdatePersonCommandValidator_validates_self_demotion_invariant()
+    {
+        var adminRole = await _service.CreateRoleAsync("Administrator");
+        var otherRole = await _service.CreateRoleAsync("Support");
+
+        var targetId = Guid.NewGuid();
+
+        var validator = new UpdatePersonCommandValidator(_roleRepository);
+
+        // 1. Actor == PersonId without Admin role -> invalid
+        var selfDemoteCmd = new UpdatePersonCommand(targetId, "Test", "User", "test@cakra.id", new[] { otherRole.Id }, ActorPersonId: targetId);
+        var result = await validator.ValidateAsync(selfDemoteCmd);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage == "Cannot remove the Administrator role from your own person record.");
+
+        // 2. Actor == PersonId with Admin role -> valid
+        var validSelfCmd = new UpdatePersonCommand(targetId, "Test", "User", "test@cakra.id", new[] { adminRole.Id, otherRole.Id }, ActorPersonId: targetId);
+        var validResult = await validator.ValidateAsync(validSelfCmd);
+        validResult.IsValid.Should().BeTrue();
+
+        // 3. Actor != PersonId without Admin role -> valid (admin editing another person can remove admin role)
+        var differentActorCmd = new UpdatePersonCommand(targetId, "Test", "User", "test@cakra.id", new[] { otherRole.Id }, ActorPersonId: Guid.NewGuid());
+        var diffResult = await validator.ValidateAsync(differentActorCmd);
+        diffResult.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdatePersonCommandValidator_with_assignment_repository_checks_current_admin_membership()
+    {
+        var adminRole = await _service.CreateRoleAsync("Administrator");
+        var devRole = await _service.CreateRoleAsync("Developer");
+
+        var nonAdminPerson = await _service.CreatePersonAsync("Budi", "Santoso", "budi@cakra.id", new[] { devRole.Id });
+        var adminPerson = await _service.CreatePersonAsync("Siti", "Aminah", "siti@cakra.id", new[] { adminRole.Id });
+
+        var validator = new UpdatePersonCommandValidator(_roleRepository, _roleAssignmentRepository);
+
+        // 1. Non-admin user self-updating without admin role -> valid because they are not currently an admin
+        var nonAdminSelfUpdate = new UpdatePersonCommand(
+            nonAdminPerson.Id, "Budi", "Santoso", "budi@cakra.id", new[] { devRole.Id }, ActorPersonId: nonAdminPerson.Id);
+        var nonAdminResult = await validator.ValidateAsync(nonAdminSelfUpdate);
+        nonAdminResult.IsValid.Should().BeTrue();
+
+        // 2. Admin user self-updating and attempting to remove admin role -> invalid
+        var adminSelfDemote = new UpdatePersonCommand(
+            adminPerson.Id, "Siti", "Aminah", "siti@cakra.id", new[] { devRole.Id }, ActorPersonId: adminPerson.Id);
+        var adminDemoteResult = await validator.ValidateAsync(adminSelfDemote);
+        adminDemoteResult.IsValid.Should().BeFalse();
+        adminDemoteResult.Errors.Should().Contain(e => e.ErrorMessage == "Cannot remove the Administrator role from your own person record.");
+
+        // 3. Admin user self-updating keeping admin role -> valid
+        var adminSelfValid = new UpdatePersonCommand(
+            adminPerson.Id, "Siti", "Aminah", "siti@cakra.id", new[] { adminRole.Id, devRole.Id }, ActorPersonId: adminPerson.Id);
+        var adminValidResult = await validator.ValidateAsync(adminSelfValid);
+        adminValidResult.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeactivatePersonCommand_retains_existing_role_assignments_untouched()
+    {
+        var role = await _service.CreateRoleAsync("Analyst");
+        var person = await _service.CreatePersonAsync("Maya", "Putri", "maya@cakra.id", new[] { role.Id });
+
+        var deactivateHandler = new DeactivatePersonCommandHandler(_service);
+        await deactivateHandler.Handle(new DeactivatePersonCommand(person.Id), CancellationToken.None);
+
+        var activeRoles = await _roleAssignmentRepository.GetActiveByPersonIdAsync(person.Id);
+        activeRoles.Should().ContainSingle(a => a.RoleId == role.Id);
     }
 
     [Fact]

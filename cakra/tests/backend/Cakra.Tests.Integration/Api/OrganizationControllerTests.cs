@@ -7,6 +7,7 @@ using Cakra.Modules.Identity.Domain;
 using Cakra.Modules.Identity.Services;
 using Cakra.Modules.Organization;
 using Cakra.Modules.Organization.Domain;
+using Cakra.Modules.Organization.Models;
 using Cakra.Modules.Organization.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -66,6 +67,33 @@ public class OrganizationControllerTests : IntegrationTestBase
 
         client.DefaultRequestHeaders.Add("Cookie", $"{CakraAuthenticationDefaults.CookieName}={token}");
         return client;
+    }
+
+    private (HttpClient Client, Guid PersonId) CreateClientWithRoleAndPersonId(string role, Guid? fixedPersonId = null)
+    {
+        var userId = Guid.NewGuid();
+        var personId = fixedPersonId ?? Guid.NewGuid();
+        var token = $"session-token-{Guid.NewGuid():N}";
+
+        _authService.RegisterValidSession(token, userId, personId);
+        _authzService.RegisterRoles(personId, new[] { role });
+
+        var client = Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddScoped<IIdentityAuthService>(_ => _authService);
+                services.AddScoped<IIdentityAuthzService>(_ => _authzService);
+                services.AddScoped<IOrganizationService>(_ => _orgService);
+                services.AddScoped<IOrganizationQueryService>(_ => _orgQueryService);
+            });
+        }).CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = false
+        });
+
+        client.DefaultRequestHeaders.Add("Cookie", $"{CakraAuthenticationDefaults.CookieName}={token}");
+        return (client, personId);
     }
 
     private HttpClient CreateUnauthenticatedClient()
@@ -517,9 +545,246 @@ public class OrganizationControllerTests : IntegrationTestBase
         persons.Should().Contain(p => p.Id == inactivePerson.Id && p.Status == "INACTIVE");
     }
 
+    [Fact]
+    public async Task ListAllRoles_returns_200_for_authenticated_user()
+    {
+        // Arrange - authenticated user with non-admin role (e.g. Programmer)
+        var client = CreateClientWithRole("Programmer");
+
+        // Act
+        var response = await client.GetAsync("/api/v1/organization/roles");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var roles = await response.Content.ReadFromJsonAsync<IReadOnlyList<RoleDto>>();
+        roles.Should().NotBeNull();
+        roles!.Should().HaveCount(5);
+        roles!.Select(r => r.Name).Should().Contain(new[]
+        {
+            "Administrator",
+            "Management",
+            "Operational User",
+            "Programmer",
+            "Implementator"
+        });
+    }
+
+    [Fact]
+    public async Task ListAllRoles_returns_401_for_unauthenticated()
+    {
+        // Arrange
+        var client = CreateUnauthenticatedClient();
+
+        // Act
+        var response = await client.GetAsync("/api/v1/organization/roles");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task CreatePerson_with_role_ids_assigns_roles_successfully()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var roleId = Guid.Parse("33333333-3333-3333-3333-333333333333"); // Operational User
+        var request = new CreatePersonRequest("Agus", "Pratama", "agus.pratama@cakra.id", new[] { roleId });
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/organization/persons", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<Person>();
+        created.Should().NotBeNull();
+        _orgService.PersonRoles.Should().ContainKey(created!.Id);
+        _orgService.PersonRoles[created.Id].Should().Contain(roleId);
+    }
+
+    [Fact]
+    public async Task CreatePerson_with_empty_role_ids_returns_400_bad_request()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var request = new CreatePersonRequest("Empty", "Roles", "empty.roles@cakra.id", Array.Empty<Guid>());
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/organization/persons", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+    }
+
+    [Fact]
+    public async Task UpdatePerson_with_role_ids_updates_roles_successfully()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Target",
+            LastName = "Person",
+            Email = "target.person@cakra.id",
+            Status = Person.StatusActive,
+            CreatedAt = DateTime.UtcNow
+        };
+        _orgService.Persons[person.Id] = person;
+        _orgService.PersonRoles[person.Id] = new List<Guid> { Guid.Parse("33333333-3333-3333-3333-333333333333") };
+
+        var newRoleId = Guid.Parse("22222222-2222-2222-2222-222222222222"); // Management
+        var request = new UpdatePersonRequest("Target", "Updated", "target.updated@cakra.id", new[] { newRoleId });
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/organization/persons/{person.Id}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _orgService.PersonRoles[person.Id].Should().ContainSingle().Which.Should().Be(newRoleId);
+    }
+
+    [Fact]
+    public async Task UpdatePerson_with_empty_role_ids_returns_400_bad_request()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Target",
+            LastName = "Person",
+            Email = "target.empty@cakra.id",
+            Status = Person.StatusActive,
+            CreatedAt = DateTime.UtcNow
+        };
+        _orgService.Persons[person.Id] = person;
+
+        var request = new UpdatePersonRequest("Target", "Updated", "target.empty@cakra.id", Array.Empty<Guid>());
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/organization/persons/{person.Id}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+    }
+
+    [Fact]
+    public async Task UpdatePerson_self_demotion_fails_with_400_bad_request()
+    {
+        // Arrange
+        var adminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var operationalRoleId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var myPersonId = Guid.NewGuid();
+
+        var me = new Person
+        {
+            Id = myPersonId,
+            FirstName = "Admin",
+            LastName = "Self",
+            Email = "admin.self@cakra.id",
+            Status = Person.StatusActive,
+            CreatedAt = DateTime.UtcNow
+        };
+        _orgService.Persons[myPersonId] = me;
+        _orgService.PersonRoles[myPersonId] = new List<Guid> { adminRoleId };
+
+        var (client, _) = CreateClientWithRoleAndPersonId("Administrator", myPersonId);
+
+        // Attempt to remove Administrator role, keeping only Operational User
+        var request = new UpdatePersonRequest("Admin", "Self", "admin.self@cakra.id", new[] { operationalRoleId });
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/organization/persons/{myPersonId}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+    }
+
+    [Fact]
+    public async Task ListAllPersons_returns_persons_with_aggregated_roles()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Multi",
+            LastName = "Role",
+            Email = "multi.role@cakra.id",
+            Status = Person.StatusActive,
+            CreatedAt = DateTime.UtcNow
+        };
+        _orgService.Persons[person.Id] = person;
+        _orgService.PersonRoles[person.Id] = new List<Guid>
+        {
+            Guid.Parse("11111111-1111-1111-1111-111111111111"), // Administrator
+            Guid.Parse("22222222-2222-2222-2222-222222222222")  // Management
+        };
+
+        // Act
+        var response = await client.GetAsync("/api/v1/organization/persons/all");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var persons = await response.Content.ReadFromJsonAsync<IReadOnlyList<PersonDto>>();
+        persons.Should().NotBeNull();
+        var match = persons!.FirstOrDefault(p => p.Id == person.Id);
+        match.Should().NotBeNull();
+        match!.Roles.Should().Contain(new[] { "Administrator", "Management" });
+    }
+
+    [Fact]
+    public async Task GetPersonById_returns_person_with_aggregated_roles()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var person = new Person
+        {
+            Id = Guid.NewGuid(),
+            FirstName = "Single",
+            LastName = "WithRoles",
+            Email = "single.roles@cakra.id",
+            Status = Person.StatusActive,
+            CreatedAt = DateTime.UtcNow
+        };
+        _orgService.Persons[person.Id] = person;
+        _orgService.PersonRoles[person.Id] = new List<Guid>
+        {
+            Guid.Parse("33333333-3333-3333-3333-333333333333") // Operational User
+        };
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/organization/persons/{person.Id}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PersonDto>();
+        result.Should().NotBeNull();
+        result!.Roles.Should().ContainSingle().Which.Should().Be("Operational User");
+    }
+
     private sealed class InMemoryOrganizationService : IOrganizationService
     {
         public readonly Dictionary<Guid, Person> Persons = new();
+        public readonly Dictionary<Guid, List<Guid>> PersonRoles = new();
+
+        public Task<Person> CreatePersonAsync(
+            string firstName,
+            string lastName,
+            string email,
+            IReadOnlyList<Guid> roleIds,
+            CancellationToken cancellationToken = default)
+        {
+            var person = CreatePersonAsync(firstName, lastName, email, cancellationToken).GetAwaiter().GetResult();
+            if (roleIds is not null)
+            {
+                PersonRoles[person.Id] = roleIds.Distinct().ToList();
+            }
+            return Task.FromResult(person);
+        }
 
         public Task<Person> CreatePersonAsync(
             string firstName,
@@ -547,6 +812,33 @@ public class OrganizationControllerTests : IntegrationTestBase
                 CreatedAt = DateTime.UtcNow
             };
             Persons[person.Id] = person;
+            return Task.FromResult(person);
+        }
+
+        public Task<Person> UpdatePersonAsync(
+            Guid personId,
+            string firstName,
+            string lastName,
+            string email,
+            IReadOnlyList<Guid> roleIds,
+            Guid? actorPersonId = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (actorPersonId.HasValue && actorPersonId.Value == personId)
+            {
+                var adminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+                var isCurrentlyAdmin = PersonRoles.TryGetValue(personId, out var existingRoles) && existingRoles.Contains(adminRoleId);
+                if (isCurrentlyAdmin && (roleIds is null || !roleIds.Contains(adminRoleId)))
+                {
+                    throw new InvalidOperationException("Cannot remove the Administrator role from your own person record.");
+                }
+            }
+
+            var person = UpdatePersonAsync(personId, firstName, lastName, email, cancellationToken).GetAwaiter().GetResult();
+            if (roleIds is not null)
+            {
+                PersonRoles[personId] = roleIds.Distinct().ToList();
+            }
             return Task.FromResult(person);
         }
 
@@ -629,11 +921,32 @@ public class OrganizationControllerTests : IntegrationTestBase
 
     private sealed class InMemoryOrganizationQueryService : IOrganizationQueryService
     {
+        public static readonly Dictionary<Guid, string> StandardRoleNames = new()
+        {
+            [Guid.Parse("11111111-1111-1111-1111-111111111111")] = "Administrator",
+            [Guid.Parse("22222222-2222-2222-2222-222222222222")] = "Management",
+            [Guid.Parse("33333333-3333-3333-3333-333333333333")] = "Operational User",
+            [Guid.Parse("44444444-4444-4444-4444-444444444444")] = "Programmer",
+            [Guid.Parse("55555555-5555-5555-5555-555555555555")] = "Implementator"
+        };
+
         private readonly InMemoryOrganizationService _service;
 
         public InMemoryOrganizationQueryService(InMemoryOrganizationService service)
         {
             _service = service;
+        }
+
+        private IReadOnlyList<string> ResolveRoles(Guid personId)
+        {
+            if (_service.PersonRoles.TryGetValue(personId, out var roleIds))
+            {
+                return roleIds
+                    .Select(id => StandardRoleNames.TryGetValue(id, out var name) ? name : id.ToString())
+                    .OrderBy(r => r)
+                    .ToList();
+            }
+            return Array.Empty<string>();
         }
 
         public Task<bool> IsPersonActiveAsync(Guid personId, CancellationToken cancellationToken = default) =>
@@ -651,7 +964,8 @@ public class OrganizationControllerTests : IntegrationTestBase
                     Email = p.Email,
                     Status = p.Status,
                     CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
+                    UpdatedAt = p.UpdatedAt,
+                    Roles = ResolveRoles(p.Id)
                 });
             }
             return Task.FromResult<PersonDto?>(null);
@@ -668,7 +982,8 @@ public class OrganizationControllerTests : IntegrationTestBase
                     Email = p.Email,
                     Status = p.Status,
                     CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
+                    UpdatedAt = p.UpdatedAt,
+                    Roles = ResolveRoles(p.Id)
                 }).ToList());
 
         public Task<IReadOnlyList<PersonDto>> ListAllPersonsAsync(CancellationToken cancellationToken = default) =>
@@ -681,11 +996,22 @@ public class OrganizationControllerTests : IntegrationTestBase
                     Email = p.Email,
                     Status = p.Status,
                     CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
+                    UpdatedAt = p.UpdatedAt,
+                    Roles = ResolveRoles(p.Id)
                 }).ToList());
 
         public Task<IReadOnlyList<string>> GetPersonRolesAsync(Guid personId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+            Task.FromResult(ResolveRoles(personId));
+
+        public Task<IReadOnlyList<RoleDto>> ListAllRolesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RoleDto>>(new List<RoleDto>
+            {
+                new(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Administrator", "System Administrator"),
+                new(Guid.Parse("22222222-2222-2222-2222-222222222222"), "Management", "Management oversight"),
+                new(Guid.Parse("33333333-3333-3333-3333-333333333333"), "Operational User", "Standard operational user"),
+                new(Guid.Parse("44444444-4444-4444-4444-444444444444"), "Programmer", "Software development"),
+                new(Guid.Parse("55555555-5555-5555-5555-555555555555"), "Implementator", "Field deployment")
+            });
     }
 
     private sealed class StubAuthService : IIdentityAuthService

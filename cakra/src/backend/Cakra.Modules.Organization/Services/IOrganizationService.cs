@@ -8,16 +8,41 @@ namespace Cakra.Modules.Organization.Services;
 /// </summary>
 public interface IOrganizationService
 {
+    /// <summary>Creates a new person in ACTIVE status, assigns roles atomically, and emits <c>PersonCreated</c> and <c>RoleAssigned</c>.</summary>
+    Task<Person> CreatePersonAsync(
+        string firstName,
+        string lastName,
+        string email,
+        IReadOnlyList<Guid> roleIds,
+        CancellationToken cancellationToken = default) =>
+        CreatePersonAsync(firstName, lastName, email, cancellationToken);
+
     /// <summary>Creates a new person in ACTIVE status and emits <c>PersonCreated</c>.</summary>
     Task<Person> CreatePersonAsync(
         string firstName,
         string lastName,
         string email,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default) =>
+        CreatePersonAsync(firstName, lastName, email, Array.Empty<Guid>(), cancellationToken);
+
+    /// <summary>Synchronous convenience overload for <see cref="CreatePersonAsync"/> with roles.</summary>
+    Person CreatePerson(string firstName, string lastName, string email, IReadOnlyList<Guid> roleIds) =>
+        CreatePersonAsync(firstName, lastName, email, roleIds, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>Synchronous convenience overload for <see cref="CreatePersonAsync"/>.</summary>
     Person CreatePerson(string firstName, string lastName, string email) =>
         CreatePersonAsync(firstName, lastName, email, CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <summary>Updates an existing person's attributes and synchronizes role assignments.</summary>
+    Task<Person> UpdatePersonAsync(
+        Guid personId,
+        string firstName,
+        string lastName,
+        string email,
+        IReadOnlyList<Guid> roleIds,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default) =>
+        UpdatePersonAsync(personId, firstName, lastName, email, cancellationToken);
 
     /// <summary>Updates an existing person's attributes.</summary>
     Task<Person> UpdatePersonAsync(
@@ -25,7 +50,12 @@ public interface IOrganizationService
         string firstName,
         string lastName,
         string email,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default) =>
+        UpdatePersonAsync(personId, firstName, lastName, email, Array.Empty<Guid>(), null, cancellationToken);
+
+    /// <summary>Synchronous convenience overload for <see cref="UpdatePersonAsync"/> with roles.</summary>
+    Person UpdatePerson(Guid personId, string firstName, string lastName, string email, IReadOnlyList<Guid> roleIds, Guid? actorPersonId = null) =>
+        UpdatePersonAsync(personId, firstName, lastName, email, roleIds, actorPersonId, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>Synchronous convenience overload for <see cref="UpdatePersonAsync"/>.</summary>
     Person UpdatePerson(Guid personId, string firstName, string lastName, string email) =>

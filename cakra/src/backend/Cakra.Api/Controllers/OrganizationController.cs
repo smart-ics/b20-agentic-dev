@@ -1,6 +1,9 @@
 using System.Diagnostics;
+using System.Security.Claims;
+using Cakra.Core;
 using Cakra.Modules.Organization;
 using Cakra.Modules.Organization.Commands;
+using Cakra.Modules.Organization.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -20,14 +23,32 @@ public sealed class OrganizationController : ApiControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IOrganizationQueryService _organizationQueryService;
+    private readonly ICurrentContextProvider? _currentContextProvider;
 
     public OrganizationController(
         IMediator mediator,
-        IOrganizationQueryService organizationQueryService)
+        IOrganizationQueryService organizationQueryService,
+        ICurrentContextProvider? currentContextProvider = null)
     {
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _organizationQueryService = organizationQueryService
             ?? throw new ArgumentNullException(nameof(organizationQueryService));
+        _currentContextProvider = currentContextProvider;
+    }
+
+    /// <summary>
+    /// Retrieves all master organizational roles ordered by name for role assignment selectors
+    /// (Architecture CR-027 §4 TD-004, §5, §6, §9).
+    /// </summary>
+    [HttpGet("roles")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<RoleDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyList<RoleDto>>> ListAllRoles(
+        CancellationToken cancellationToken = default)
+    {
+        var roles = await _organizationQueryService.ListAllRolesAsync(cancellationToken);
+        return Ok(roles);
     }
 
     /// <summary>
@@ -107,12 +128,23 @@ public sealed class OrganizationController : ApiControllerBase
             return CreateBadRequestProblem("Request body cannot be null.");
         }
 
+        if (request.RoleIds is not null && request.RoleIds.Count == 0)
+        {
+            return CreateBadRequestProblem("At least one role must be assigned.");
+        }
+
         try
         {
-            var command = new CreatePersonCommand(
-                request.FirstName,
-                request.LastName,
-                request.Email);
+            var command = request.RoleIds is not null
+                ? new CreatePersonCommand(
+                    request.FirstName,
+                    request.LastName,
+                    request.Email,
+                    request.RoleIds)
+                : new CreatePersonCommand(
+                    request.FirstName,
+                    request.LastName,
+                    request.Email);
 
             var result = await _mediator.Send(command, cancellationToken);
             return CreatedAtAction(nameof(GetPersonById), new { id = result.Id }, result);
@@ -122,6 +154,10 @@ public sealed class OrganizationController : ApiControllerBase
             return CreateConflictProblem(ex.Message);
         }
         catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
         {
             return CreateBadRequestProblem(ex.Message);
         }
@@ -148,19 +184,39 @@ public sealed class OrganizationController : ApiControllerBase
             return CreateBadRequestProblem("Request body cannot be null.");
         }
 
+        if (request.RoleIds is not null && request.RoleIds.Count == 0)
+        {
+            return CreateBadRequestProblem("At least one role must be assigned.");
+        }
+
+        var actorPersonId = ResolveActorPersonId();
+
         try
         {
-            var command = new UpdatePersonCommand(
-                id,
-                request.FirstName,
-                request.LastName,
-                request.Email);
+            var command = request.RoleIds is not null
+                ? new UpdatePersonCommand(
+                    id,
+                    request.FirstName,
+                    request.LastName,
+                    request.Email,
+                    request.RoleIds,
+                    actorPersonId)
+                : new UpdatePersonCommand(
+                    id,
+                    request.FirstName,
+                    request.LastName,
+                    request.Email);
 
             var result = await _mediator.Send(command, cancellationToken);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
         {
+            if (ex.Message.Contains("Administrator role", StringComparison.OrdinalIgnoreCase))
+            {
+                return CreateBadRequestProblem(ex.Message);
+            }
+
             return CreateConflictProblem(ex.Message);
         }
         catch (ArgumentException ex)
@@ -169,6 +225,11 @@ public sealed class OrganizationController : ApiControllerBase
         }
         catch (KeyNotFoundException ex)
         {
+            if (ex.Message.Contains("Role", StringComparison.OrdinalIgnoreCase))
+            {
+                return CreateBadRequestProblem(ex.Message);
+            }
+
             return CreateNotFoundProblem(ex.Message);
         }
     }
@@ -289,6 +350,30 @@ public sealed class OrganizationController : ApiControllerBase
             StatusCode = StatusCodes.Status404NotFound
         };
     }
+
+    private Guid? ResolveActorPersonId()
+    {
+        if (_currentContextProvider?.CurrentPersonId is { } contextPersonId && contextPersonId != Guid.Empty)
+        {
+            return contextPersonId;
+        }
+
+        var user = HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var personIdClaim = user.FindFirst("personId")?.Value
+                ?? user.FindFirst("person_id")?.Value
+                ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? user.FindFirst("sub")?.Value;
+
+            if (Guid.TryParse(personIdClaim, out var parsed) && parsed != Guid.Empty)
+            {
+                return parsed;
+            }
+        }
+
+        return null;
+    }
 }
 
 /// <summary>
@@ -297,7 +382,8 @@ public sealed class OrganizationController : ApiControllerBase
 public sealed record CreatePersonRequest(
     string FirstName,
     string LastName,
-    string Email);
+    string Email,
+    IReadOnlyList<Guid>? RoleIds = null);
 
 /// <summary>
 /// Request payload for updating a person.
@@ -305,4 +391,5 @@ public sealed record CreatePersonRequest(
 public sealed record UpdatePersonRequest(
     string FirstName,
     string LastName,
-    string Email);
+    string Email,
+    IReadOnlyList<Guid>? RoleIds = null);

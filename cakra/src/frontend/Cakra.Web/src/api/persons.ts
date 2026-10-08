@@ -6,6 +6,12 @@ import httpClient from './http'
  * (Architecture §7, §8, §14, §19.4, §19.6).
  */
 
+export interface RoleDto {
+  id: string
+  name: string
+  description?: string | null
+}
+
 export interface PersonDto {
   id: string
   personId?: string
@@ -17,18 +23,21 @@ export interface PersonDto {
   isActive: boolean
   createdAt: string
   updatedAt?: string | null
+  roles?: string[]
 }
 
 export interface CreatePersonRequest {
   firstName: string
   lastName: string
   email: string
+  roleIds?: string[]
 }
 
 export interface UpdatePersonRequest {
   firstName: string
   lastName: string
   email: string
+  roleIds?: string[]
 }
 
 export interface ProblemDetailsPayload {
@@ -56,6 +65,15 @@ export function extractErrorMessage(err: unknown, fallback: string): string {
     }
   }
   return fallback
+}
+
+/**
+ * Retrieves all master roles available in the organization module.
+ * Used by SCR-ORG-002 (PersonModal.vue) to populate role selection checkboxes.
+ */
+export async function listRoles(): Promise<RoleDto[]> {
+  const response = await httpClient.get<RoleDto[]>('/organization/roles')
+  return response.data
 }
 
 /**

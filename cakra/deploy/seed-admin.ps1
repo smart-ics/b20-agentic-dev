@@ -56,6 +56,10 @@ IF NOT EXISTS (SELECT 1 FROM organization.Roles WHERE Name = 'Implementator')
     INSERT INTO organization.Roles (Id, Name, Description, CreatedAt)
     VALUES (NEWID(), 'Implementator', 'Field deployment and client implementation', SYSUTCDATETIME());
 
+IF NOT EXISTS (SELECT 1 FROM organization.Roles WHERE Name = 'Operational User')
+    INSERT INTO organization.Roles (Id, Name, Description, CreatedAt)
+    VALUES (NEWID(), 'Operational User', 'Standard operational user participating in operational workflows', SYSUTCDATETIME());
+
 -- 2. Organization Person
 DECLARE @PersonId UNIQUEIDENTIFIER;
 SELECT @PersonId = Id FROM organization.Persons WHERE Email = '$AdminEmail';

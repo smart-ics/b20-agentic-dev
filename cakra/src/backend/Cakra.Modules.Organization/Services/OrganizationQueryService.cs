@@ -1,5 +1,7 @@
 using Cakra.Core.Infrastructure.Persistence;
 using Cakra.Modules.Organization.Domain;
+using Cakra.Modules.Organization.Models;
+using Cakra.Modules.Organization.Persistence;
 using Dapper;
 
 namespace Cakra.Modules.Organization.Services;
@@ -11,10 +13,17 @@ namespace Cakra.Modules.Organization.Services;
 public sealed class OrganizationQueryService : IOrganizationQueryService
 {
     private readonly IDbConnectionFactory _connectionFactory;
+    private readonly IRoleRepository _roleRepository;
 
     public OrganizationQueryService(IDbConnectionFactory connectionFactory)
+        : this(connectionFactory, new RoleRepository(connectionFactory))
+    {
+    }
+
+    internal OrganizationQueryService(IDbConnectionFactory connectionFactory, IRoleRepository roleRepository)
     {
         _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+        _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
     }
 
     /// <inheritdoc />
@@ -45,20 +54,25 @@ public sealed class OrganizationQueryService : IOrganizationQueryService
     {
         const string sql = """
             SELECT
-                [Id],
-                [FirstName],
-                [LastName],
-                [Email],
-                [Status],
-                [CreatedAt],
-                [UpdatedAt]
-            FROM [organization].[Persons]
-            WHERE [Id] = @PersonId;
+                p.[Id],
+                p.[FirstName],
+                p.[LastName],
+                p.[Email],
+                p.[Status],
+                p.[CreatedAt],
+                p.[UpdatedAt],
+                STRING_AGG(r.[Name], ',') WITHIN GROUP (ORDER BY r.[Name]) AS [RolesRaw]
+            FROM [organization].[Persons] p
+            LEFT JOIN [organization].[RoleAssignments] ra ON p.[Id] = ra.[PersonId] AND ra.[RevokedAt] IS NULL
+            LEFT JOIN [organization].[Roles] r ON ra.[RoleId] = r.[Id]
+            WHERE p.[Id] = @PersonId
+            GROUP BY p.[Id], p.[FirstName], p.[LastName], p.[Email], p.[Status], p.[CreatedAt], p.[UpdatedAt];
             """;
 
         using var connection = _connectionFactory.CreateConnection();
-        return await connection.QuerySingleOrDefaultAsync<PersonDto>(
+        var row = await connection.QuerySingleOrDefaultAsync<PersonDtoRow>(
             new CommandDefinition(sql, new { PersonId = personId }, cancellationToken: cancellationToken));
+        return row?.ToDto();
     }
 
     /// <inheritdoc />
@@ -70,22 +84,26 @@ public sealed class OrganizationQueryService : IOrganizationQueryService
     {
         const string sql = """
             SELECT
-                [Id],
-                [FirstName],
-                [LastName],
-                [Email],
-                [Status],
-                [CreatedAt],
-                [UpdatedAt]
-            FROM [organization].[Persons]
-            WHERE [Status] = @Status
-            ORDER BY [LastName], [FirstName];
+                p.[Id],
+                p.[FirstName],
+                p.[LastName],
+                p.[Email],
+                p.[Status],
+                p.[CreatedAt],
+                p.[UpdatedAt],
+                STRING_AGG(r.[Name], ',') WITHIN GROUP (ORDER BY r.[Name]) AS [RolesRaw]
+            FROM [organization].[Persons] p
+            LEFT JOIN [organization].[RoleAssignments] ra ON p.[Id] = ra.[PersonId] AND ra.[RevokedAt] IS NULL
+            LEFT JOIN [organization].[Roles] r ON ra.[RoleId] = r.[Id]
+            WHERE p.[Status] = @Status
+            GROUP BY p.[Id], p.[FirstName], p.[LastName], p.[Email], p.[Status], p.[CreatedAt], p.[UpdatedAt]
+            ORDER BY p.[LastName], p.[FirstName];
             """;
 
         using var connection = _connectionFactory.CreateConnection();
-        var result = await connection.QueryAsync<PersonDto>(
+        var rows = await connection.QueryAsync<PersonDtoRow>(
             new CommandDefinition(sql, new { Status = Person.StatusActive }, cancellationToken: cancellationToken));
-        return result.AsList();
+        return rows.Select(r => r.ToDto()).ToList();
     }
 
     /// <inheritdoc />
@@ -97,21 +115,25 @@ public sealed class OrganizationQueryService : IOrganizationQueryService
     {
         const string sql = """
             SELECT
-                [Id],
-                [FirstName],
-                [LastName],
-                [Email],
-                [Status],
-                [CreatedAt],
-                [UpdatedAt]
-            FROM [organization].[Persons]
-            ORDER BY [LastName], [FirstName];
+                p.[Id],
+                p.[FirstName],
+                p.[LastName],
+                p.[Email],
+                p.[Status],
+                p.[CreatedAt],
+                p.[UpdatedAt],
+                STRING_AGG(r.[Name], ',') WITHIN GROUP (ORDER BY r.[Name]) AS [RolesRaw]
+            FROM [organization].[Persons] p
+            LEFT JOIN [organization].[RoleAssignments] ra ON p.[Id] = ra.[PersonId] AND ra.[RevokedAt] IS NULL
+            LEFT JOIN [organization].[Roles] r ON ra.[RoleId] = r.[Id]
+            GROUP BY p.[Id], p.[FirstName], p.[LastName], p.[Email], p.[Status], p.[CreatedAt], p.[UpdatedAt]
+            ORDER BY p.[LastName], p.[FirstName];
             """;
 
         using var connection = _connectionFactory.CreateConnection();
-        var result = await connection.QueryAsync<PersonDto>(
+        var rows = await connection.QueryAsync<PersonDtoRow>(
             new CommandDefinition(sql, cancellationToken: cancellationToken));
-        return result.AsList();
+        return rows.Select(r => r.ToDto()).ToList();
     }
 
     /// <inheritdoc />
@@ -195,4 +217,17 @@ public sealed class OrganizationQueryService : IOrganizationQueryService
     /// <inheritdoc />
     public IReadOnlyList<PersonResponsibilityDto> GetPersonResponsibilities(Guid personId) =>
         GetPersonResponsibilitiesAsync(personId, CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RoleDto>> ListAllRolesAsync(CancellationToken cancellationToken = default)
+    {
+        var roles = await _roleRepository.GetAllAsync(cancellationToken);
+        return roles
+            .Select(r => new RoleDto(r.Id, r.Name, r.Description))
+            .ToList();
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<RoleDto> ListAllRoles() =>
+        ListAllRolesAsync(CancellationToken.None).GetAwaiter().GetResult();
 }
