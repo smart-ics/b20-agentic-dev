@@ -115,6 +115,11 @@ export async function recordRequest(
   return response.data
 }
 
+export interface CandidateTaskItem {
+  title: string
+  complexity: number
+}
+
 /**
  * Normalizes a single task line by stripping markdown checkboxes, bullets, and numbering (CR-019 TD-002).
  */
@@ -128,15 +133,58 @@ export function normalizeTaskLine(line: string): string {
 }
 
 /**
- * Parses raw multi-line task list text into normalized non-empty lines with a 255-character cap (CR-019 TD-002).
+ * Regex matching trailing complexity notation: 1 to 5 points/pts with optional brackets/parentheses (CR-028).
+ * Examples: "3 pts", "1pt", "(4 points)", "[2 pts]", "{5 pt}".
  */
-export function parseTaskListText(rawText: string): string[] {
+const TASK_COMPLEXITY_REGEX = /(?:[\(\[\{])?\s*([1-5])\s*(?:pts?|points?)\s*(?:[\)\]\}])?\s*$/i
+
+/**
+ * Parses a single task line, extracting complexity notation if present and normalizing title (CR-028).
+ * Defaults complexity to 1 if not present or out-of-range. Caps title at 255 chars. Returns null if empty.
+ */
+export function parseCandidateTaskLine(line: string): CandidateTaskItem | null {
+  const normalized = normalizeTaskLine(line)
+  if (!normalized) return null
+
+  const match = normalized.match(TASK_COMPLEXITY_REGEX)
+
+  let title = normalized
+  let complexity = 1
+
+  if (match && typeof match.index === 'number') {
+    complexity = parseInt(match[1], 10)
+    title = normalized.slice(0, match.index).trim()
+  } else {
+    title = normalized.trim()
+  }
+
+  if (!title) return null
+
+  if (title.length > 255) {
+    title = title.substring(0, 255)
+  }
+
+  return { title, complexity }
+}
+
+/**
+ * Parses raw multi-line task list text into structured CandidateTaskItem objects (CR-028).
+ */
+export function parseTaskListTasks(rawText: string): CandidateTaskItem[] {
   if (!rawText) return []
   return rawText
     .split(/\r?\n/)
-    .map((line) => normalizeTaskLine(line))
-    .filter((line) => line.length > 0)
-    .map((line) => (line.length > 255 ? line.substring(0, 255) : line))
+    .map((line) => parseCandidateTaskLine(line))
+    .filter((task): task is CandidateTaskItem => task !== null)
+}
+
+/**
+ * Parses raw multi-line task list text into normalized non-empty lines with a 255-character cap (CR-019 TD-002, CR-028).
+ * Maintained for backward compatibility.
+ */
+export function parseTaskListText(rawText: string): string[] {
+  if (!rawText) return []
+  return parseTaskListTasks(rawText).map((task) => task.title)
 }
 
 export interface UpdateRequestCoreAttributesPayload {
@@ -353,6 +401,8 @@ export async function getWorkInProgressOverview(): Promise<PersonWorkInProgressD
 export const requestService = {
   recordRequest,
   normalizeTaskLine,
+  parseCandidateTaskLine,
+  parseTaskListTasks,
   parseTaskListText,
   startWork,
   pauseWork,

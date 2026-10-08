@@ -1,5 +1,10 @@
 <script lang="ts">
-export { normalizeTaskLine, parseTaskListText } from '@/api/requests'
+export {
+  normalizeTaskLine,
+  parseTaskListText,
+  parseTaskListTasks,
+  type CandidateTaskItem,
+} from '@/api/requests'
 </script>
 
 <script setup lang="ts">
@@ -9,9 +14,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
 import {
-  normalizeTaskLine,
-  parseTaskListText,
+  parseTaskListTasks,
   recordRequest,
+  type CandidateTaskItem,
   type RequestDto,
 } from '@/api/requests'
 import {
@@ -213,9 +218,9 @@ const createForm = reactive({
   productId: '',
   deadline: '',
 })
-// Quick capture candidate tasks for create modal (CR-019)
+// Quick capture candidate tasks for create modal (CR-019, CR-028)
 const createRawTasks = ref('')
-const createCandidateTasks = ref<string[]>([])
+const createCandidateTasks = ref<CandidateTaskItem[]>([])
 
 // Detail Panel forms
 const objectiveForm = reactive({
@@ -245,10 +250,10 @@ const addRequestForm = reactive({
   manualRequestId: '',
 })
 
-// Scope bulk quick add state (CR-019)
+// Scope bulk quick add state (CR-019, CR-028)
 const scopeAddMode = ref<'existing' | 'quick'>('existing')
 const scopeRawTasks = ref('')
-const scopeCandidateTasks = ref<string[]>([])
+const scopeCandidateTasks = ref<CandidateTaskItem[]>([])
 const isSubmittingScopeBulk = ref(false)
 
 const routeWorkPackageId = computed(() => String(route.params.id ?? '').trim())
@@ -905,7 +910,7 @@ async function handleResetFilters(): Promise<void> {
 }
 
 function handleParseCreateTasks(): void {
-  const parsed = parseTaskListText(createRawTasks.value).map((line) => normalizeTaskLine(line))
+  const parsed = parseTaskListTasks(createRawTasks.value)
   if (parsed.length > 0) {
     createCandidateTasks.value = [...createCandidateTasks.value, ...parsed]
     createRawTasks.value = ''
@@ -968,9 +973,9 @@ async function handleCreateWorkPackage(): Promise<void> {
 
     const created = response.data
 
-    const tasksToRecord = [...createCandidateTasks.value]
+    const tasksToRecord: CandidateTaskItem[] = [...createCandidateTasks.value]
     if (tasksToRecord.length === 0 && createRawTasks.value.trim().length > 0) {
-      tasksToRecord.push(...parseTaskListText(createRawTasks.value))
+      tasksToRecord.push(...parseTaskListTasks(createRawTasks.value))
     }
 
     const unrecordedTitles: string[] = []
@@ -978,9 +983,10 @@ async function handleCreateWorkPackage(): Promise<void> {
 
     if (tasksToRecord.length > 0) {
       const results = await Promise.allSettled(
-        tasksToRecord.map((taskTitle) =>
+        tasksToRecord.map((task) =>
           recordRequest({
-            title: taskTitle,
+            title: task.title,
+            complexity: task.complexity,
             description: '',
             customerId: createForm.customerId.trim() || null,
             productId: createForm.productId.trim() || null,
@@ -995,7 +1001,7 @@ async function handleCreateWorkPackage(): Promise<void> {
         if (res.status === 'fulfilled') {
           recordedCount++
         } else {
-          unrecordedTitles.push(tasksToRecord[idx])
+          unrecordedTitles.push(tasksToRecord[idx].title)
         }
       })
     }
@@ -1279,7 +1285,7 @@ async function handleAddRequestToScope(): Promise<void> {
 }
 
 function handleParseScopeTasks(): void {
-  const parsed = parseTaskListText(scopeRawTasks.value).map((line) => normalizeTaskLine(line))
+  const parsed = parseTaskListTasks(scopeRawTasks.value)
   if (parsed.length > 0) {
     scopeCandidateTasks.value = [...scopeCandidateTasks.value, ...parsed]
     scopeRawTasks.value = ''
@@ -1307,9 +1313,9 @@ async function handleBulkAddTasksToScope(): Promise<void> {
   }
 
   const wp = selectedWorkPackage.value
-  const tasksToAdd = [...scopeCandidateTasks.value]
+  const tasksToAdd: CandidateTaskItem[] = [...scopeCandidateTasks.value]
   if (tasksToAdd.length === 0 && scopeRawTasks.value.trim().length > 0) {
-    tasksToAdd.push(...parseTaskListText(scopeRawTasks.value))
+    tasksToAdd.push(...parseTaskListTasks(scopeRawTasks.value))
   }
 
   if (tasksToAdd.length === 0) {
@@ -1324,9 +1330,10 @@ async function handleBulkAddTasksToScope(): Promise<void> {
 
   try {
     const results = await Promise.allSettled(
-      tasksToAdd.map((title) =>
+      tasksToAdd.map((task) =>
         recordRequest({
-          title,
+          title: task.title,
+          complexity: task.complexity,
           description: '',
           customerId: wp.customerId || null,
           productId: wp.productId || null,
@@ -1337,21 +1344,22 @@ async function handleBulkAddTasksToScope(): Promise<void> {
       ),
     )
 
-    const unrecordedTitles: string[] = []
+    const unrecordedTasks: CandidateTaskItem[] = []
     let recordedCount = 0
 
     results.forEach((res, idx) => {
       if (res.status === 'fulfilled') {
         recordedCount++
       } else {
-        unrecordedTitles.push(tasksToAdd[idx])
+        unrecordedTasks.push(tasksToAdd[idx])
       }
     })
 
-    if (unrecordedTitles.length > 0) {
-      scopeCandidateTasks.value = unrecordedTitles
+    if (unrecordedTasks.length > 0) {
+      scopeCandidateTasks.value = unrecordedTasks
       scopeRawTasks.value = ''
-      warningMessage.value = `${recordedCount} task(s) added to scope, but ${unrecordedTitles.length} failed: "${unrecordedTitles.join('", "')}".`
+      const failedTitles = unrecordedTasks.map((t) => t.title)
+      warningMessage.value = `${recordedCount} task(s) added to scope, but ${unrecordedTasks.length} failed: "${failedTitles.join('", "')}".`
     } else {
       scopeCandidateTasks.value = []
       scopeRawTasks.value = ''
@@ -1824,11 +1832,17 @@ onMounted(async () => {
                   class="flex justify-between items-center py-1.5 px-2 bg-transparent text-slate-200"
                   data-testid="create-candidate-task-item"
                 >
-                  <div class="flex items-center truncate me-2">
-                    <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 me-2 font-mono text-[10px]">
+                  <div class="flex items-center truncate me-2 gap-1.5">
+                    <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono text-[10px] shrink-0">
                       #{{ idx + 1 }}
                     </span>
-                    <span class="truncate text-xs">{{ task }}</span>
+                    <span
+                      class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold shrink-0"
+                      data-testid="create-candidate-complexity-badge"
+                    >
+                      {{ task.complexity }} pt{{ task.complexity > 1 ? 's' : '' }}
+                    </span>
+                    <span class="truncate text-xs">{{ task.title }}</span>
                   </div>
                   <button
                     type="button"
@@ -3169,11 +3183,17 @@ onMounted(async () => {
                       class="flex justify-between items-center py-1.5 px-2 bg-transparent text-slate-200"
                       data-testid="scope-candidate-task-item"
                     >
-                      <div class="flex items-center truncate me-2">
-                        <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 me-2 font-mono text-[10px]">
+                      <div class="flex items-center truncate me-2 gap-1.5">
+                        <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono text-[10px] shrink-0">
                           #{{ idx + 1 }}
                         </span>
-                        <span class="truncate text-xs">{{ task }}</span>
+                        <span
+                          class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold shrink-0"
+                          data-testid="scope-candidate-complexity-badge"
+                        >
+                          {{ task.complexity }} pt{{ task.complexity > 1 ? 's' : '' }}
+                        </span>
+                        <span class="truncate text-xs">{{ task.title }}</span>
                       </div>
                       <button
                         type="button"
