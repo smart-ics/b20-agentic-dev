@@ -187,6 +187,8 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     try {
       await httpClient.post('/auth/logout')
+    } catch {
+      // Invalidate client session state regardless of backend errors (e.g. offline, expired cookie, network timeout)
     } finally {
       currentUser.value = null
       error.value = null

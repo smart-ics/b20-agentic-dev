@@ -70,6 +70,25 @@ public class RegisterUserAccountCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_multiple_valid_registrations_both_succeed_with_empty_PersonId()
+    {
+        // Arrange
+        var command1 = new RegisterUserAccountCommand("userone", "userone@example.com", "Password123!");
+        var command2 = new RegisterUserAccountCommand("usertwo", "usertwo@example.com", "Password123!");
+
+        // Act
+        var result1 = await _handler.Handle(command1, CancellationToken.None);
+        var result2 = await _handler.Handle(command2, CancellationToken.None);
+
+        // Assert
+        result1.UserId.Should().NotBe(result2.UserId);
+        result1.PersonId.Should().Be(Guid.Empty);
+        result2.PersonId.Should().Be(Guid.Empty);
+        result1.Status.Should().Be(UserAccountStatus.Pending);
+        result2.Status.Should().Be(UserAccountStatus.Pending);
+    }
+
+    [Fact]
     public async Task Handle_with_duplicate_username_throws_InvalidOperationException()
     {
         // Arrange
@@ -258,6 +277,7 @@ public class RegisterUserAccountCommandHandlerTests
 
         public Task<UserAccount?> GetByPersonIdAsync(Guid personId, CancellationToken cancellationToken = default)
         {
+            if (personId == Guid.Empty) return Task.FromResult<UserAccount?>(null);
             var user = Items.Values.FirstOrDefault(u => u.PersonId == personId);
             return Task.FromResult(user);
         }

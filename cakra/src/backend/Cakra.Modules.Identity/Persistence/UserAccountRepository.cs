@@ -62,12 +62,17 @@ public sealed class UserAccountRepository : IUserAccountRepository
             """;
 
         using var connection = _connectionFactory.CreateConnection();
-        return await connection.QuerySingleOrDefaultAsync<UserAccount>(
+        return await connection.QueryFirstOrDefaultAsync<UserAccount>(
             new CommandDefinition(sql, new { UsernameOrEmail = usernameOrEmail }, cancellationToken: cancellationToken));
     }
 
     public async Task<UserAccount?> GetByPersonIdAsync(Guid personId, CancellationToken cancellationToken = default)
     {
+        if (personId == Guid.Empty)
+        {
+            return null;
+        }
+
         const string sql = """
             SELECT
                 UserId AS Id,

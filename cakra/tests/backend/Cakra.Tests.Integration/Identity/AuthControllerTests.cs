@@ -181,6 +181,36 @@ public class AuthControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Register_multiple_users_both_return_201_with_empty_personId()
+    {
+        var harness = CreateTestHarness();
+
+        var response1 = await harness.Client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            username = "firstuser",
+            email = "first@example.com",
+            password = "SecurePassword123!"
+        });
+        response1.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var response2 = await harness.Client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            username = "seconduser",
+            email = "second@example.com",
+            password = "SecurePassword123!"
+        });
+        response2.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var body1 = await response1.Content.ReadFromJsonAsync<JsonElement>();
+        var body2 = await response2.Content.ReadFromJsonAsync<JsonElement>();
+
+        body1.GetProperty("personId").GetGuid().Should().Be(Guid.Empty);
+        body2.GetProperty("personId").GetGuid().Should().Be(Guid.Empty);
+        body1.GetProperty("status").GetString().Should().Be(UserAccountStatus.Pending);
+        body2.GetProperty("status").GetString().Should().Be(UserAccountStatus.Pending);
+    }
+
+    [Fact]
     public async Task Register_with_duplicate_username_returns_409_conflict_problem_details()
     {
         var harness = CreateTestHarness();
@@ -454,7 +484,7 @@ public class AuthControllerTests : IntegrationTestBase
         }
 
         public Task<UserAccount?> GetByPersonIdAsync(Guid personId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Items.Values.FirstOrDefault(u => u.PersonId == personId));
+            Task.FromResult(personId == Guid.Empty ? null : Items.Values.FirstOrDefault(u => u.PersonId == personId));
 
         public Task<IReadOnlyList<UserAccount>> GetAllAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<UserAccount>>(Items.Values.ToList());

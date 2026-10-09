@@ -26,12 +26,11 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     proxy: {
-      // Forward API calls to local IIS backend at http://localhost:8084/api
+      // Forward API calls to local IIS backend at http://localhost:8084
       '/api': {
         target: 'http://localhost:8084',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => (path.startsWith('/api/api') ? path : `/api${path}`),
       },
     },
   },

@@ -28,6 +28,9 @@ app.use(router)
 // shared Axios client observes an HTTP 401 (Architecture §19.5).
 window.addEventListener('cakra:unauthorized', () => {
   useAuthStore().clear()
+  if (router.currentRoute.value.path !== '/login') {
+    router.replace('/login')
+  }
 })
 
 app.mount('#app')

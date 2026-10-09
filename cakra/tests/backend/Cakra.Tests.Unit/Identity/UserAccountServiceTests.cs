@@ -466,6 +466,7 @@ public class UserAccountServiceTests
 
         public Task<UserAccount?> GetByPersonIdAsync(Guid personId, CancellationToken cancellationToken = default)
         {
+            if (personId == Guid.Empty) return Task.FromResult<UserAccount?>(null);
             var user = Items.Values.FirstOrDefault(u => u.PersonId == personId);
             return Task.FromResult(user);
         }

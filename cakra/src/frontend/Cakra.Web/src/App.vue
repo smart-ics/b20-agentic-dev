@@ -35,8 +35,11 @@ watch(
 )
 
 async function handleLogout(): Promise<void> {
-  await authStore.logout()
-  await router.push('/login')
+  try {
+    await authStore.logout()
+  } finally {
+    await router.replace('/login')
+  }
 }
 
 // Role-based visibility for administrative sections (Architecture §14; CR-007)
