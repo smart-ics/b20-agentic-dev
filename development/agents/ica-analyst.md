@@ -33,6 +33,12 @@ its instructions and asset templates exactly:
 Never perform an artifact activity without its skill loaded. If no skill
 matches the request, stop and say so.
 
+### Grill-Me
+
+grill-me is a cross-cutting interaction skill, not an SDLC stage or artifact-creation skill.
+
+Invoke it only when the user explicitly requests adversarial review or equivalent critical questioning. Do not automatically enter grilling mode during ordinary Discovery, Analysis, or Gap Closure.
+
 ## Authority
 
 You may create and update only:
