@@ -27,6 +27,7 @@ import {
   type FlowBarcodeDayDto,
   type WorkPackageTelemetryDto,
 } from '@/api/workpackages'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * SCR-WP-001: Work Package Screen
@@ -311,6 +312,11 @@ const isSelectedClosed = computed(() => selectedStatus.value === 'CLOSED')
 const canActivate = computed(() => isSelectedDraft.value)
 const canClose = computed(() => isSelectedDraft.value || isSelectedActive.value)
 const canModifyPackage = computed(() => !isSelectedClosed.value)
+
+const authStore = useAuthStore()
+const canAccessDecisionWorkbench = computed(
+  () => authStore.roles.includes('Administrator') || authStore.roles.includes('Management'),
+)
 
 const isContextDirty = computed(() => {
   if (!selectedWorkPackage.value) return false
@@ -2631,7 +2637,7 @@ onMounted(async () => {
             </div>
 
             <!-- Interactive Decision Workbench (CR-025 P4-S08, Architecture §4 TD-007) -->
-            <div class="pb-3 border-b border-slate-800" data-testid="decision-workbench">
+            <div v-if="canAccessDecisionWorkbench" class="pb-3 border-b border-slate-800" data-testid="decision-workbench">
               <div class="flex justify-between items-center mb-2">
                 <div class="flex items-center gap-1.5">
                   <span class="text-[11px] uppercase tracking-wider font-bold text-white flex items-center gap-1">
@@ -2718,6 +2724,7 @@ onMounted(async () => {
                   </div>
                   <div class="flex flex-col gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1.5 max-h-32 overflow-y-auto">
                     <label
+                      v-if="canAccessDecisionWorkbench"
                       v-for="req in uncompletedActiveScopeItems"
                       :key="req.requestId"
                       class="flex items-center gap-2 mb-0 p-1 rounded hover:bg-slate-850 cursor-pointer text-xs text-slate-300"
@@ -3281,7 +3288,11 @@ onMounted(async () => {
                       </span>
 
                       <!-- Checkbox to simulate de-scoping -->
-                      <div class="me-2 mb-0 flex-shrink-0" title="Simulate de-scoping this request">
+                      <div
+                        v-if="canAccessDecisionWorkbench"
+                        class="me-2 mb-0 flex-shrink-0"
+                        title="Simulate de-scoping this request"
+                      >
                         <input
                           :id="`descope-chk-${item.requestId}`"
                           type="checkbox"
