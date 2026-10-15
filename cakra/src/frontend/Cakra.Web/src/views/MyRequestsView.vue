@@ -1,3 +1,26 @@
+<script lang="ts">
+export function formatShortId(id: string | null | undefined): string {
+  if (!id) return ''
+  return `#${id.slice(0, 8)}`
+}
+
+export function normalizeSearchQuery(query: string | null | undefined): string {
+  if (!query) return ''
+  const q = query.trim().toLowerCase()
+  return q.startsWith('#') ? q.slice(1).trim() : q
+}
+
+export function matchesRequestId(
+  rawId: string | null | undefined,
+  searchQuery: string | null | undefined,
+): boolean {
+  if (!rawId || !searchQuery) return false
+  const cleanQ = normalizeSearchQuery(searchQuery)
+  if (!cleanQ) return false
+  return rawId.toLowerCase().includes(cleanQ)
+}
+</script>
+
 <script setup lang="ts">
 import { AxiosError } from 'axios'
 import { computed, onMounted, ref } from 'vue'
@@ -143,9 +166,10 @@ const filteredMyRequests = computed<AssignedRequestItem[]>(() => {
 
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase()
+    const cleanQ = normalizeSearchQuery(q)
     list = list.filter((req) => {
       return (
-        (req.id ?? '').toLowerCase().includes(q) ||
+        (cleanQ ? (req.id ?? '').toLowerCase().includes(cleanQ) : false) ||
         (req.title ?? '').toLowerCase().includes(q) ||
         (req.description ?? '').toLowerCase().includes(q) ||
         (req.customerName ?? '').toLowerCase().includes(q) ||
@@ -310,11 +334,12 @@ const filteredAssignedSubTasks = computed(() => {
 
   if (subTaskSearchQuery.value.trim()) {
     const q = subTaskSearchQuery.value.trim().toLowerCase()
+    const cleanQ = normalizeSearchQuery(q)
     list = list.filter(
       (st) =>
         st.title.toLowerCase().includes(q) ||
         st.requestTitle.toLowerCase().includes(q) ||
-        st.requestId.toLowerCase().includes(q),
+        (cleanQ ? st.requestId.toLowerCase().includes(cleanQ) : false),
     )
   }
 
@@ -680,12 +705,13 @@ onMounted(async () => {
                 <div class="d-flex align-items-center gap-1.5">
                   <router-link
                     :to="`/requests/${req.id}`"
+                    :title="req.id"
                     class="font-monospace fw-bold text-cyan-400 text-decoration-none"
                     style="font-size: 11.5px;"
                     data-testid="my-request-id-link"
                     @click.stop
                   >
-                    {{ req.id }}
+                    {{ formatShortId(req.id) }}
                   </router-link>
                   <span v-if="req.priority" class="badge" :class="priorityBadgeClass(req.priority)">
                     {{ req.priority }}
@@ -899,8 +925,8 @@ onMounted(async () => {
                   >
                     {{ subTask.requestTitle }}
                   </router-link>
-                  <span class="font-monospace text-body-secondary" style="font-size: 10.5px;">
-                    {{ subTask.requestId }}
+                  <span class="font-monospace text-body-secondary" style="font-size: 10.5px;" :title="subTask.requestId">
+                    {{ formatShortId(subTask.requestId) }}
                   </span>
                 </div>
               </td>
