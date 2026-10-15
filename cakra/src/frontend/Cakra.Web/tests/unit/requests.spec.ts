@@ -23,6 +23,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: expectedTitle,
         complexity: expectedComplexity,
+        assigneePersonId: null,
       })
     })
   })
@@ -38,6 +39,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: expectedTitle,
         complexity: expectedComplexity,
+        assigneePersonId: null,
       })
     })
   })
@@ -54,6 +56,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: expectedTitle,
         complexity: expectedComplexity,
+        assigneePersonId: null,
       })
     })
   })
@@ -65,6 +68,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: 'Allow user re-login for 3 consecutive failed',
         complexity: 3,
+        assigneePersonId: null,
       })
     })
 
@@ -74,6 +78,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: 'Delete user which has been dormant for 1 years',
         complexity: 2,
+        assigneePersonId: null,
       })
     })
 
@@ -83,6 +88,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: 'Allow user re-login for 3 consecutive failed logins',
         complexity: 1,
+        assigneePersonId: null,
       })
     })
   })
@@ -94,6 +100,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: 'Fix navbar dropdown padding',
         complexity: 4,
+        assigneePersonId: null,
       })
     })
 
@@ -117,6 +124,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: 'Fix header alignment',
         complexity: 1,
+        assigneePersonId: null,
       })
     })
   })
@@ -128,6 +136,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: 'Implement feature X 8 pts',
         complexity: 1,
+        assigneePersonId: null,
       })
     })
 
@@ -137,6 +146,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: 'Review code 0 pts',
         complexity: 1,
+        assigneePersonId: null,
       })
     })
 
@@ -146,6 +156,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: 'Complex migration [9 points]',
         complexity: 1,
+        assigneePersonId: null,
       })
     })
   })
@@ -166,6 +177,7 @@ describe('parseCandidateTaskLine', () => {
       expect(result).toEqual({
         title: expectedTitle,
         complexity: expectedComplexity,
+        assigneePersonId: null,
       })
     })
   })
@@ -179,6 +191,24 @@ describe('parseCandidateTaskLine', () => {
       expect(result?.title.length).toBe(255)
       expect(result?.title).toBe('a'.repeat(255))
       expect(result?.complexity).toBe(3)
+      expect(result?.assigneePersonId).toBeNull()
+    })
+  })
+
+  describe('Default assignee parameter (CR-030)', () => {
+    it('sets assigneePersonId to defaultAssigneePersonId when provided', () => {
+      const result = parseCandidateTaskLine('Implement feature 3 pts', 'person-uuid-123')
+      expect(result).toEqual({
+        title: 'Implement feature',
+        complexity: 3,
+        assigneePersonId: 'person-uuid-123',
+      })
+    })
+
+    it('sets assigneePersonId to null when defaultAssigneePersonId is null or empty', () => {
+      expect(parseCandidateTaskLine('Implement feature 3 pts', null)?.assigneePersonId).toBeNull()
+      expect(parseCandidateTaskLine('Implement feature 3 pts', '')?.assigneePersonId).toBeNull()
+      expect(parseCandidateTaskLine('Implement feature 3 pts')?.assigneePersonId).toBeNull()
     })
   })
 })
@@ -207,12 +237,34 @@ describe('parseTaskListTasks', () => {
     const tasks = parseTaskListTasks(rawText)
 
     expect(tasks).toEqual([
-      { title: 'User registration flow', complexity: 3 },
-      { title: 'Password reset endpoint', complexity: 2 },
-      { title: 'Add telemetry events', complexity: 5 },
-      { title: 'Direct title without points', complexity: 1 },
-      { title: '8 pts out-of-range task 8 pts', complexity: 1 },
+      { title: 'User registration flow', complexity: 3, assigneePersonId: null },
+      { title: 'Password reset endpoint', complexity: 2, assigneePersonId: null },
+      { title: 'Add telemetry events', complexity: 5, assigneePersonId: null },
+      { title: 'Direct title without points', complexity: 1, assigneePersonId: null },
+      { title: '8 pts out-of-range task 8 pts', complexity: 1, assigneePersonId: null },
     ])
+  })
+
+  it('applies defaultAssigneePersonId to all parsed items when provided (CR-030)', () => {
+    const rawText = `
+      - User registration flow 3 pts
+      [ ] Password reset endpoint
+    `
+    const tasks = parseTaskListTasks(rawText, 'person-owner-001')
+
+    expect(tasks).toEqual([
+      { title: 'User registration flow', complexity: 3, assigneePersonId: 'person-owner-001' },
+      { title: 'Password reset endpoint', complexity: 1, assigneePersonId: 'person-owner-001' },
+    ])
+  })
+
+  it('sets assigneePersonId to null when defaultAssigneePersonId is null or omitted (CR-030)', () => {
+    const rawText = '- User registration flow 3 pts'
+    const tasksWithNull = parseTaskListTasks(rawText, null)
+    expect(tasksWithNull[0].assigneePersonId).toBeNull()
+
+    const tasksOmitted = parseTaskListTasks(rawText)
+    expect(tasksOmitted[0].assigneePersonId).toBeNull()
   })
 
   it('returns an empty array when input is empty or contains only whitespace', () => {
@@ -229,10 +281,12 @@ describe('parseTaskListTasks', () => {
     expect(tasks[0].title.length).toBe(255)
     expect(tasks[0].title).toBe('x'.repeat(255))
     expect(tasks[0].complexity).toBe(4)
+    expect(tasks[0].assigneePersonId).toBeNull()
 
     expect(tasks[1].title.length).toBe(255)
     expect(tasks[1].title).toBe('y'.repeat(255))
     expect(tasks[1].complexity).toBe(1)
+    expect(tasks[1].assigneePersonId).toBeNull()
   })
 })
 

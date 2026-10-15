@@ -23,7 +23,8 @@ public sealed record RecordRequestCommand(
     Guid? WorkPackageId = null,
     int? Complexity = null,
     IReadOnlyList<InitialSubTaskDto>? InitialSubTasks = null,
-    DateTime? Deadline = null) : IRequest<RequestDto>
+    DateTime? Deadline = null,
+    Guid? OwnerPersonId = null) : IRequest<RequestDto>
 {
     public string Description { get; init; } = Description ?? string.Empty;
 }
@@ -68,6 +69,11 @@ public sealed class RecordRequestCommandValidator : AbstractValidator<RecordRequ
             .Must(id => id != Guid.Empty)
             .When(x => x.ActorPersonId.HasValue)
             .WithMessage("Actor person ID cannot be empty.");
+
+        RuleFor(x => x.OwnerPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.OwnerPersonId.HasValue)
+            .WithMessage("Owner person ID cannot be empty.");
 
         RuleForEach(x => x.InitialSubTasks)
             .ChildRules(subTask =>

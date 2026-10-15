@@ -285,7 +285,8 @@ public sealed class RequestsController : ApiControllerBase
             WorkPackageId: FirstNonEmptyGuid(request?.WorkPackageId),
             Complexity: request?.Complexity,
             InitialSubTasks: request?.ResolvedInitialSubTasks,
-            Deadline: request?.Deadline);
+            Deadline: request?.Deadline,
+            OwnerPersonId: request?.ResolvedOwnerPersonId);
 
         try
         {
@@ -1046,8 +1047,14 @@ public sealed class RequestsController : ApiControllerBase
         public Guid? ActorPersonId { get; set; }
         public int? Complexity { get; set; }
         public DateTime? Deadline { get; set; }
+        public Guid? OwnerPersonId { get; set; }
+        public Guid? AssigneePersonId { get; set; }
+        public Guid? AssigneeId { get; set; }
         public IReadOnlyList<InitialSubTaskInput>? InitialSubTasks { get; set; }
         public IReadOnlyList<InitialSubTaskInput>? SubTasks { get; set; }
+
+        public Guid? ResolvedOwnerPersonId =>
+            FirstNonEmptyGuid(OwnerPersonId, AssigneePersonId, AssigneeId);
 
         public IReadOnlyList<InitialSubTaskDto>? ResolvedInitialSubTasks =>
             (InitialSubTasks ?? SubTasks)?

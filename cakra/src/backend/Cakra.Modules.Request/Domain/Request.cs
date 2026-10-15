@@ -85,7 +85,7 @@ public sealed class Request : EntityBase
     private Request() { }
 
     /// <summary>
-    /// Records a new customer or internal operational demand into CAPTURED state (UC-REQ-001).
+    /// Records a new customer or internal operational demand into CAPTURED state or directly into ASSIGNED state when an initial owner is provided (UC-REQ-001, CR-030 TD-002).
     /// </summary>
     public static Request Record(
         Guid id,
@@ -99,7 +99,9 @@ public sealed class Request : EntityBase
         string? priority = null,
         int? complexity = null,
         DateTime? deadline = null,
-        DateTime? utcNow = null)
+        DateTime? utcNow = null,
+        Guid? initialOwnerPersonId = null,
+        Guid? ownerPersonId = null)
     {
         if (id == Guid.Empty)
             throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(id));
@@ -110,11 +112,17 @@ public sealed class Request : EntityBase
         if (actorPersonId == Guid.Empty)
             throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
 
+        var resolvedOwner = ownerPersonId ?? initialOwnerPersonId;
+        if (resolvedOwner.HasValue && resolvedOwner.Value == Guid.Empty)
+            throw new RequestDomainValidationException("OwnerPersonId cannot be empty.", nameof(ownerPersonId));
+
         var initialComplexity = complexity ?? 1;
         if (initialComplexity < 1 || initialComplexity > 5)
             throw new RequestDomainValidationException("Complexity must be an integer between 1 and 5.", nameof(complexity));
 
         var now = utcNow ?? DateTime.UtcNow;
+        var isAssigned = resolvedOwner.HasValue;
+        var initialStatus = isAssigned ? RequestStatus.Assigned : RequestStatus.Captured;
 
         var request = new Request
         {
@@ -122,7 +130,8 @@ public sealed class Request : EntityBase
             Title = title.Trim(),
             Description = description?.Trim() ?? string.Empty,
             RequestType = requestType.Trim(),
-            Status = RequestStatus.Captured,
+            Status = initialStatus,
+            OwnerPersonId = resolvedOwner,
             Priority = string.IsNullOrWhiteSpace(priority) ? "NORMAL" : priority.Trim().ToUpperInvariant(),
             Complexity = initialComplexity,
             CustomerId = customerId,
@@ -136,12 +145,14 @@ public sealed class Request : EntityBase
         var initialAssignment = RequestAssignment.Create(
             requestId: id,
             previousOwnerPersonId: null,
-            assignedOwnerPersonId: null,
+            assignedOwnerPersonId: resolvedOwner,
             actorPersonId: actorPersonId,
             previousStatus: null,
-            newStatus: RequestStatus.Captured,
+            newStatus: initialStatus,
             assignedAtUtc: now,
-            notes: "Request recorded in CAPTURED state.");
+            notes: isAssigned
+                ? "Request recorded with initial assigned owner."
+                : "Request recorded in CAPTURED state.");
 
         request._assignments.Add(initialAssignment);
 

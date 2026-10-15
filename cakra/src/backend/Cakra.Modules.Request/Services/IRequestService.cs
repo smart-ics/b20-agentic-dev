@@ -7,10 +7,10 @@ namespace Cakra.Modules.Request.Services;
 public partial interface IRequestService
 {
     /// <summary>
-    /// Records a new operational Request in <c>CAPTURED</c> state, validating customer via
-    /// <c>ICustomerQueryService</c> and product via <c>IProductQueryService</c>, persisting the
-    /// initial state audit record in <c>request.RequestAssignments</c>, and emitting <c>RequestRecorded</c>
-    /// (UC-REQ-001).
+    /// Records a new operational Request in <c>CAPTURED</c> state (or <c>ASSIGNED</c> when <paramref name="ownerPersonId"/> is provided),
+    /// validating customer via <c>ICustomerQueryService</c>, product via <c>IProductQueryService</c>, assignee via <c>IOrganizationQueryService</c>,
+    /// persisting the initial state audit record in <c>request.RequestAssignments</c>, and emitting <c>RequestRecorded</c>
+    /// (UC-REQ-001, CR-030).
     /// </summary>
     Task<RequestDto> RecordRequestAsync(
         string title,
@@ -24,6 +24,7 @@ public partial interface IRequestService
         int? complexity = null,
         IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
         DateTime? deadline = null,
+        Guid? ownerPersonId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -41,6 +42,7 @@ public partial interface IRequestService
         int? complexity = null,
         IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
         DateTime? deadline = null,
+        Guid? ownerPersonId = null,
         CancellationToken cancellationToken = default)
         => RecordRequestAsync(
             title,
@@ -54,6 +56,7 @@ public partial interface IRequestService
             complexity,
             initialSubTasks,
             deadline,
+            ownerPersonId,
             cancellationToken);
 
     /// <summary>

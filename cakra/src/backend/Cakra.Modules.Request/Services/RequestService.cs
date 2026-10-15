@@ -233,6 +233,7 @@ public sealed partial class RequestService :
         int? complexity = null,
         IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
         DateTime? deadline = null,
+        Guid? ownerPersonId = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -248,6 +249,11 @@ public sealed partial class RequestService :
         if (productId.HasValue)
         {
             await ValidateProductAsync(productId.Value, cancellationToken);
+        }
+
+        if (ownerPersonId.HasValue)
+        {
+            await ValidateAssigneeAsync(ownerPersonId.Value, cancellationToken);
         }
 
         var resolvedActorId = ResolveActorPersonId(actorPersonId);
@@ -272,7 +278,8 @@ public sealed partial class RequestService :
             priority: normalizedPriority,
             complexity: complexity,
             deadline: deadline,
-            utcNow: now);
+            utcNow: now,
+            ownerPersonId: ownerPersonId);
 
         if (initialSubTasks is not null && initialSubTasks.Count > 0)
         {
@@ -402,6 +409,7 @@ public sealed partial class RequestService :
         int? complexity = null,
         IReadOnlyList<InitialSubTaskDto>? initialSubTasks = null,
         DateTime? deadline = null,
+        Guid? ownerPersonId = null,
         CancellationToken cancellationToken = default)
         => RecordRequestAsync(
             title,
@@ -415,6 +423,35 @@ public sealed partial class RequestService :
             complexity,
             initialSubTasks,
             deadline,
+            ownerPersonId,
+            cancellationToken);
+
+    public Task<RequestDto> RecordRequestAsync(
+        string title,
+        string? description,
+        Guid? customerId,
+        Guid? productId,
+        string requestType,
+        string priority,
+        Guid? actorPersonId,
+        Guid? workPackageId,
+        int? complexity,
+        IReadOnlyList<InitialSubTaskDto>? initialSubTasks,
+        DateTime? deadline,
+        CancellationToken cancellationToken)
+        => RecordRequestAsync(
+            title,
+            description,
+            customerId,
+            productId,
+            requestType,
+            priority,
+            actorPersonId,
+            workPackageId,
+            complexity,
+            initialSubTasks,
+            deadline,
+            ownerPersonId: null,
             cancellationToken);
 
     /// <inheritdoc />
@@ -1117,6 +1154,7 @@ public sealed partial class RequestService :
             request.Complexity,
             request.InitialSubTasks,
             request.Deadline,
+            request.OwnerPersonId,
             cancellationToken);
     }
 

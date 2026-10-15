@@ -101,6 +101,8 @@ export interface CreateRequestPayload {
   deadline?: string | null
   actorPersonId?: string | null
   initialSubTasks?: InitialSubTaskInput[]
+  ownerPersonId?: string | null
+  assigneePersonId?: string | null
 }
 
 export type RecordRequestPayload = CreateRequestPayload
@@ -118,6 +120,7 @@ export async function recordRequest(
 export interface CandidateTaskItem {
   title: string
   complexity: number
+  assigneePersonId?: string | null
 }
 
 /**
@@ -139,10 +142,14 @@ export function normalizeTaskLine(line: string): string {
 const TASK_COMPLEXITY_REGEX = /(?:[\(\[\{])?\s*([1-5])\s*(?:pts?|points?)\s*(?:[\)\]\}])?\s*$/i
 
 /**
- * Parses a single task line, extracting complexity notation if present and normalizing title (CR-028).
+ * Parses a single task line, extracting complexity notation if present and normalizing title (CR-028, CR-030).
  * Defaults complexity to 1 if not present or out-of-range. Caps title at 255 chars. Returns null if empty.
+ * Sets assigneePersonId to defaultAssigneePersonId or null if omitted.
  */
-export function parseCandidateTaskLine(line: string): CandidateTaskItem | null {
+export function parseCandidateTaskLine(
+  line: string,
+  defaultAssigneePersonId?: string | null,
+): CandidateTaskItem | null {
   const normalized = normalizeTaskLine(line)
   if (!normalized) return null
 
@@ -164,17 +171,24 @@ export function parseCandidateTaskLine(line: string): CandidateTaskItem | null {
     title = title.substring(0, 255)
   }
 
-  return { title, complexity }
+  return {
+    title,
+    complexity,
+    assigneePersonId: defaultAssigneePersonId || null,
+  }
 }
 
 /**
- * Parses raw multi-line task list text into structured CandidateTaskItem objects (CR-028).
+ * Parses raw multi-line task list text into structured CandidateTaskItem objects (CR-028, CR-030).
  */
-export function parseTaskListTasks(rawText: string): CandidateTaskItem[] {
-  if (!rawText) return []
+export function parseTaskListTasks(
+  rawText: string,
+  defaultAssigneePersonId?: string | null,
+): CandidateTaskItem[] {
+  if (!rawText || !rawText.trim()) return []
   return rawText
     .split(/\r?\n/)
-    .map((line) => parseCandidateTaskLine(line))
+    .map((line) => parseCandidateTaskLine(line, defaultAssigneePersonId))
     .filter((task): task is CandidateTaskItem => task !== null)
 }
 

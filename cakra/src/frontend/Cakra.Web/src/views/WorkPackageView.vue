@@ -5,6 +5,109 @@ export {
   parseTaskListTasks,
   type CandidateTaskItem,
 } from '@/api/requests'
+
+export function resolvePersonName(person: {
+  fullName?: string
+  firstName?: string
+  lastName?: string
+}): string {
+  return (
+    person.fullName ||
+    `${person.firstName || ''} ${person.lastName || ''}`.trim() ||
+    'Unknown'
+  )
+}
+
+export function syncCandidateAssigneesOnOwnerChange(
+  candidates: { assigneePersonId?: string | null }[],
+  newOwner: string,
+  prevOwner: string,
+  overriddenSet: Set<unknown>,
+): void {
+  const nextOwner = (newOwner ?? '').trim()
+  const trimmedPrevOwner = (prevOwner ?? '').trim()
+  for (const task of candidates) {
+    if (overriddenSet.has(task)) {
+      continue
+    }
+    if (!task.assigneePersonId || task.assigneePersonId === trimmedPrevOwner) {
+      task.assigneePersonId = nextOwner
+    }
+  }
+}
+
+export function isRequestCompleted(item: {
+  status?: string
+  requestStatus?: string
+  request?: { status?: string } | null
+}): boolean {
+  const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
+  return s === 'COMPLETED' || s === 'CANCELLED'
+}
+
+export function resolveOwnerName(
+  personId?: string | null,
+  personNameMap: Record<string, string> = {},
+): string {
+  if (!personId) return ''
+  return personNameMap[personId] ?? personId
+}
+
+export function resolveScopeItemOwnerDisplay(
+  item: {
+    ownerPersonId?: string | null
+    requestOwnerPersonId?: string | null
+    ownerName?: string | null
+    requestOwnerName?: string | null
+    request?: { ownerPersonId?: string | null; ownerName?: string | null } | null
+  },
+  personNameMap: Record<string, string> = {},
+): string {
+  const id = item.ownerPersonId || item.requestOwnerPersonId || item.request?.ownerPersonId
+  if (id && personNameMap[id]) {
+    return personNameMap[id]
+  }
+  if (item.ownerName && item.ownerName.trim().length > 0) {
+    return item.ownerName.trim()
+  }
+  if (item.requestOwnerName && item.requestOwnerName.trim().length > 0) {
+    return item.requestOwnerName.trim()
+  }
+  if (item.request?.ownerName && item.request.ownerName.trim().length > 0) {
+    return item.request.ownerName.trim()
+  }
+  if (id && id.trim().length > 0) {
+    return id.trim()
+  }
+  return 'Unassigned'
+}
+
+export function applyInlineReassignOptimisticUpdate(
+  items: Array<{
+    requestId: string
+    ownerPersonId?: string | null
+    requestOwnerPersonId?: string | null
+    ownerName?: string | null
+    requestOwnerName?: string | null
+    request?: { ownerPersonId?: string | null; ownerName?: string | null } | null
+  }>,
+  requestId: string,
+  newOwnerPersonId: string,
+  personNameMap: Record<string, string> = {},
+): boolean {
+  const item = items.find((s) => s.requestId === requestId)
+  if (!item) return false
+  item.ownerPersonId = newOwnerPersonId
+  item.requestOwnerPersonId = newOwnerPersonId
+  const name = personNameMap[newOwnerPersonId] || item.ownerName || newOwnerPersonId
+  item.ownerName = name
+  item.requestOwnerName = name
+  if (item.request) {
+    item.request.ownerPersonId = newOwnerPersonId
+    item.request.ownerName = name
+  }
+  return true
+}
 </script>
 
 <script setup lang="ts">
@@ -219,9 +322,28 @@ const createForm = reactive({
   productId: '',
   deadline: '',
 })
-// Quick capture candidate tasks for create modal (CR-019, CR-028)
+// Quick capture candidate tasks for create modal (CR-019, CR-028, CR-030)
 const createRawTasks = ref('')
 const createCandidateTasks = ref<CandidateTaskItem[]>([])
+const previousOwnerPersonId = ref('')
+const overriddenCandidateTasks = new Set<CandidateTaskItem>()
+
+watch(
+  () => createForm.ownerPersonId,
+  (newOwner, oldOwner) => {
+    syncCandidateAssigneesOnOwnerChange(
+      createCandidateTasks.value,
+      newOwner,
+      oldOwner ?? previousOwnerPersonId.value,
+      overriddenCandidateTasks,
+    )
+    previousOwnerPersonId.value = newOwner
+  },
+)
+
+function handleCandidateAssigneeOverride(task: CandidateTaskItem): void {
+  overriddenCandidateTasks.add(task)
+}
 
 // Detail Panel forms
 const objectiveForm = reactive({
@@ -416,6 +538,10 @@ function resolveOwnerDisplay(wp: WorkPackageItem): string {
     return wp.ownerName
   }
   return personNameById.value[wp.ownerPersonId] ?? wp.ownerPersonId
+}
+
+function resolveScopeItemOwnerName(item: WorkPackageScopeItem): string {
+  return resolveScopeItemOwnerDisplay(item, personNameById.value)
 }
 
 function resolveCustomerDisplay(wp: WorkPackageItem): string {
@@ -659,11 +785,6 @@ function getRequestComplexity(item: WorkPackageScopeItem): number {
 function isRequestPausedOrBlocked(item: WorkPackageScopeItem): boolean {
   const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
   return s === 'PAUSED'
-}
-
-function isRequestCompleted(item: WorkPackageScopeItem): boolean {
-  const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
-  return s === 'COMPLETED' || s === 'CANCELLED'
 }
 
 function getRequestStateAgingDays(item: WorkPackageScopeItem): number {
@@ -916,20 +1037,28 @@ async function handleResetFilters(): Promise<void> {
 }
 
 function handleParseCreateTasks(): void {
-  const parsed = parseTaskListTasks(createRawTasks.value)
+  const defaultAssignee = createForm.ownerPersonId.trim() || null
+  const parsed = parseTaskListTasks(createRawTasks.value, defaultAssignee)
   if (parsed.length > 0) {
-    createCandidateTasks.value = [...createCandidateTasks.value, ...parsed]
+    createCandidateTasks.value = [
+      ...createCandidateTasks.value,
+      ...parsed.map((t) => ({ ...t, assigneePersonId: t.assigneePersonId || '' })),
+    ]
     createRawTasks.value = ''
   }
 }
 
 function handleRemoveCreateCandidate(index: number): void {
-  createCandidateTasks.value.splice(index, 1)
+  const removed = createCandidateTasks.value.splice(index, 1)
+  if (removed[0]) {
+    overriddenCandidateTasks.delete(removed[0])
+  }
 }
 
 function handleClearCreateCandidates(): void {
   createCandidateTasks.value = []
   createRawTasks.value = ''
+  overriddenCandidateTasks.clear()
 }
 
 function openCreateModal(): void {
@@ -944,6 +1073,8 @@ function openCreateModal(): void {
   createForm.deadline = ''
   createRawTasks.value = ''
   createCandidateTasks.value = []
+  overriddenCandidateTasks.clear()
+  previousOwnerPersonId.value = createForm.ownerPersonId
   showCreateForm.value = true
 }
 
@@ -951,6 +1082,7 @@ function closeCreateModal(): void {
   createForm.deadline = ''
   createRawTasks.value = ''
   createCandidateTasks.value = []
+  overriddenCandidateTasks.clear()
   showCreateForm.value = false
 }
 
@@ -979,9 +1111,10 @@ async function handleCreateWorkPackage(): Promise<void> {
 
     const created = response.data
 
+    const defaultAssignee = createForm.ownerPersonId.trim() || null
     const tasksToRecord: CandidateTaskItem[] = [...createCandidateTasks.value]
     if (tasksToRecord.length === 0 && createRawTasks.value.trim().length > 0) {
-      tasksToRecord.push(...parseTaskListTasks(createRawTasks.value))
+      tasksToRecord.push(...parseTaskListTasks(createRawTasks.value, defaultAssignee))
     }
 
     const unrecordedTitles: string[] = []
@@ -999,6 +1132,7 @@ async function handleCreateWorkPackage(): Promise<void> {
             workPackageId: created.id,
             requestType: 'GENERAL',
             priority: 'NORMAL',
+            ownerPersonId: task.assigneePersonId || null,
           }),
         ),
       )
@@ -1016,6 +1150,7 @@ async function handleCreateWorkPackage(): Promise<void> {
     createForm.deadline = ''
     createRawTasks.value = ''
     createCandidateTasks.value = []
+    overriddenCandidateTasks.clear()
 
     if (unrecordedTitles.length > 0) {
       warningMessage.value = `Work package "${created.objective || created.name}" created, but ${unrecordedTitles.length} task(s) failed to record: "${unrecordedTitles.join('", "')}". You can re-try adding them in Scope Management.`
@@ -1291,9 +1426,13 @@ async function handleAddRequestToScope(): Promise<void> {
 }
 
 function handleParseScopeTasks(): void {
-  const parsed = parseTaskListTasks(scopeRawTasks.value)
+  const defaultAssignee = selectedWorkPackage.value?.ownerPersonId || null
+  const parsed = parseTaskListTasks(scopeRawTasks.value, defaultAssignee)
   if (parsed.length > 0) {
-    scopeCandidateTasks.value = [...scopeCandidateTasks.value, ...parsed]
+    scopeCandidateTasks.value = [
+      ...scopeCandidateTasks.value,
+      ...parsed.map((t) => ({ ...t, assigneePersonId: t.assigneePersonId || '' })),
+    ]
     scopeRawTasks.value = ''
   }
 }
@@ -1319,9 +1458,10 @@ async function handleBulkAddTasksToScope(): Promise<void> {
   }
 
   const wp = selectedWorkPackage.value
+  const defaultAssignee = wp.ownerPersonId || null
   const tasksToAdd: CandidateTaskItem[] = [...scopeCandidateTasks.value]
   if (tasksToAdd.length === 0 && scopeRawTasks.value.trim().length > 0) {
-    tasksToAdd.push(...parseTaskListTasks(scopeRawTasks.value))
+    tasksToAdd.push(...parseTaskListTasks(scopeRawTasks.value, defaultAssignee))
   }
 
   if (tasksToAdd.length === 0) {
@@ -1346,6 +1486,7 @@ async function handleBulkAddTasksToScope(): Promise<void> {
           workPackageId: wp.id,
           requestType: 'GENERAL',
           priority: 'NORMAL',
+          ownerPersonId: task.assigneePersonId || null,
         }),
       ),
     )
@@ -1409,6 +1550,64 @@ async function handleRemoveRequestFromScope(requestId: string): Promise<void> {
     )
   } finally {
     removingRequestId.value = null
+  }
+}
+
+// Inline scope item ownership reassignment (CR-030 TD-005, P3-S05)
+const isReassigning = ref<string | null>(null)
+
+async function handleInlineReassign(
+  requestId: string,
+  newOwnerPersonIdOrEvent: string | Event,
+): Promise<void> {
+  const newOwnerPersonId =
+    typeof newOwnerPersonIdOrEvent === 'string'
+      ? newOwnerPersonIdOrEvent.trim()
+      : ((newOwnerPersonIdOrEvent?.target as HTMLSelectElement)?.value ?? '').trim()
+
+  if (!requestId || !newOwnerPersonId) {
+    return
+  }
+
+  isReassigning.value = requestId
+  errorMessage.value = null
+  successMessage.value = null
+
+  try {
+    const response = await httpClient.post<RequestDto>(`/requests/${requestId}/assign`, {
+      ownerPersonId: newOwnerPersonId,
+    })
+
+    // Update local scope item owner reactively
+    applyInlineReassignOptimisticUpdate(
+      scopeItems.value,
+      requestId,
+      newOwnerPersonId,
+      personNameById.value,
+    )
+    const item = scopeItems.value.find((s) => s.requestId === requestId)
+    if (item && response.data?.ownerName) {
+      item.ownerName = response.data.ownerName
+      item.requestOwnerName = response.data.ownerName
+      if (item.request) {
+        item.request.ownerName = response.data.ownerName
+      }
+    }
+
+    const assignedPersonName =
+      personNameById.value[newOwnerPersonId] ||
+      response.data?.ownerName ||
+      'new owner'
+    successMessage.value = `Request owner reassigned to ${assignedPersonName} successfully.`
+
+    // Trigger background refresh of scope items
+    if (selectedWorkPackage.value?.id) {
+      void loadWorkPackageScope(selectedWorkPackage.value.id)
+    }
+  } catch (err) {
+    errorMessage.value = extractErrorMessage(err, 'Failed to reassign request owner.')
+  } finally {
+    isReassigning.value = null
   }
 }
 
@@ -1850,17 +2049,35 @@ onMounted(async () => {
                     </span>
                     <span class="truncate text-xs">{{ task.title }}</span>
                   </div>
-                  <button
-                    type="button"
-                    class="text-rose-400 hover:text-rose-300 p-0.5 bg-transparent border-0 cursor-pointer text-xs"
-                    title="Remove candidate task"
-                    aria-label="Remove candidate task"
-                    :disabled="isSubmittingCreate"
-                    data-testid="create-candidate-remove-button"
-                    @click="handleRemoveCreateCandidate(idx)"
-                  >
-                    ✕
-                  </button>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <select
+                      v-model="task.assigneePersonId"
+                      class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-400 focus:outline-none"
+                      :disabled="isSubmittingCreate"
+                      data-testid="create-candidate-assignee-select"
+                      @change="handleCandidateAssigneeOverride(task)"
+                    >
+                      <option value="">Unassigned</option>
+                      <option
+                        v-for="person in activePersons"
+                        :key="person.id"
+                        :value="person.id"
+                      >
+                        {{ resolvePersonName(person) }}
+                      </option>
+                    </select>
+                    <button
+                      type="button"
+                      class="text-rose-400 hover:text-rose-300 p-0.5 bg-transparent border-0 cursor-pointer text-xs"
+                      title="Remove candidate task"
+                      aria-label="Remove candidate task"
+                      :disabled="isSubmittingCreate"
+                      data-testid="create-candidate-remove-button"
+                      @click="handleRemoveCreateCandidate(idx)"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </li>
               </ul>
             </div>
@@ -3202,17 +3419,34 @@ onMounted(async () => {
                         </span>
                         <span class="truncate text-xs">{{ task.title }}</span>
                       </div>
-                      <button
-                        type="button"
-                        class="text-rose-400 hover:text-rose-300 p-0.5 bg-transparent border-0 cursor-pointer text-xs"
-                        title="Remove candidate task"
-                        aria-label="Remove candidate task"
-                        :disabled="isSubmittingScopeBulk"
-                        data-testid="scope-candidate-remove-button"
-                        @click="handleRemoveScopeCandidate(idx)"
-                      >
-                        ✕
-                      </button>
+                      <div class="flex items-center gap-2 shrink-0">
+                        <select
+                          v-model="task.assigneePersonId"
+                          class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-400 focus:outline-none"
+                          :disabled="isSubmittingScopeBulk"
+                          data-testid="scope-candidate-assignee-select"
+                        >
+                          <option value="">Unassigned</option>
+                          <option
+                            v-for="person in activePersons"
+                            :key="person.id"
+                            :value="person.id"
+                          >
+                            {{ resolvePersonName(person) }}
+                          </option>
+                        </select>
+                        <button
+                          type="button"
+                          class="text-rose-400 hover:text-rose-300 p-0.5 bg-transparent border-0 cursor-pointer text-xs"
+                          title="Remove candidate task"
+                          aria-label="Remove candidate task"
+                          :disabled="isSubmittingScopeBulk"
+                          data-testid="scope-candidate-remove-button"
+                          @click="handleRemoveScopeCandidate(idx)"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </li>
                   </ul>
                 </div>
@@ -3360,6 +3594,44 @@ onMounted(async () => {
                           >
                             De-scoped
                           </span>
+
+                          <!-- Assignee Display & Inline Reassignment (CR-030 TD-005, P3-S05) -->
+                          <div class="flex items-center gap-1.5 text-xs text-slate-300" data-testid="scope-item-assignee-badge">
+                            <i class="bi bi-person text-cyan-400" aria-hidden="true"></i>
+                            <select
+                              v-if="canModifyPackage && !isRequestCompleted(item)"
+                              class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-400 focus:outline-none"
+                              :value="item.ownerPersonId || item.requestOwnerPersonId || ''"
+                              :disabled="isReassigning === item.requestId"
+                              data-testid="scope-inline-reassign-select"
+                              @change="handleInlineReassign(item.requestId, $event)"
+                            >
+                              <option value="" disabled>Select Owner (Unassigned)</option>
+                              <option v-for="p in activePersons" :key="p.id" :value="p.id">
+                                {{ resolvePersonName(p) }}
+                              </option>
+                              <option
+                                v-if="(item.ownerPersonId || item.requestOwnerPersonId) && !activePersons.some((p) => p.id === (item.ownerPersonId || item.requestOwnerPersonId))"
+                                :value="item.ownerPersonId || item.requestOwnerPersonId"
+                              >
+                                {{ resolveScopeItemOwnerName(item) }}
+                              </option>
+                            </select>
+                            <span
+                              v-else
+                              class="text-slate-400 font-mono text-[11px]"
+                              data-testid="scope-owner-readonly"
+                            >
+                              {{ resolveScopeItemOwnerName(item) }}
+                            </span>
+                            <span
+                              v-if="isReassigning === item.requestId"
+                              class="inline-block w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin ms-1"
+                              data-testid="scope-reassigning-spinner"
+                              role="status"
+                              aria-label="Reassigning..."
+                            ></span>
+                          </div>
                         </div>
 
                         <div class="text-slate-500 font-mono text-[10px]">
