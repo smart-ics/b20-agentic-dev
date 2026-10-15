@@ -24,6 +24,18 @@ public sealed record TaskWorkInProgressDto
     /// <summary>Priority level (LOW, NORMAL, HIGH, URGENT).</summary>
     public string Priority { get; init; } = "NORMAL";
 
+    /// <summary>Numerical complexity rating (1 to 5) indicating estimated effort scope.</summary>
+    public int Complexity { get; init; } = 1;
+
+    /// <summary>Allocated budget hours derived from Complexity (×1=2h, ×2=4h, ×3=8h, ×4=16h, ×5=24h).</summary>
+    public double BudgetHours { get; init; } = 2.0;
+
+    /// <summary>Percentage of allocated budget hours elapsed (TotalInProgressHours / BudgetHours * 100).</summary>
+    public int BurnPercentage { get; init; }
+
+    /// <summary>Indicates whether cumulative elapsed hours meet or exceed the allocated budget.</summary>
+    public bool IsOverBudget { get; init; }
+
     /// <summary>CustomerId associated with the request, or <c>null</c> if unassigned.</summary>
     public Guid? CustomerId { get; init; }
 

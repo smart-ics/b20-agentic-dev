@@ -12,6 +12,8 @@ export interface CurrentUser {
   userId: string
   personId: string
   roles: string[]
+  username?: string
+  personName?: string
 }
 
 /**
@@ -61,6 +63,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => currentUser.value !== null)
   const roles = computed(() => currentUser.value?.roles ?? [])
   const user = computed(() => currentUser.value)
+  const userName = computed(
+    () => currentUser.value?.personName || currentUser.value?.username || 'Operational User',
+  )
 
   function setCurrentUser(user: CurrentUser | null): void {
     currentUser.value = user
@@ -96,6 +101,8 @@ export const useAuthStore = defineStore('auth', () => {
         userId: response.data.userId,
         personId: response.data.personId,
         roles: response.data.roles ?? [],
+        username: response.data.username || username,
+        personName: response.data.personName,
       }
 
       currentUser.value = user
@@ -204,6 +211,8 @@ export const useAuthStore = defineStore('auth', () => {
         userId: response.data.userId,
         personId: response.data.personId,
         roles: response.data.roles ?? [],
+        username: response.data.username,
+        personName: response.data.personName,
       }
       currentUser.value = user
       return user
@@ -226,6 +235,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     roles,
     user,
+    userName,
     setCurrentUser,
     clear,
     clearError,

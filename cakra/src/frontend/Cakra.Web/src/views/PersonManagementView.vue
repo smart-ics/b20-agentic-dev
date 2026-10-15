@@ -342,17 +342,17 @@ onMounted(async () => {
     </div>
 
     <!-- Loading Skeleton / Spinner State -->
-    <div v-if="isLoading" class="p-5 text-center bg-slate-900/90 border border-slate-800 rounded text-slate-400" data-testid="persons-loading-state">
-      <div class="spinner-border text-cyan-400 spinner-border-sm mb-2" role="status">
+    <div v-if="isLoading" class="p-5 text-center bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded text-slate-500 dark:text-slate-400" data-testid="persons-loading-state">
+      <div class="spinner-border text-cyan-500 dark:text-cyan-400 spinner-border-sm mb-2" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
-      <div class="text-slate-400 small">Loading persons...</div>
+      <div class="text-slate-500 dark:text-slate-400 small">Loading persons...</div>
     </div>
 
     <!-- Persons Table -->
-    <div v-else class="table-responsive bg-slate-900/90 border border-slate-800 rounded text-slate-100 shadow-md">
+    <div v-else class="table-responsive bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded text-slate-800 dark:text-slate-100 shadow-sm dark:shadow-md">
       <table class="table table-hover align-middle mb-0" data-testid="persons-table">
-        <thead class="table-dark fs-11 text-uppercase text-slate-400">
+        <thead class="bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 fs-11 text-uppercase text-slate-600 dark:text-slate-400">
           <tr>
             <th scope="col" style="min-width: 140px">First Name</th>
             <th scope="col" style="min-width: 140px">Last Name</th>
@@ -391,12 +391,12 @@ onMounted(async () => {
           >
             <!-- First Name -->
             <td>
-              <span class="fw-medium text-dark">{{ person.firstName }}</span>
+              <span class="fw-medium text-slate-900 dark:text-white">{{ person.firstName }}</span>
             </td>
 
             <!-- Last Name -->
             <td>
-              <span class="fw-medium text-dark">{{ person.lastName }}</span>
+              <span class="fw-medium text-slate-900 dark:text-white">{{ person.lastName }}</span>
             </td>
 
             <!-- Email -->

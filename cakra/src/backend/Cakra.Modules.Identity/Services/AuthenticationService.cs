@@ -121,7 +121,7 @@ public sealed class AuthenticationService : IAuthenticationService
         await _userSessionRepository.AddAsync(session, cancellationToken);
         _logger?.LogInformation("User '{UserId}' successfully authenticated. Session '{SessionId}' created.", user.Id, session.Id);
 
-        return LoginResult.Success(sessionToken, expiresAt, user.Id, user.PersonId);
+        return LoginResult.Success(sessionToken, expiresAt, user.Id, user.PersonId, user.Username);
     }
 
     /// <inheritdoc />

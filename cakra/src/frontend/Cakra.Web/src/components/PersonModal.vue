@@ -319,28 +319,28 @@ onBeforeUnmount(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow-2xl border border-slate-800 bg-slate-900/95 text-slate-100">
+        <div class="modal-content shadow-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 text-slate-800 dark:text-slate-100">
           <!-- Modal Header -->
-          <div class="modal-header py-2 px-3 bg-slate-950/60 border-b border-slate-800">
+          <div class="modal-header py-2 px-3 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
             <h2 id="personModalTitle" class="modal-title h6 fw-bold mb-0 d-flex align-items-center gap-2">
               <i
                 v-if="isEditMode"
-                class="bi bi-person-gear text-cyan-400"
+                class="bi bi-person-gear text-cyan-600 dark:text-cyan-400"
                 aria-hidden="true"
               ></i>
               <i
                 v-else
-                class="bi bi-person-plus-fill text-cyan-400"
+                class="bi bi-person-plus-fill text-cyan-600 dark:text-cyan-400"
                 aria-hidden="true"
               ></i>
               <span>{{ modalTitle }}</span>
-              <span class="badge bg-slate-800 border border-slate-700 text-slate-300 font-monospace" style="font-size: 10px">
+              <span class="badge bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-monospace" style="font-size: 10px">
                 SCR-ORG-002
               </span>
             </h2>
             <button
               type="button"
-              class="btn-close btn-close-white py-1 px-2"
+              class="btn-close py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting"
               @click="handleClose"
@@ -369,7 +369,7 @@ onBeforeUnmount(() => {
 
               <!-- First Name -->
               <div class="mb-2">
-                <label for="personFirstName" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
+                <label for="personFirstName" class="form-label mb-1 small fw-medium text-slate-700 dark:text-slate-300" style="font-size: 11.5px">
                   First Name <span class="text-danger">*</span>
                 </label>
                 <input
@@ -377,7 +377,7 @@ onBeforeUnmount(() => {
                   v-model="firstName"
                   type="text"
                   maxlength="100"
-                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                  class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.firstName }"
                   placeholder="e.g. John"
                   :disabled="isSubmitting"
@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
 
               <!-- Last Name -->
               <div class="mb-2">
-                <label for="personLastName" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
+                <label for="personLastName" class="form-label mb-1 small fw-medium text-slate-700 dark:text-slate-300" style="font-size: 11.5px">
                   Last Name <span class="text-danger">*</span>
                 </label>
                 <input
@@ -398,7 +398,7 @@ onBeforeUnmount(() => {
                   v-model="lastName"
                   type="text"
                   maxlength="100"
-                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                  class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.lastName }"
                   placeholder="e.g. Doe"
                   :disabled="isSubmitting"
@@ -411,7 +411,7 @@ onBeforeUnmount(() => {
 
               <!-- Email Address -->
               <div class="mb-2">
-                <label for="personEmail" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
+                <label for="personEmail" class="form-label mb-1 small fw-medium text-slate-700 dark:text-slate-300" style="font-size: 11.5px">
                   Email Address <span class="text-danger">*</span>
                 </label>
                 <input
@@ -419,7 +419,7 @@ onBeforeUnmount(() => {
                   v-model="email"
                   type="email"
                   maxlength="255"
-                  class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                  class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
                   :class="{ 'is-invalid': validationErrors.email }"
                   placeholder="e.g. john.doe@example.com"
                   :disabled="isSubmitting"
@@ -432,12 +432,12 @@ onBeforeUnmount(() => {
 
               <!-- Roles Fieldset -->
               <div class="mb-2">
-                <label class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
+                <label class="form-label mb-1 small fw-medium text-slate-700 dark:text-slate-300" style="font-size: 11.5px">
                   Roles <span class="text-danger">*</span>
                 </label>
                 <fieldset
-                  class="border rounded p-2 bg-slate-950/40"
-                  :class="validationErrors.roles ? 'border-danger' : 'border-slate-800'"
+                  class="border rounded p-2 bg-slate-50 dark:bg-slate-950/40"
+                  :class="validationErrors.roles ? 'border-danger' : 'border-slate-200 dark:border-slate-800'"
                   data-testid="roles-fieldset"
                 >
                   <legend class="visually-hidden">Roles</legend>
@@ -445,10 +445,10 @@ onBeforeUnmount(() => {
                   <!-- Loading state -->
                   <div
                     v-if="isLoadingRoles && availableRoles.length === 0"
-                    class="text-slate-400 small py-2 d-flex align-items-center gap-2"
+                    class="text-slate-500 dark:text-slate-400 small py-2 d-flex align-items-center gap-2"
                   >
                     <span
-                      class="spinner-border spinner-border-sm text-cyan-400"
+                      class="spinner-border spinner-border-sm text-cyan-500 dark:text-cyan-400"
                       role="status"
                       aria-hidden="true"
                     ></span>
@@ -483,8 +483,8 @@ onBeforeUnmount(() => {
                       class="form-check p-2 rounded border transition-colors mb-0"
                       :class="[
                         selectedRoleIds.includes(role.id)
-                          ? 'bg-slate-800/70 border-cyan-500/40'
-                          : 'bg-slate-900/50 border-slate-800'
+                          ? 'bg-cyan-50/80 dark:bg-slate-800/70 border-cyan-400 dark:border-cyan-500/40'
+                          : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800'
                       ]"
                     >
                       <input
@@ -492,7 +492,7 @@ onBeforeUnmount(() => {
                         v-model="selectedRoleIds"
                         type="checkbox"
                         :value="role.id"
-                        class="form-check-input bg-slate-900 border-slate-700 text-cyan-500"
+                        class="form-check-input border-slate-300 dark:border-slate-700 text-cyan-600 dark:text-cyan-500"
                         :disabled="isSubmitting || isRoleDisabled(role)"
                         :data-testid="`role-checkbox-${role.name.toLowerCase().replace(/\s+/g, '-')}`"
                       />
@@ -501,12 +501,12 @@ onBeforeUnmount(() => {
                         class="form-check-label w-100 cursor-pointer ms-1"
                       >
                         <div class="d-flex align-items-center flex-wrap gap-2">
-                          <span class="fw-semibold text-slate-200 small" style="font-size: 12px">
+                          <span class="fw-semibold text-slate-800 dark:text-slate-200 small" style="font-size: 12px">
                             {{ role.name }}
                           </span>
                           <span
                             v-if="isRoleDisabled(role)"
-                            class="badge bg-amber-500/20 text-amber-300 border border-amber-500/30 font-normal"
+                            class="badge bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30 font-normal"
                             style="font-size: 10px"
                             data-testid="self-demotion-guard-badge"
                             title="Protected: Cannot remove Administrator from your own profile"
@@ -517,7 +517,7 @@ onBeforeUnmount(() => {
                         </div>
                         <div
                           v-if="role.description"
-                          class="text-slate-400 small mt-0.5"
+                          class="text-slate-600 dark:text-slate-400 small mt-0.5"
                           style="font-size: 11px"
                         >
                           {{ role.description }}
@@ -538,7 +538,7 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Modal Footer -->
-            <div class="modal-footer py-2 px-3 bg-slate-950/60 border-t border-slate-800">
+            <div class="modal-footer py-2 px-3 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 class="btn btn-outline-secondary btn-sm"

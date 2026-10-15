@@ -516,52 +516,52 @@ onMounted(async () => {
     <!-- Executive KPI Metrics Summary Highlights -->
     <div class="row g-2 mb-2" data-testid="my-workspace-kpis">
       <div class="col-6 col-md-3">
-        <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 p-2 h-100 shadow-md">
-          <div class="d-flex align-items-center justify-content-between text-slate-400 mb-1">
+        <div class="card bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-2 h-100 shadow-sm dark:shadow-md">
+          <div class="d-flex align-items-center justify-content-between text-slate-500 dark:text-slate-400 mb-1">
             <span class="fs-11 fw-semibold text-uppercase tracking-wider">Assigned Requests</span>
             <i class="bi bi-folder2-open text-primary" aria-hidden="true"></i>
           </div>
           <div class="d-flex align-items-baseline gap-1.5">
-            <span class="fs-4 fw-bold text-white">{{ totalAssignedCount }}</span>
-            <span class="fs-11 text-slate-400">in scope</span>
+            <span class="fs-4 fw-bold text-slate-900 dark:text-white">{{ totalAssignedCount }}</span>
+            <span class="fs-11 text-slate-500 dark:text-slate-400">in scope</span>
           </div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 p-2 h-100 shadow-md">
-          <div class="d-flex align-items-center justify-content-between text-slate-400 mb-1">
+        <div class="card bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-2 h-100 shadow-sm dark:shadow-md">
+          <div class="d-flex align-items-center justify-content-between text-slate-500 dark:text-slate-400 mb-1">
             <span class="fs-11 fw-semibold text-uppercase tracking-wider">In Progress</span>
             <i class="bi bi-lightning-charge-fill text-info" aria-hidden="true"></i>
           </div>
           <div class="d-flex align-items-baseline gap-1.5">
-            <span class="fs-4 fw-bold text-cyan-400">{{ inProgressCount }}</span>
-            <span class="fs-11 text-slate-400">active &bull; {{ pausedCount }} paused</span>
+            <span class="fs-4 fw-bold text-cyan-600 dark:text-cyan-400">{{ inProgressCount }}</span>
+            <span class="fs-11 text-slate-500 dark:text-slate-400">active &bull; {{ pausedCount }} paused</span>
           </div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 p-2 h-100 shadow-md">
-          <div class="d-flex align-items-center justify-content-between text-slate-400 mb-1">
+        <div class="card bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-2 h-100 shadow-sm dark:shadow-md">
+          <div class="d-flex align-items-center justify-content-between text-slate-500 dark:text-slate-400 mb-1">
             <span class="fs-11 fw-semibold text-uppercase tracking-wider">Pending Sub-Tasks</span>
             <i class="bi bi-check2-circle text-warning" aria-hidden="true"></i>
           </div>
           <div class="d-flex align-items-baseline gap-1.5">
-            <span class="fs-4 fw-bold text-amber-400">{{ pendingSubTasksCount }}</span>
-            <span class="fs-11 text-slate-400">actionable</span>
+            <span class="fs-4 fw-bold text-amber-600 dark:text-amber-400">{{ pendingSubTasksCount }}</span>
+            <span class="fs-11 text-slate-500 dark:text-slate-400">actionable</span>
           </div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="card bg-slate-900/90 border border-slate-800 text-slate-100 p-2 h-100 shadow-md">
-          <div class="d-flex align-items-center justify-content-between text-slate-400 mb-1">
+        <div class="card bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-2 h-100 shadow-sm dark:shadow-md">
+          <div class="d-flex align-items-center justify-content-between text-slate-500 dark:text-slate-400 mb-1">
             <span class="fs-11 fw-semibold text-uppercase tracking-wider">Subtask Velocity</span>
             <i class="bi bi-graph-up-arrow text-success" aria-hidden="true"></i>
           </div>
           <div class="d-flex align-items-baseline gap-1.5">
-            <span class="fs-4 fw-bold text-emerald-400">{{ overallCompletionPercentage }}%</span>
-            <span class="fs-11 text-slate-400">done</span>
+            <span class="fs-4 fw-bold text-emerald-600 dark:text-emerald-400">{{ overallCompletionPercentage }}%</span>
+            <span class="fs-11 text-slate-500 dark:text-slate-400">done</span>
           </div>
-          <div class="progress mt-1 bg-slate-800" style="height: 4px;">
+          <div class="progress mt-1 bg-slate-100 dark:bg-slate-800" style="height: 4px;">
             <div
               class="progress-bar bg-success"
               role="progressbar"
@@ -612,19 +612,19 @@ onMounted(async () => {
     </ul>
 
     <!-- Tab 1: High-Density My Assigned Requests Table / Cards Card -->
-    <div v-if="activeTab === 'requests'" class="card border border-slate-800 bg-slate-900/90 text-slate-100 shadow-md" data-testid="my-requests-card">
+    <div v-if="activeTab === 'requests'" class="card border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 text-slate-800 dark:text-slate-100 shadow-sm dark:shadow-md" data-testid="my-requests-card">
       <!-- Status & Search Toolbar (CR-016 TD-001) -->
-      <div class="card-header bg-slate-950/60 border-b border-slate-800 py-1 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="card-header bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 py-1 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <!-- Universal Search Input -->
           <div class="input-group input-group-sm" style="width: 220px;">
-            <span class="input-group-text bg-slate-800 border-slate-700 border-end-0 text-slate-400 py-0 px-2">
+            <span class="input-group-text bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 border-end-0 text-slate-500 dark:text-slate-400 py-0 px-2">
               <i class="bi bi-search" style="font-size: 11px;"></i>
             </span>
             <input
               v-model="searchQuery"
               type="text"
-              class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 border-start-0 ps-0 focus:border-cyan-400"
+              class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 border-start-0 ps-0 focus:border-cyan-500 dark:focus:border-cyan-400"
               placeholder="Search tickets..."
               style="font-size: 11.5px;"
               data-testid="my-requests-search-input"
@@ -632,7 +632,7 @@ onMounted(async () => {
             <button
               v-if="searchQuery"
               type="button"
-              class="btn btn-outline-secondary border-start-0 bg-slate-800 border-slate-700 text-slate-400 py-0 px-1.5"
+              class="btn btn-outline-secondary border-start-0 bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 py-0 px-1.5"
               @click="searchQuery = ''"
             >
               <i class="bi bi-x-circle-fill" style="font-size: 10px;"></i>
@@ -641,11 +641,11 @@ onMounted(async () => {
 
           <!-- Status Dropdown -->
           <div class="d-flex align-items-center gap-1">
-            <label for="myStatusFilterSelect" class="form-label mb-0 fs-11 text-nowrap text-slate-300">Status:</label>
+            <label for="myStatusFilterSelect" class="form-label mb-0 fs-11 text-nowrap text-slate-600 dark:text-slate-300">Status:</label>
             <select
               id="myStatusFilterSelect"
               v-model="selectedStatusFilter"
-              class="form-select form-select-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+              class="form-select form-select-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
               style="min-width: 110px; max-width: 140px;"
               data-testid="my-status-filter-select"
             >
@@ -658,11 +658,11 @@ onMounted(async () => {
 
           <!-- Priority Filter -->
           <div class="d-flex align-items-center gap-1">
-            <label for="myPriorityFilterSelect" class="form-label mb-0 fs-11 text-nowrap">Priority:</label>
+            <label for="myPriorityFilterSelect" class="form-label mb-0 fs-11 text-nowrap text-slate-600 dark:text-slate-300">Priority:</label>
             <select
               id="myPriorityFilterSelect"
               v-model="selectedPriorityFilter"
-              class="form-select form-select-sm"
+              class="form-select form-select-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
               style="min-width: 95px; max-width: 120px;"
               data-testid="my-priority-filter-select"
             >
@@ -721,7 +721,7 @@ onMounted(async () => {
             data-testid="my-request-row"
           >
             <div
-              class="card h-100 p-3 shadow-xs border border-slate-800 bg-slate-900/90 text-slate-100"
+              class="card h-100 p-3 shadow-xs border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 text-slate-800 dark:text-slate-100"
               style="cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;"
               data-testid="my-request-grid-card"
               @click="navigateToDetail(req.id)"
@@ -731,7 +731,7 @@ onMounted(async () => {
                   <router-link
                     :to="`/requests/${req.id}`"
                     :title="req.id"
-                    class="font-monospace fw-bold text-cyan-400 text-decoration-none"
+                    class="font-monospace fw-bold text-cyan-600 dark:text-cyan-400 text-decoration-none"
                     style="font-size: 11.5px;"
                     data-testid="my-request-id-link"
                     @click.stop
@@ -758,10 +758,10 @@ onMounted(async () => {
                 </span>
               </div>
 
-              <h6 class="fw-bold text-slate-100 text-truncate mb-1" :title="req.title">
+              <h6 class="fw-bold text-slate-900 dark:text-slate-100 text-truncate mb-1" :title="req.title">
                 <router-link
                   :to="`/requests/${req.id}`"
-                  class="fw-semibold text-decoration-none text-slate-100 hover:text-cyan-400"
+                  class="fw-semibold text-decoration-none text-slate-900 dark:text-slate-100 hover:text-cyan-600 dark:hover:text-cyan-400"
                   data-testid="my-request-title-link"
                   @click.stop
                 >
@@ -769,7 +769,7 @@ onMounted(async () => {
                 </router-link>
               </h6>
 
-              <p class="text-slate-400 small mb-2 text-truncate" style="font-size: 11.5px;">
+              <p class="text-slate-500 dark:text-slate-400 small mb-2 text-truncate" style="font-size: 11.5px;">
                 {{ req.description || 'No description provided.' }}
               </p>
 
@@ -787,28 +787,28 @@ onMounted(async () => {
               </div>
 
               <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">
-                <span class="badge bg-slate-800 border border-slate-700 text-slate-300" style="font-size: 10.5px;" :title="resolveCustomerDisplay(req)">
+                <span class="badge bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300" style="font-size: 10.5px;" :title="resolveCustomerDisplay(req)">
                   <i class="bi bi-building me-1"></i>{{ resolveCustomerDisplay(req) }}
                 </span>
-                <span class="badge bg-slate-800 border border-slate-700 text-slate-300" style="font-size: 10.5px;" :title="resolveProductDisplay(req)">
+                <span class="badge bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300" style="font-size: 10.5px;" :title="resolveProductDisplay(req)">
                   <i class="bi bi-box me-1"></i>{{ resolveProductDisplay(req) }}
                 </span>
-                <span class="badge bg-slate-800 border border-slate-700 text-slate-300" style="font-size: 10.5px;" :title="resolveAssigneeDisplay(req)">
+                <span class="badge bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300" style="font-size: 10.5px;" :title="resolveAssigneeDisplay(req)">
                   <i class="bi bi-person me-1"></i>{{ resolveAssigneeDisplay(req) }}
                 </span>
               </div>
 
-              <div class="mt-auto pt-2 border-t border-slate-800">
+              <div class="mt-auto pt-2 border-t border-slate-200 dark:border-slate-800">
                 <div
                   v-if="(req.totalSubTasksCount ?? 0) > 0"
                   class="mb-1.5"
                   data-testid="my-request-progress"
                 >
                   <div class="d-flex justify-content-between align-items-center fs-11 mb-1">
-                    <span class="text-slate-400">Subtasks ({{ req.completedSubTasksCount ?? 0 }}/{{ req.totalSubTasksCount ?? 0 }})</span>
-                    <span class="fw-semibold text-slate-200">{{ req.completionPercentage ?? 0 }}%</span>
+                    <span class="text-slate-500 dark:text-slate-400">Subtasks ({{ req.completedSubTasksCount ?? 0 }}/{{ req.totalSubTasksCount ?? 0 }})</span>
+                    <span class="fw-semibold text-slate-700 dark:text-slate-200">{{ req.completionPercentage ?? 0 }}%</span>
                   </div>
-                  <div class="progress bg-slate-800" style="height: 5px;">
+                  <div class="progress bg-slate-100 dark:bg-slate-800" style="height: 5px;">
                     <div
                       class="progress-bar bg-cyan-500"
                       role="progressbar"
@@ -817,7 +817,7 @@ onMounted(async () => {
                   </div>
                 </div>
 
-                <div class="d-flex align-items-center justify-content-between fs-11 text-slate-400 mt-1">
+                <div class="d-flex align-items-center justify-content-between fs-11 text-slate-500 dark:text-slate-400 mt-1">
                   <span><i class="bi bi-clock me-1"></i>{{ formatTimestamp(req.createdAt) }}</span>
                   <router-link
                     :to="`/requests/${req.id}`"
@@ -836,32 +836,32 @@ onMounted(async () => {
     </div>
 
     <!-- Tab 2: Assigned Sub-Tasks Personal Queue Card (CR-006, TD-009, TD-010) -->
-    <div v-if="activeTab === 'subtasks'" class="card border border-slate-800 bg-slate-900/90 text-slate-100 shadow-md" data-testid="assigned-subtasks-card">
-      <div class="card-header py-1.5 px-3 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div v-if="activeTab === 'subtasks'" class="card border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 text-slate-800 dark:text-slate-100 shadow-sm dark:shadow-md" data-testid="assigned-subtasks-card">
+      <div class="card-header py-1.5 px-3 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <span class="fw-semibold small">
-            <i class="bi bi-list-task me-1 text-cyan-400" aria-hidden="true"></i>
+            <i class="bi bi-list-task me-1 text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>
             Actionable Sub-Tasks Queue
           </span>
           <span class="badge text-bg-secondary" data-testid="assigned-subtasks-total-badge">
             {{ filteredAssignedSubTasks.length }} item(s)
           </span>
 
-          <span class="badge bg-slate-800 border border-slate-700 text-slate-300 font-monospace" style="font-size: 10.5px;">
-            <span class="text-emerald-400 fw-semibold">{{ completedSubTasksCount }}</span>/{{ assignedSubTasks.length }} done ({{ subTasksCompletionRate }}%)
+          <span class="badge bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-monospace" style="font-size: 10.5px;">
+            <span class="text-emerald-600 dark:text-emerald-400 fw-semibold">{{ completedSubTasksCount }}</span>/{{ assignedSubTasks.length }} done ({{ subTasksCompletionRate }}%)
           </span>
         </div>
 
         <div class="d-flex align-items-center gap-2">
           <!-- Subtasks Search Input -->
           <div class="input-group input-group-sm" style="width: 200px;">
-            <span class="input-group-text bg-slate-800 border-slate-700 border-end-0 text-slate-400 py-0 px-2">
+            <span class="input-group-text bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 border-end-0 text-slate-500 dark:text-slate-400 py-0 px-2">
               <i class="bi bi-search" style="font-size: 11px;"></i>
             </span>
             <input
               v-model="subTaskSearchQuery"
               type="text"
-              class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 border-start-0 ps-0 focus:border-cyan-400"
+              class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 border-start-0 ps-0 focus:border-cyan-500 dark:focus:border-cyan-400"
               placeholder="Filter tasks..."
               style="font-size: 11.5px;"
               data-testid="subtask-search-input"
@@ -869,7 +869,7 @@ onMounted(async () => {
             <button
               v-if="subTaskSearchQuery"
               type="button"
-              class="btn btn-outline-secondary border-start-0 bg-slate-800 border-slate-700 text-slate-400 py-0 px-1.5"
+              class="btn btn-outline-secondary border-start-0 bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 py-0 px-1.5"
               @click="subTaskSearchQuery = ''"
             >
               <i class="bi bi-x-circle-fill" style="font-size: 10px;"></i>
@@ -881,11 +881,11 @@ onMounted(async () => {
               id="showCompletedSubTasksCheck"
               v-model="showCompletedSubTasks"
               type="checkbox"
-              class="form-check-input bg-slate-900 border-slate-700"
+              class="form-check-input bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
               role="switch"
               data-testid="show-completed-subtasks-toggle"
             />
-            <label for="showCompletedSubTasksCheck" class="form-check-label text-slate-400" style="font-size: 11.5px;">
+            <label for="showCompletedSubTasksCheck" class="form-check-label text-slate-500 dark:text-slate-400" style="font-size: 11.5px;">
               Show completed
             </label>
           </div>
@@ -894,7 +894,7 @@ onMounted(async () => {
 
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0" data-testid="assigned-subtasks-table">
-          <thead class="table-dark">
+          <thead class="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold tracking-wider uppercase text-[11px]">
             <tr>
               <th scope="col" style="width: 50px;" class="text-center">Done</th>
               <th scope="col">Sub-Task</th>

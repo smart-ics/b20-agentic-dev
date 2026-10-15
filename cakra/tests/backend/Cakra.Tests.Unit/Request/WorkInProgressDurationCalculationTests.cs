@@ -25,6 +25,11 @@ public sealed class WorkInProgressDurationCalculationTests
         var method = typeof(IRequestQueryService).GetMethod(nameof(IRequestQueryService.GetWorkInProgressOverviewAsync));
         method.Should().NotBeNull();
         method!.ReturnType.Should().Be(typeof(Task<IReadOnlyList<PersonWorkInProgressDto>>));
+
+        typeof(TaskWorkInProgressDto).GetProperty(nameof(TaskWorkInProgressDto.Complexity)).Should().NotBeNull();
+        typeof(TaskWorkInProgressDto).GetProperty(nameof(TaskWorkInProgressDto.BudgetHours)).Should().NotBeNull();
+        typeof(TaskWorkInProgressDto).GetProperty(nameof(TaskWorkInProgressDto.BurnPercentage)).Should().NotBeNull();
+        typeof(TaskWorkInProgressDto).GetProperty(nameof(TaskWorkInProgressDto.IsOverBudget)).Should().NotBeNull();
     }
 
     [Fact]

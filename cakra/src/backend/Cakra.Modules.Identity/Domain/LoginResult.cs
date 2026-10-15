@@ -31,6 +31,11 @@ public sealed record LoginResult
     public Guid? PersonId { get; init; }
 
     /// <summary>
+    /// Optional username of the authenticated user.
+    /// </summary>
+    public string? Username { get; init; }
+
+    /// <summary>
     /// Error code if authentication failed (e.g. <c>INVALID_CREDENTIALS</c>, <c>ACCOUNT_LOCKED</c>, <c>PERSON_INACTIVE</c>).
     /// </summary>
     public string? ErrorCode { get; init; }
@@ -43,14 +48,15 @@ public sealed record LoginResult
     /// <summary>
     /// Creates a successful login result.
     /// </summary>
-    public static LoginResult Success(string sessionToken, DateTime expiresAt, Guid userId, Guid personId) =>
+    public static LoginResult Success(string sessionToken, DateTime expiresAt, Guid userId, Guid personId, string? username = null) =>
         new()
         {
             Succeeded = true,
             SessionToken = sessionToken,
             ExpiresAt = expiresAt,
             UserId = userId,
-            PersonId = personId
+            PersonId = personId,
+            Username = username
         };
 
     /// <summary>

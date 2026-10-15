@@ -289,21 +289,21 @@ onBeforeUnmount(() => {
       aria-modal="true"
     >
       <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow-2xl border border-slate-800 bg-slate-900/95 text-slate-100">
+        <div class="modal-content shadow-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 text-slate-800 dark:text-slate-100">
           <!-- Modal Header -->
-          <div class="modal-header py-2 px-3 bg-slate-950/60 border-b border-slate-800">
+          <div class="modal-header py-2 px-3 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
             <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-people-fill text-cyan-400" aria-hidden="true"></i>
+              <i class="bi bi-people-fill text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>
               <h2 id="customerContactModalTitle" class="modal-title h6 fw-bold mb-0">
                 Customer Contacts
               </h2>
-              <span class="badge bg-slate-800 border border-slate-700 text-slate-300 font-monospace" style="font-size: 10px">
+              <span class="badge bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-monospace" style="font-size: 10px">
                 SCR-CUST-003
               </span>
             </div>
             <button
               type="button"
-              class="btn-close btn-close-white py-1 px-2"
+              class="btn-close py-1 px-2"
               aria-label="Close"
               :disabled="isSubmitting"
               @click="handleClose"
@@ -315,12 +315,12 @@ onBeforeUnmount(() => {
             <!-- Customer Context Subtitle -->
             <div
               v-if="customerDisplayName"
-              class="d-flex align-items-center justify-content-between p-2 mb-3 rounded bg-light border"
+              class="d-flex align-items-center justify-content-between p-2 mb-3 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700"
             >
               <div class="d-flex align-items-center gap-2 small">
                 <i class="bi bi-building text-secondary" aria-hidden="true"></i>
                 <span class="text-secondary">Customer:</span>
-                <strong class="text-dark">{{ customerDisplayName }}</strong>
+                <strong class="text-slate-900 dark:text-white">{{ customerDisplayName }}</strong>
               </div>
               <button
                 v-if="!formMode"
@@ -571,7 +571,7 @@ onBeforeUnmount(() => {
                     data-testid="contact-row"
                   >
                     <!-- Name -->
-                    <td class="ps-3 py-2 fw-semibold text-dark">
+                    <td class="ps-3 py-2 fw-semibold text-slate-900 dark:text-slate-100">
                       {{ contact.name }}
                     </td>
 
@@ -597,7 +597,7 @@ onBeforeUnmount(() => {
                       <a
                         v-if="contact.phoneNumber"
                         :href="`tel:${contact.phoneNumber}`"
-                        class="text-decoration-none small text-dark"
+                        class="text-decoration-none small text-slate-800 dark:text-slate-200"
                       >
                         {{ contact.phoneNumber }}
                       </a>
@@ -661,7 +661,7 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Modal Footer -->
-          <div class="modal-footer py-2 px-3 bg-slate-950/60 border-t border-slate-800">
+          <div class="modal-footer py-2 px-3 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
               class="btn btn-secondary btn-sm"

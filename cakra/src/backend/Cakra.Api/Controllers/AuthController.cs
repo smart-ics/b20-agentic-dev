@@ -12,7 +12,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Cakra.Modules.Organization;
 using IIdentityAuthenticationService = Cakra.Modules.Identity.Domain.IAuthenticationService;
 using IIdentityAuthorizationService = Cakra.Modules.Identity.Services.IAuthorizationService;
 
@@ -30,6 +32,8 @@ public sealed class AuthController : ApiControllerBase
     private readonly ICurrentContextProvider _currentContextProvider;
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
+    private readonly IUserAccountRepository? _userAccountRepository;
+    private readonly IOrganizationQueryService? _organizationQueryService;
 
     public AuthController(
         IIdentityAuthenticationService authenticationService,
@@ -37,12 +41,27 @@ public sealed class AuthController : ApiControllerBase
         ICurrentContextProvider currentContextProvider,
         IMediator mediator,
         ILogger<AuthController> logger)
+        : this(authenticationService, authorizationService, currentContextProvider, mediator, logger, null, null)
+    {
+    }
+
+    [ActivatorUtilitiesConstructor]
+    public AuthController(
+        IIdentityAuthenticationService authenticationService,
+        IIdentityAuthorizationService authorizationService,
+        ICurrentContextProvider currentContextProvider,
+        IMediator mediator,
+        ILogger<AuthController> logger,
+        IUserAccountRepository? userAccountRepository,
+        IOrganizationQueryService? organizationQueryService)
     {
         _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
         _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
         _currentContextProvider = currentContextProvider ?? throw new ArgumentNullException(nameof(currentContextProvider));
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _userAccountRepository = userAccountRepository;
+        _organizationQueryService = organizationQueryService;
     }
 
     /// <summary>
@@ -76,6 +95,24 @@ public sealed class AuthController : ApiControllerBase
 
         var roles = await _authorizationService.ResolveRolesAsync(personId, cancellationToken);
 
+        string? username = result.Username;
+        if (string.IsNullOrWhiteSpace(username) && _userAccountRepository != null)
+        {
+            var userAcc = await _userAccountRepository.GetByIdAsync(userId, cancellationToken);
+            username = userAcc?.Username;
+        }
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            username = request?.ResolvedUsername;
+        }
+
+        string? personName = null;
+        if (_organizationQueryService != null)
+        {
+            var person = await _organizationQueryService.GetPersonByIdAsync(personId, cancellationToken);
+            personName = person?.FullName;
+        }
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
@@ -83,6 +120,17 @@ public sealed class AuthController : ApiControllerBase
             new("personId", personId.ToString()),
             new("session_token", sessionToken)
         };
+
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            claims.Add(new Claim(ClaimTypes.Name, username));
+            claims.Add(new Claim("username", username));
+        }
+
+        if (!string.IsNullOrWhiteSpace(personName))
+        {
+            claims.Add(new Claim("personName", personName));
+        }
 
         foreach (var role in roles)
         {
@@ -111,6 +159,8 @@ public sealed class AuthController : ApiControllerBase
         {
             UserId = userId,
             PersonId = personId,
+            Username = username,
+            PersonName = personName,
             Roles = roles,
             ExpiresAt = result.ExpiresAt
         });
@@ -185,13 +235,35 @@ public sealed class AuthController : ApiControllerBase
     [HttpGet("me")]
     [ProducesResponseType(typeof(CurrentUserResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public IActionResult GetCurrentUser()
+    public async Task<IActionResult> GetCurrentUser(CancellationToken cancellationToken = default)
     {
+        var userId = _currentContextProvider.CurrentUserId ?? Guid.Empty;
+        var personId = _currentContextProvider.CurrentPersonId ?? Guid.Empty;
+        var roles = _currentContextProvider.CurrentRoles.ToArray();
+
+        var username = User.FindFirst("username")?.Value
+            ?? User.FindFirst(ClaimTypes.Name)?.Value;
+        var personName = User.FindFirst("personName")?.Value;
+
+        if (string.IsNullOrWhiteSpace(username) && userId != Guid.Empty && _userAccountRepository != null)
+        {
+            var userAcc = await _userAccountRepository.GetByIdAsync(userId, cancellationToken);
+            username = userAcc?.Username;
+        }
+
+        if (string.IsNullOrWhiteSpace(personName) && personId != Guid.Empty && _organizationQueryService != null)
+        {
+            var person = await _organizationQueryService.GetPersonByIdAsync(personId, cancellationToken);
+            personName = person?.FullName;
+        }
+
         return Ok(new CurrentUserResponse
         {
-            UserId = _currentContextProvider.CurrentUserId ?? Guid.Empty,
-            PersonId = _currentContextProvider.CurrentPersonId ?? Guid.Empty,
-            Roles = _currentContextProvider.CurrentRoles.ToArray()
+            UserId = userId,
+            PersonId = personId,
+            Username = username,
+            PersonName = personName,
+            Roles = roles
         });
     }
 
@@ -375,6 +447,8 @@ public sealed class AuthController : ApiControllerBase
     {
         public Guid UserId { get; init; }
         public Guid PersonId { get; init; }
+        public string? Username { get; init; }
+        public string? PersonName { get; init; }
         public IReadOnlyList<string> Roles { get; init; } = Array.Empty<string>();
         public DateTime? ExpiresAt { get; init; }
     }
@@ -386,6 +460,8 @@ public sealed class AuthController : ApiControllerBase
     {
         public Guid UserId { get; init; }
         public Guid PersonId { get; init; }
+        public string? Username { get; init; }
+        public string? PersonName { get; init; }
         public IReadOnlyList<string> Roles { get; init; } = Array.Empty<string>();
     }
 }

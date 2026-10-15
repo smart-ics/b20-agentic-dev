@@ -84,6 +84,10 @@ public static class CakraAuthenticationExtensions
                         ? await authzService.ResolveRolesAsync(secContext.PersonId, validateContext.HttpContext.RequestAborted)
                         : Array.Empty<string>();
 
+                    var existingUsername = validateContext.Principal?.FindFirst("username")?.Value
+                        ?? validateContext.Principal?.FindFirst(ClaimTypes.Name)?.Value;
+                    var existingPersonName = validateContext.Principal?.FindFirst("personName")?.Value;
+
                     var claims = new List<Claim>
                     {
                         new Claim(ClaimTypes.NameIdentifier, secContext.UserId.ToString()),
@@ -91,6 +95,17 @@ public static class CakraAuthenticationExtensions
                         new Claim("personId", secContext.PersonId.ToString()),
                         new Claim("session_token", sessionToken)
                     };
+
+                    if (!string.IsNullOrWhiteSpace(existingUsername))
+                    {
+                        claims.Add(new Claim(ClaimTypes.Name, existingUsername));
+                        claims.Add(new Claim("username", existingUsername));
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(existingPersonName))
+                    {
+                        claims.Add(new Claim("personName", existingPersonName));
+                    }
 
                     foreach (var role in roles)
                     {

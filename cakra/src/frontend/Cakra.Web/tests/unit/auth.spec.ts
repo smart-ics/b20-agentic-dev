@@ -57,3 +57,46 @@ describe('useAuthStore - logout', () => {
     expect(store.isLoading).toBe(false)
   })
 })
+
+describe('useAuthStore - userName', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('resolves personName when present', () => {
+    const store = useAuthStore()
+    store.setCurrentUser({
+      userId: 'test-user-id',
+      personId: 'test-person-id',
+      roles: ['Administrator'],
+      username: 'admin',
+      personName: 'Jane Doe',
+    })
+
+    expect(store.userName).toBe('Jane Doe')
+  })
+
+  it('falls back to username when personName is absent', () => {
+    const store = useAuthStore()
+    store.setCurrentUser({
+      userId: 'test-user-id',
+      personId: 'test-person-id',
+      roles: ['Administrator'],
+      username: 'john.smith',
+    })
+
+    expect(store.userName).toBe('john.smith')
+  })
+
+  it('falls back to Operational User when both are missing', () => {
+    const store = useAuthStore()
+    store.setCurrentUser({
+      userId: 'test-user-id',
+      personId: 'test-person-id',
+      roles: [],
+    })
+
+    expect(store.userName).toBe('Operational User')
+  })
+})

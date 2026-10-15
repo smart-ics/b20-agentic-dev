@@ -1387,8 +1387,8 @@ onMounted(async () => {
       <!-- Main Content Column (Left) -->
       <div class="col-12 col-lg-8">
         <!-- Request Detail Card -->
-        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-detail-card">
-          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
+        <div class="card shadow-none bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 mb-2" data-testid="request-detail-card">
+          <div class="card-header py-1 px-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
             <h2 class="h6 mb-0 fw-bold" data-testid="request-detail-title">{{ request.title }}</h2>
             <button
               v-if="canEditCoreAttributes"
@@ -1406,7 +1406,7 @@ onMounted(async () => {
               Description
             </div>
             <div
-              class="p-2 rounded bg-slate-950/60 border border-slate-800/80 mb-2 small text-slate-200"
+              class="p-2 rounded bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 mb-2 small text-slate-700 dark:text-slate-200"
               style="white-space: pre-wrap; font-size: 12.5px; line-height: 1.4"
               data-testid="request-detail-description"
             >
@@ -1473,8 +1473,8 @@ onMounted(async () => {
         </div>
 
         <!-- Sub-Tasks Checklist Card (CR-006, Architecture §4 TD-001..TD-003, TD-010) -->
-        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-subtasks-card">
-          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
+        <div class="card shadow-none bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 mb-2" data-testid="request-subtasks-card">
+          <div class="card-header py-1 px-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
             <div class="d-flex align-items-center gap-2">
               <span class="fw-semibold small">
                 <i class="bi bi-check2-square me-1 text-primary" aria-hidden="true"></i>
@@ -1643,8 +1643,8 @@ onMounted(async () => {
         </div>
 
         <!-- Operational Blockers Card (CR-032, Architecture §4 TD-008) -->
-        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-blockers-card">
-          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
+        <div class="card shadow-none bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 mb-2" data-testid="request-blockers-card">
+          <div class="card-header py-1 px-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
             <div class="d-flex align-items-center gap-2">
               <span class="fw-semibold small">
                 <i class="bi bi-shield-slash me-1 text-danger" aria-hidden="true"></i>
@@ -1685,7 +1685,7 @@ onMounted(async () => {
               <div
                 v-for="blocker in activeBlockers"
                 :key="blocker.id"
-                class="p-2 rounded border border-danger-subtle bg-danger-subtle/10 text-slate-100 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2"
+                class="p-2 rounded border border-danger-subtle bg-danger-subtle/10 text-slate-800 dark:text-slate-100 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2"
                 data-testid="active-blocker-item"
                 :data-blocker-id="blocker.id"
               >
@@ -1698,11 +1698,11 @@ onMounted(async () => {
                       {{ formatTimestamp(blocker.createdAtUtc) }}
                     </span>
                   </div>
-                  <div class="fw-medium small text-break mb-1 text-slate-200" data-testid="blocker-reason">
+                  <div class="fw-medium small text-break mb-1 text-slate-800 dark:text-slate-200" data-testid="blocker-reason">
                     {{ blocker.reason }}
                   </div>
                   <div class="text-body-secondary small" style="font-size: 11px;" data-testid="blocker-reporter">
-                    Reported by <strong class="text-slate-300">{{ blocker.createdByName || resolvePersonDisplay(blocker.createdByPersonId) }}</strong>
+                    Reported by <strong class="text-slate-700 dark:text-slate-300">{{ blocker.createdByName || resolvePersonDisplay(blocker.createdByPersonId) }}</strong>
                   </div>
                 </div>
 
@@ -1722,11 +1722,11 @@ onMounted(async () => {
             </div>
 
             <!-- Cleared Blockers History Section -->
-            <div class="mt-3 pt-2 border-top border-slate-800" data-testid="cleared-blockers-history">
+            <div class="mt-3 pt-2 border-top border-slate-200 dark:border-slate-800" data-testid="cleared-blockers-history">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <button
                   type="button"
-                  class="btn btn-link btn-sm p-0 text-decoration-none text-slate-400 d-flex align-items-center gap-1"
+                  class="btn btn-link btn-sm p-0 text-decoration-none text-slate-500 dark:text-slate-400 d-flex align-items-center gap-1"
                   data-testid="toggle-cleared-blockers-btn"
                   @click="showClearedHistory = !showClearedHistory"
                 >
@@ -1751,7 +1751,7 @@ onMounted(async () => {
                   <div
                     v-for="blocker in clearedBlockers"
                     :key="blocker.id"
-                    class="p-2 rounded border border-slate-800 bg-slate-950/40 text-slate-300"
+                    class="p-2 rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 text-slate-700 dark:text-slate-300"
                     data-testid="cleared-blocker-item"
                   >
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mb-1">
@@ -1771,7 +1771,7 @@ onMounted(async () => {
                       style="font-size: 11px;"
                       data-testid="cleared-blocker-notes"
                     >
-                      <span class="fw-semibold text-slate-300">Resolution note:</span> {{ blocker.clearanceReason }}
+                      <span class="fw-semibold text-slate-700 dark:text-slate-300">Resolution note:</span> {{ blocker.clearanceReason }}
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-3 text-body-secondary small" style="font-size: 11px;">
                       <span data-testid="cleared-blocker-reporter">
@@ -1789,8 +1789,8 @@ onMounted(async () => {
         </div>
 
         <!-- Lifecycle Actions Card (CR-016 TD-001..003) -->
-        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-actions-card">
-          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between">
+        <div class="card shadow-none bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 mb-2" data-testid="request-actions-card">
+          <div class="card-header py-1 px-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 d-flex align-items-center justify-content-between">
             <span class="fw-semibold small">
               <i class="bi bi-sliders me-1 text-primary" aria-hidden="true"></i>
               Lifecycle Actions
@@ -2228,9 +2228,9 @@ onMounted(async () => {
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
-              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
-                <h5 class="modal-title h6 mb-0 text-amber-400">
+            <div class="modal-content bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100">
+              <div class="modal-header py-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-amber-500 dark:text-amber-400">
                   <i class="bi bi-pause-circle me-1 text-warning"></i>Pause Work
                 </h5>
                 <button
@@ -2252,14 +2252,14 @@ onMounted(async () => {
                   <textarea
                     id="modalPauseNote"
                     v-model="pauseForm.note"
-                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                    class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
                     rows="3"
                     placeholder="Document reason for pause or external blocker..."
                     :disabled="isSubmittingAction"
                     data-testid="modal-pause-note-input"
                   ></textarea>
                 </div>
-                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                <div class="modal-footer py-1 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -2294,9 +2294,9 @@ onMounted(async () => {
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
-              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
-                <h5 class="modal-title h6 mb-0 text-rose-400">
+            <div class="modal-content bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100">
+              <div class="modal-header py-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-rose-500 dark:text-rose-400">
                   <i class="bi bi-x-circle me-1 text-danger"></i>Cancel Request
                 </h5>
                 <button
@@ -2318,7 +2318,7 @@ onMounted(async () => {
                   <textarea
                     id="modalCancelReason"
                     v-model="cancelForm.reason"
-                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                    class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
                     rows="3"
                     placeholder="Explain why this request is being cancelled..."
                     required
@@ -2326,7 +2326,7 @@ onMounted(async () => {
                     data-testid="modal-cancel-reason-input"
                   ></textarea>
                 </div>
-                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                <div class="modal-footer py-1 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -2361,9 +2361,9 @@ onMounted(async () => {
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
-              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
-                <h5 class="modal-title h6 mb-0 text-cyan-400">
+            <div class="modal-content bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100">
+              <div class="modal-header py-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-cyan-600 dark:text-cyan-400">
                   <i class="bi bi-pencil-square me-1 text-primary"></i>Edit Request Details
                 </h5>
                 <button
@@ -2483,7 +2483,7 @@ onMounted(async () => {
                   </div>
                 </div>
 
-                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                <div class="modal-footer py-1 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -2519,9 +2519,9 @@ onMounted(async () => {
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
-              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
-                <h5 class="modal-title h6 mb-0 text-rose-400">
+            <div class="modal-content bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100">
+              <div class="modal-header py-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-rose-500 dark:text-rose-400">
                   <i class="bi bi-shield-plus me-1 text-danger"></i>Add Operational Blocker
                 </h5>
                 <button
@@ -2554,7 +2554,7 @@ onMounted(async () => {
                     <textarea
                       id="blockerReasonInput"
                       v-model="addBlockerForm.reason"
-                      class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                      class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
                       rows="3"
                       placeholder="Describe the impediment or dependency blocking work..."
                       required
@@ -2564,7 +2564,7 @@ onMounted(async () => {
                     ></textarea>
                   </div>
                 </div>
-                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                <div class="modal-footer py-1 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -2600,9 +2600,9 @@ onMounted(async () => {
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
-              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
-                <h5 class="modal-title h6 mb-0 text-emerald-400">
+            <div class="modal-content bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100">
+              <div class="modal-header py-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-emerald-500 dark:text-emerald-400">
                   <i class="bi bi-check-circle me-1 text-success"></i>Clear Blocker
                 </h5>
                 <button
@@ -2625,9 +2625,9 @@ onMounted(async () => {
                     <i class="bi bi-exclamation-triangle-fill me-1"></i>
                     {{ clearBlockerError }}
                   </div>
-                  <div v-if="selectedBlocker" class="p-2 mb-2 rounded bg-slate-950/60 border border-slate-800 small">
+                  <div v-if="selectedBlocker" class="p-2 mb-2 rounded bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 small">
                     <div class="text-body-secondary small mb-1">Blocker to clear:</div>
-                    <div class="fw-medium text-slate-200">{{ selectedBlocker.reason }}</div>
+                    <div class="fw-medium text-slate-800 dark:text-slate-200">{{ selectedBlocker.reason }}</div>
                   </div>
                   <p class="small text-body-secondary mb-2">
                     Clearing this blocker will archive it into history. The request will remain <strong class="text-warning">PAUSED</strong> until manually resumed.
@@ -2639,7 +2639,7 @@ onMounted(async () => {
                     <textarea
                       id="clearanceReasonInput"
                       v-model="clearBlockerForm.clearanceReason"
-                      class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                      class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
                       rows="3"
                       placeholder="Describe how this blocker was resolved..."
                       maxlength="1000"
@@ -2648,7 +2648,7 @@ onMounted(async () => {
                     ></textarea>
                   </div>
                 </div>
-                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                <div class="modal-footer py-1 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -2684,9 +2684,9 @@ onMounted(async () => {
           aria-modal="true"
         >
           <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
-              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
-                <h5 class="modal-title h6 mb-0 text-emerald-400">
+            <div class="modal-content bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100">
+              <div class="modal-header py-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-emerald-500 dark:text-emerald-400">
                   <i class="bi bi-check2-all me-1 text-success"></i>Complete Request
                 </h5>
                 <button
@@ -2715,7 +2715,7 @@ onMounted(async () => {
                   <textarea
                     id="modalCompleteResolution"
                     v-model="completeForm.resolutionDescription"
-                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                    class="form-control form-control-sm bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:border-cyan-500 dark:focus:border-cyan-400"
                     rows="3"
                     placeholder="Describe completed solution..."
                     required
@@ -2723,7 +2723,7 @@ onMounted(async () => {
                     data-testid="modal-complete-resolution-input"
                   ></textarea>
                 </div>
-                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                <div class="modal-footer py-1 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
@@ -2751,8 +2751,8 @@ onMounted(async () => {
       <!-- Properties & History Column (Right) -->
       <div class="col-12 col-lg-4">
         <!-- Properties Card -->
-        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-information-card">
-          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 fw-semibold small">
+        <div class="card shadow-none bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 mb-2" data-testid="request-information-card">
+          <div class="card-header py-1 px-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 fw-semibold small">
             <i class="bi bi-info-circle me-1 text-primary" aria-hidden="true"></i>
             Properties
           </div>
@@ -2892,8 +2892,8 @@ onMounted(async () => {
         </div>
 
         <!-- State History Timeline Card -->
-        <div class="card card-table shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-history-card">
-          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex justify-content-between align-items-center">
+        <div class="card card-table shadow-none bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 mb-2" data-testid="request-history-card">
+          <div class="card-header py-1 px-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 d-flex justify-content-between align-items-center">
             <span class="fw-semibold small">
               <i class="bi bi-clock-history me-1 text-primary" aria-hidden="true"></i>
               State History
@@ -2974,8 +2974,8 @@ onMounted(async () => {
         </div>
 
         <!-- Embedded Comments & Discussion Card (CR-016 TD-005) -->
-        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-comments-card">
-          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex justify-content-between align-items-center">
+        <div class="card shadow-none bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 mb-2" data-testid="request-comments-card">
+          <div class="card-header py-1 px-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 d-flex justify-content-between align-items-center">
             <span class="fw-semibold small">
               <i class="bi bi-chat-left-text me-1 text-primary" aria-hidden="true"></i>
               Comments &amp; Discussion

@@ -734,6 +734,7 @@ public sealed class RequestQueryService :
                 r.[RequestType],
                 r.[Status],
                 r.[Priority],
+                r.[Complexity],
                 r.[CustomerId],
                 r.[ProductId],
                 r.[WorkPackageId],
@@ -834,6 +835,9 @@ public sealed class RequestQueryService :
                 reqAssignments,
                 utcNow);
 
+            var budgetHours = GetBudgetHoursForComplexity(req.Complexity);
+            var (burnPercentage, isOverBudget) = CalculateBurnMetrics(totalHours, budgetHours);
+
             CustomerDto? cust = null;
             if (req.CustomerId.HasValue)
             {
@@ -848,6 +852,10 @@ public sealed class RequestQueryService :
                 RequestType = req.RequestType,
                 Status = req.Status,
                 Priority = req.Priority,
+                Complexity = req.Complexity,
+                BudgetHours = budgetHours,
+                BurnPercentage = burnPercentage,
+                IsOverBudget = isOverBudget,
                 CustomerId = req.CustomerId,
                 CustomerName = cust?.CustomerName,
                 CustomerCode = cust?.CustomerCode,
@@ -1011,6 +1019,32 @@ public sealed class RequestQueryService :
         return (totalSeconds, totalHours, formatted, lastStartedAt);
     }
 
+    /// <summary>
+    /// Maps request complexity (1 to 5) to allocated budget hours:
+    /// 1 = 2h, 2 = 4h, 3 = 8h, 4 = 16h, 5 = 24h (Architecture CR-034 §4 TD-001).
+    /// </summary>
+    public static double GetBudgetHoursForComplexity(int complexity) => complexity switch
+    {
+        1 => 2.0,   // 1/4 day
+        2 => 4.0,   // 1/2 day
+        3 => 8.0,   // 1 day
+        4 => 16.0,  // 2 days
+        5 => 24.0,  // 3 days
+        _ => 2.0    // Fallback for unassigned/out-of-range
+    };
+
+    /// <summary>
+    /// Computes budget burn metrics (burn percentage and isOverBudget flag) given elapsed hours and budget hours
+    /// (Architecture CR-034 §4 TD-001).
+    /// </summary>
+    public static (int BurnPercentage, bool IsOverBudget) CalculateBurnMetrics(double totalHours, double budgetHours)
+    {
+        var burnPercentage = budgetHours > 0
+            ? (int)Math.Round((totalHours / budgetHours) * 100.0)
+            : 0;
+        var isOverBudget = totalHours >= budgetHours;
+        return (burnPercentage, isOverBudget);
+    }
 
     // MediatR query handler entry points
     Task<RequestDto?> IRequestHandler<GetRequestByIdQuery, RequestDto?>.Handle(
@@ -1317,6 +1351,7 @@ public sealed class RequestQueryService :
         public string RequestType { get; init; } = string.Empty;
         public string Status { get; init; } = string.Empty;
         public string Priority { get; init; } = "NORMAL";
+        public int Complexity { get; init; } = 1;
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
         public Guid? WorkPackageId { get; init; }

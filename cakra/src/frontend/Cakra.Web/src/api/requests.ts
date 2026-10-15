@@ -413,6 +413,10 @@ export interface TaskWorkInProgressDto {
   requestType: string
   status: string
   priority: string
+  complexity: number
+  budgetHours: number
+  burnPercentage: number
+  isOverBudget: boolean
   customerId?: string | null
   customerName?: string | null
   customerCode?: string | null

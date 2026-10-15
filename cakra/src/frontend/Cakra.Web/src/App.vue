@@ -77,8 +77,7 @@ const containerClass = computed(() => {
 </script>
 
 <template>
-  <!-- Authenticated Shell: Left Side Menu Navigation + Topbar + Content Area -->
-  <div v-if="authStore.isAuthenticated" class="cakra-layout bg-slate-950 text-slate-100 min-h-screen">
+  <div v-if="authStore.isAuthenticated" class="cakra-layout bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen">
     <!-- Backdrop for mobile drawer -->
     <div
       v-if="isMobileOpen"
@@ -284,11 +283,10 @@ const containerClass = computed(() => {
           <div class="user-avatar bg-gradient-to-br from-cyan-500 to-indigo-600 border border-slate-700">
             <i class="bi bi-person-fill" aria-hidden="true"></i>
           </div>
-          <div class="user-meta">
-            <span class="user-role-badge bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" v-if="authStore.roles.length > 0">
-              {{ authStore.roles.join(', ') }}
+          <div class="user-meta" :title="authStore.userName">
+            <span class="user-name-display text-slate-200 text-xs font-semibold truncate max-w-[120px]" data-testid="sidebar-username">
+              {{ authStore.userName }}
             </span>
-            <span class="user-role-badge bg-slate-800 text-slate-300 border border-slate-700" v-else>Operational User</span>
           </div>
         </div>
 
@@ -321,14 +319,14 @@ const containerClass = computed(() => {
     </aside>
 
     <!-- Main Workspace Container -->
-    <div class="cakra-main-container bg-slate-950 text-slate-100 min-h-screen" :class="{ 'sidebar-collapsed': isCollapsed }">
+    <div class="cakra-main-container bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen" :class="{ 'sidebar-collapsed': isCollapsed }">
       <!-- Top Bar -->
-      <header class="cakra-topbar bg-slate-900/90 backdrop-blur border-b border-slate-800 text-slate-100">
+      <header class="cakra-topbar bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100">
         <div class="d-flex align-items-center gap-2">
           <!-- Mobile toggle button -->
           <button
             type="button"
-            class="btn btn-outline-secondary btn-sm d-lg-none border-slate-700 text-slate-300 hover:bg-slate-800"
+            class="btn btn-outline-secondary btn-sm d-lg-none border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
             aria-label="Toggle navigation menu"
             @click="toggleMobile"
           >
@@ -337,40 +335,35 @@ const containerClass = computed(() => {
 
           <!-- Breadcrumb / Active Screen Title -->
           <div class="topbar-title-group">
-            <span class="topbar-eyebrow text-cyan-400 font-bold tracking-wider text-xs">CAKRA</span>
-            <span class="text-slate-500 small">&rsaquo;</span>
-            <h1 class="topbar-screen-title mb-0 text-white font-bold text-sm tracking-tight">{{ currentScreenTitle }}</h1>
+            <span class="topbar-eyebrow text-cyan-600 dark:text-cyan-400 font-bold tracking-wider text-xs">CAKRA</span>
+            <span class="text-slate-400 dark:text-slate-500 small">&rsaquo;</span>
+            <h1 class="topbar-screen-title mb-0 text-slate-900 dark:text-white font-bold text-sm tracking-tight">{{ currentScreenTitle }}</h1>
           </div>
         </div>
 
         <!-- Topbar Right Utilities -->
         <div class="d-flex align-items-center gap-2">
           <!-- Live Telemetry Status -->
-          <span class="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 d-none d-md-inline-flex align-items-center gap-1 px-2 py-0.5" style="font-size: 11px;">
-            <span class="spinner-grow spinner-grow-sm text-emerald-400" style="width: 0.35rem; height: 0.35rem;"></span>
+          <span class="badge bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 d-none d-md-inline-flex align-items-center gap-1 px-2 py-0.5" style="font-size: 11px;">
+            <span class="spinner-grow spinner-grow-sm text-emerald-500 dark:text-emerald-400" style="width: 0.35rem; height: 0.35rem;"></span>
             Live
-          </span>
-
-          <span v-if="authStore.roles.length > 0" class="badge cakra-role-badge d-none d-sm-inline-flex bg-slate-800 text-cyan-300 border border-slate-700">
-            <i class="bi bi-shield-check me-1" aria-hidden="true"></i>
-            {{ authStore.roles.join(', ') }}
           </span>
 
           <!-- Theme Toggle Button -->
           <button
             type="button"
-            class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition border-0 bg-transparent flex items-center justify-center cursor-pointer"
+            class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition border-0 bg-transparent flex items-center justify-center cursor-pointer"
             :title="themeStore.isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
             aria-label="Toggle theme"
             @click="themeStore.toggleTheme()"
           >
             <i v-if="themeStore.isDark" class="bi bi-sun-fill text-amber-400" aria-hidden="true"></i>
-            <i v-else class="bi bi-moon-stars-fill text-indigo-400" aria-hidden="true"></i>
+            <i v-else class="bi bi-moon-stars-fill text-indigo-500" aria-hidden="true"></i>
           </button>
 
           <button
             type="button"
-            class="btn btn-outline-secondary btn-sm d-lg-none border-slate-700 text-slate-300 hover:bg-slate-800"
+            class="btn btn-outline-secondary btn-sm d-lg-none border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
             @click="handleLogout"
             title="Sign Out"
           >
@@ -380,35 +373,47 @@ const containerClass = computed(() => {
       </header>
 
       <!-- Page Content View -->
-      <main class="cakra-page-content bg-slate-950 text-slate-100 flex-1">
+      <main class="cakra-page-content bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex-1">
         <div class="cakra-shell-container py-2" :class="containerClass">
           <router-view />
         </div>
       </main>
 
       <!-- App Footer -->
-      <footer class="cakra-app-footer bg-slate-950/80 backdrop-blur border-t border-slate-800 text-slate-400 py-2">
+      <footer class="cakra-app-footer bg-white/80 dark:bg-slate-950/80 backdrop-blur border-t border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 py-2">
         <div class="container-fluid px-2 px-md-3 d-flex justify-content-between align-items-center">
-          <span class="text-xs text-slate-400">CAKRA &bull; ICS Operational Workspace</span>
-          <span class="text-xs text-slate-500">Enterprise Operational Control</span>
+          <span class="text-xs text-slate-600 dark:text-slate-400">CAKRA &bull; ICS Operational Workspace</span>
+          <span class="text-xs text-slate-400 dark:text-slate-500">Enterprise Operational Control</span>
         </div>
       </footer>
     </div>
   </div>
 
   <!-- Unauthenticated Shell (e.g. Login Screen) -->
-  <div v-else class="cakra-unauth-layout bg-slate-950 text-slate-100 min-h-screen flex flex-col">
-    <header class="cakra-unauth-header bg-slate-900/80 backdrop-blur border-b border-slate-800">
-      <div class="container d-flex align-items-center justify-content-center py-3">
+  <div v-else class="cakra-unauth-layout bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+    <header class="cakra-unauth-header bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+      <div class="container d-flex align-items-center justify-content-between py-3">
         <div class="d-flex align-items-center gap-2">
-          <div class="brand-icon-wrapper-unauth bg-gradient-to-br from-cyan-500 to-indigo-600 shadow-lg shadow-cyan-500/20 border border-slate-700">
+          <div class="brand-icon-wrapper-unauth bg-gradient-to-br from-cyan-500 to-indigo-600 shadow-lg shadow-cyan-500/20 border border-slate-300 dark:border-slate-700">
             <i class="bi bi-diagram-3-fill text-white fs-4" aria-hidden="true"></i>
           </div>
           <div>
-            <div class="fw-bold text-white fs-5 lh-1 tracking-tight">CAKRA</div>
-            <div class="text-cyan-400 fs-12 lh-1 font-mono tracking-wider">ICS Operational System</div>
+            <div class="fw-bold text-slate-900 dark:text-white fs-5 lh-1 tracking-tight">CAKRA</div>
+            <div class="text-cyan-600 dark:text-cyan-400 fs-12 lh-1 font-mono tracking-wider">ICS Operational System</div>
           </div>
         </div>
+
+        <!-- Theme Toggle Button -->
+        <button
+          type="button"
+          class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition border-0 bg-transparent flex items-center justify-center cursor-pointer"
+          :title="themeStore.isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+          aria-label="Toggle theme"
+          @click="themeStore.toggleTheme()"
+        >
+          <i v-if="themeStore.isDark" class="bi bi-sun-fill text-amber-400" aria-hidden="true"></i>
+          <i v-else class="bi bi-moon-stars-fill text-indigo-500" aria-hidden="true"></i>
+        </button>
       </div>
     </header>
 
@@ -416,7 +421,7 @@ const containerClass = computed(() => {
       <router-view />
     </main>
 
-    <footer class="cakra-unauth-footer py-3 text-center text-slate-500 text-xs border-t border-slate-800">
+    <footer class="cakra-unauth-footer py-3 text-center text-slate-500 dark:text-slate-400 text-xs border-t border-slate-200 dark:border-slate-800">
       CAKRA &bull; ICS Operational System
     </footer>
   </div>

@@ -554,38 +554,38 @@ function extractErrorMessage(err: unknown, fallback: string): string {
 function statusBadgeClass(status: string | null | undefined): string {
   switch ((status ?? '').toUpperCase()) {
     case 'DRAFT':
-      return 'bg-slate-800 text-slate-400 border border-slate-700'
+      return 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
     case 'ACTIVE':
-      return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+      return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
     case 'CLOSED':
-      return 'bg-slate-950 text-slate-500 border border-slate-800'
+      return 'bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-950 dark:text-slate-500 dark:border-slate-800'
     default:
-      return 'bg-slate-800 text-slate-400 border border-slate-700'
+      return 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
   }
 }
 
 function requestStatusBadgeClass(status: string | null | undefined): string {
   switch ((status ?? '').toUpperCase()) {
     case 'CAPTURED':
-      return 'bg-slate-800 text-slate-400 border border-slate-700'
+      return 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
     case 'EVALUATING':
     case 'ASSIGNED':
-      return 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+      return 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border border-cyan-500/30'
     case 'ACCEPTED':
     case 'IN_PROGRESS':
-      return 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30'
+      return 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border border-indigo-500/30'
     case 'PAUSED':
-      return 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+      return 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30'
     case 'ESCALATED':
-      return 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+      return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
     case 'COMPLETED':
-      return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+      return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
     case 'REJECTED':
-      return 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+      return 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30'
     case 'CANCELLED':
-      return 'bg-slate-950 text-slate-500 border border-slate-800'
+      return 'bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-950 dark:text-slate-500 dark:border-slate-800'
     default:
-      return 'bg-slate-800 text-slate-400 border border-slate-700'
+      return 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
   }
 }
 
@@ -760,16 +760,16 @@ const selectedTelemetry = computed<WorkPackageTelemetryDto | null>(() => {
 function getPressureBadgeClass(tier: string | undefined): string {
   switch ((tier ?? '').toUpperCase()) {
     case 'NOMINAL':
-      return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+      return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
     case 'ELEVATED':
-      return 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30'
+      return 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border border-indigo-500/30'
     case 'CRITICAL':
-      return 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+      return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
     case 'IMPOSSIBLE':
-      return 'bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold'
+      return 'bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 font-bold'
     case 'UNPLANNED':
     default:
-      return 'bg-slate-800 text-slate-400 border border-slate-700'
+      return 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
   }
 }
 
@@ -786,7 +786,7 @@ function getWpScopeDemandBadge(wp: WorkPackageItem): { label: string; class: str
   if (!t || t.pressureTier === 'UNPLANNED' || !wp.deadline) {
     return {
       label: '[UNPLANNED]',
-      class: 'bg-slate-800 text-slate-400 border border-slate-700',
+      class: 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
       tooltip: 'No target deadline assigned (Unplanned pressure)',
     }
   }
@@ -805,12 +805,12 @@ function getBarClass(day: FlowBarcodeDayDto): string {
     return 'bg-rose-500'
   }
   if (day.closedCount > 0) {
-    return 'bg-emerald-400'
+    return 'bg-emerald-500 dark:bg-emerald-400'
   }
   if (day.stateMutationCount > 0) {
-    return 'bg-cyan-400'
+    return 'bg-cyan-500 dark:bg-cyan-400'
   }
-  return 'bg-slate-700'
+  return 'bg-slate-300 dark:bg-slate-700'
 }
 
 function getBarHeight(day: FlowBarcodeDayDto, isLarge = false): string {
@@ -1782,22 +1782,22 @@ onMounted(async () => {
 <template>
   <section class="work-package-view space-y-4" data-screen-id="SCR-WP-001">
     <!-- Screen Header -->
-    <div class="op-screen-header p-4 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md flex flex-wrap items-center justify-between gap-3 text-slate-100">
+    <div class="op-screen-header p-4 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-md flex flex-wrap items-center justify-between gap-3 text-slate-800 dark:text-slate-100">
       <div class="flex items-center gap-2.5 flex-wrap">
-        <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2 m-0">Work Packages</h1>
-        <span class="px-2 py-0.5 text-xs font-mono font-semibold rounded bg-slate-950/80 text-cyan-400 border border-slate-800" style="font-size: 11px">SCR-WP-001</span>
-        <span class="text-slate-400 text-xs hidden md:inline">| Grouped operational demand &amp; lifecycle orchestration</span>
+        <h1 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2 m-0">Work Packages</h1>
+        <span class="px-2 py-0.5 text-xs font-mono font-semibold rounded bg-cyan-50 dark:bg-slate-950/80 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-slate-800" style="font-size: 11px">SCR-WP-001</span>
+        <span class="text-slate-500 dark:text-slate-400 text-xs hidden md:inline">| Grouped operational demand &amp; lifecycle orchestration</span>
       </div>
 
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition inline-flex items-center gap-1.5 shadow-sm"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition inline-flex items-center gap-1.5 shadow-sm"
           :disabled="isLoadingList"
           data-testid="refresh-work-packages-button"
           @click="loadWorkPackages"
         >
-          <i class="bi bi-arrow-clockwise text-cyan-400" aria-hidden="true"></i>
+          <i class="bi bi-arrow-clockwise text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>
           <span>Refresh</span>
         </button>
 
@@ -1877,16 +1877,16 @@ onMounted(async () => {
     <!-- Create Work Package Form Card (Collapsible) -->
     <div
       v-if="showCreateForm"
-      class="bg-slate-900/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden text-slate-100 mb-3"
+      class="bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden text-slate-800 dark:text-slate-100 mb-3"
       data-testid="create-work-package-modal"
     >
-      <div class="bg-slate-950/80 border-b border-slate-800 px-4 py-3 flex justify-between items-center text-cyan-300 font-bold text-xs uppercase tracking-wider">
+      <div class="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex justify-between items-center text-cyan-700 dark:text-cyan-300 font-bold text-xs uppercase tracking-wider">
         <span class="flex items-center gap-1.5">
-          <i class="bi bi-kanban text-cyan-400" aria-hidden="true"></i>Create New Work Package
+          <i class="bi bi-kanban text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>Create New Work Package
         </span>
         <button
           type="button"
-          class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+          class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           aria-label="Close"
           @click="closeCreateModal"
         >
@@ -1903,14 +1903,14 @@ onMounted(async () => {
           <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
             <!-- Objective (Required) -->
             <div class="col-span-12 md:col-span-8">
-              <label for="createWorkPackageObjective" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">
-                Objective <span class="text-rose-400">*</span>
+              <label for="createWorkPackageObjective" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
+                Objective <span class="text-rose-500">*</span>
               </label>
               <input
                 id="createWorkPackageObjective"
                 v-model="createForm.objective"
                 type="text"
-                class="bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg px-3 py-1.5 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-3 py-1.5 text-xs focus:border-cyan-500 focus:outline-none w-full"
                 placeholder="Describe shared operational objective..."
                 required
                 :disabled="isSubmittingCreate"
@@ -1920,14 +1920,14 @@ onMounted(async () => {
 
             <!-- Optional Short Name / Title -->
             <div class="col-span-12 md:col-span-4">
-              <label for="createWorkPackageName" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">
+              <label for="createWorkPackageName" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
                 Package Name / Title
               </label>
               <input
                 id="createWorkPackageName"
                 v-model="createForm.name"
                 type="text"
-                class="bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg px-3 py-1.5 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-3 py-1.5 text-xs focus:border-cyan-500 focus:outline-none w-full"
                 placeholder="e.g. Auth Service Refactoring"
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-name-input"
@@ -1936,13 +1936,13 @@ onMounted(async () => {
 
             <!-- Owner Select (Required) -->
             <div class="col-span-12 md:col-span-3">
-              <label for="createWorkPackageOwner" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">
-                Owner <span class="text-rose-400">*</span>
+              <label for="createWorkPackageOwner" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
+                Owner <span class="text-rose-500">*</span>
               </label>
               <select
                 id="createWorkPackageOwner"
                 v-model="createForm.ownerPersonId"
-                class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1.5 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1.5 text-xs focus:border-cyan-500 focus:outline-none w-full"
                 required
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-owner-select"
@@ -1960,13 +1960,13 @@ onMounted(async () => {
 
             <!-- Customer Select (Optional) -->
             <div class="col-span-12 md:col-span-3">
-              <label for="createWorkPackageCustomer" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">
+              <label for="createWorkPackageCustomer" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
                 Customer (Optional)
               </label>
               <select
                 id="createWorkPackageCustomer"
                 v-model="createForm.customerId"
-                class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1.5 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1.5 text-xs focus:border-cyan-500 focus:outline-none w-full"
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-customer-select"
               >
@@ -1983,13 +1983,13 @@ onMounted(async () => {
 
             <!-- Product Select (Optional) -->
             <div class="col-span-12 md:col-span-3">
-              <label for="createWorkPackageProduct" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">
+              <label for="createWorkPackageProduct" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
                 Product (Optional)
               </label>
               <select
                 id="createWorkPackageProduct"
                 v-model="createForm.productId"
-                class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1.5 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1.5 text-xs focus:border-cyan-500 focus:outline-none w-full"
                 :disabled="isSubmittingCreate"
                 data-testid="create-work-package-product-select"
               >
@@ -2006,14 +2006,14 @@ onMounted(async () => {
 
             <!-- Target Deadline (Optional) -->
             <div class="col-span-12 md:col-span-3">
-              <label for="createWorkPackageDeadline" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">
+              <label for="createWorkPackageDeadline" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
                 Target Deadline (Optional)
               </label>
               <input
                 id="createWorkPackageDeadline"
                 v-model="createForm.deadline"
                 type="date"
-                class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:border-cyan-400 focus:outline-none w-full"
+                class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:border-cyan-500 focus:outline-none w-full"
                 :disabled="isSubmittingCreate"
                 data-testid="create-deadline-input"
               />
@@ -2021,15 +2021,15 @@ onMounted(async () => {
           </div>
 
           <!-- Quick Capture Tasks (Optional) (CR-019) -->
-          <div class="mt-3 pt-3 border-t border-slate-800" data-testid="create-quick-capture-section">
+          <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800" data-testid="create-quick-capture-section">
             <div class="flex justify-between items-center mb-1.5">
-              <label for="createQuickTasksInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1 mb-0">
-                <i class="bi bi-lightning-charge text-amber-400"></i>Quick Capture Tasks (Optional)
+              <label for="createQuickTasksInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1 mb-0">
+                <i class="bi bi-lightning-charge text-amber-500"></i>Quick Capture Tasks (Optional)
               </label>
               <div class="flex items-center gap-2">
                 <span
                   v-if="createCandidateTasks.length > 0"
-                  class="px-2 py-0.5 text-xs font-mono rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                  class="px-2 py-0.5 text-xs font-mono rounded bg-cyan-50 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30"
                   data-testid="create-candidate-count-badge"
                 >
                   {{ createCandidateTasks.length }} parsed
@@ -2037,7 +2037,7 @@ onMounted(async () => {
                 <button
                   v-if="createCandidateTasks.length > 0"
                   type="button"
-                  class="text-xs text-rose-400 hover:text-rose-300 bg-transparent border-0 cursor-pointer p-0"
+                  class="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-transparent border-0 cursor-pointer p-0"
                   :disabled="isSubmittingCreate"
                   data-testid="create-clear-candidates-button"
                   @click="handleClearCreateCandidates"
@@ -2051,7 +2051,7 @@ onMounted(async () => {
               <textarea
                 id="createQuickTasksInput"
                 v-model="createRawTasks"
-                class="bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg p-2.5 text-xs font-mono focus:border-cyan-400 focus:outline-none w-full"
+                class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg p-2.5 text-xs font-mono focus:border-cyan-500 focus:outline-none w-full"
                 rows="3"
                 placeholder="Paste or type task list (bullets, numbers, markdown checklists)&#10;- Setup database schema&#10;- Configure API endpoints&#10;- Build user interface"
                 :disabled="isSubmittingCreate"
@@ -2060,42 +2060,42 @@ onMounted(async () => {
             </div>
 
             <div class="flex justify-between items-center mb-2">
-              <span class="text-slate-400 text-[10.5px]">
+              <span class="text-slate-500 dark:text-slate-400 text-[10.5px]">
                 One task per line. Bullets, numbers, and checkboxes are automatically cleaned.
               </span>
               <button
                 type="button"
-                class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 transition inline-flex items-center gap-1 shadow-sm"
+                class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition inline-flex items-center gap-1 shadow-sm"
                 :disabled="isSubmittingCreate || !createRawTasks.trim()"
                 data-testid="create-parse-tasks-button"
                 @click="handleParseCreateTasks"
               >
-                <i class="bi bi-arrow-down-circle text-cyan-400"></i>Parse Tasks
+                <i class="bi bi-arrow-down-circle text-cyan-600 dark:text-cyan-400"></i>Parse Tasks
               </button>
             </div>
 
             <!-- Candidate Tasks Preview List -->
             <div
               v-if="createCandidateTasks.length > 0"
-              class="border border-slate-800 rounded-lg p-2 bg-slate-950/60 mb-2"
+              class="border border-slate-200 dark:border-slate-800 rounded-lg p-2 bg-slate-50 dark:bg-slate-950/60 mb-2"
               data-testid="create-candidate-preview-container"
             >
-              <div class="text-[10.5px] uppercase tracking-wider font-semibold text-slate-400 mb-1 px-1">
+              <div class="text-[10.5px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 px-1">
                 Candidate Tasks to Create:
               </div>
-              <ul class="divide-y divide-slate-800/60 max-h-36 overflow-y-auto m-0 p-0 list-none text-xs" data-testid="create-candidate-tasks-list">
+              <ul class="divide-y divide-slate-200 dark:divide-slate-800/60 max-h-36 overflow-y-auto m-0 p-0 list-none text-xs" data-testid="create-candidate-tasks-list">
                 <li
                   v-for="(task, idx) in createCandidateTasks"
                   :key="idx"
-                  class="flex justify-between items-center py-1.5 px-2 bg-transparent text-slate-200"
+                  class="flex justify-between items-center py-1.5 px-2 bg-transparent text-slate-800 dark:text-slate-200"
                   data-testid="create-candidate-task-item"
                 >
                   <div class="flex items-center truncate me-2 gap-1.5">
-                    <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono text-[10px] shrink-0">
+                    <span class="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 border border-slate-300 dark:border-slate-700 font-mono text-[10px] shrink-0">
                       #{{ idx + 1 }}
                     </span>
                     <span
-                      class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold shrink-0"
+                      class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold shrink-0"
                       data-testid="create-candidate-complexity-badge"
                     >
                       {{ task.complexity }} pt{{ task.complexity > 1 ? 's' : '' }}
@@ -2105,7 +2105,7 @@ onMounted(async () => {
                   <div class="flex items-center gap-2 shrink-0">
                     <select
                       v-model="task.assigneePersonId"
-                      class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-400 focus:outline-none"
+                      class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-500 focus:outline-none"
                       :disabled="isSubmittingCreate"
                       data-testid="create-candidate-assignee-select"
                       @change="handleCandidateAssigneeOverride(task)"
@@ -2121,7 +2121,7 @@ onMounted(async () => {
                     </select>
                     <button
                       type="button"
-                      class="text-rose-400 hover:text-rose-300 p-0.5 bg-transparent border-0 cursor-pointer text-xs"
+                      class="text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 p-0.5 bg-transparent border-0 cursor-pointer text-xs"
                       title="Remove candidate task"
                       aria-label="Remove candidate task"
                       :disabled="isSubmittingCreate"
@@ -2136,10 +2136,10 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-800">
+          <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
-              class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
               :disabled="isSubmittingCreate"
               @click="closeCreateModal"
             >
@@ -2165,15 +2165,15 @@ onMounted(async () => {
     </div>
 
     <!-- Filter Controls Toolbar -->
-    <div class="op-toolbar p-3 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md text-slate-200">
+    <div class="op-toolbar p-3 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-md text-slate-700 dark:text-slate-200">
       <div class="flex flex-wrap items-center gap-3 w-full">
         <!-- Status Filter -->
         <div class="flex items-center gap-1.5">
-          <label for="wpStatusFilter" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-0 whitespace-nowrap">Status:</label>
+          <label for="wpStatusFilter" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-0 whitespace-nowrap">Status:</label>
           <select
             id="wpStatusFilter"
             v-model="filters.status"
-            class="bg-slate-950 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none"
+            class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 focus:outline-none"
             style="width: 110px; height: 28px"
             :disabled="isLoadingList"
             data-testid="status-filter-select"
@@ -2188,11 +2188,11 @@ onMounted(async () => {
 
         <!-- Owner Filter -->
         <div class="flex items-center gap-1.5">
-          <label for="wpOwnerFilter" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-0 whitespace-nowrap">Owner:</label>
+          <label for="wpOwnerFilter" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-0 whitespace-nowrap">Owner:</label>
           <select
             id="wpOwnerFilter"
             v-model="filters.ownerPersonId"
-            class="bg-slate-950 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none"
+            class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 focus:outline-none"
             style="max-width: 180px; height: 28px"
             :disabled="isLoadingList"
             data-testid="owner-filter-select"
@@ -2211,11 +2211,11 @@ onMounted(async () => {
 
         <!-- Customer Filter -->
         <div class="flex items-center gap-1.5">
-          <label for="wpCustomerFilter" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-0 whitespace-nowrap">Customer:</label>
+          <label for="wpCustomerFilter" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-0 whitespace-nowrap">Customer:</label>
           <select
             id="wpCustomerFilter"
             v-model="filters.customerId"
-            class="bg-slate-950 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none"
+            class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 focus:outline-none"
             style="max-width: 180px; height: 28px"
             :disabled="isLoadingList"
             data-testid="customer-filter-select"
@@ -2234,11 +2234,11 @@ onMounted(async () => {
 
         <!-- Product Filter -->
         <div class="flex items-center gap-1.5">
-          <label for="wpProductFilter" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-0 whitespace-nowrap">Product:</label>
+          <label for="wpProductFilter" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-0 whitespace-nowrap">Product:</label>
           <select
             id="wpProductFilter"
             v-model="filters.productId"
-            class="bg-slate-950 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none"
+            class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 focus:outline-none"
             style="max-width: 170px; height: 28px"
             :disabled="isLoadingList"
             data-testid="product-filter-select"
@@ -2259,20 +2259,20 @@ onMounted(async () => {
           <button
             v-if="hasActiveFilters"
             type="button"
-            class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition inline-flex items-center gap-1 shadow-sm"
+            class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition inline-flex items-center gap-1 shadow-sm"
             style="height: 28px"
             :disabled="isLoadingList"
             data-testid="clear-filters-button"
             @click="handleResetFilters"
           >
-            <i class="bi bi-x-circle text-cyan-400" aria-hidden="true"></i>Reset
+            <i class="bi bi-x-circle text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>Reset
           </button>
 
-          <div class="inline-flex rounded-lg border border-slate-700 p-0.5 bg-slate-950" role="group" data-testid="wp-view-mode-toggle">
+          <div class="inline-flex rounded-lg border border-slate-300 dark:border-slate-700 p-0.5 bg-slate-100 dark:bg-slate-950" role="group" data-testid="wp-view-mode-toggle">
             <button
               type="button"
               class="px-2.5 py-1 text-xs rounded-md font-medium transition inline-flex items-center gap-1"
-              :class="viewMode === 'table' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white border border-transparent'"
+              :class="viewMode === 'table' ? 'bg-white dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-slate-200 dark:border-cyan-500/30 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent'"
               style="height: 26px"
               data-testid="view-mode-table-button"
               @click="viewMode = 'table'"
@@ -2282,7 +2282,7 @@ onMounted(async () => {
             <button
               type="button"
               class="px-2.5 py-1 text-xs rounded-md font-medium transition inline-flex items-center gap-1"
-              :class="viewMode === 'cards' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white border border-transparent'"
+              :class="viewMode === 'cards' ? 'bg-white dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-slate-200 dark:border-cyan-500/30 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent'"
               style="height: 26px"
               data-testid="view-mode-cards-button"
               @click="viewMode = 'cards'"
@@ -2298,7 +2298,7 @@ onMounted(async () => {
     <div class="row g-3">
       <!-- Work Packages Table Column -->
       <div :class="selectedWorkPackage || isLoadingDetail ? 'col-12 col-xl-7' : 'col-12'">
-        <div class="card card-table bg-slate-900/90 border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+        <div class="card card-table bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg overflow-hidden">
           <div class="card-body p-0">
             <!-- Table View -->
             <div v-if="viewMode === 'table'" class="table-responsive">
@@ -2306,7 +2306,7 @@ onMounted(async () => {
                 class="table align-middle mb-0 text-nowrap w-full"
                 data-testid="work-packages-table"
               >
-                <thead class="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-semibold tracking-wider uppercase text-[11px]">
+                <thead class="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold tracking-wider uppercase text-[11px]">
                   <tr>
                     <th scope="col" class="py-3 px-3 text-start" style="width: 85px">ID</th>
                     <th scope="col" class="py-3 px-3 text-start" style="min-width: 220px">Objective &amp; Demand</th>
@@ -2318,10 +2318,10 @@ onMounted(async () => {
                     <th scope="col" class="py-3 px-3 text-center" style="width: 75px">Status</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800/80">
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800/80">
                   <tr v-if="isLoadingList">
-                    <td colspan="8" class="text-center py-6 text-slate-400 text-xs">
-                      <div class="inline-block w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin me-2" role="status"></div>
+                    <td colspan="8" class="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
+                      <div class="inline-block w-4 h-4 border-2 border-cyan-500 dark:border-cyan-400 border-t-transparent rounded-full animate-spin me-2" role="status"></div>
                       Loading work packages...
                     </td>
                   </tr>
@@ -2329,7 +2329,7 @@ onMounted(async () => {
                   <tr v-else-if="workPackages.length === 0">
                     <td
                       colspan="8"
-                      class="text-center py-6 text-slate-400 text-xs"
+                      class="text-center py-6 text-slate-500 dark:text-slate-400 text-xs"
                       data-testid="empty-work-packages-row"
                     >
                       No work packages found matching the current filters.
@@ -2342,7 +2342,7 @@ onMounted(async () => {
                     :key="wp.id"
                     :data-work-package-id="wp.id"
                     class="transition cursor-pointer"
-                    :class="selectedWorkPackage?.id === wp.id ? 'bg-cyan-950/30 border-l-2 border-l-cyan-400 text-slate-100' : 'hover:bg-slate-850/80 text-slate-200'"
+                    :class="selectedWorkPackage?.id === wp.id ? 'bg-cyan-50 dark:bg-cyan-950/30 border-l-2 border-l-cyan-500 dark:border-l-cyan-400 text-slate-900 dark:text-slate-100' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-200'"
                     data-testid="work-package-row"
                     @click="selectWorkPackage(wp.id)"
                   >
@@ -2350,7 +2350,7 @@ onMounted(async () => {
                     <td class="py-2.5 px-3">
                       <router-link
                         :to="`/work-packages/${wp.id}`"
-                        class="font-mono text-cyan-400 hover:text-cyan-300 font-semibold text-xs no-underline"
+                        class="font-mono text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-semibold text-xs no-underline"
                         data-testid="work-package-id-link"
                         @click.stop="selectWorkPackage(wp.id)"
                       >
@@ -2360,12 +2360,12 @@ onMounted(async () => {
 
                     <!-- Objective & Demand Column -->
                     <td class="py-2.5 px-3">
-                      <div class="font-medium text-white truncate inline-block max-w-[260px] text-xs" data-testid="work-package-objective-cell">
+                      <div class="font-medium text-slate-900 dark:text-white truncate inline-block max-w-[260px] text-xs" data-testid="work-package-objective-cell">
                         {{ wp.objective || wp.name }}
                       </div>
                       <div
                         v-if="wp.name && wp.name !== wp.objective"
-                        class="text-slate-400 font-mono text-[10.5px] truncate"
+                        class="text-slate-500 dark:text-slate-400 font-mono text-[10.5px] truncate"
                       >
                         {{ wp.name }}
                       </div>
@@ -2386,35 +2386,35 @@ onMounted(async () => {
                         <template v-if="getTelemetry(wp.id)">
                           <span
                             v-if="getTelemetry(wp.id)?.deadlineBreached"
-                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30"
                             data-testid="wp-health-breached-pill"
                           >
                             ! Deadline Breached
                           </span>
                           <span
                             v-if="(getTelemetry(wp.id)?.blockedRequestsCount ?? 0) > 0"
-                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
                             data-testid="wp-health-blocked-pill"
                           >
                             ! {{ getTelemetry(wp.id)?.blockedRequestsCount }} Blocked
                           </span>
                           <span
                             v-if="getTelemetry(wp.id)?.isDormant"
-                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
                             data-testid="wp-health-dormant-pill"
                           >
                             Dormant: {{ Math.round(getTelemetry(wp.id)?.dormantDays ?? 0) }}d
                           </span>
                           <span
                             v-if="(getTelemetry(wp.id)?.activeWipCount ?? 0) > 0"
-                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20"
                             data-testid="wp-health-wip-pill"
                           >
                             WIP: {{ getTelemetry(wp.id)?.activeWipCount }}
                           </span>
                           <span
                             v-if="getTelemetry(wp.id)?.healthState === 'FLOWING'"
-                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
                             data-testid="wp-health-flowing-pill"
                           >
                             Flowing
@@ -2428,7 +2428,7 @@ onMounted(async () => {
                       <div v-if="getTelemetry(wp.id)" class="flex flex-col gap-1">
                         <!-- Barcode Strip -->
                         <div
-                          class="flex items-end gap-1 flow-barcode-strip bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded"
+                          class="flex items-end gap-1 flow-barcode-strip bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-1.5 py-0.5 rounded"
                           style="height: 18px"
                           data-testid="flow-barcode-strip"
                           :title="`14-day flow activity (Outflow: ${getTelemetry(wp.id)?.outflow14dCount}, Active WIP: ${getTelemetry(wp.id)?.activeWipCount})`"
@@ -2445,39 +2445,39 @@ onMounted(async () => {
                         </div>
 
                         <!-- Mini Flow Inventory Stats -->
-                        <div class="text-slate-400 font-mono text-[9.5px]" data-testid="wp-flow-inventory-stats">
+                        <div class="text-slate-500 dark:text-slate-400 font-mono text-[9.5px]" data-testid="wp-flow-inventory-stats">
                           <span>WIP: {{ getTelemetry(wp.id)?.activeWipCount }}</span>
                           <span class="mx-1">•</span>
                           <span>14d: {{ getTelemetry(wp.id)?.outflow14dCount }}</span>
                         </div>
                       </div>
-                      <span v-else class="text-slate-500 font-mono text-[10px]">—</span>
+                      <span v-else class="text-slate-400 dark:text-slate-500 font-mono text-[10px]">—</span>
                     </td>
 
                     <!-- Owner Column -->
                     <td class="py-2.5 px-3">
-                      <span class="text-xs text-slate-300">{{ resolveOwnerDisplay(wp) }}</span>
+                      <span class="text-xs text-slate-700 dark:text-slate-300">{{ resolveOwnerDisplay(wp) }}</span>
                     </td>
 
                     <!-- Customer Column -->
                     <td class="py-2.5 px-3">
-                      <span class="text-xs text-slate-300">{{ resolveCustomerDisplay(wp) }}</span>
+                      <span class="text-xs text-slate-700 dark:text-slate-300">{{ resolveCustomerDisplay(wp) }}</span>
                     </td>
 
                     <!-- Product Column -->
                     <td class="py-2.5 px-3">
-                      <span class="text-xs text-slate-300">{{ resolveProductDisplay(wp) }}</span>
+                      <span class="text-xs text-slate-700 dark:text-slate-300">{{ resolveProductDisplay(wp) }}</span>
                     </td>
 
                     <!-- Deadline Column -->
                     <td class="py-2.5 px-3">
                       <div v-if="wp.deadline" class="flex items-center gap-1.5">
-                        <span class="text-xs font-mono text-slate-200">{{ formatDeadline(wp.deadline) }}</span>
-                        <span v-if="isWorkPackageOverdue(wp)" class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30" data-testid="wp-overdue-badge">
+                        <span class="text-xs font-mono text-slate-800 dark:text-slate-200">{{ formatDeadline(wp.deadline) }}</span>
+                        <span v-if="isWorkPackageOverdue(wp)" class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30" data-testid="wp-overdue-badge">
                           Overdue
                         </span>
                       </div>
-                      <span v-else class="text-slate-500 text-xs">—</span>
+                      <span v-else class="text-slate-400 dark:text-slate-500 text-xs">—</span>
                     </td>
 
                     <!-- Status Column -->
@@ -2500,15 +2500,15 @@ onMounted(async () => {
             <div v-else class="row g-3 p-3" data-testid="work-packages-cards-grid">
               <div
                 v-if="isLoadingList"
-                class="col-12 text-center py-6 text-slate-400 text-xs"
+                class="col-12 text-center py-6 text-slate-500 dark:text-slate-400 text-xs"
               >
-                <div class="inline-block w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin me-2" role="status"></div>
+                <div class="inline-block w-4 h-4 border-2 border-cyan-500 dark:border-cyan-400 border-t-transparent rounded-full animate-spin me-2" role="status"></div>
                 Loading work packages...
               </div>
 
               <div
                 v-else-if="workPackages.length === 0"
-                class="col-12 text-center py-6 text-slate-400 text-xs"
+                class="col-12 text-center py-6 text-slate-500 dark:text-slate-400 text-xs"
               >
                 No work packages found matching the current filters.
               </div>
@@ -2520,8 +2520,8 @@ onMounted(async () => {
                 class="col-12 col-md-6"
               >
                 <div
-                  class="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-xl p-3.5 shadow-lg transition text-slate-100 flex flex-col justify-between h-full"
-                  :class="{ 'border-cyan-400 ring-1 ring-cyan-400/50 bg-slate-900': selectedWorkPackage?.id === wp.id }"
+                  class="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl p-3.5 shadow-sm dark:shadow-lg transition text-slate-800 dark:text-slate-100 flex flex-col justify-between h-full"
+                  :class="{ 'border-cyan-500 ring-1 ring-cyan-500/50 bg-cyan-50/30 dark:bg-slate-900': selectedWorkPackage?.id === wp.id }"
                   style="cursor: pointer"
                   data-testid="work-package-card"
                   @click="selectWorkPackage(wp.id)"
@@ -2532,13 +2532,13 @@ onMounted(async () => {
                       <div class="truncate">
                         <router-link
                           :to="`/work-packages/${wp.id}`"
-                          class="font-bold text-white hover:text-cyan-300 no-underline text-xs block truncate"
+                          class="font-bold text-slate-900 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 no-underline text-xs block truncate"
                           data-testid="card-work-package-id-link"
                           @click.stop="selectWorkPackage(wp.id)"
                         >
                           {{ wp.objective || wp.name }}
                         </router-link>
-                        <span class="font-mono text-cyan-400 text-[10px]">
+                        <span class="font-mono text-cyan-600 dark:text-cyan-400 text-[10px]">
                           #{{ wp.id.slice(0, 8) }}
                         </span>
                       </div>
@@ -2566,31 +2566,31 @@ onMounted(async () => {
                       <template v-if="getTelemetry(wp.id)">
                         <span
                           v-if="getTelemetry(wp.id)?.deadlineBreached"
-                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30"
                         >
                           ! Deadline Breached
                         </span>
                         <span
                           v-if="(getTelemetry(wp.id)?.blockedRequestsCount ?? 0) > 0"
-                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
                         >
                           ! {{ getTelemetry(wp.id)?.blockedRequestsCount }} Blocked
                         </span>
                         <span
                           v-if="getTelemetry(wp.id)?.isDormant"
-                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
                         >
                           Dormant: {{ Math.round(getTelemetry(wp.id)?.dormantDays ?? 0) }}d
                         </span>
                         <span
                           v-if="(getTelemetry(wp.id)?.activeWipCount ?? 0) > 0"
-                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20"
                         >
                           WIP: {{ getTelemetry(wp.id)?.activeWipCount }}
                         </span>
                         <span
                           v-if="getTelemetry(wp.id)?.healthState === 'FLOWING'"
-                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
                         >
                           Flowing
                         </span>
@@ -2598,13 +2598,13 @@ onMounted(async () => {
                     </div>
 
                     <!-- Metadata: Owner & Deadline -->
-                    <div class="row g-1 text-slate-400 text-xs mb-2">
+                    <div class="row g-1 text-slate-500 dark:text-slate-400 text-xs mb-2">
                       <div class="col-6 truncate">
-                        <i class="bi bi-person text-cyan-400 me-1"></i>{{ resolveOwnerDisplay(wp) }}
+                        <i class="bi bi-person text-cyan-500 dark:text-cyan-400 me-1"></i>{{ resolveOwnerDisplay(wp) }}
                       </div>
                       <div class="col-6 truncate">
-                        <i class="bi bi-calendar-event text-indigo-400 me-1"></i>
-                        <span :class="{ 'text-rose-400 font-bold': isWorkPackageOverdue(wp) }">
+                        <i class="bi bi-calendar-event text-indigo-500 dark:text-indigo-400 me-1"></i>
+                        <span :class="{ 'text-rose-600 dark:text-rose-400 font-bold': isWorkPackageOverdue(wp) }">
                           {{ wp.deadline ? formatDeadline(wp.deadline) : 'No Deadline' }}
                         </span>
                       </div>
@@ -2612,17 +2612,17 @@ onMounted(async () => {
                   </div>
 
                   <!-- Flow Activity Barcode & Flow Inventory Stats -->
-                  <div v-if="getTelemetry(wp.id)" class="pt-2 border-t border-slate-800">
+                  <div v-if="getTelemetry(wp.id)" class="pt-2 border-t border-slate-200 dark:border-slate-800">
                     <div class="flex justify-between items-center mb-1">
-                      <span class="text-slate-400 text-[10px] font-medium">14-Day Activity Barcode</span>
-                      <div class="text-slate-400 font-mono text-[9.5px]" data-testid="card-flow-stats">
+                      <span class="text-slate-500 dark:text-slate-400 text-[10px] font-medium">14-Day Activity Barcode</span>
+                      <div class="text-slate-500 dark:text-slate-400 font-mono text-[9.5px]" data-testid="card-flow-stats">
                         <span>WIP: {{ getTelemetry(wp.id)?.activeWipCount }}</span>
                         <span class="mx-1">•</span>
                         <span>Outflow: {{ getTelemetry(wp.id)?.outflow14dCount }}</span>
                       </div>
                     </div>
                     <div
-                      class="flex items-end gap-1 flow-barcode-strip bg-slate-950 border border-slate-800 p-1.5 rounded-lg w-full"
+                      class="flex items-end gap-1 flow-barcode-strip bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1.5 rounded-lg w-full"
                       style="height: 22px"
                       data-testid="card-flow-barcode-strip"
                       :title="`14-day flow activity (Outflow: ${getTelemetry(wp.id)?.outflow14dCount}, Active WIP: ${getTelemetry(wp.id)?.activeWipCount})`"
@@ -2650,11 +2650,11 @@ onMounted(async () => {
         class="col-12 col-xl-5"
         data-testid="work-package-detail-panel"
       >
-        <div class="card shadow-2xl bg-slate-900/95 border border-slate-800 rounded-xl overflow-hidden text-slate-100 mb-3">
-          <div class="card-header bg-slate-950/80 border-b border-slate-800 flex justify-between items-center py-2.5 px-3.5">
+        <div class="card shadow-sm dark:shadow-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-slate-800 dark:text-slate-100 mb-3">
+          <div class="card-header bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center py-2.5 px-3.5">
             <div class="flex items-center gap-1.5">
-              <i class="bi bi-kanban text-cyan-400" aria-hidden="true"></i>
-              <span class="font-bold text-sm text-white">Work Package Detail</span>
+              <i class="bi bi-kanban text-cyan-500 dark:text-cyan-400" aria-hidden="true"></i>
+              <span class="font-bold text-sm text-slate-900 dark:text-white">Work Package Detail</span>
               <span
                 v-if="selectedWorkPackage"
                 class="badge ms-1 rounded font-mono"
@@ -2668,7 +2668,7 @@ onMounted(async () => {
 
             <button
               type="button"
-              class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition bg-transparent border-0 cursor-pointer"
+              class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition bg-transparent border-0 cursor-pointer"
               aria-label="Close detail panel"
               data-testid="close-detail-panel-button"
               @click="closeDetailPanel"
@@ -2677,81 +2677,81 @@ onMounted(async () => {
             </button>
           </div>
 
-          <div v-if="isLoadingDetail" class="card-body py-8 text-center text-slate-400 text-xs">
-            <div class="inline-block w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin me-2" role="status"></div>
+          <div v-if="isLoadingDetail" class="card-body py-8 text-center text-slate-500 dark:text-slate-400 text-xs">
+            <div class="inline-block w-4 h-4 border-2 border-cyan-500 dark:border-cyan-400 border-t-transparent rounded-full animate-spin me-2" role="status"></div>
             Loading details...
           </div>
 
           <div v-else-if="selectedWorkPackage" class="card-body p-3.5 space-y-3">
             <!-- Summary Metadata -->
-            <div class="pb-3 border-b border-slate-800">
+            <div class="pb-3 border-b border-slate-200 dark:border-slate-800">
               <div class="flex justify-between items-start gap-1">
-                <h2 class="text-base font-bold text-white tracking-tight mb-1" data-testid="detail-objective-display">
+                <h2 class="text-base font-bold text-slate-900 dark:text-white tracking-tight mb-1" data-testid="detail-objective-display">
                   {{ selectedWorkPackage.objective }}
                 </h2>
-                <span class="font-mono text-cyan-400 text-xs flex-shrink-0" data-testid="detail-work-package-id">
+                <span class="font-mono text-cyan-600 dark:text-cyan-400 text-xs flex-shrink-0" data-testid="detail-work-package-id">
                   #{{ selectedWorkPackage.id.slice(0, 8) }}
                 </span>
               </div>
               <div
                 v-if="selectedWorkPackage.name && selectedWorkPackage.name !== selectedWorkPackage.objective"
-                class="text-slate-400 text-xs mb-1.5"
+                class="text-slate-500 dark:text-slate-400 text-xs mb-1.5"
               >
                 Title: {{ selectedWorkPackage.name }}
               </div>
 
-              <div class="row g-2 text-xs text-slate-400">
+              <div class="row g-2 text-xs text-slate-500 dark:text-slate-400">
                 <div class="col-6">
                   <span>Owner:</span>
-                  <strong class="ms-1 text-slate-200" data-testid="detail-owner-display">
+                  <strong class="ms-1 text-slate-800 dark:text-slate-200" data-testid="detail-owner-display">
                     {{ resolveOwnerDisplay(selectedWorkPackage) }}
                   </strong>
                 </div>
                 <div class="col-6">
                   <span>Created:</span>
-                  <span class="ms-1 text-slate-300 font-mono text-[11px]">{{ formatTimestamp(selectedWorkPackage.createdAt) }}</span>
+                  <span class="ms-1 text-slate-700 dark:text-slate-300 font-mono text-[11px]">{{ formatTimestamp(selectedWorkPackage.createdAt) }}</span>
                 </div>
                 <div class="col-6">
                   <span>Customer:</span>
-                  <span class="ms-1 text-slate-300">{{ resolveCustomerDisplay(selectedWorkPackage) }}</span>
+                  <span class="ms-1 text-slate-700 dark:text-slate-300">{{ resolveCustomerDisplay(selectedWorkPackage) }}</span>
                 </div>
                 <div class="col-6">
                   <span>Product:</span>
-                  <span class="ms-1 text-slate-300">{{ resolveProductDisplay(selectedWorkPackage) }}</span>
+                  <span class="ms-1 text-slate-700 dark:text-slate-300">{{ resolveProductDisplay(selectedWorkPackage) }}</span>
                 </div>
                 <div class="col-6">
                   <span>Deadline:</span>
-                  <span v-if="selectedWorkPackage.deadline" class="ms-1 font-mono text-slate-200" data-testid="detail-deadline-display">
+                  <span v-if="selectedWorkPackage.deadline" class="ms-1 font-mono text-slate-800 dark:text-slate-200" data-testid="detail-deadline-display">
                     {{ formatDeadline(selectedWorkPackage.deadline) }}
                     <span
                       v-if="isWorkPackageOverdue(selectedWorkPackage)"
-                      class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 ms-1"
+                      class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30 ms-1"
                       data-testid="wp-overdue-badge"
                     >
                       Overdue
                     </span>
                   </span>
-                  <span v-else class="text-slate-500 ms-1">—</span>
+                  <span v-else class="text-slate-400 dark:text-slate-500 ms-1">—</span>
                 </div>
               </div>
 
               <div
                 v-if="isSelectedClosed && selectedWorkPackage.closedReason"
-                class="bg-slate-950/60 border border-slate-800 text-slate-300 rounded-lg p-2.5 text-xs mt-2"
+                class="bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-lg p-2.5 text-xs mt-2"
                 data-testid="detail-closed-reason"
               >
-                <strong class="text-white">Closed Reason:</strong> {{ selectedWorkPackage.closedReason }}
-                <span v-if="selectedWorkPackage.closedAt" class="text-slate-400 ms-1 font-mono">
+                <strong class="text-slate-900 dark:text-white">Closed Reason:</strong> {{ selectedWorkPackage.closedReason }}
+                <span v-if="selectedWorkPackage.closedAt" class="text-slate-500 dark:text-slate-400 ms-1 font-mono">
                   ({{ formatTimestamp(selectedWorkPackage.closedAt) }})
                 </span>
               </div>
             </div>
 
             <!-- Operational Telemetry Spotlight (CR-025 P4-S07) -->
-            <div v-if="selectedTelemetry" class="pb-3 border-b border-slate-800" data-testid="detail-telemetry-spotlight">
+            <div v-if="selectedTelemetry" class="pb-3 border-b border-slate-200 dark:border-slate-800" data-testid="detail-telemetry-spotlight">
               <div class="flex justify-between items-center mb-2">
-                <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1">
-                  <i class="bi bi-speedometer2 text-cyan-400"></i>Operational Telemetry &amp; Invariants
+                <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <i class="bi bi-speedometer2 text-cyan-500 dark:text-cyan-400"></i>Operational Telemetry &amp; Invariants
                 </span>
                 <span
                   class="badge font-mono rounded"
@@ -2764,36 +2764,36 @@ onMounted(async () => {
               </div>
 
               <!-- Scope Demand Density Card -->
-              <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 mb-2.5" data-testid="detail-scope-demand-card">
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 mb-2.5" data-testid="detail-scope-demand-card">
                 <div class="flex justify-between items-center mb-1.5">
-                  <span class="text-xs font-semibold text-white">Scope Demand Density</span>
-                  <span class="text-xs font-mono text-slate-400">
-                    Tier: <strong class="text-cyan-400">{{ selectedTelemetry.pressureTier }}</strong>
+                  <span class="text-xs font-semibold text-slate-900 dark:text-white">Scope Demand Density</span>
+                  <span class="text-xs font-mono text-slate-500 dark:text-slate-400">
+                    Tier: <strong class="text-cyan-600 dark:text-cyan-400">{{ selectedTelemetry.pressureTier }}</strong>
                   </span>
                 </div>
 
                 <div class="row g-2 text-xs">
                   <div class="col-6">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Required Daily Burn:</div>
-                    <div class="font-mono font-bold text-white text-xs mt-0.5">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Required Daily Burn:</div>
+                    <div class="font-mono font-bold text-slate-900 dark:text-white text-xs mt-0.5">
                       {{ selectedTelemetry.requiredDailyBurn != null ? `${selectedTelemetry.requiredDailyBurn.toFixed(1)} pts/day` : '— (UNPLANNED)' }}
                     </div>
                   </div>
                   <div class="col-6">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Org Capacity Share:</div>
-                    <div class="font-mono font-bold text-cyan-400 text-xs mt-0.5">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Org Capacity Share:</div>
+                    <div class="font-mono font-bold text-cyan-600 dark:text-cyan-400 text-xs mt-0.5">
                       {{ selectedTelemetry.orgCapacityShare != null ? `${selectedTelemetry.orgCapacityShare.toFixed(1)}% of C_org` : '—' }}
                     </div>
                   </div>
                   <div class="col-6">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Working Days Remaining:</div>
-                    <div class="font-mono font-bold text-white text-xs mt-0.5">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Working Days Remaining:</div>
+                    <div class="font-mono font-bold text-slate-900 dark:text-white text-xs mt-0.5">
                       {{ selectedTelemetry.workingDaysRemaining != null ? `${selectedTelemetry.workingDaysRemaining} business days` : '—' }}
                     </div>
                   </div>
                   <div class="col-6">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Remaining Complexity:</div>
-                    <div class="font-mono font-bold text-white text-xs mt-0.5">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Remaining Complexity:</div>
+                    <div class="font-mono font-bold text-slate-900 dark:text-white text-xs mt-0.5">
                       {{ selectedTelemetry.remainingComplexity }} / {{ selectedTelemetry.totalComplexity }} pts
                     </div>
                   </div>
@@ -2801,13 +2801,13 @@ onMounted(async () => {
               </div>
 
               <!-- Health Invariants & Flow Inventory Facts -->
-              <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 mb-2.5" data-testid="detail-health-invariants-card">
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 mb-2.5" data-testid="detail-health-invariants-card">
                 <div class="flex justify-between items-center mb-1.5">
-                  <span class="text-xs font-semibold text-white">Observable Health Invariants</span>
+                  <span class="text-xs font-semibold text-slate-900 dark:text-white">Observable Health Invariants</span>
                   <span
                     class="badge font-mono rounded"
                     style="font-size: 9.5px"
-                    :class="selectedTelemetry.healthState === 'FLOWING' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'"
+                    :class="selectedTelemetry.healthState === 'FLOWING' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30'"
                   >
                     State: {{ selectedTelemetry.healthState }}
                   </span>
@@ -2817,25 +2817,25 @@ onMounted(async () => {
                 <div class="flex flex-wrap items-center gap-1.5 mb-2" data-testid="detail-health-pills">
                   <span
                     v-if="selectedTelemetry.deadlineBreached"
-                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30"
                   >
                     ! Deadline Breached
                   </span>
                   <span
                     v-if="selectedTelemetry.blockedRequestsCount > 0"
-                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
                   >
                     ! {{ selectedTelemetry.blockedRequestsCount }} Blocked
                   </span>
                   <span
                     v-if="selectedTelemetry.isDormant"
-                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
                   >
                     Dormant: {{ Math.round(selectedTelemetry.dormantDays) }}d
                   </span>
                   <span
                     v-if="selectedTelemetry.activeWipCount > 0"
-                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20"
                   >
                     WIP: {{ selectedTelemetry.activeWipCount }}
                     <template v-if="selectedTelemetry.isWipStagnant">
@@ -2844,29 +2844,29 @@ onMounted(async () => {
                   </span>
                   <span
                     v-if="selectedTelemetry.healthState === 'FLOWING'"
-                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    class="px-2 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
                   >
                     Flowing (Zero Invariant Violations)
                   </span>
                 </div>
 
                 <!-- Flow Inventory Counters -->
-                <div class="row g-2 border-t border-slate-800/80 pt-2 mt-1 text-xs">
+                <div class="row g-2 border-t border-slate-200 dark:border-slate-800/80 pt-2 mt-1 text-xs">
                   <div class="col-4">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Active WIP:</div>
-                    <div class="font-mono font-bold text-white text-xs mt-0.5" data-testid="detail-active-wip-count">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Active WIP:</div>
+                    <div class="font-mono font-bold text-slate-900 dark:text-white text-xs mt-0.5" data-testid="detail-active-wip-count">
                       {{ selectedTelemetry.activeWipCount }} reqs
                     </div>
                   </div>
                   <div class="col-4">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Oldest In-Flight:</div>
-                    <div class="font-mono font-bold text-white text-xs mt-0.5" data-testid="detail-oldest-wip-days">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Oldest In-Flight:</div>
+                    <div class="font-mono font-bold text-slate-900 dark:text-white text-xs mt-0.5" data-testid="detail-oldest-wip-days">
                       {{ selectedTelemetry.activeWipCount > 0 ? `${Math.round(selectedTelemetry.oldestActiveWipDays)}d` : '—' }}
                     </div>
                   </div>
                   <div class="col-4">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">14d Outflow:</div>
-                    <div class="font-mono font-bold text-emerald-400 text-xs mt-0.5" data-testid="detail-outflow-count">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">14d Outflow:</div>
+                    <div class="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs mt-0.5" data-testid="detail-outflow-count">
                       {{ selectedTelemetry.outflow14dCount }} done
                     </div>
                   </div>
@@ -2874,18 +2874,18 @@ onMounted(async () => {
               </div>
 
               <!-- 14-Day Flow Activity Barcode Spotlight -->
-              <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-testid="detail-flow-barcode-card">
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800" data-testid="detail-flow-barcode-card">
                 <div class="flex justify-between items-center mb-1.5">
-                  <span class="text-xs font-semibold text-white">14-Day Flow Activity Barcode</span>
-                  <div class="flex items-center gap-2 text-slate-400 text-[10px]">
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Closed</span>
-                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cyan-400"></span>Mutated</span>
+                  <span class="text-xs font-semibold text-slate-900 dark:text-white">14-Day Flow Activity Barcode</span>
+                  <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[10px]">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>Closed</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400"></span>Mutated</span>
                     <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span>Blocked</span>
                   </div>
                 </div>
 
                 <div
-                  class="flex items-end gap-1 flow-barcode-strip py-1.5 bg-slate-950 border border-slate-800 rounded-lg px-2 w-full"
+                  class="flex items-end gap-1 flow-barcode-strip py-1.5 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2 w-full"
                   style="height: 36px"
                   data-testid="detail-flow-barcode-strip"
                 >
@@ -2899,7 +2899,7 @@ onMounted(async () => {
                     data-testid="flow-barcode-segment"
                   ></div>
                 </div>
-                <div class="flex justify-between text-slate-400 font-mono mt-1 px-1 text-[9px]">
+                <div class="flex justify-between text-slate-500 dark:text-slate-400 font-mono mt-1 px-1 text-[9px]">
                   <span>{{ selectedTelemetry.flowBarcode[0]?.date || 'T-13' }}</span>
                   <span>{{ selectedTelemetry.flowBarcode[selectedTelemetry.flowBarcode.length - 1]?.date || 'Today' }}</span>
                 </div>
@@ -2907,19 +2907,19 @@ onMounted(async () => {
             </div>
 
             <!-- Interactive Decision Workbench (CR-025 P4-S08, Architecture §4 TD-007) -->
-            <div v-if="canAccessDecisionWorkbench" class="pb-3 border-b border-slate-800" data-testid="decision-workbench">
+            <div v-if="canAccessDecisionWorkbench" class="pb-3 border-b border-slate-200 dark:border-slate-800" data-testid="decision-workbench">
               <div class="flex justify-between items-center mb-2">
                 <div class="flex items-center gap-1.5">
-                  <span class="text-[11px] uppercase tracking-wider font-bold text-white flex items-center gap-1">
-                    <i class="bi bi-sliders text-cyan-400"></i>Decision Workbench
+                  <span class="text-[11px] uppercase tracking-wider font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                    <i class="bi bi-sliders text-cyan-500 dark:text-cyan-400"></i>Decision Workbench
                   </span>
-                  <span class="px-2 py-0.5 rounded text-[9.5px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  <span class="px-2 py-0.5 rounded text-[9.5px] font-mono bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20">
                     Live Simulation
                   </span>
                 </div>
                 <button
                   type="button"
-                  class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 transition"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 transition"
                   :disabled="!isSimulationActive"
                   data-testid="reset-simulation-button"
                   @click="resetSimulation"
@@ -2929,54 +2929,54 @@ onMounted(async () => {
               </div>
 
               <!-- Simulation Controls: Target Deadline Extension & De-Scope Selector -->
-              <div class="p-3 rounded-xl bg-slate-950/70 border border-cyan-500/30 mb-2.5 space-y-2.5">
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-cyan-300 dark:border-cyan-500/30 mb-2.5 space-y-2.5">
                 <div class="row g-2">
                   <!-- Deadline Extension Simulator -->
                   <div class="col-12 col-sm-6">
-                    <label for="simulateDeadlineInput" class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">
-                      <i class="bi bi-calendar-event text-cyan-400 me-1"></i>Simulated Target Deadline:
+                    <label for="simulateDeadlineInput" class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
+                      <i class="bi bi-calendar-event text-cyan-500 dark:text-cyan-400 me-1"></i>Simulated Target Deadline:
                     </label>
                     <div class="flex gap-1">
                       <input
                         id="simulateDeadlineInput"
                         v-model="simulatedDeadline"
                         type="date"
-                        class="bg-slate-900 border border-slate-700 text-slate-100 font-mono rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none flex-grow"
+                        class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none flex-grow"
                         style="height: 28px"
                         data-testid="simulate-deadline-input"
                       />
                       <button
                         v-if="simulatedDeadline"
                         type="button"
-                        class="px-2 py-0.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300"
+                        class="px-2 py-0.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
                         title="Clear simulated deadline"
                         @click="simulatedDeadline = ''"
                       >
                         ✕
                       </button>
                     </div>
-                    <div class="text-slate-400 font-mono text-[10px] mt-1">
+                    <div class="text-slate-500 dark:text-slate-400 font-mono text-[10px] mt-1">
                       {{ simulatedWorkingDaysRemaining != null ? `${simulatedWorkingDaysRemaining} working days left` : 'No deadline (UNPLANNED)' }}
                     </div>
                   </div>
 
                   <!-- De-Scope Simulation Counter -->
                   <div class="col-12 col-sm-6">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
-                      <i class="bi bi-dash-circle text-amber-400 me-1"></i>Simulated De-Scope:
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                      <i class="bi bi-dash-circle text-amber-500 dark:text-amber-400 me-1"></i>Simulated De-Scope:
                     </div>
-                    <div class="p-1.5 rounded-lg bg-slate-900 border border-slate-800 flex justify-between items-center text-xs font-mono" style="min-height: 28px">
-                      <span class="text-slate-300">
-                        <strong class="text-white">{{ descopedRequestIds.length }}</strong> / {{ uncompletedActiveScopeItems.length }} uncompleted
+                    <div class="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs font-mono" style="min-height: 28px">
+                      <span class="text-slate-700 dark:text-slate-300">
+                        <strong class="text-slate-900 dark:text-white">{{ descopedRequestIds.length }}</strong> / {{ uncompletedActiveScopeItems.length }} uncompleted
                       </span>
-                      <span v-if="descopedComplexity > 0" class="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      <span v-if="descopedComplexity > 0" class="px-1.5 py-0.5 rounded text-[9.5px] font-mono bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
                         -{{ descopedComplexity }} pts
                       </span>
-                      <span v-else class="text-slate-500 text-[10px]">
+                      <span v-else class="text-slate-400 dark:text-slate-500 text-[10px]">
                         0 pts
                       </span>
                     </div>
-                    <div class="text-slate-400 text-[10px] mt-1">
+                    <div class="text-slate-500 dark:text-slate-400 text-[10px] mt-1">
                       Toggle checkboxes below to simulate scope reduction.
                     </div>
                   </div>
@@ -2985,34 +2985,34 @@ onMounted(async () => {
                 <!-- Simulation Request Selector Checklist -->
                 <div v-if="uncompletedActiveScopeItems.length > 0">
                   <div class="flex justify-between items-center mb-1">
-                    <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
+                    <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">
                       De-Scope Candidate Selection:
                     </span>
-                    <span class="text-slate-400 font-mono text-[10px]">
+                    <span class="text-slate-500 dark:text-slate-400 font-mono text-[10px]">
                       {{ uncompletedActiveScopeItems.length }} candidates
                     </span>
                   </div>
-                  <div class="flex flex-col gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1.5 max-h-32 overflow-y-auto">
+                  <div class="flex flex-col gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 max-h-32 overflow-y-auto">
                     <label
                       v-if="canAccessDecisionWorkbench"
                       v-for="req in uncompletedActiveScopeItems"
                       :key="req.requestId"
-                      class="flex items-center gap-2 mb-0 p-1 rounded hover:bg-slate-850 cursor-pointer text-xs text-slate-300"
+                      class="flex items-center gap-2 mb-0 p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-xs text-slate-700 dark:text-slate-300"
                     >
                       <input
                         type="checkbox"
-                        class="rounded border-slate-700 bg-slate-950 text-cyan-500 focus:ring-cyan-400"
+                        class="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-cyan-600 focus:ring-cyan-500"
                         :checked="isDescoped(req.requestId)"
                         data-testid="descope-request-checkbox"
                         @change="toggleDescope(req.requestId)"
                       />
                       <span
                         class="truncate flex-grow"
-                        :class="{ 'line-through text-slate-500': isDescoped(req.requestId) }"
+                        :class="{ 'line-through text-slate-400 dark:text-slate-500': isDescoped(req.requestId) }"
                       >
                         {{ req.title || req.requestTitle || req.requestId }}
                       </span>
-                      <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono text-[9.5px]">
+                      <span class="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono text-[9.5px]">
                         C{{ getRequestComplexity(req) }}
                       </span>
                     </label>
@@ -3021,24 +3021,24 @@ onMounted(async () => {
 
                 <!-- Real-Time Simulated Metrics Grid -->
                 <div class="grid grid-cols-3 gap-2">
-                  <div class="p-2 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Remaining Pts</div>
-                    <div class="font-mono font-bold text-white text-xs mt-0.5" data-testid="simulated-remaining-complexity">
+                  <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Remaining Pts</div>
+                    <div class="font-mono font-bold text-slate-900 dark:text-white text-xs mt-0.5" data-testid="simulated-remaining-complexity">
                       {{ simulatedRemainingComplexity }} pts
-                      <span v-if="descopedComplexity > 0" class="text-rose-400 text-[9px]">
+                      <span v-if="descopedComplexity > 0" class="text-rose-600 dark:text-rose-400 text-[9px]">
                         (-{{ descopedComplexity }})
                       </span>
                     </div>
                   </div>
-                  <div class="p-2 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Req. Burn</div>
-                    <div class="font-mono font-bold text-white text-xs mt-0.5" data-testid="simulated-daily-burn">
+                  <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Req. Burn</div>
+                    <div class="font-mono font-bold text-slate-900 dark:text-white text-xs mt-0.5" data-testid="simulated-daily-burn">
                       {{ simulatedRequiredDailyBurn != null ? `${simulatedRequiredDailyBurn.toFixed(1)} pts/d` : '—' }}
                     </div>
                   </div>
-                  <div class="p-2 rounded-lg bg-slate-900 border border-slate-800 text-center">
-                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Capacity Share</div>
-                    <div class="font-mono font-bold text-cyan-400 text-xs mt-0.5" data-testid="simulated-org-capacity-share">
+                  <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+                    <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Capacity Share</div>
+                    <div class="font-mono font-bold text-cyan-600 dark:text-cyan-400 text-xs mt-0.5" data-testid="simulated-org-capacity-share">
                       {{ simulatedOrgCapacityShare != null ? `${simulatedOrgCapacityShare.toFixed(1)}%` : '—' }}
                     </div>
                   </div>
@@ -3047,7 +3047,7 @@ onMounted(async () => {
                 <!-- Live Comparison Display Banner -->
                 <div
                   class="p-2.5 rounded-xl border font-mono text-xs"
-                  :class="isSimulationActive ? 'bg-gradient-to-r from-cyan-950/60 via-slate-900 to-indigo-950/60 border-cyan-500/40 text-cyan-200' : 'bg-slate-900 border-slate-800 text-slate-300'"
+                  :class="isSimulationActive ? 'bg-gradient-to-r from-cyan-50 via-white to-indigo-50 dark:from-cyan-950/60 dark:via-slate-900 dark:to-indigo-950/60 border-cyan-300 dark:border-cyan-500/40 text-cyan-900 dark:text-cyan-200' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'"
                 >
                   <div class="flex justify-between items-center flex-wrap gap-1">
                     <div data-testid="decision-simulation-comparison">
@@ -3064,7 +3064,7 @@ onMounted(async () => {
                   </div>
 
                   <!-- Baseline Footnote when Simulation is Active -->
-                  <div v-if="isSimulationActive" class="text-slate-400 text-[9.5px] mt-1 pt-1 border-t border-slate-800 font-mono">
+                  <div v-if="isSimulationActive" class="text-slate-500 dark:text-slate-400 text-[9.5px] mt-1 pt-1 border-t border-slate-200 dark:border-slate-800 font-mono">
                     Baseline: {{ baselineRemainingComplexity }} pts |
                     {{ selectedTelemetry?.requiredDailyBurn != null ? `${selectedTelemetry.requiredDailyBurn.toFixed(1)} pts/day` : '—' }} -&gt;
                     {{ selectedTelemetry?.orgCapacityShare != null ? `${selectedTelemetry.orgCapacityShare.toFixed(1)}% Org Output` : '—' }}
@@ -3075,11 +3075,11 @@ onMounted(async () => {
             </div>
 
             <!-- Objective Edit Section (PUT /api/v1/work-packages/${id}/objective) -->
-            <div class="pb-3 border-b border-slate-800" data-testid="detail-objective-section">
+            <div class="pb-3 border-b border-slate-200 dark:border-slate-800" data-testid="detail-objective-section">
               <form novalidate data-testid="update-objective-form" @submit.prevent="handleUpdateObjective">
                 <div class="flex items-center gap-2 mb-1">
-                  <label for="detailObjectiveInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-0 flex items-center gap-1">
-                    <i class="bi bi-bullseye text-cyan-400"></i>Objective:
+                  <label for="detailObjectiveInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-0 flex items-center gap-1">
+                    <i class="bi bi-bullseye text-cyan-500 dark:text-cyan-400"></i>Objective:
                   </label>
                   <button
                     type="submit"
@@ -3093,7 +3093,7 @@ onMounted(async () => {
                 <textarea
                   id="detailObjectiveInput"
                   v-model="objectiveForm.objective"
-                  class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg p-2 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                  class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg p-2 text-xs focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none w-full"
                   rows="2"
                   :disabled="!canModifyPackage || isSubmittingAction"
                   data-testid="detail-objective-input"
@@ -3102,20 +3102,20 @@ onMounted(async () => {
             </div>
 
             <!-- Owner Assignment Section (POST /api/v1/work-packages/${id}/assign-owner) -->
-            <div class="pb-3 border-b border-slate-800" data-testid="detail-owner-section">
+            <div class="pb-3 border-b border-slate-200 dark:border-slate-800" data-testid="detail-owner-section">
               <form
                 novalidate
                 class="flex items-center gap-2"
                 data-testid="assign-owner-form"
                 @submit.prevent="handleAssignOwner"
               >
-                <label for="detailOwnerSelect" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-0 whitespace-nowrap flex items-center gap-1">
-                  <i class="bi bi-person-check text-cyan-400"></i>Owner:
+                <label for="detailOwnerSelect" class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-0 whitespace-nowrap flex items-center gap-1">
+                  <i class="bi bi-person-check text-cyan-500 dark:text-cyan-400"></i>Owner:
                 </label>
                 <select
                   id="detailOwnerSelect"
                   v-model="assignOwnerForm.newOwnerPersonId"
-                  class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none flex-grow"
+                  class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none flex-grow"
                   style="height: 28px"
                   :disabled="!canModifyPackage || isSubmittingAction"
                   data-testid="detail-owner-select"
@@ -3131,7 +3131,7 @@ onMounted(async () => {
                 </select>
                 <button
                   type="submit"
-                  class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 whitespace-nowrap transition"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 whitespace-nowrap transition"
                   style="height: 28px"
                   :disabled="!canModifyPackage || isSubmittingAction || !assignOwnerForm.newOwnerPersonId"
                   data-testid="assign-owner-submit-button"
@@ -3142,21 +3142,21 @@ onMounted(async () => {
             </div>
 
             <!-- Target Deadline Section (PUT /api/v1/work-packages/${id}/deadline) -->
-            <div v-if="canModifyPackage" class="pb-3 border-b border-slate-800" data-testid="detail-deadline-section">
+            <div v-if="canModifyPackage" class="pb-3 border-b border-slate-200 dark:border-slate-800" data-testid="detail-deadline-section">
               <form
                 novalidate
                 class="flex items-center gap-2"
                 data-testid="update-deadline-form"
                 @submit.prevent="handleUpdateDeadline()"
               >
-                <label for="detailDeadlineInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-0 whitespace-nowrap flex items-center gap-1">
-                  <i class="bi bi-calendar-event text-cyan-400"></i>Deadline:
+                <label for="detailDeadlineInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-0 whitespace-nowrap flex items-center gap-1">
+                  <i class="bi bi-calendar-event text-cyan-500 dark:text-cyan-400"></i>Deadline:
                 </label>
                 <input
                   id="detailDeadlineInput"
                   v-model="deadlineForm.deadline"
                   type="date"
-                  class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1 text-xs font-mono focus:border-cyan-400 focus:outline-none flex-grow"
+                  class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1 text-xs font-mono focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none flex-grow"
                   style="height: 28px"
                   :disabled="!canModifyPackage || isSubmittingAction"
                   data-testid="detail-deadline-input"
@@ -3172,7 +3172,7 @@ onMounted(async () => {
                 </button>
                 <button
                   type="button"
-                  class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap transition"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 whitespace-nowrap transition"
                   style="height: 28px"
                   :disabled="!canModifyPackage || isSubmittingAction || (!selectedWorkPackage?.deadline && !deadlineForm.deadline)"
                   data-testid="clear-deadline-button"
@@ -3184,15 +3184,15 @@ onMounted(async () => {
             </div>
 
             <!-- Customer & Product Context Section (PUT /api/v1/work-packages/${id}/context) -->
-            <div v-if="canModifyPackage" class="pb-3 border-b border-slate-800" data-testid="detail-context-section">
+            <div v-if="canModifyPackage" class="pb-3 border-b border-slate-200 dark:border-slate-800" data-testid="detail-context-section">
               <form
                 novalidate
                 data-testid="update-context-form"
                 @submit.prevent="handleUpdateContext"
               >
                 <div class="flex items-center justify-between mb-1.5">
-                  <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1">
-                    <i class="bi bi-tags text-cyan-400"></i>Customer &amp; Product:
+                  <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <i class="bi bi-tags text-cyan-500 dark:text-cyan-400"></i>Customer &amp; Product:
                   </span>
                   <button
                     type="submit"
@@ -3205,11 +3205,11 @@ onMounted(async () => {
                 </div>
                 <div class="row g-2">
                   <div class="col-12 col-sm-6">
-                    <label for="detailCustomerSelect" class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">Customer</label>
+                    <label for="detailCustomerSelect" class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1 block">Customer</label>
                     <select
                       id="detailCustomerSelect"
                       v-model="contextForm.customerId"
-                      class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                      class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none w-full"
                       style="height: 28px"
                       :disabled="!canModifyPackage || isSubmittingAction"
                       data-testid="detail-customer-select"
@@ -3225,11 +3225,11 @@ onMounted(async () => {
                     </select>
                   </div>
                   <div class="col-12 col-sm-6">
-                    <label for="detailProductSelect" class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 mb-1 block">Product</label>
+                    <label for="detailProductSelect" class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1 block">Product</label>
                     <select
                       id="detailProductSelect"
                       v-model="contextForm.productId"
-                      class="bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                      class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none w-full"
                       style="height: 28px"
                       :disabled="!canModifyPackage || isSubmittingAction"
                       data-testid="detail-product-select"
@@ -3249,9 +3249,9 @@ onMounted(async () => {
             </div>
 
             <!-- Lifecycle Action Buttons (Activate in DRAFT, Close in DRAFT/ACTIVE) -->
-            <div class="pb-3 border-b border-slate-800" data-testid="detail-lifecycle-section">
-              <div v-if="isSelectedClosed" class="text-slate-400 text-xs">
-                Work package is <strong class="text-white">CLOSED</strong> (terminal state).
+            <div class="pb-3 border-b border-slate-200 dark:border-slate-800" data-testid="detail-lifecycle-section">
+              <div v-if="isSelectedClosed" class="text-slate-500 dark:text-slate-400 text-xs">
+                Work package is <strong class="text-slate-900 dark:text-white">CLOSED</strong> (terminal state).
               </div>
 
               <div v-else class="flex flex-wrap items-center gap-2">
@@ -3272,7 +3272,7 @@ onMounted(async () => {
                   <input
                     v-model="closePackageForm.reason"
                     type="text"
-                    class="bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none flex-grow"
+                    class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none flex-grow"
                     style="height: 28px"
                     placeholder="Close reason (optional)"
                     :disabled="isSubmittingAction"
@@ -3280,7 +3280,7 @@ onMounted(async () => {
                   />
                   <button
                     type="button"
-                    class="px-3 py-1 text-xs font-semibold rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 hover:bg-rose-900/50 whitespace-nowrap transition shadow-sm"
+                    class="px-3 py-1 text-xs font-semibold rounded-lg border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 whitespace-nowrap transition shadow-sm"
                     style="height: 28px"
                     :disabled="isSubmittingAction"
                     data-testid="close-work-package-button"
@@ -3295,17 +3295,17 @@ onMounted(async () => {
             <!-- Scope Management Section (GET /scope, POST /requests, DELETE /requests/{requestId}) -->
             <div data-testid="detail-scope-section">
               <div class="flex justify-between items-center mb-2">
-                <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1">
-                  <i class="bi bi-list-check text-cyan-400" aria-hidden="true"></i>
+                <span class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <i class="bi bi-list-check text-cyan-500 dark:text-cyan-400" aria-hidden="true"></i>
                   Scope (Linked Requests)
-                  <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-slate-800 text-slate-300 border border-slate-700 ms-1" data-testid="active-scope-count">
+                  <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 ms-1" data-testid="active-scope-count">
                     {{ activeScopeItems.length }}
                   </span>
                 </span>
 
                 <button
                   type="button"
-                  class="text-xs text-cyan-400 hover:text-cyan-300 bg-transparent border-0 cursor-pointer p-0 inline-flex items-center gap-1"
+                  class="text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 bg-transparent border-0 cursor-pointer p-0 inline-flex items-center gap-1"
                   :disabled="isLoadingScope"
                   data-testid="refresh-scope-button"
                   @click="loadWorkPackageScope(selectedWorkPackage.id)"
@@ -3315,11 +3315,11 @@ onMounted(async () => {
               </div>
 
               <!-- Scope Add Controls Toggle Pill (CR-019) -->
-              <div v-if="canModifyPackage" class="inline-flex rounded-lg border border-slate-700 p-0.5 bg-slate-950 w-full mb-2" data-testid="scope-add-mode-toggle">
+              <div v-if="canModifyPackage" class="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 p-0.5 bg-slate-100 dark:bg-slate-950 w-full mb-2" data-testid="scope-add-mode-toggle">
                 <button
                   type="button"
                   class="flex-1 py-1 text-xs rounded-md font-medium transition text-center"
-                  :class="scopeAddMode === 'existing' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white border border-transparent'"
+                  :class="scopeAddMode === 'existing' ? 'bg-white dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-slate-200 dark:border-cyan-500/30 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent'"
                   data-testid="scope-mode-existing-button"
                   @click="scopeAddMode = 'existing'"
                 >
@@ -3328,7 +3328,7 @@ onMounted(async () => {
                 <button
                   type="button"
                   class="flex-1 py-1 text-xs rounded-md font-medium transition text-center"
-                  :class="scopeAddMode === 'quick' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white border border-transparent'"
+                  :class="scopeAddMode === 'quick' ? 'bg-white dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-slate-200 dark:border-cyan-500/30 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent'"
                   data-testid="scope-mode-quick-button"
                   @click="scopeAddMode = 'quick'"
                 >
@@ -3340,7 +3340,7 @@ onMounted(async () => {
               <form
                 v-if="canModifyPackage && scopeAddMode === 'existing'"
                 novalidate
-                class="p-2.5 mb-2.5 rounded-xl bg-slate-950/60 border border-slate-800"
+                class="p-2.5 mb-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800"
                 data-testid="add-request-form"
                 @submit.prevent="handleAddRequestToScope"
               >
@@ -3348,7 +3348,7 @@ onMounted(async () => {
                   <select
                     id="addRequestSelect"
                     v-model="addRequestForm.selectedRequestId"
-                    class="bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none w-full"
+                    class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none w-full"
                     style="height: 28px"
                     :disabled="isSubmittingAction"
                     data-testid="add-request-select"
@@ -3367,7 +3367,7 @@ onMounted(async () => {
                     <input
                       v-model="addRequestForm.manualRequestId"
                       type="text"
-                      class="bg-slate-900 border border-slate-700 text-slate-100 font-mono rounded-lg px-2.5 py-1 text-xs focus:border-cyan-400 focus:outline-none flex-grow"
+                      class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono rounded-lg px-2.5 py-1 text-xs focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none flex-grow"
                       style="height: 28px"
                       placeholder="Or enter Request ID (UUID)..."
                       :disabled="isSubmittingAction"
@@ -3389,17 +3389,17 @@ onMounted(async () => {
               <!-- Quick Bulk Add Form (CR-019) -->
               <div
                 v-if="canModifyPackage && scopeAddMode === 'quick'"
-                class="p-3 mb-2.5 rounded-xl bg-slate-950/60 border border-slate-800"
+                class="p-3 mb-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800"
                 data-testid="scope-quick-bulk-form"
               >
                 <div class="flex justify-between items-center mb-1.5">
-                  <label for="scopeQuickTasksInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-0 flex items-center gap-1">
-                    <i class="bi bi-lightning-charge-fill text-amber-400"></i>Bulk Quick Add Tasks
+                  <label for="scopeQuickTasksInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-0 flex items-center gap-1">
+                    <i class="bi bi-lightning-charge-fill text-amber-500 dark:text-amber-400"></i>Bulk Quick Add Tasks
                   </label>
                   <div class="flex items-center gap-2">
                     <span
                       v-if="scopeCandidateTasks.length > 0"
-                      class="px-2 py-0.5 text-xs font-mono rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                      class="px-2 py-0.5 text-xs font-mono rounded bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30"
                       data-testid="scope-candidate-count-badge"
                     >
                       {{ scopeCandidateTasks.length }} parsed
@@ -3407,7 +3407,7 @@ onMounted(async () => {
                     <button
                       v-if="scopeCandidateTasks.length > 0"
                       type="button"
-                      class="text-xs text-rose-400 hover:text-rose-300 bg-transparent border-0 cursor-pointer p-0"
+                      class="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-transparent border-0 cursor-pointer p-0"
                       :disabled="isSubmittingScopeBulk"
                       data-testid="scope-clear-candidates-button"
                       @click="handleClearScopeCandidates"
@@ -3421,7 +3421,7 @@ onMounted(async () => {
                   <textarea
                     id="scopeQuickTasksInput"
                     v-model="scopeRawTasks"
-                    class="bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg p-2.5 text-xs font-mono focus:border-cyan-400 focus:outline-none w-full"
+                    class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg p-2.5 text-xs font-mono focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none w-full"
                     rows="3"
                     placeholder="Paste or type task list (bullets, numbers, markdown checklists)&#10;- Sub-system integration&#10;- Validation checks"
                     :disabled="isSubmittingScopeBulk"
@@ -3430,42 +3430,42 @@ onMounted(async () => {
                 </div>
 
                 <div class="flex justify-between items-center mb-2">
-                  <span class="text-slate-400 text-[10.5px]">
+                  <span class="text-slate-500 dark:text-slate-400 text-[10.5px]">
                     One task per line. Bullets, numbers, and checkboxes are cleaned.
                   </span>
                   <button
                     type="button"
-                    class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 transition inline-flex items-center gap-1 shadow-sm"
+                    class="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition inline-flex items-center gap-1 shadow-sm"
                     :disabled="isSubmittingScopeBulk || !scopeRawTasks.trim()"
                     data-testid="scope-parse-tasks-button"
                     @click="handleParseScopeTasks"
                   >
-                    <i class="bi bi-arrow-down-circle text-cyan-400"></i>Parse Tasks
+                    <i class="bi bi-arrow-down-circle text-cyan-500 dark:text-cyan-400"></i>Parse Tasks
                   </button>
                 </div>
 
                 <!-- Scope Candidate Tasks Preview List -->
                 <div
                   v-if="scopeCandidateTasks.length > 0"
-                  class="border border-slate-800 rounded-lg p-2 bg-slate-900 mb-2"
+                  class="border border-slate-200 dark:border-slate-800 rounded-lg p-2 bg-white dark:bg-slate-900 mb-2"
                   data-testid="scope-candidate-preview-container"
                 >
-                  <div class="text-[10.5px] uppercase tracking-wider font-semibold text-slate-400 mb-1 px-1">
+                  <div class="text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1 px-1">
                     Candidate Tasks to Add to Scope:
                   </div>
-                  <ul class="divide-y divide-slate-800 max-h-36 overflow-y-auto m-0 p-0 list-none text-xs" data-testid="scope-candidate-tasks-list">
+                  <ul class="divide-y divide-slate-200 dark:divide-slate-800 max-h-36 overflow-y-auto m-0 p-0 list-none text-xs" data-testid="scope-candidate-tasks-list">
                     <li
                       v-for="(task, idx) in scopeCandidateTasks"
                       :key="idx"
-                      class="flex justify-between items-center py-1.5 px-2 bg-transparent text-slate-200"
+                      class="flex justify-between items-center py-1.5 px-2 bg-transparent text-slate-800 dark:text-slate-200"
                       data-testid="scope-candidate-task-item"
                     >
                       <div class="flex items-center truncate me-2 gap-1.5">
-                        <span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono text-[10px] shrink-0">
+                        <span class="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono text-[10px] shrink-0">
                           #{{ idx + 1 }}
                         </span>
                         <span
-                          class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold shrink-0"
+                          class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30 font-semibold shrink-0"
                           data-testid="scope-candidate-complexity-badge"
                         >
                           {{ task.complexity }} pt{{ task.complexity > 1 ? 's' : '' }}
@@ -3475,7 +3475,7 @@ onMounted(async () => {
                       <div class="flex items-center gap-2 shrink-0">
                         <select
                           v-model="task.assigneePersonId"
-                          class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-400 focus:outline-none"
+                          class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none"
                           :disabled="isSubmittingScopeBulk"
                           data-testid="scope-candidate-assignee-select"
                         >
@@ -3490,7 +3490,7 @@ onMounted(async () => {
                         </select>
                         <button
                           type="button"
-                          class="text-rose-400 hover:text-rose-300 p-0.5 bg-transparent border-0 cursor-pointer text-xs"
+                          class="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 p-0.5 bg-transparent border-0 cursor-pointer text-xs"
                           title="Remove candidate task"
                           aria-label="Remove candidate task"
                           :disabled="isSubmittingScopeBulk"
@@ -3525,14 +3525,14 @@ onMounted(async () => {
               </div>
 
               <!-- Linked Requests List -->
-              <div v-if="isLoadingScope" class="text-center py-4 text-slate-400 text-xs">
-                <div class="inline-block w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin me-2" role="status"></div>
+              <div v-if="isLoadingScope" class="text-center py-4 text-slate-500 dark:text-slate-400 text-xs">
+                <div class="inline-block w-4 h-4 border-2 border-cyan-500 dark:border-cyan-400 border-t-transparent rounded-full animate-spin me-2" role="status"></div>
                 Loading linked requests...
               </div>
 
               <div
                 v-else-if="activeScopeItems.length === 0"
-                class="text-center py-4 text-slate-400 text-xs border border-slate-800 rounded-xl bg-slate-950/40"
+                class="text-center py-4 text-slate-500 dark:text-slate-400 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950/40"
                 data-testid="empty-scope-message"
               >
                 No active requests currently linked to this package.
@@ -3546,11 +3546,11 @@ onMounted(async () => {
                 <li
                   v-for="(item, index) in activeScopeItems"
                   :key="item.id || item.requestId"
-                  class="bg-slate-950/50 border border-slate-800/80 rounded-lg p-2.5 text-slate-200 transition flex flex-col scope-request-item"
+                  class="bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800/80 rounded-lg p-2.5 text-slate-800 dark:text-slate-200 transition flex flex-col scope-request-item shadow-2xs"
                   :class="{
                     'is-dragging': draggedIndex === index,
                     'drop-target': dropTargetIndex === index && draggedIndex !== index,
-                    'opacity-60 bg-slate-950/80': isDescoped(item.requestId),
+                    'opacity-60 bg-slate-100 dark:bg-slate-950/80': isDescoped(item.requestId),
                   }"
                   :draggable="canModifyPackage"
                   :data-request-id="item.requestId"
@@ -3566,7 +3566,7 @@ onMounted(async () => {
                     <div class="flex items-center me-auto truncate max-w-[85%]">
                       <span
                         v-if="canModifyPackage"
-                        class="drag-handle text-slate-500 hover:text-slate-300 me-2 flex-shrink-0 cursor-grab"
+                        class="drag-handle text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 me-2 flex-shrink-0 cursor-grab"
                         title="Drag to reorder"
                         aria-label="Drag to reorder"
                         data-testid="drag-handle"
@@ -3583,7 +3583,7 @@ onMounted(async () => {
                         <input
                           :id="`descope-chk-${item.requestId}`"
                           type="checkbox"
-                          class="rounded border-slate-700 bg-slate-950 text-cyan-500 cursor-pointer"
+                          class="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
                           :checked="isDescoped(item.requestId)"
                           :disabled="isRequestCompleted(item)"
                           data-testid="descope-request-checkbox"
@@ -3595,8 +3595,8 @@ onMounted(async () => {
                         <div class="flex items-center gap-1.5 flex-wrap">
                           <router-link
                             :to="`/requests/${item.requestId}`"
-                            class="font-medium text-cyan-400 hover:text-cyan-300 no-underline text-xs truncate max-w-[220px]"
-                            :class="{ 'line-through text-slate-500': isDescoped(item.requestId) }"
+                            class="font-medium text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 no-underline text-xs truncate max-w-[220px]"
+                            :class="{ 'line-through text-slate-400 dark:text-slate-500': isDescoped(item.requestId) }"
                             data-testid="scope-request-link"
                           >
                             {{ item.title || item.requestTitle || item.requestId }}
@@ -3604,7 +3604,7 @@ onMounted(async () => {
 
                           <!-- Complexity Rating (1-5) -->
                           <span
-                            class="px-1.5 py-0.2 rounded font-mono text-[9.5px] bg-slate-800 text-slate-300 border border-slate-700"
+                            class="px-1.5 py-0.2 rounded font-mono text-[9.5px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                             title="Complexity Rating (1-5)"
                             data-testid="request-complexity-badge"
                           >
@@ -3625,7 +3625,7 @@ onMounted(async () => {
                           <!-- Blocker Badge if PAUSED or active blockers exist (CR-032 TD-008, SCR-WP-001) -->
                           <span
                             v-if="isRequestPausedOrBlocked(item)"
-                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30"
                             data-testid="request-blocker-badge"
                           >
                             <i class="bi bi-shield-slash me-1"></i>BLOCKED{{ getScopeItemActiveBlockersCount(item) > 0 ? ` (${getScopeItemActiveBlockersCount(item)})` : '' }}
@@ -3633,7 +3633,7 @@ onMounted(async () => {
 
                           <!-- State Aging in days -->
                           <span
-                            class="px-1.5 py-0.5 rounded font-mono text-[9.5px] bg-slate-800 text-slate-400 border border-slate-700"
+                            class="px-1.5 py-0.5 rounded font-mono text-[9.5px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                             data-testid="request-aging-badge"
                             :title="`${getRequestStateAgingDays(item)} days in current state`"
                           >
@@ -3643,17 +3643,17 @@ onMounted(async () => {
                           <!-- De-scope Simulated Indicator -->
                           <span
                             v-if="isDescoped(item.requestId)"
-                            class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30"
                           >
                             De-scoped
                           </span>
 
                           <!-- Assignee Display & Inline Reassignment (CR-030 TD-005, P3-S05) -->
-                          <div class="flex items-center gap-1.5 text-xs text-slate-300" data-testid="scope-item-assignee-badge">
-                            <i class="bi bi-person text-cyan-400" aria-hidden="true"></i>
+                          <div class="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300" data-testid="scope-item-assignee-badge">
+                            <i class="bi bi-person text-cyan-500 dark:text-cyan-400" aria-hidden="true"></i>
                             <select
                               v-if="canModifyPackage && !isRequestCompleted(item)"
-                              class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-400 focus:outline-none"
+                              class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded px-1.5 py-0.5 focus:border-cyan-500 dark:focus:border-cyan-400 focus:outline-none"
                               :value="item.ownerPersonId || item.requestOwnerPersonId || ''"
                               :disabled="isReassigning === item.requestId"
                               data-testid="scope-inline-reassign-select"
@@ -3672,14 +3672,14 @@ onMounted(async () => {
                             </select>
                             <span
                               v-else
-                              class="text-slate-400 font-mono text-[11px]"
+                              class="text-slate-500 dark:text-slate-400 font-mono text-[11px]"
                               data-testid="scope-owner-readonly"
                             >
                               {{ resolveScopeItemOwnerName(item) }}
                             </span>
                             <span
                               v-if="isReassigning === item.requestId"
-                              class="inline-block w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin ms-1"
+                              class="inline-block w-3 h-3 border-2 border-cyan-500 dark:border-cyan-400 border-t-transparent rounded-full animate-spin ms-1"
                               data-testid="scope-reassigning-spinner"
                               role="status"
                               aria-label="Reassigning..."
@@ -3687,7 +3687,7 @@ onMounted(async () => {
                           </div>
                         </div>
 
-                        <div class="text-slate-500 font-mono text-[10px]">
+                        <div class="text-slate-400 dark:text-slate-500 font-mono text-[10px]">
                           {{ item.requestId }}
                         </div>
                       </div>
@@ -3696,7 +3696,7 @@ onMounted(async () => {
                     <button
                       v-if="canModifyPackage"
                       type="button"
-                      class="text-rose-400 hover:text-rose-300 p-1 bg-transparent border-0 cursor-pointer flex-shrink-0 text-xs"
+                      class="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 p-1 bg-transparent border-0 cursor-pointer flex-shrink-0 text-xs"
                       :disabled="removingRequestId === item.requestId || isSubmittingAction || isReordering"
                       data-testid="remove-request-button"
                       @click="handleRemoveRequestFromScope(item.requestId)"
@@ -3708,7 +3708,7 @@ onMounted(async () => {
                   <!-- Blocker Note / Reason if Paused or Blocked (CR-032 TD-008, SCR-WP-001) -->
                   <div
                     v-if="isRequestPausedOrBlocked(item) && getRequestBlockerNote(item)"
-                    class="text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded p-1.5 text-xs font-mono mt-1.5 ms-6"
+                    class="text-rose-700 bg-rose-50 border border-rose-200 dark:text-rose-400 dark:bg-rose-500/10 dark:border-rose-500/20 rounded p-1.5 text-xs font-mono mt-1.5 ms-6"
                     data-testid="request-blocker-note"
                   >
                     <i class="bi bi-shield-slash me-1"></i>
@@ -3719,23 +3719,23 @@ onMounted(async () => {
 
               <!-- Historical / Removed Scope Items -->
               <div v-if="historicalScopeItems.length > 0">
-                <div class="text-[10.5px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
+                <div class="text-[10.5px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1">
                   Historical Removed Scope Memberships
                 </div>
-                <ul class="border border-slate-800 rounded-lg divide-y divide-slate-800 m-0 p-0 list-none text-xs bg-slate-950/40" data-testid="historical-scope-list">
+                <ul class="border border-slate-200 dark:border-slate-800 rounded-lg divide-y divide-slate-200 dark:divide-slate-800 m-0 p-0 list-none text-xs bg-slate-50 dark:bg-slate-950/40" data-testid="historical-scope-list">
                   <li
                     v-for="hist in historicalScopeItems"
                     :key="hist.id || `${hist.requestId}-${hist.removedAt}`"
-                    class="text-slate-400 flex justify-between items-center px-3 py-2"
+                    class="text-slate-600 dark:text-slate-400 flex justify-between items-center px-3 py-2"
                   >
                     <div>
                       <router-link
                         :to="`/requests/${hist.requestId}`"
-                        class="text-slate-400 hover:text-slate-300 no-underline"
+                        class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 no-underline"
                       >
                         {{ hist.title || hist.requestTitle || hist.requestId }}
                       </router-link>
-                      <span class="ms-1 px-1.5 py-0.2 rounded bg-slate-800 text-slate-500 text-[9px]">Removed</span>
+                      <span class="ms-1 px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px]">Removed</span>
                     </div>
                     <span class="font-mono text-[10px]">{{ formatTimestamp(hist.removedAt) }}</span>
                   </li>
@@ -3762,12 +3762,16 @@ onMounted(async () => {
 
 .scope-request-item.is-dragging {
   opacity: 0.45;
+  background-color: rgba(241, 245, 249, 0.95);
+}
+
+:global(.dark) .scope-request-item.is-dragging {
   background-color: rgba(15, 23, 42, 0.95);
 }
 
 .scope-request-item.drop-target {
-  border-top: 2px solid #22d3ee !important;
-  background-color: rgba(34, 211, 238, 0.05);
+  border-top: 2px solid #06b6d4 !important;
+  background-color: rgba(6, 182, 212, 0.08);
 }
 
 .flow-barcode-strip {

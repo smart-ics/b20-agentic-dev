@@ -305,12 +305,12 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
       <template #actions>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition text-sm font-medium inline-flex items-center gap-1.5 shadow-sm"
+          class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition text-sm font-medium inline-flex items-center gap-1.5 shadow-sm"
           data-testid="refresh-cockpit-btn"
           :disabled="isLoading"
           @click="loadData"
         >
-          <i class="bi bi-arrow-clockwise text-cyan-400" :class="{ 'spin-icon': isLoading }" aria-hidden="true"></i>
+          <i class="bi bi-arrow-clockwise text-cyan-600 dark:text-cyan-400" :class="{ 'spin-icon': isLoading }" aria-hidden="true"></i>
           <span>Refresh</span>
         </button>
       </template>
@@ -319,16 +319,16 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
     <!-- Error Alert Banner -->
     <div
       v-if="errorMessage"
-      class="bg-rose-950/40 border border-rose-500/30 text-rose-300 rounded-xl p-4 flex items-center justify-between shadow-lg my-3"
+      class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300 rounded-xl p-4 flex items-center justify-between shadow-sm dark:shadow-lg my-3"
       role="alert"
     >
       <div class="flex items-center gap-2">
-        <i class="bi bi-exclamation-triangle-fill text-rose-400 text-lg" aria-hidden="true"></i>
+        <i class="bi bi-exclamation-triangle-fill text-rose-500 dark:text-rose-400 text-lg" aria-hidden="true"></i>
         <span class="text-sm font-medium">{{ errorMessage }}</span>
       </div>
       <button
         type="button"
-        class="px-3 py-1 text-xs font-semibold rounded-lg bg-rose-900/40 hover:bg-rose-800/50 text-rose-200 border border-rose-500/40 transition"
+        class="px-3 py-1 text-xs font-semibold rounded-lg bg-rose-100 dark:bg-rose-900/40 hover:bg-rose-200 dark:hover:bg-rose-800/50 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-500/40 transition"
         @click="loadData"
       >
         Retry
@@ -337,10 +337,10 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
 
     <!-- Loading Skeleton Indicator -->
     <div v-if="isLoading" class="cockpit-loading my-12 text-center">
-      <div class="inline-block w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" role="status">
+      <div class="inline-block w-8 h-8 border-3 border-cyan-500 dark:border-cyan-400 border-t-transparent rounded-full animate-spin" role="status">
         <span class="visually-hidden">Loading telemetry data...</span>
       </div>
-      <div class="text-slate-400 mt-3 text-xs tracking-wide">Aggregating portfolio health invariants and demand density...</div>
+      <div class="text-slate-500 dark:text-slate-400 mt-3 text-xs tracking-wide">Aggregating portfolio health invariants and demand density...</div>
     </div>
 
     <div v-else-if="cockpitData" class="cockpit-content space-y-6">
@@ -348,10 +348,10 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
       <section class="cockpit-section matrix-section">
         <div class="section-header flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div>
-            <h2 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               Operational Triage Matrix
             </h2>
-            <p class="text-xs text-slate-400 mt-0.5">
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Interactive 2D distribution of active Work Packages across scope pressure tiers and observable health invariants.
               Click any cell to filter the operational feed below.
             </p>
@@ -359,39 +359,39 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
           <div v-if="isFilterActive" class="matrix-filter-reset">
             <button
               type="button"
-              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition inline-flex items-center gap-1.5 shadow-sm"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition inline-flex items-center gap-1.5 shadow-sm"
               data-testid="clear-matrix-filter-btn"
               @click="clearFilter"
             >
-              <i class="bi bi-x-circle text-cyan-400" aria-hidden="true"></i>
+              <i class="bi bi-x-circle text-cyan-600 dark:text-cyan-400" aria-hidden="true"></i>
               <span>Clear Filter</span>
             </button>
           </div>
         </div>
 
         <!-- 2D Matrix Table Container -->
-        <div class="matrix-table-wrapper rounded-xl border border-slate-800 bg-slate-900/90 shadow-lg overflow-x-auto">
+        <div class="matrix-table-wrapper rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-sm dark:shadow-lg overflow-x-auto">
           <table
             class="matrix-table w-full border-collapse text-center align-middle"
             data-testid="triage-matrix"
           >
             <thead>
               <tr class="matrix-header-row">
-                <th class="matrix-corner-cell text-start p-3 bg-slate-950/60 border border-slate-800">
+                <th class="matrix-corner-cell text-start p-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
                   <div class="matrix-axis-label flex flex-col gap-1">
-                    <span class="axis-y text-[10px] font-bold uppercase tracking-wider text-slate-400">Health Invariants ↓</span>
-                    <span class="axis-x text-[10px] font-bold uppercase tracking-wider text-cyan-400">Scope Pressure →</span>
+                    <span class="axis-y text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Health Invariants ↓</span>
+                    <span class="axis-x text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Scope Pressure →</span>
                   </div>
                 </th>
                 <th
                   v-for="col in MATRIX_COLUMNS"
                   :key="col.key"
-                  class="matrix-col-header p-2.5 bg-slate-950/60 border border-slate-800"
+                  class="matrix-col-header p-2.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800"
                 >
-                  <div class="col-title text-xs font-bold text-slate-100 uppercase tracking-wider">{{ col.label }}</div>
-                  <div class="col-sub text-[10px] text-slate-400 font-normal mt-0.5">{{ col.sublabel }}</div>
+                  <div class="col-title text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">{{ col.label }}</div>
+                  <div class="col-sub text-[10px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">{{ col.sublabel }}</div>
                 </th>
-                <th class="matrix-total-header p-2.5 bg-slate-950/60 border border-slate-800 text-xs font-bold text-slate-200 uppercase tracking-wider">
+                <th class="matrix-total-header p-2.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   Total
                 </th>
               </tr>
@@ -399,16 +399,16 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
             <tbody>
               <tr v-for="row in MATRIX_ROWS" :key="row.key" class="matrix-body-row">
                 <!-- Row Header -->
-                <th class="matrix-row-header text-start p-2.5 px-3 bg-slate-950/60 border border-slate-800">
-                  <div class="row-title text-xs font-bold text-slate-100 uppercase tracking-wider">{{ row.label }}</div>
-                  <div class="row-sub text-[10px] text-slate-400 font-normal mt-0.5">{{ row.sublabel }}</div>
+                <th class="matrix-row-header text-start p-2.5 px-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
+                  <div class="row-title text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">{{ row.label }}</div>
+                  <div class="row-sub text-[10px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">{{ row.sublabel }}</div>
                 </th>
 
                 <!-- Data Cells -->
                 <td
                   v-for="col in MATRIX_COLUMNS"
                   :key="col.key"
-                  class="matrix-cell border border-slate-800 p-2.5 transition duration-150 cursor-pointer select-none"
+                  class="matrix-cell border border-slate-200 dark:border-slate-800 p-2.5 transition duration-150 cursor-pointer select-none"
                   :class="[
                     getCellSeverityClass(row.key, col.key, getCellCount(row.key, col.key)),
                     { 'is-selected': isCellSelected(row.key, col.key) },
@@ -424,27 +424,27 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
                 >
                   <div class="cell-inner flex items-center justify-center gap-1.5">
                     <span class="cell-count font-mono font-bold text-sm">{{ getCellCount(row.key, col.key) }}</span>
-                    <span v-if="isCellSelected(row.key, col.key)" class="selected-indicator text-cyan-400 text-xs">
+                    <span v-if="isCellSelected(row.key, col.key)" class="selected-indicator text-cyan-600 dark:text-cyan-400 text-xs">
                       <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                     </span>
                   </div>
                 </td>
 
                 <!-- Row Total -->
-                <td class="matrix-row-total p-2.5 bg-slate-950/60 border border-slate-800 text-slate-300 font-bold font-mono text-sm">
+                <td class="matrix-row-total p-2.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold font-mono text-sm">
                   {{ getRowTotal(row.key) }}
                 </td>
               </tr>
             </tbody>
             <tfoot>
               <tr class="matrix-footer-row">
-                <th class="matrix-row-header text-start p-2.5 px-3 bg-slate-950/60 border border-slate-800 text-xs font-bold text-slate-200 uppercase tracking-wider">
+                <th class="matrix-row-header text-start p-2.5 px-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   Total
                 </th>
-                <td v-for="col in MATRIX_COLUMNS" :key="col.key" class="matrix-col-total p-2.5 bg-slate-950/60 border border-slate-800 text-slate-300 font-bold font-mono text-sm">
+                <td v-for="col in MATRIX_COLUMNS" :key="col.key" class="matrix-col-total p-2.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold font-mono text-sm">
                   {{ getColTotal(col.key) }}
                 </td>
-                <td class="matrix-grand-total p-2.5 bg-slate-950/80 border border-slate-800 text-cyan-400 font-black font-mono text-base">
+                <td class="matrix-grand-total p-2.5 bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-cyan-600 dark:text-cyan-400 font-black font-mono text-base">
                   {{ cockpitData.portfolioMetrics.totalActiveWorkPackages }}
                 </td>
               </tr>
@@ -456,22 +456,22 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
       <!-- Active Filter Banner -->
       <div
         v-if="isFilterActive"
-        class="bg-gradient-to-r from-cyan-950/50 via-slate-900 to-indigo-950/50 border border-cyan-500/40 rounded-xl p-3.5 shadow-lg flex items-center justify-between text-cyan-200"
+        class="bg-gradient-to-r from-cyan-50 via-white to-indigo-50 dark:from-cyan-950/50 dark:via-slate-900 dark:to-indigo-950/50 border border-cyan-300 dark:border-cyan-500/40 rounded-xl p-3.5 shadow-sm dark:shadow-lg flex items-center justify-between text-cyan-950 dark:text-cyan-200"
         data-testid="matrix-filter-banner"
       >
         <div class="flex items-center gap-2">
-          <i class="bi bi-funnel-fill text-cyan-400 text-base" aria-hidden="true"></i>
+          <i class="bi bi-funnel-fill text-cyan-600 dark:text-cyan-400 text-base" aria-hidden="true"></i>
           <div class="text-xs">
-            <strong class="text-white">Filtered by:</strong>
-            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 mx-1.5 font-mono">
+            <strong class="text-slate-900 dark:text-white">Filtered by:</strong>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30 mx-1.5 font-mono">
               {{ activeFilterLabel }}
             </span>
-            <span class="text-slate-400">({{ feedPackages.length }} work packages matching)</span>
+            <span class="text-slate-500 dark:text-slate-400">({{ feedPackages.length }} work packages matching)</span>
           </div>
         </div>
         <button
           type="button"
-          class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 transition"
+          class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-800 border border-cyan-200 dark:bg-cyan-500/20 dark:hover:bg-cyan-500/30 dark:text-cyan-300 dark:border-cyan-500/30 transition"
           data-testid="clear-filter-btn"
           @click="clearFilter"
         >
@@ -483,10 +483,10 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
       <section class="cockpit-section feed-section">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div>
-            <h2 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               {{ isFilterActive ? `Filtered Operational Feed` : `Operational Exceptions Feed` }}
             </h2>
-            <p class="text-xs text-slate-400 mt-0.5">
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <template v-if="isFilterActive">
                 Displaying packages matching selected matrix cell: {{ activeFilterLabel }}.
               </template>
@@ -495,7 +495,7 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
               </template>
             </p>
           </div>
-          <span class="px-3 py-1 text-xs font-semibold tracking-wider uppercase rounded-full bg-slate-800 text-slate-300 border border-slate-700 self-start sm:self-auto">
+          <span class="px-3 py-1 text-xs font-semibold tracking-wider uppercase rounded-full bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 self-start sm:self-auto">
             {{ feedPackages.length }} packages
           </span>
         </div>
@@ -521,12 +521,12 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
               <div class="card-head flex flex-col md:flex-row md:items-start justify-between gap-2">
                 <div class="card-title-group">
                   <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 text-xs font-mono font-semibold rounded bg-slate-950/80 text-cyan-400 border border-slate-800">
+                    <span class="px-2 py-0.5 text-xs font-mono font-semibold rounded bg-slate-100 dark:bg-slate-950/80 text-cyan-700 dark:text-cyan-400 border border-slate-200 dark:border-slate-800">
                       #{{ pkg.id.slice(0, 8) }}
                     </span>
-                    <h3 class="text-base font-bold text-white tracking-tight m-0">{{ pkg.name || pkg.objective }}</h3>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white tracking-tight m-0">{{ pkg.name || pkg.objective }}</h3>
                   </div>
-                  <p v-if="pkg.name && pkg.objective && pkg.name !== pkg.objective" class="text-xs text-slate-400 mt-0.5 mb-0">
+                  <p v-if="pkg.name && pkg.objective && pkg.name !== pkg.objective" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-0">
                     {{ pkg.objective }}
                   </p>
                 </div>
@@ -587,93 +587,93 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
               </div>
 
               <!-- Context Details: Owner, Customer, Product -->
-              <div class="card-context flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              <div class="card-context flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                 <span v-if="pkg.ownerName">
-                  <i class="bi bi-person text-cyan-400 me-1" aria-hidden="true"></i>
-                  <strong class="text-slate-300">Owner:</strong> {{ pkg.ownerName }}
+                  <i class="bi bi-person text-cyan-600 dark:text-cyan-400 me-1" aria-hidden="true"></i>
+                  <strong class="text-slate-700 dark:text-slate-300">Owner:</strong> {{ pkg.ownerName }}
                 </span>
-                <span v-else class="text-rose-400">
+                <span v-else class="text-rose-600 dark:text-rose-400">
                   <i class="bi bi-person-x me-1" aria-hidden="true"></i>
                   <em>Unassigned</em>
                 </span>
 
                 <span v-if="pkg.customerName">
-                  <i class="bi bi-building text-indigo-400 me-1" aria-hidden="true"></i>
-                  <strong class="text-slate-300">Customer:</strong> {{ pkg.customerName }}
+                  <i class="bi bi-building text-indigo-600 dark:text-indigo-400 me-1" aria-hidden="true"></i>
+                  <strong class="text-slate-700 dark:text-slate-300">Customer:</strong> {{ pkg.customerName }}
                 </span>
 
                 <span v-if="pkg.productName">
-                  <i class="bi bi-box-seam text-cyan-400 me-1" aria-hidden="true"></i>
-                  <strong class="text-slate-300">Product:</strong> {{ pkg.productName }}
+                  <i class="bi bi-box-seam text-cyan-600 dark:text-cyan-400 me-1" aria-hidden="true"></i>
+                  <strong class="text-slate-700 dark:text-slate-300">Product:</strong> {{ pkg.productName }}
                 </span>
 
-                <span class="text-slate-400">
-                  <i class="bi bi-list-task me-1 text-slate-500" aria-hidden="true"></i>
+                <span class="text-slate-500 dark:text-slate-400">
+                  <i class="bi bi-list-task me-1 text-slate-400 dark:text-slate-500" aria-hidden="true"></i>
                   {{ pkg.remainingComplexity }} / {{ pkg.totalComplexity }} pts remaining ({{ pkg.remainingRequestsCount }} / {{ pkg.totalRequestsCount }} requests)
                 </span>
               </div>
 
               <!-- Metrics Grid -->
-              <div class="card-metrics-grid bg-slate-950/60 border border-slate-800 rounded-xl p-3 grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div class="card-metrics-grid bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3 grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <!-- Metric 1: Scope Demand -->
                 <div class="metric-block flex flex-col">
-                  <div class="metric-label text-[10px] uppercase tracking-wider font-semibold text-slate-400">Scope Demand</div>
-                  <div class="metric-value font-mono text-white font-bold text-sm md:text-base mt-0.5">
+                  <div class="metric-label text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Scope Demand</div>
+                  <div class="metric-value font-mono text-slate-900 dark:text-white font-bold text-sm md:text-base mt-0.5">
                     <template v-if="pkg.requiredDailyBurn !== null && pkg.requiredDailyBurn !== undefined">
-                      {{ pkg.requiredDailyBurn.toFixed(1) }} <span class="metric-unit text-xs text-slate-400 font-normal">pts/day</span>
+                      {{ pkg.requiredDailyBurn.toFixed(1) }} <span class="metric-unit text-xs text-slate-500 dark:text-slate-400 font-normal">pts/day</span>
                     </template>
                     <template v-else>
-                      <span class="text-slate-500">Unplanned</span>
+                      <span class="text-slate-400 dark:text-slate-500">Unplanned</span>
                     </template>
                   </div>
                 </div>
 
                 <!-- Metric 2: Org Capacity Share -->
                 <div class="metric-block flex flex-col">
-                  <div class="metric-label text-[10px] uppercase tracking-wider font-semibold text-slate-400">Capacity Share</div>
-                  <div class="metric-value font-mono font-bold text-sm md:text-base mt-0.5" :class="(pkg.orgCapacityShare ?? 0) > 100 ? 'text-rose-400' : 'text-cyan-400'">
+                  <div class="metric-label text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Capacity Share</div>
+                  <div class="metric-value font-mono font-bold text-sm md:text-base mt-0.5" :class="(pkg.orgCapacityShare ?? 0) > 100 ? 'text-rose-600 dark:text-rose-400' : 'text-cyan-600 dark:text-cyan-400'">
                     <template v-if="pkg.orgCapacityShare !== null && pkg.orgCapacityShare !== undefined">
-                      {{ pkg.orgCapacityShare.toFixed(1) }}<span class="metric-unit text-xs font-normal text-slate-400">%</span>
+                      {{ pkg.orgCapacityShare.toFixed(1) }}<span class="metric-unit text-xs font-normal text-slate-500 dark:text-slate-400">%</span>
                     </template>
                     <template v-else>
-                      <span class="text-slate-500">—</span>
+                      <span class="text-slate-400 dark:text-slate-500">—</span>
                     </template>
                   </div>
                 </div>
 
                 <!-- Metric 3: Remaining Runway -->
                 <div class="metric-block flex flex-col">
-                  <div class="metric-label text-[10px] uppercase tracking-wider font-semibold text-slate-400">Remaining Runway</div>
+                  <div class="metric-label text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Remaining Runway</div>
                   <div class="metric-value font-mono text-sm md:text-base font-bold mt-0.5">
                     <template v-if="pkg.deadlineBreached">
-                      <span class="text-rose-400 font-bold">Breached (0 days)</span>
+                      <span class="text-rose-600 dark:text-rose-400 font-bold">Breached (0 days)</span>
                     </template>
                     <template v-else-if="pkg.workingDaysRemaining !== null && pkg.workingDaysRemaining !== undefined">
-                      <span class="text-white">{{ pkg.workingDaysRemaining }} working days</span>
+                      <span class="text-slate-900 dark:text-white">{{ pkg.workingDaysRemaining }} working days</span>
                     </template>
                     <template v-else>
-                      <span class="text-slate-500">Unplanned</span>
+                      <span class="text-slate-400 dark:text-slate-500">Unplanned</span>
                     </template>
                   </div>
-                  <div v-if="pkg.deadline" class="metric-sub text-[10px] text-slate-400 font-mono mt-0.5">
+                  <div v-if="pkg.deadline" class="metric-sub text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
                     Target: {{ formatDate(pkg.deadline) }}
                   </div>
                 </div>
 
                 <!-- Metric 4: Health Invariant Details -->
                 <div class="metric-block flex flex-col">
-                  <div class="metric-label text-[10px] uppercase tracking-wider font-semibold text-slate-400">Invariant Facts</div>
+                  <div class="metric-label text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Invariant Facts</div>
                   <div class="invariant-facts flex flex-wrap gap-1 mt-1">
-                    <span v-if="pkg.blockedRequestsCount > 0" class="px-2 py-0.5 text-xs font-medium rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    <span v-if="pkg.blockedRequestsCount > 0" class="px-2 py-0.5 text-xs font-medium rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20">
                       {{ pkg.blockedRequestsCount }} paused
                     </span>
-                    <span v-if="pkg.isDormant" class="px-2 py-0.5 text-xs font-medium rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <span v-if="pkg.isDormant" class="px-2 py-0.5 text-xs font-medium rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20">
                       dormant {{ pkg.dormantDays }}d
                     </span>
-                    <span v-if="pkg.activeWipCount > 0" class="px-2 py-0.5 text-xs font-medium rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <span v-if="pkg.activeWipCount > 0" class="px-2 py-0.5 text-xs font-medium rounded bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20">
                       wip {{ pkg.activeWipCount }} (oldest {{ pkg.oldestActiveWipDays }}d)
                     </span>
-                    <span v-if="!pkg.deadlineBreached && pkg.blockedRequestsCount === 0 && !pkg.isDormant && !pkg.isWipStagnant" class="px-2 py-0.5 text-xs font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span v-if="!pkg.deadlineBreached && pkg.blockedRequestsCount === 0 && !pkg.isDormant && !pkg.isWipStagnant" class="px-2 py-0.5 text-xs font-medium rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
                       nominal
                     </span>
                   </div>
@@ -681,11 +681,11 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
               </div>
 
               <!-- Barcode & Action Strip -->
-              <div class="card-footer-strip flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+              <div class="card-footer-strip flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <!-- 14-day Flow Barcode -->
                 <div class="barcode-container flex items-center gap-2">
-                  <span class="barcode-label text-slate-400 text-xs">14d Flow Barcode:</span>
-                  <div class="barcode-strip bg-slate-950 border border-slate-800 px-2 py-1 rounded-lg inline-flex items-center gap-1" :title="`14-day flow activity. Outflow: ${pkg.outflow14dCount} completed.`">
+                  <span class="barcode-label text-slate-500 dark:text-slate-400 text-xs">14d Flow Barcode:</span>
+                  <div class="barcode-strip bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-1 rounded-lg inline-flex items-center gap-1" :title="`14-day flow activity. Outflow: ${pkg.outflow14dCount} completed.`">
                     <div
                       v-for="(day, idx) in pkg.flowBarcode"
                       :key="idx"
@@ -694,15 +694,15 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
                       :title="`${day.date}: ${day.closedCount} completed, ${day.stateMutationCount} mutations, ${day.blockedCount} blocked`"
                     ></div>
                   </div>
-                  <span class="text-slate-400 text-xs ms-1">
-                    (Outflow: <strong class="text-emerald-400 font-mono">{{ pkg.outflow14dCount }}</strong> completed)
+                  <span class="text-slate-500 dark:text-slate-400 text-xs ms-1">
+                    (Outflow: <strong class="text-emerald-600 dark:text-emerald-400 font-mono">{{ pkg.outflow14dCount }}</strong> completed)
                   </span>
                 </div>
 
                 <!-- Deep-link action button -->
                 <button
                   type="button"
-                  class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition inline-flex items-center gap-1.5 shadow-sm"
+                  class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-700 text-cyan-700 dark:text-cyan-300 border border-slate-300 dark:border-slate-700 transition inline-flex items-center gap-1.5 shadow-sm"
                   :data-testid="`open-wp-${pkg.id}-btn`"
                   @click="navigateToPackage(pkg.id)"
                 >
@@ -715,10 +715,10 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
         </div>
 
         <!-- Empty Feed State -->
-        <div v-else class="empty-feed-card p-8 text-center bg-slate-900/90 border border-slate-800 rounded-xl shadow-lg">
-          <i class="bi bi-check2-circle text-emerald-400 text-4xl mb-2 inline-block" aria-hidden="true"></i>
-          <h3 class="text-base font-bold text-white mb-1">No packages match the active filter</h3>
-          <p class="text-slate-400 text-xs mb-3 max-w-md mx-auto">
+        <div v-else class="empty-feed-card p-8 text-center bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm dark:shadow-lg">
+          <i class="bi bi-check2-circle text-emerald-500 dark:text-emerald-400 text-4xl mb-2 inline-block" aria-hidden="true"></i>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white mb-1">No packages match the active filter</h3>
+          <p class="text-slate-500 dark:text-slate-400 text-xs mb-3 max-w-md mx-auto">
             <template v-if="isFilterActive">
               There are no active work packages in cell {{ activeFilterLabel }}.
             </template>
@@ -744,7 +744,7 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
         data-testid="nominal-packages-section"
       >
         <div
-          class="nominal-toggle-header flex items-center justify-between p-4 bg-slate-900/80 hover:bg-slate-900 border border-slate-800 rounded-xl cursor-pointer transition shadow-md"
+          class="nominal-toggle-header flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer transition shadow-sm dark:shadow-md"
           data-testid="nominal-section-toggle"
           role="button"
           tabindex="0"
@@ -754,16 +754,16 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
         >
           <div class="flex items-center gap-2.5">
             <i
-              class="bi text-cyan-400"
+              class="bi text-cyan-600 dark:text-cyan-400"
               :class="isNominalExpanded ? 'bi-chevron-down' : 'bi-chevron-right'"
               aria-hidden="true"
             ></i>
-            <span class="font-bold text-sm text-white">Nominal &amp; Flowing Packages</span>
-            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span class="font-bold text-sm text-slate-900 dark:text-white">Nominal &amp; Flowing Packages</span>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
               {{ nominalPackages.length }} packages
             </span>
           </div>
-          <span class="text-slate-400 text-xs">
+          <span class="text-slate-500 dark:text-slate-400 text-xs">
             {{ isNominalExpanded ? 'Click to collapse' : 'Click to expand' }}
           </span>
         </div>
@@ -783,10 +783,10 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
                 <div class="card-head flex flex-col md:flex-row md:items-start justify-between gap-2">
                   <div class="card-title-group">
                     <div class="flex items-center gap-2 mb-1">
-                      <span class="px-2 py-0.5 text-xs font-mono font-semibold rounded bg-slate-950/80 text-cyan-400 border border-slate-800">
+                      <span class="px-2 py-0.5 text-xs font-mono font-semibold rounded bg-slate-100 dark:bg-slate-950/80 text-cyan-700 dark:text-cyan-400 border border-slate-200 dark:border-slate-800">
                         #{{ pkg.id.slice(0, 8) }}
                       </span>
-                      <h3 class="text-base font-bold text-white tracking-tight m-0">{{ pkg.name || pkg.objective }}</h3>
+                      <h3 class="text-base font-bold text-slate-900 dark:text-white tracking-tight m-0">{{ pkg.name || pkg.objective }}</h3>
                     </div>
                   </div>
                   <div class="card-badges flex items-center gap-1.5 flex-wrap">
@@ -795,13 +795,13 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
                   </div>
                 </div>
 
-                <div class="card-context flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                <div class="card-context flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                   <span v-if="pkg.ownerName">
-                    <i class="bi bi-person text-cyan-400 me-1" aria-hidden="true"></i>
+                    <i class="bi bi-person text-cyan-600 dark:text-cyan-400 me-1" aria-hidden="true"></i>
                     {{ pkg.ownerName }}
                   </span>
                   <span v-if="pkg.customerName">
-                    <i class="bi bi-building text-indigo-400 me-1" aria-hidden="true"></i>
+                    <i class="bi bi-building text-indigo-600 dark:text-indigo-400 me-1" aria-hidden="true"></i>
                     {{ pkg.customerName }}
                   </span>
                   <span>
@@ -813,10 +813,10 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
                 </div>
 
                 <!-- Footer Strip -->
-                <div class="card-footer-strip flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                <div class="card-footer-strip flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                   <div class="barcode-container flex items-center gap-2">
-                    <span class="barcode-label text-slate-400 text-xs">14d Flow:</span>
-                    <div class="barcode-strip bg-slate-950 border border-slate-800 px-2 py-1 rounded-lg inline-flex items-center gap-1">
+                    <span class="barcode-label text-slate-500 dark:text-slate-400 text-xs">14d Flow:</span>
+                    <div class="barcode-strip bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-1 rounded-lg inline-flex items-center gap-1">
                       <div
                         v-for="(day, idx) in pkg.flowBarcode"
                         :key="idx"
@@ -828,7 +828,7 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
                   </div>
                   <button
                     type="button"
-                    class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition"
                     @click="navigateToPackage(pkg.id)"
                   >
                     Open Package
@@ -837,7 +837,7 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
               </div>
             </BaseCard>
           </div>
-          <div v-else class="text-center p-4 text-slate-400 text-xs">
+          <div v-else class="text-center p-4 text-slate-500 dark:text-slate-400 text-xs">
             No nominal packages currently present.
           </div>
         </div>
@@ -866,8 +866,13 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
   }
 }
 
-/* 2D Matrix Cell Severity Tints (Executive Dark Palette) */
+/* 2D Matrix Cell Severity Tints (Light & Dark Palettes) */
 .matrix-cell--empty {
+  background-color: rgba(241, 245, 249, 0.6);
+  color: #94a3b8;
+}
+
+:global(.dark) .matrix-cell--empty {
   background-color: rgba(2, 6, 23, 0.4);
   color: #475569;
 }
@@ -878,52 +883,104 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
 }
 
 .matrix-cell--critical {
+  background-color: rgba(254, 226, 226, 0.7);
+  color: #991b1b;
+}
+
+.matrix-cell--critical:hover {
+  background-color: rgba(254, 202, 202, 0.9);
+}
+
+:global(.dark) .matrix-cell--critical {
   background-color: rgba(136, 19, 55, 0.35);
   color: #fda4af;
 }
 
-.matrix-cell--critical:hover {
+:global(.dark) .matrix-cell--critical:hover {
   background-color: rgba(159, 18, 57, 0.5);
 }
 
 .matrix-cell--warning-high {
+  background-color: rgba(254, 237, 213, 0.8);
+  color: #9a3412;
+}
+
+.matrix-cell--warning-high:hover {
+  background-color: rgba(253, 218, 178, 0.95);
+}
+
+:global(.dark) .matrix-cell--warning-high {
   background-color: rgba(124, 45, 18, 0.35);
   color: #fdba74;
 }
 
-.matrix-cell--warning-high:hover {
+:global(.dark) .matrix-cell--warning-high:hover {
   background-color: rgba(154, 52, 18, 0.5);
 }
 
 .matrix-cell--warning-mid {
+  background-color: rgba(254, 249, 195, 0.8);
+  color: #854d0e;
+}
+
+.matrix-cell--warning-mid:hover {
+  background-color: rgba(254, 240, 138, 0.95);
+}
+
+:global(.dark) .matrix-cell--warning-mid {
   background-color: rgba(113, 63, 18, 0.3);
   color: #fde047;
 }
 
-.matrix-cell--warning-mid:hover {
+:global(.dark) .matrix-cell--warning-mid:hover {
   background-color: rgba(133, 77, 14, 0.45);
 }
 
 .matrix-cell--nominal {
+  background-color: rgba(209, 250, 229, 0.7);
+  color: #065f46;
+}
+
+.matrix-cell--nominal:hover {
+  background-color: rgba(167, 243, 208, 0.9);
+}
+
+:global(.dark) .matrix-cell--nominal {
   background-color: rgba(6, 78, 59, 0.35);
   color: #6ee7b7;
 }
 
-.matrix-cell--nominal:hover {
+:global(.dark) .matrix-cell--nominal:hover {
   background-color: rgba(6, 95, 70, 0.5);
 }
 
 .matrix-cell--active-neutral {
+  background-color: rgba(248, 250, 252, 0.9);
+  color: #1e293b;
+}
+
+.matrix-cell--active-neutral:hover {
+  background-color: rgba(226, 232, 240, 0.9);
+}
+
+:global(.dark) .matrix-cell--active-neutral {
   background-color: rgba(15, 23, 42, 0.9);
   color: #e2e8f0;
 }
 
-.matrix-cell--active-neutral:hover {
+:global(.dark) .matrix-cell--active-neutral:hover {
   background-color: rgba(30, 41, 59, 0.9);
 }
 
 /* Selected Cell */
 .matrix-cell.is-selected {
+  outline: 2px solid #0891b2;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 12px rgba(8, 145, 178, 0.2);
+  color: #0e7490;
+}
+
+:global(.dark) .matrix-cell.is-selected {
   outline: 2px solid #22d3ee;
   outline-offset: -2px;
   box-shadow: inset 0 0 12px rgba(34, 211, 238, 0.25);
@@ -932,6 +989,10 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
 
 /* 14-day Flow Barcode Pulses */
 .barcode-pulse--closed {
+  background-color: #10b981; /* emerald-500 */
+}
+
+:global(.dark) .barcode-pulse--closed {
   background-color: #34d399; /* emerald-400 */
 }
 
@@ -940,10 +1001,18 @@ function getBarcodeBarClass(day: { closedCount: number; stateMutationCount: numb
 }
 
 .barcode-pulse--mutation {
+  background-color: #06b6d4; /* cyan-500 */
+}
+
+:global(.dark) .barcode-pulse--mutation {
   background-color: #22d3ee; /* cyan-400 */
 }
 
 .barcode-pulse--idle {
+  background-color: #cbd5e1; /* slate-300 */
+}
+
+:global(.dark) .barcode-pulse--idle {
   background-color: #334155; /* slate-700 */
 }
 </style>
