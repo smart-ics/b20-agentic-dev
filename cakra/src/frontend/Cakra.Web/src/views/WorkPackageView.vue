@@ -3550,7 +3550,7 @@ onMounted(async () => {
                   :class="{
                     'is-dragging': draggedIndex === index,
                     'drop-target': dropTargetIndex === index && draggedIndex !== index,
-                    'opacity-60 bg-slate-100 dark:bg-slate-950/80': isDescoped(item.requestId),
+                    'opacity-60 bg-slate-100 dark:bg-slate-950/80 is-descoped': isDescoped(item.requestId),
                   }"
                   :draggable="canModifyPackage"
                   :data-request-id="item.requestId"
@@ -3760,18 +3760,38 @@ onMounted(async () => {
   cursor: grabbing;
 }
 
+.scope-request-item {
+  background-color: #ffffff;
+}
+
+:global(.dark) .scope-request-item {
+  background-color: rgba(2, 6, 23, 0.5) !important;
+  border-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+:global(.dark) .scope-request-item.is-descoped {
+  background-color: rgba(2, 6, 23, 0.8) !important;
+}
+
 .scope-request-item.is-dragging {
   opacity: 0.45;
   background-color: rgba(241, 245, 249, 0.95);
 }
 
 :global(.dark) .scope-request-item.is-dragging {
-  background-color: rgba(15, 23, 42, 0.95);
+  background-color: rgba(15, 23, 42, 0.95) !important;
 }
 
 .scope-request-item.drop-target {
   border-top: 2px solid #06b6d4 !important;
   background-color: rgba(6, 182, 212, 0.08);
+}
+
+:global(.dark) [data-testid="wp-view-mode-toggle"] button:not(.border-transparent),
+:global(.dark) [data-testid="scope-add-mode-toggle"] button:not(.border-transparent) {
+  background-color: rgba(6, 182, 212, 0.2) !important;
+  color: #67e8f9 !important;
+  border-color: rgba(6, 182, 212, 0.3) !important;
 }
 
 .flow-barcode-strip {
