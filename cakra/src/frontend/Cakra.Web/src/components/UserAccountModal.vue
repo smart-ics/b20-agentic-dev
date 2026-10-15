@@ -1,3 +1,37 @@
+<script lang="ts">
+export interface ActivePersonOption {
+  id?: string
+  personId?: string
+  firstName?: string
+  lastName?: string
+  fullName?: string
+  email?: string
+  status?: string
+  isActive?: boolean
+}
+
+export function checkIsPersonUnmapped(isEdit: boolean, personId?: string | null): boolean {
+  if (!isEdit) return false
+  return !personId || personId === '00000000-0000-0000-0000-000000000000'
+}
+
+export function resolvePersonId(person: ActivePersonOption): string {
+  return (person.id || person.personId || '').trim()
+}
+
+export function resolvePersonName(person: ActivePersonOption): string {
+  if (person.fullName && person.fullName.trim().length > 0) {
+    return person.fullName.trim()
+  }
+  const parts = [person.firstName, person.lastName].filter(Boolean)
+  return parts.length > 0 ? parts.join(' ') : 'Unnamed Person'
+}
+
+export function isValidEmail(val: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
+}
+</script>
+
 <script setup lang="ts">
 import { AxiosError } from 'axios'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -23,17 +57,6 @@ import {
  *   and validation errors inline without closing modal.
  * - Emits `saved` and `close` on successful submission.
  */
-
-export interface ActivePersonOption {
-  id?: string
-  personId?: string
-  firstName?: string
-  lastName?: string
-  fullName?: string
-  email?: string
-  status?: string
-  isActive?: boolean
-}
 
 interface ProblemDetailsPayload {
   title?: string
@@ -84,23 +107,12 @@ const validationErrors = ref<{
 }>({})
 
 const isEditMode = computed(() => props.mode === 'edit')
+const isPersonUnmapped = computed(() => {
+  if (!isEditMode.value) return false
+  const pid = props.user?.personId
+  return !pid || pid === '00000000-0000-0000-0000-000000000000'
+})
 const modalTitle = computed(() => (isEditMode.value ? 'Edit User Account' : 'Add User Account'))
-
-function resolvePersonId(person: ActivePersonOption): string {
-  return (person.id || person.personId || '').trim()
-}
-
-function resolvePersonName(person: ActivePersonOption): string {
-  if (person.fullName && person.fullName.trim().length > 0) {
-    return person.fullName.trim()
-  }
-  const parts = [person.firstName, person.lastName].filter(Boolean)
-  return parts.length > 0 ? parts.join(' ') : 'Unnamed Person'
-}
-
-function isValidEmail(val: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
-}
 
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
@@ -144,7 +156,8 @@ function resetForm(): void {
   validationErrors.value = {}
 
   if (props.mode === 'edit' && props.user) {
-    personId.value = props.user.personId || ''
+    const pid = props.user.personId
+    personId.value = (!pid || pid === '00000000-0000-0000-0000-000000000000') ? '' : pid
     username.value = props.user.username || ''
     email.value = props.user.email || ''
     password.value = ''
@@ -181,6 +194,11 @@ function validate(): boolean {
       errors.password = 'Password must be at least 8 characters.'
     }
   } else {
+    if (isPersonUnmapped.value && status.value === 'ACTIVE') {
+      if (!personId.value.trim()) {
+        errors.personId = 'Please select an associated Person.'
+      }
+    }
     if (!email.value.trim()) {
       errors.email = 'Email is required.'
     } else if (!isValidEmail(email.value)) {
@@ -213,6 +231,7 @@ async function handleSubmit(): Promise<void> {
         email: email.value.trim(),
         status: status.value,
         newPassword: newPassword.value.trim() ? newPassword.value : undefined,
+        personId: isPersonUnmapped.value ? personId.value.trim() || undefined : undefined,
       })
     } else {
       savedUser = await createUser({
@@ -244,7 +263,7 @@ watch(
   (newVal) => {
     if (newVal) {
       resetForm()
-      if (!isEditMode.value && activePersons.value.length === 0) {
+      if ((!isEditMode.value || isPersonUnmapped.value) && activePersons.value.length === 0) {
         loadActivePersons()
       }
     }
@@ -257,12 +276,15 @@ watch(
   () => {
     if (props.show) {
       resetForm()
+      if ((!isEditMode.value || isPersonUnmapped.value) && activePersons.value.length === 0) {
+        loadActivePersons()
+      }
     }
   },
 )
 
 onMounted(() => {
-  if (props.show && !isEditMode.value && activePersons.value.length === 0) {
+  if (props.show && (!isEditMode.value || isPersonUnmapped.value) && activePersons.value.length === 0) {
     loadActivePersons()
   }
 })
@@ -327,8 +349,8 @@ onMounted(() => {
                 ></button>
               </div>
 
-              <!-- Create Mode: Person Selector -->
-              <div v-if="!isEditMode" class="mb-2">
+              <!-- Create Mode or Unmapped Person in Edit Mode: Person Selector -->
+              <div v-if="!isEditMode || isPersonUnmapped" class="mb-2">
                 <label for="userModalPersonSelect" class="form-label mb-1 small fw-medium text-slate-300" style="font-size: 11.5px">
                   Organizational Person <span class="text-danger">*</span>
                 </label>

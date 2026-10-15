@@ -47,13 +47,14 @@ public sealed class CreateUserAccountCommandValidator : AbstractValidator<Create
 }
 
 /// <summary>
-/// Command to update an existing user account's attributes, status, and/or password (Architecture §14; CR-007).
+/// Command to update an existing user account's attributes, status, and/or password (Architecture §14; CR-007; CR-033).
 /// </summary>
 public sealed record UpdateUserAccountCommand(
     string? Email = null,
     string? Status = null,
     string? NewPassword = null,
-    Guid? UserId = null) : IRequest<UserAccountDto>;
+    Guid? UserId = null,
+    Guid? PersonId = null) : IRequest<UserAccountDto>;
 
 /// <summary>
 /// FluentValidation validator for <see cref="UpdateUserAccountCommand"/> (Architecture §19.2; CR-007).
@@ -79,5 +80,10 @@ public sealed class UpdateUserAccountCommandValidator : AbstractValidator<Update
         RuleFor(x => x.NewPassword)
             .MinimumLength(8).WithMessage("Password must be at least 8 characters long.")
             .When(x => !string.IsNullOrEmpty(x.NewPassword));
+
+        RuleFor(x => x.PersonId)
+            .Must(id => id.HasValue && id.Value != Guid.Empty)
+            .WithMessage("Person ID cannot be empty.")
+            .When(x => x.PersonId.HasValue);
     }
 }

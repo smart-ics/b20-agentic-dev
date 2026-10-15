@@ -43,6 +43,7 @@ export interface UpdateUserRequest {
   email?: string
   status?: string
   newPassword?: string
+  personId?: string
 }
 
 /**

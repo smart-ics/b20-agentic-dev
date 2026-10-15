@@ -1,3 +1,34 @@
+<script lang="ts">
+export type UserStatusFilter = 'ALL' | 'ACTIVE' | 'PENDING' | 'LOCKED' | 'SUSPENDED'
+
+export function statusBadgeClass(status?: string | null): string {
+  switch (status?.toUpperCase()) {
+    case 'ACTIVE':
+      return 'badge text-bg-success'
+    case 'PENDING':
+      return 'badge text-bg-info text-dark'
+    case 'LOCKED':
+      return 'badge text-bg-danger'
+    case 'SUSPENDED':
+      return 'badge text-bg-warning text-dark'
+    default:
+      return 'badge text-bg-secondary'
+  }
+}
+
+export function countPendingUsers(users: Array<{ status?: string | null }>): number {
+  return users.filter((u) => u.status?.toUpperCase() === 'PENDING').length
+}
+
+export function filterUsersByStatus<T extends { status?: string | null }>(
+  users: T[],
+  filter: UserStatusFilter,
+): T[] {
+  if (filter === 'ALL') return users
+  return users.filter((u) => u.status?.toUpperCase() === filter)
+}
+</script>
+
 <script setup lang="ts">
 import { AxiosError } from 'axios'
 import { computed, onMounted, ref } from 'vue'
@@ -11,10 +42,10 @@ import UserAccountModal from '@/components/UserAccountModal.vue'
 
 /**
  * SCR-USR-001: User Management Screen
- * (Architecture §7, §8, §14, §19.4, §19.6 — CR-007, FEAT-USR-001).
+ * (Architecture §7, §8, §14, §19.4, §19.6 — CR-007, CR-033, FEAT-USR-001).
  *
  * - Administrative user management view restricted strictly to Administrators.
- * - Displays screen title, summary metrics (Total, Active, Locked, Suspended), and Add User action.
+ * - Displays screen title, summary metrics (Total, Pending Approval, Active, Locked, Suspended), and Add User action.
  * - Offers keyword search (filtering across username, person name, and email) and status dropdown filtering.
  * - Renders high-density table of user accounts with Username, Person Name, Email, Status badge,
  *   Failed Login Attempts counter, Last Login At timestamp, and Edit action.
@@ -36,7 +67,7 @@ const successMessage = ref<string | null>(null)
 
 // Filtering state
 const searchQuery = ref('')
-const statusFilter = ref<'ALL' | 'ACTIVE' | 'LOCKED' | 'SUSPENDED'>('ALL')
+const statusFilter = ref<'ALL' | 'ACTIVE' | 'PENDING' | 'LOCKED' | 'SUSPENDED'>('ALL')
 
 // Modal state
 const isModalOpen = ref(false)
@@ -45,6 +76,9 @@ const selectedUser = ref<UserAccountSummary | null>(null)
 
 // Computed metrics
 const totalCount = computed(() => users.value.length)
+const pendingCount = computed(
+  () => users.value.filter((u) => u.status?.toUpperCase() === 'PENDING').length,
+)
 const activeCount = computed(
   () => users.value.filter((u) => u.status?.toUpperCase() === 'ACTIVE').length,
 )
@@ -85,19 +119,6 @@ function formatDateTime(iso: string | null | undefined): string {
     return iso
   }
   return parsed.toLocaleString()
-}
-
-function statusBadgeClass(status: string): string {
-  switch (status?.toUpperCase()) {
-    case 'ACTIVE':
-      return 'badge text-bg-success'
-    case 'LOCKED':
-      return 'badge text-bg-danger'
-    case 'SUSPENDED':
-      return 'badge text-bg-warning text-dark'
-    default:
-      return 'badge text-bg-secondary'
-  }
 }
 
 function extractErrorMessage(err: unknown, fallback: string): string {
@@ -206,6 +227,10 @@ onMounted(async () => {
         <span class="op-stat-val text-dark" data-testid="stat-total-users">{{ totalCount }}</span>
       </div>
       <div class="op-stat-item">
+        <span class="op-stat-label">Pending Approval:</span>
+        <span class="op-stat-val text-info" data-testid="stat-pending-users">{{ pendingCount }}</span>
+      </div>
+      <div class="op-stat-item">
         <span class="op-stat-label">Active:</span>
         <span class="op-stat-val text-success" data-testid="stat-active-users">{{ activeCount }}</span>
       </div>
@@ -301,6 +326,7 @@ onMounted(async () => {
         >
           <option value="ALL">All Statuses</option>
           <option value="ACTIVE">ACTIVE</option>
+          <option value="PENDING">PENDING</option>
           <option value="LOCKED">LOCKED</option>
           <option value="SUSPENDED">SUSPENDED</option>
         </select>

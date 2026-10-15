@@ -134,7 +134,8 @@ public sealed class UsersController : ApiControllerBase
                 request.Email,
                 request.Status,
                 request.NewPassword,
-                id);
+                id,
+                request.PersonId);
 
             var result = await _userAccountService.UpdateUserAsync(id, command, cancellationToken);
             return Ok(result);
@@ -260,9 +261,10 @@ public sealed record CreateUserAccountRequest(
     string? Status = null);
 
 /// <summary>
-/// Request payload for updating a user account (Architecture §14; CR-007).
+/// Request payload for updating a user account (Architecture §14; CR-007; CR-033).
 /// </summary>
 public sealed record UpdateUserAccountRequest(
     string? Email = null,
     string? Status = null,
-    string? NewPassword = null);
+    string? NewPassword = null,
+    Guid? PersonId = null);

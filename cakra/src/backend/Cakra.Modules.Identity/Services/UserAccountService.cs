@@ -234,18 +234,57 @@ public sealed class UserAccountService : IUserAccountService
             }
         }
 
-        // Validate status transition and reset failed attempts if unlocking
+        // Validate and apply PersonId mapping
+        if (command.PersonId.HasValue)
+        {
+            if (user.PersonId != Guid.Empty && user.PersonId != command.PersonId.Value)
+            {
+                throw new InvalidOperationException("Changing the organizational person of an already mapped user account is not permitted.");
+            }
+
+            if (command.PersonId.Value != Guid.Empty)
+            {
+                if (_organizationQueryService != null)
+                {
+                    var isActive = await _organizationQueryService.IsPersonActiveAsync(command.PersonId.Value, cancellationToken);
+                    if (!isActive)
+                    {
+                        throw new ArgumentException("The specified person is not active or does not exist.");
+                    }
+                }
+
+                var existingByPerson = await _userAccountRepository.GetByPersonIdAsync(command.PersonId.Value, cancellationToken);
+                if (existingByPerson != null && existingByPerson.UserId != user.UserId)
+                {
+                    throw new InvalidOperationException("The specified person is already linked to another user account.");
+                }
+
+                user.PersonId = command.PersonId.Value;
+            }
+        }
+
+        // Validate status transition and activation prerequisites
+        var targetStatus = command.Status?.Trim().ToUpperInvariant() ?? user.Status;
         if (!string.IsNullOrWhiteSpace(command.Status))
         {
-            var targetStatus = command.Status.Trim().ToUpperInvariant();
             if (targetStatus != UserAccountStatus.Active &&
                 targetStatus != UserAccountStatus.Locked &&
                 targetStatus != UserAccountStatus.Suspended)
             {
                 throw new ArgumentException($"Invalid status '{command.Status}'. Allowed statuses are ACTIVE, LOCKED, and SUSPENDED.", nameof(command));
             }
+        }
 
-            if (string.Equals(user.Status, UserAccountStatus.Locked, StringComparison.OrdinalIgnoreCase) &&
+        if (string.Equals(targetStatus, UserAccountStatus.Active, StringComparison.OrdinalIgnoreCase) &&
+            user.PersonId == Guid.Empty)
+        {
+            throw new ArgumentException("An active organizational person must be linked before activating a user account.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(command.Status))
+        {
+            if ((string.Equals(user.Status, UserAccountStatus.Locked, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(user.Status, UserAccountStatus.Pending, StringComparison.OrdinalIgnoreCase)) &&
                 string.Equals(targetStatus, UserAccountStatus.Active, StringComparison.OrdinalIgnoreCase))
             {
                 user.Unlock(now);
@@ -286,7 +325,7 @@ public sealed class UserAccountService : IUserAccountService
 
     private async Task<string> ResolvePersonNameAsync(Guid personId, CancellationToken cancellationToken)
     {
-        if (_organizationQueryService == null)
+        if (personId == Guid.Empty || _organizationQueryService == null)
         {
             return UnknownPersonName;
         }

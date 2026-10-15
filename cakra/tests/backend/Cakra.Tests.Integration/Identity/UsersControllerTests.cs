@@ -382,6 +382,222 @@ public class UsersControllerTests : IntegrationTestBase
         problem.GetProperty("errorCode").GetString().Should().Be("RESOURCE_NOT_FOUND");
     }
 
+    [Fact]
+    public async Task PutUser_with_PersonId_maps_person_and_activates_unmapped_account_returning_200_OK()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var personId = Guid.NewGuid();
+        _orgQueryService.AddPerson(personId, "Haryono", "Sudirman");
+
+        var unmappedUser = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = Guid.Empty,
+            Username = "pending.approval",
+            Email = "pending.approval@cakra.id",
+            Status = UserAccountStatus.Pending,
+            FailedLoginAttempts = 4,
+            CreatedAt = DateTime.UtcNow.AddDays(-2),
+            UpdatedAt = DateTime.UtcNow.AddDays(-2)
+        };
+        _accountRepo.Items[unmappedUser.Id] = unmappedUser;
+
+        var updatePayload = new UpdateUserAccountRequest(
+            PersonId: personId,
+            Status: UserAccountStatus.Active);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/users/{unmappedUser.Id}", updatePayload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<UserAccountDto>();
+        result.Should().NotBeNull();
+        result!.UserId.Should().Be(unmappedUser.Id);
+        result.PersonId.Should().Be(personId);
+        result.PersonName.Should().Be("Haryono Sudirman");
+        result.Status.Should().Be(UserAccountStatus.Active);
+        result.FailedLoginAttempts.Should().Be(0);
+
+        var persisted = _accountRepo.Items[unmappedUser.Id];
+        persisted.PersonId.Should().Be(personId);
+        persisted.Status.Should().Be(UserAccountStatus.Active);
+        persisted.FailedLoginAttempts.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PutUser_with_PersonId_returns_400_BadRequest_when_person_is_inactive_or_nonexistent()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var unmappedUser = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = Guid.Empty,
+            Username = "inactive.target",
+            Email = "inactive.target@cakra.id",
+            Status = UserAccountStatus.Pending
+        };
+        _accountRepo.Items[unmappedUser.Id] = unmappedUser;
+
+        var inactivePersonId = Guid.NewGuid();
+        _orgQueryService.AddPerson(inactivePersonId, "Inactive", "Person", status: "INACTIVE");
+
+        var payload = new UpdateUserAccountRequest(PersonId: inactivePersonId);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/users/{unmappedUser.Id}", payload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(400);
+        problem.GetProperty("title").GetString().Should().Be("Bad Request");
+        problem.GetProperty("errorCode").GetString().Should().Be("BAD_REQUEST");
+        problem.GetProperty("detail").GetString().Should().Contain("The specified person is not active or does not exist.");
+    }
+
+    [Fact]
+    public async Task PutUser_returns_400_BadRequest_when_activating_without_person_mapping()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var unmappedUser = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = Guid.Empty,
+            Username = "unmapped.pending",
+            Email = "unmapped.pending@cakra.id",
+            Status = UserAccountStatus.Pending
+        };
+        _accountRepo.Items[unmappedUser.Id] = unmappedUser;
+
+        var payload = new UpdateUserAccountRequest(Status: UserAccountStatus.Active);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/users/{unmappedUser.Id}", payload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(400);
+        problem.GetProperty("title").GetString().Should().Be("Bad Request");
+        problem.GetProperty("errorCode").GetString().Should().Be("BAD_REQUEST");
+        problem.GetProperty("detail").GetString().Should().Contain("An active organizational person must be linked before activating a user account.");
+    }
+
+    [Fact]
+    public async Task PutUser_with_empty_guid_PersonId_returns_400_BadRequest_validation_error()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var user = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = Guid.Empty,
+            Username = "empty.guid.target",
+            Email = "empty.guid@cakra.id",
+            Status = UserAccountStatus.Pending
+        };
+        _accountRepo.Items[user.Id] = user;
+
+        var payload = new UpdateUserAccountRequest(PersonId: Guid.Empty);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/users/{user.Id}", payload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(400);
+        problem.GetProperty("errorCode").GetString().Should().Be("VALIDATION_FAILED");
+        problem.GetProperty("errors").EnumerateObject().Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task PutUser_with_PersonId_returns_409_Conflict_when_changing_person_on_already_mapped_account()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var initialPersonId = Guid.NewGuid();
+        var newPersonId = Guid.NewGuid();
+        _orgQueryService.AddPerson(initialPersonId, "Initial", "Person");
+        _orgQueryService.AddPerson(newPersonId, "New", "Person");
+
+        var mappedUser = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = initialPersonId,
+            Username = "mapped.user",
+            Email = "mapped@cakra.id",
+            Status = UserAccountStatus.Active
+        };
+        _accountRepo.Items[mappedUser.Id] = mappedUser;
+
+        var updatePayload = new UpdateUserAccountRequest(PersonId: newPersonId);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/users/{mappedUser.Id}", updatePayload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(409);
+        problem.GetProperty("title").GetString().Should().Be("Conflict");
+        problem.GetProperty("errorCode").GetString().Should().Be("CONFLICT");
+        problem.GetProperty("detail").GetString().Should().Contain("Changing the organizational person of an already mapped user account is not permitted.");
+    }
+
+    [Fact]
+    public async Task PutUser_with_PersonId_returns_409_Conflict_when_person_is_already_linked_to_another_account()
+    {
+        // Arrange
+        var client = CreateClientWithRole("Administrator");
+        var linkedPersonId = Guid.NewGuid();
+        _orgQueryService.AddPerson(linkedPersonId, "Existing", "Linked");
+
+        var existingUser = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = linkedPersonId,
+            Username = "existing.user",
+            Email = "existing@cakra.id",
+            Status = UserAccountStatus.Active
+        };
+        var targetUser = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = Guid.Empty,
+            Username = "target.user",
+            Email = "target@cakra.id",
+            Status = UserAccountStatus.Pending
+        };
+        _accountRepo.Items[existingUser.Id] = existingUser;
+        _accountRepo.Items[targetUser.Id] = targetUser;
+
+        var updatePayload = new UpdateUserAccountRequest(PersonId: linkedPersonId);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/users/{targetUser.Id}", updatePayload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("status").GetInt32().Should().Be(409);
+        problem.GetProperty("title").GetString().Should().Be("Conflict");
+        problem.GetProperty("errorCode").GetString().Should().Be("CONFLICT");
+        problem.GetProperty("detail").GetString().Should().Contain("The specified person is already linked to another user account.");
+    }
+
     private sealed class StubAuthService : IIdentityAuthService
     {
         private readonly Dictionary<string, (Guid UserId, Guid PersonId)> _sessions = new();
@@ -447,7 +663,7 @@ public class UsersControllerTests : IntegrationTestBase
     {
         private readonly List<PersonDto> _persons = new();
 
-        public void AddPerson(Guid id, string firstName, string lastName)
+        public void AddPerson(Guid id, string firstName, string lastName, string status = "ACTIVE")
         {
             _persons.Add(new PersonDto
             {
@@ -455,7 +671,7 @@ public class UsersControllerTests : IntegrationTestBase
                 FirstName = firstName,
                 LastName = lastName,
                 Email = $"{firstName.ToLowerInvariant()}@cakra.id",
-                Status = "ACTIVE"
+                Status = status
             });
         }
 

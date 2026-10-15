@@ -352,6 +352,208 @@ public class UserAccountServiceTests
     }
 
     [Fact]
+    public async Task UpdateUserAsync_successfully_maps_person_on_unmapped_account_and_approves_to_active()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var personId = Guid.NewGuid();
+        _organizationQueryService.AddPerson(personId, "Kartini", "Raden");
+
+        var user = new UserAccount
+        {
+            Id = userId,
+            PersonId = Guid.Empty,
+            Username = "kartini.unmapped",
+            Email = "kartini@cakra.id",
+            Status = UserAccountStatus.Pending,
+            FailedLoginAttempts = 3,
+            CreatedAt = _clock.UtcNow.AddDays(-5),
+            UpdatedAt = _clock.UtcNow.AddDays(-5)
+        };
+        _userAccountRepository.Items.Add(userId, user);
+
+        var command = new UpdateUserAccountCommand(
+            PersonId: personId,
+            Status: UserAccountStatus.Active);
+
+        // Act
+        var result = await _service.UpdateUserAsync(userId, command);
+
+        // Assert
+        result.UserId.Should().Be(userId);
+        result.PersonId.Should().Be(personId);
+        result.PersonName.Should().Be("Kartini Raden");
+        result.Status.Should().Be(UserAccountStatus.Active);
+        result.FailedLoginAttempts.Should().Be(0);
+        result.UpdatedAt.Should().Be(_clock.UtcNow);
+
+        var persisted = await _userAccountRepository.GetByIdAsync(userId);
+        persisted.Should().NotBeNull();
+        persisted!.PersonId.Should().Be(personId);
+        persisted.Status.Should().Be(UserAccountStatus.Active);
+        persisted.FailedLoginAttempts.Should().Be(0);
+        persisted.UpdatedAt.Should().Be(_clock.UtcNow);
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_throws_InvalidOperationException_when_attempting_to_change_personId_on_already_mapped_account()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var initialPersonId = Guid.NewGuid();
+        var newPersonId = Guid.NewGuid();
+        _organizationQueryService.AddPerson(initialPersonId, "Initial", "Person");
+        _organizationQueryService.AddPerson(newPersonId, "New", "Person");
+
+        var user = new UserAccount
+        {
+            Id = userId,
+            PersonId = initialPersonId,
+            Username = "mapped.user",
+            Email = "mapped@cakra.id",
+            Status = UserAccountStatus.Active
+        };
+        _userAccountRepository.Items.Add(userId, user);
+
+        var command = new UpdateUserAccountCommand(PersonId: newPersonId);
+
+        // Act
+        var act = () => _service.UpdateUserAsync(userId, command);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.WithMessage("Changing the organizational person of an already mapped user account is not permitted.");
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_throws_ArgumentException_when_specifying_inactive_or_nonexistent_personId()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new UserAccount
+        {
+            Id = userId,
+            PersonId = Guid.Empty,
+            Username = "pending.user",
+            Email = "pending@cakra.id",
+            Status = UserAccountStatus.Pending
+        };
+        _userAccountRepository.Items.Add(userId, user);
+
+        // 1. Nonexistent person
+        var nonexistentPersonId = Guid.NewGuid();
+        var nonexistentCmd = new UpdateUserAccountCommand(PersonId: nonexistentPersonId);
+        var actNonexistent = () => _service.UpdateUserAsync(userId, nonexistentCmd);
+        var exNonexistent = await actNonexistent.Should().ThrowAsync<ArgumentException>();
+        exNonexistent.WithMessage("The specified person is not active or does not exist.");
+
+        // 2. Inactive person
+        var inactivePersonId = Guid.NewGuid();
+        _organizationQueryService.AddPerson(inactivePersonId, "Inactive", "Person", status: "INACTIVE");
+        var inactiveCmd = new UpdateUserAccountCommand(PersonId: inactivePersonId);
+        var actInactive = () => _service.UpdateUserAsync(userId, inactiveCmd);
+        var exInactive = await actInactive.Should().ThrowAsync<ArgumentException>();
+        exInactive.WithMessage("The specified person is not active or does not exist.");
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_throws_InvalidOperationException_when_specifying_personId_already_linked_to_another_account()
+    {
+        // Arrange
+        var linkedPersonId = Guid.NewGuid();
+        _organizationQueryService.AddPerson(linkedPersonId, "Linked", "Person");
+
+        var user1 = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = linkedPersonId,
+            Username = "user.one",
+            Email = "user.one@cakra.id",
+            Status = UserAccountStatus.Active
+        };
+        var user2 = new UserAccount
+        {
+            Id = Guid.NewGuid(),
+            PersonId = Guid.Empty,
+            Username = "user.two",
+            Email = "user.two@cakra.id",
+            Status = UserAccountStatus.Pending
+        };
+        _userAccountRepository.Items.Add(user1.Id, user1);
+        _userAccountRepository.Items.Add(user2.Id, user2);
+
+        var command = new UpdateUserAccountCommand(PersonId: linkedPersonId);
+
+        // Act
+        var act = () => _service.UpdateUserAsync(user2.Id, command);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.WithMessage("The specified person is already linked to another user account.");
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_throws_ArgumentException_when_setting_status_to_active_while_personId_remains_empty()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new UserAccount
+        {
+            Id = userId,
+            PersonId = Guid.Empty,
+            Username = "unmapped.user",
+            Email = "unmapped@cakra.id",
+            Status = UserAccountStatus.Pending
+        };
+        _userAccountRepository.Items.Add(userId, user);
+
+        var command = new UpdateUserAccountCommand(Status: UserAccountStatus.Active);
+
+        // Act
+        var act = () => _service.UpdateUserAsync(userId, command);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ArgumentException>();
+        ex.WithMessage("An active organizational person must be linked before activating a user account.");
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_resets_failed_login_attempts_upon_transition_from_pending_to_active()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var personId = Guid.NewGuid();
+        _organizationQueryService.AddPerson(personId, "Reset", "Tester");
+
+        var user = new UserAccount
+        {
+            Id = userId,
+            PersonId = Guid.Empty,
+            Username = "pending.with.failures",
+            Email = "pending.failures@cakra.id",
+            Status = UserAccountStatus.Pending,
+            FailedLoginAttempts = 5
+        };
+        _userAccountRepository.Items.Add(userId, user);
+
+        var command = new UpdateUserAccountCommand(
+            PersonId: personId,
+            Status: UserAccountStatus.Active);
+
+        // Act
+        var result = await _service.UpdateUserAsync(userId, command);
+
+        // Assert
+        result.Status.Should().Be(UserAccountStatus.Active);
+        result.FailedLoginAttempts.Should().Be(0);
+
+        var persisted = await _userAccountRepository.GetByIdAsync(userId);
+        persisted!.Status.Should().Be(UserAccountStatus.Active);
+        persisted.FailedLoginAttempts.Should().Be(0);
+    }
+
+
+    [Fact]
     public async Task GetAllUsersAsync_resolves_person_names_in_memory()
     {
         // Arrange
@@ -421,7 +623,7 @@ public class UserAccountServiceTests
     {
         private readonly List<PersonDto> _persons = new();
 
-        public void AddPerson(Guid id, string firstName, string lastName)
+        public void AddPerson(Guid id, string firstName, string lastName, string status = "ACTIVE")
         {
             _persons.Add(new PersonDto
             {
@@ -429,7 +631,7 @@ public class UserAccountServiceTests
                 FirstName = firstName,
                 LastName = lastName,
                 Email = $"{firstName.ToLowerInvariant()}@cakra.id",
-                Status = "ACTIVE"
+                Status = status
             });
         }
 
