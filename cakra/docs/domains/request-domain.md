@@ -3,8 +3,8 @@
 Title: Request Domain
 Code: REQUEST
 Artifact: DOMAIN
-Version: 1.2
-LastUpdated: 2026-10-03
+Version: 1.3
+LastUpdated: 2026-10-15
 ---
 
 # 1. Business Overview
@@ -47,6 +47,8 @@ A Request does not imply that ICS has agreed to perform the requested work.
 | Request Complexity | A standardized numerical rating (1 to 5) reflecting the operational and technical effort.  |
 | Request Context    | The Customer, Product, or Work Package associated with the Request.                       |
 | Resolution         | The outcome that satisfies or terminates the Request.                                     |
+| Request Blocker    | A recorded operational or technical impediment that halts progress on a Request and prevents its completion. |
+| Blocker Clearance  | The recorded resolution of an impediment allowing work on the Request to resume and proceed toward completion. |
 
 ---
 
@@ -167,13 +169,36 @@ It is not a separate operational domain.
 
 ---
 
+## RequestBlocker
+
+Represents a recorded operational or technical impediment that halts work on a Request.
+
+Attributes:
+
+```text
+BlockerId
+RequestId
+Reason
+CreatedByPersonId
+CreatedAtUtc
+IsCleared
+ClearedAtUtc
+ClearedByPersonId
+ClearanceReason
+```
+
+A RequestBlocker is an immutable audit record within the Request aggregate. Once recorded, it cannot be modified or deleted, only cleared.
+
+---
+
 # 6. Aggregates
 
 ## Request Aggregate
 
 ```text
 Request
-└── Resolution
+├── Resolution
+└── RequestBlocker (0..*)
 ```
 
 The Request Aggregate is the authoritative source of:
@@ -277,6 +302,20 @@ The referenced Person or Customer Contact remains owned by its source domain.
 
 21. A closed Request (Completed or Rejected) cannot have its Complexity modified.
 
+22. An operational or technical impediment may be recorded as a Request Blocker on any open Request (in Assigned, InProgress, or Paused state).
+
+23. Adding an active Request Blocker automatically suspends active work, transitioning the Request into PAUSED state.
+
+24. A Request with one or more active (uncleared) Request Blockers cannot transition to COMPLETED or resume to IN_PROGRESS.
+
+25. Any authenticated collaborator can record a Request Blocker; clearing an active Request Blocker is restricted to the assigned Request Owner, Administrator, or Manager.
+
+26. Request Blockers are immutable audit records: once recorded, a blocker cannot be modified or deleted, only cleared with an optional clearance explanation.
+
+27. Clearing all active Request Blockers leaves the Request in PAUSED state until the Request Owner explicitly resumes work.
+
+28. A Request with active Request Blockers may still be cancelled; any active blockers remain permanently preserved in history.
+
 ---
 
 # 9. State Machines & Lifecycles
@@ -374,6 +413,8 @@ RequestProductChanged
 RequestWorkPackageChanged
 RequestStatusChanged
 RequestComplexityUpdated
+RequestBlockerAdded
+RequestBlockerCleared
 RequestResolved
 RequestRejected
 RequestCancelled

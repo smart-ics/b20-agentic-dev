@@ -90,6 +90,7 @@ public sealed class RequestQueryService :
                 r.[TotalSubTasksCount],
                 r.[CompletedSubTasksCount],
                 r.[CompletionPercentage],
+                r.[ActiveBlockersCount],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -122,7 +123,8 @@ public sealed class RequestQueryService :
 
         var assignments = await GetRequestStateHistoryAsync(requestId, cancellationToken);
         var subTasks = await GetRequestSubTasksAsync(requestId, cancellationToken);
-        var dto = row.ToDto(assignments, subTasks);
+        var blockers = await GetRequestBlockersAsync(requestId, cancellationToken);
+        var dto = row.ToDto(assignments, subTasks, blockers);
         var enriched = await EnrichRequestsAsync(new[] { dto }, cancellationToken);
         return enriched[0];
     }
@@ -223,6 +225,7 @@ public sealed class RequestQueryService :
                 r.[TotalSubTasksCount],
                 r.[CompletedSubTasksCount],
                 r.[CompletionPercentage],
+                r.[ActiveBlockersCount],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -304,6 +307,75 @@ public sealed class RequestQueryService :
         return rows.Select(r => r.ToDto()).ToList();
     }
 
+    /// <summary>
+    /// Retrieves all operational impediment blockers for a Request from <c>request.RequestBlockers</c>
+    /// ordered by creation timestamp ascending (Architecture CR-032 §4 TD-001, TD-005, TD-007).
+    /// </summary>
+    public async Task<IReadOnlyList<RequestBlockerDto>> GetRequestBlockersAsync(
+        Guid requestId,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            return Array.Empty<RequestBlockerDto>();
+        }
+
+        const string sql = """
+            SELECT
+                [Id],
+                [RequestId],
+                [Reason],
+                [CreatedByPersonId],
+                [CreatedAtUtc],
+                [IsCleared],
+                [ClearedAtUtc],
+                [ClearedByPersonId],
+                [ClearanceReason]
+            FROM [request].[RequestBlockers]
+            WHERE [RequestId] = @RequestId
+            ORDER BY [CreatedAtUtc] ASC, [CreatedAt] ASC, [Id] ASC;
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        var rows = (await connection.QueryAsync<RequestBlockerQueryRow>(
+            new CommandDefinition(sql, new { RequestId = requestId }, cancellationToken: cancellationToken))).AsList();
+
+        if (rows.Count == 0)
+        {
+            return Array.Empty<RequestBlockerDto>();
+        }
+
+        if (_organizationQueryService is null)
+        {
+            return rows.Select(r => r.ToDto()).ToList();
+        }
+
+        var personCache = new Dictionary<Guid, string?>();
+        var enriched = new List<RequestBlockerDto>(rows.Count);
+
+        foreach (var row in rows)
+        {
+            var createdByName = await ResolvePersonNameAsync(row.CreatedByPersonId, personCache, cancellationToken);
+            var clearedByName = row.ClearedByPersonId.HasValue
+                ? await ResolvePersonNameAsync(row.ClearedByPersonId.Value, personCache, cancellationToken)
+                : null;
+
+            enriched.Add(row.ToDto() with
+            {
+                CreatedByName = createdByName,
+                ClearedByName = clearedByName
+            });
+        }
+
+        return enriched;
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<RequestBlockerDto>> GetRequestBlockers(
+        Guid requestId,
+        CancellationToken cancellationToken = default)
+        => GetRequestBlockersAsync(requestId, cancellationToken);
+
     /// <inheritdoc />
     public async Task<IReadOnlyList<RequestDto>> GetRequestsWithAssignedSubTasksAsync(
         Guid personId,
@@ -326,6 +398,7 @@ public sealed class RequestQueryService :
                 r.[TotalSubTasksCount],
                 r.[CompletedSubTasksCount],
                 r.[CompletionPercentage],
+                r.[ActiveBlockersCount],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -453,6 +526,7 @@ public sealed class RequestQueryService :
                 r.[TotalSubTasksCount],
                 r.[CompletedSubTasksCount],
                 r.[CompletionPercentage],
+                r.[ActiveBlockersCount],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -611,6 +685,7 @@ public sealed class RequestQueryService :
                 r.[TotalSubTasksCount],
                 r.[CompletedSubTasksCount],
                 r.[CompletionPercentage],
+                r.[ActiveBlockersCount],
                 r.[OwnerPersonId],
                 r.[CustomerId],
                 r.[ProductId],
@@ -1110,6 +1185,7 @@ public sealed class RequestQueryService :
         public int TotalSubTasksCount { get; init; } = 0;
         public int CompletedSubTasksCount { get; init; } = 0;
         public int CompletionPercentage { get; init; } = 0;
+        public int ActiveBlockersCount { get; init; } = 0;
         public Guid? OwnerPersonId { get; init; }
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
@@ -1130,7 +1206,8 @@ public sealed class RequestQueryService :
 
         public RequestDto ToDto(
             IReadOnlyList<RequestAssignmentDto>? assignments = null,
-            IReadOnlyList<RequestSubTaskDto>? subTasks = null)
+            IReadOnlyList<RequestSubTaskDto>? subTasks = null,
+            IReadOnlyList<RequestBlockerDto>? blockers = null)
         {
             RequestResolutionDto? resolution = null;
             if (ResolutionId.HasValue && ResolutionId.Value != Guid.Empty)
@@ -1160,6 +1237,7 @@ public sealed class RequestQueryService :
                 TotalSubTasksCount = TotalSubTasksCount,
                 CompletedSubTasksCount = CompletedSubTasksCount,
                 CompletionPercentage = CompletionPercentage,
+                ActiveBlockersCount = ActiveBlockersCount,
                 OwnerPersonId = OwnerPersonId,
                 CustomerId = CustomerId,
                 ProductId = ProductId,
@@ -1169,11 +1247,38 @@ public sealed class RequestQueryService :
                 ManagementDecisionNotes = ManagementDecisionNotes,
                 Resolution = resolution,
                 SubTasks = subTasks ?? Array.Empty<RequestSubTaskDto>(),
+                Blockers = blockers ?? Array.Empty<RequestBlockerDto>(),
                 Assignments = assignments ?? Array.Empty<RequestAssignmentDto>(),
                 CreatedAt = CreatedAt,
                 UpdatedAt = UpdatedAt
             };
         }
+    }
+
+    private sealed class RequestBlockerQueryRow
+    {
+        public Guid Id { get; init; }
+        public Guid RequestId { get; init; }
+        public string Reason { get; init; } = string.Empty;
+        public Guid CreatedByPersonId { get; init; }
+        public DateTime CreatedAtUtc { get; init; }
+        public bool IsCleared { get; init; }
+        public DateTime? ClearedAtUtc { get; init; }
+        public Guid? ClearedByPersonId { get; init; }
+        public string? ClearanceReason { get; init; }
+
+        public RequestBlockerDto ToDto() => new(
+            Id,
+            RequestId,
+            Reason,
+            CreatedByPersonId,
+            null,
+            CreatedAtUtc,
+            IsCleared,
+            ClearedAtUtc,
+            ClearedByPersonId,
+            null,
+            ClearanceReason);
     }
 
     private sealed class RequestSubTaskQueryRow

@@ -19,6 +19,28 @@ export function matchesRequestId(
   if (!cleanQ) return false
   return rawId.toLowerCase().includes(cleanQ)
 }
+
+export function isRequestBlocked(req: {
+  activeBlockersCount?: number
+  hasActiveBlockers?: boolean
+} | null | undefined): boolean {
+  if (!req) return false
+  return Boolean((req.activeBlockersCount && req.activeBlockersCount > 0) || req.hasActiveBlockers)
+}
+
+export function resolveActiveBlockerCallout(req: {
+  activeBlockersCount?: number
+  blockers?: Array<{ reason?: string; isCleared?: boolean }>
+} | null | undefined): string {
+  if (!req) return ''
+  const uncleared = req.blockers?.filter((b) => !b.isCleared)
+  const latest = uncleared && uncleared.length > 0 ? uncleared[uncleared.length - 1] : null
+  if (latest?.reason && latest.reason.trim().length > 0) {
+    return latest.reason.trim()
+  }
+  const count = req.activeBlockersCount ?? (uncleared ? uncleared.length : 1)
+  return `${count} active blocker(s) impeding request progress`
+}
 </script>
 
 <script setup lang="ts">
@@ -27,7 +49,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { httpClient } from '@/api/http'
-import type { RequestDto } from '@/api/requests'
+import type { RequestDto, RequestBlocker } from '@/api/requests'
 import {
   completeSubTask as apiCompleteSubTask,
   reopenSubTask as apiReopenSubTask,
@@ -74,6 +96,9 @@ export interface AssignedRequestItem {
   totalSubTasksCount?: number
   completedSubTasksCount?: number
   completionPercentage?: number
+  activeBlockersCount?: number
+  hasActiveBlockers?: boolean
+  blockers?: RequestBlocker[]
   createdAt: string
   updatedAt?: string | null
 }
@@ -702,7 +727,7 @@ onMounted(async () => {
               @click="navigateToDetail(req.id)"
             >
               <div class="d-flex align-items-center justify-content-between mb-1.5">
-                <div class="d-flex align-items-center gap-1.5">
+                <div class="d-flex align-items-center gap-1.5 flex-wrap">
                   <router-link
                     :to="`/requests/${req.id}`"
                     :title="req.id"
@@ -715,6 +740,13 @@ onMounted(async () => {
                   </router-link>
                   <span v-if="req.priority" class="badge" :class="priorityBadgeClass(req.priority)">
                     {{ req.priority }}
+                  </span>
+                  <span
+                    v-if="(req.activeBlockersCount ?? 0) > 0"
+                    class="badge bg-danger-subtle text-danger border border-danger-subtle"
+                    data-testid="request-blocked-badge"
+                  >
+                    <i class="bi bi-shield-slash"></i> Blocked ({{ req.activeBlockersCount }})
                   </span>
                 </div>
                 <span
@@ -740,6 +772,19 @@ onMounted(async () => {
               <p class="text-slate-400 small mb-2 text-truncate" style="font-size: 11.5px;">
                 {{ req.description || 'No description provided.' }}
               </p>
+
+              <!-- Active Blocker Callout if Blocked (CR-032 TD-008, SCR-REQ-004) -->
+              <div
+                v-if="(req.activeBlockersCount ?? 0) > 0"
+                class="alert alert-danger py-1 px-2 mb-2 d-flex align-items-center gap-2 fs-11"
+                data-testid="request-active-blockers-callout"
+              >
+                <i class="bi bi-shield-slash-fill flex-shrink-0" aria-hidden="true"></i>
+                <div class="text-truncate">
+                  <strong class="me-1">Blocked:</strong>
+                  <span>{{ resolveActiveBlockerCallout(req) }}</span>
+                </div>
+              </div>
 
               <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">
                 <span class="badge bg-slate-800 border border-slate-700 text-slate-300" style="font-size: 10.5px;" :title="resolveCustomerDisplay(req)">

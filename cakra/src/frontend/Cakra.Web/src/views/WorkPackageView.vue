@@ -108,6 +108,72 @@ export function applyInlineReassignOptimisticUpdate(
   }
   return true
 }
+
+export function getScopeItemActiveBlockersCount(item: {
+  activeBlockersCount?: number
+  request?: { activeBlockersCount?: number } | null
+} | null | undefined): number {
+  if (!item) return 0
+  if (typeof item.activeBlockersCount === 'number' && item.activeBlockersCount > 0) {
+    return item.activeBlockersCount
+  }
+  if (typeof item.request?.activeBlockersCount === 'number' && item.request.activeBlockersCount > 0) {
+    return item.request.activeBlockersCount
+  }
+  return 0
+}
+
+export function isScopeItemBlocked(item: {
+  status?: string
+  requestStatus?: string
+  activeBlockersCount?: number
+  request?: { status?: string; activeBlockersCount?: number; hasActiveBlockers?: boolean } | null
+} | null | undefined): boolean {
+  if (!item) return false
+  if (getScopeItemActiveBlockersCount(item) > 0) return true
+  if (item.request?.hasActiveBlockers) return true
+  const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
+  return s === 'PAUSED'
+}
+
+export function resolveScopeItemBlockerReason(item: {
+  blockerNote?: string | null
+  activeBlockersCount?: number
+  request?: {
+    activeBlockersCount?: number
+    blockers?: Array<{ reason?: string; isCleared?: boolean }>
+    assignments?: Array<{ newStatus?: string; notes?: string | null }>
+    evaluationNotes?: string | null
+  } | null
+} | null | undefined): string {
+  if (!item) return ''
+  if (item.blockerNote && item.blockerNote.trim().length > 0) {
+    return item.blockerNote.trim()
+  }
+  if (item.request?.blockers && item.request.blockers.length > 0) {
+    const active = item.request.blockers.filter((b) => !b.isCleared)
+    const latest = active.length > 0 ? active[active.length - 1] : null
+    if (latest?.reason && latest.reason.trim().length > 0) {
+      return latest.reason.trim()
+    }
+  }
+  if (item.request?.assignments && item.request.assignments.length > 0) {
+    const paused = [...item.request.assignments]
+      .reverse()
+      .find((a) => (a.newStatus || '').toUpperCase() === 'PAUSED')
+    if (paused?.notes && paused.notes.trim().length > 0) {
+      return paused.notes.trim()
+    }
+  }
+  if (item.request?.evaluationNotes && item.request.evaluationNotes.trim().length > 0) {
+    return item.request.evaluationNotes.trim()
+  }
+  const count = getScopeItemActiveBlockersCount(item)
+  if (count > 0) {
+    return `${count} active blocker(s) impeding request`
+  }
+  return 'Work paused on request'
+}
 </script>
 
 <script setup lang="ts">
@@ -174,6 +240,8 @@ export interface WorkPackageScopeItem {
   priority?: string
   complexity?: number
   blockerNote?: string | null
+  activeBlockersCount?: number
+  hasActiveBlockers?: boolean
   ownerPersonId?: string | null
   requestOwnerPersonId?: string | null
   ownerName?: string | null
@@ -783,8 +851,7 @@ function getRequestComplexity(item: WorkPackageScopeItem): number {
 }
 
 function isRequestPausedOrBlocked(item: WorkPackageScopeItem): boolean {
-  const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
-  return s === 'PAUSED'
+  return isScopeItemBlocked(item)
 }
 
 function getRequestStateAgingDays(item: WorkPackageScopeItem): number {
@@ -801,21 +868,7 @@ function getRequestStateAgingDays(item: WorkPackageScopeItem): number {
 }
 
 function getRequestBlockerNote(item: WorkPackageScopeItem): string {
-  if (item.blockerNote && item.blockerNote.trim().length > 0) {
-    return item.blockerNote.trim()
-  }
-  if (item.request?.assignments && item.request.assignments.length > 0) {
-    const paused = [...item.request.assignments]
-      .reverse()
-      .find((a) => (a.newStatus || '').toUpperCase() === 'PAUSED')
-    if (paused?.notes && paused.notes.trim().length > 0) {
-      return paused.notes.trim()
-    }
-  }
-  if (item.request?.evaluationNotes && item.request.evaluationNotes.trim().length > 0) {
-    return item.request.evaluationNotes.trim()
-  }
-  return 'Work paused on request'
+  return resolveScopeItemBlockerReason(item)
 }
 
 function computeWorkingDays(startDate: Date, targetDate: Date): number {
@@ -3569,13 +3622,13 @@ onMounted(async () => {
                             {{ item.status || item.requestStatus }}
                           </span>
 
-                          <!-- Blocker Badge if PAUSED -->
+                          <!-- Blocker Badge if PAUSED or active blockers exist (CR-032 TD-008, SCR-WP-001) -->
                           <span
                             v-if="isRequestPausedOrBlocked(item)"
                             class="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30"
                             data-testid="request-blocker-badge"
                           >
-                            <i class="bi bi-pause-circle-fill me-1"></i>BLOCKED
+                            <i class="bi bi-shield-slash me-1"></i>BLOCKED{{ getScopeItemActiveBlockersCount(item) > 0 ? ` (${getScopeItemActiveBlockersCount(item)})` : '' }}
                           </span>
 
                           <!-- State Aging in days -->
@@ -3652,14 +3705,14 @@ onMounted(async () => {
                     </button>
                   </div>
 
-                  <!-- Blocker Note if Paused/Blocked -->
+                  <!-- Blocker Note / Reason if Paused or Blocked (CR-032 TD-008, SCR-WP-001) -->
                   <div
                     v-if="isRequestPausedOrBlocked(item) && getRequestBlockerNote(item)"
                     class="text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded p-1.5 text-xs font-mono mt-1.5 ms-6"
                     data-testid="request-blocker-note"
                   >
-                    <i class="bi bi-exclamation-octagon-fill me-1"></i>
-                    <strong>Blocker Note:</strong> {{ getRequestBlockerNote(item) }}
+                    <i class="bi bi-shield-slash me-1"></i>
+                    <strong>Blocker:</strong> {{ getRequestBlockerNote(item) }}
                   </div>
                 </li>
               </ul>

@@ -469,3 +469,60 @@ public sealed class UpdateRequestCoreAttributesCommandValidator : AbstractValida
     }
 }
 
+/// <summary>
+/// Command to add an operational impediment/blocker to a Request (Architecture CR-032 §4 TD-001, TD-005).
+/// </summary>
+public sealed record AddRequestBlockerCommand(
+    Guid RequestId,
+    string Reason,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class AddRequestBlockerCommandValidator : AbstractValidator<AddRequestBlockerCommand>
+{
+    public AddRequestBlockerCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.Reason)
+            .NotEmpty().WithMessage("Blocker reason is required.")
+            .MaximumLength(1000).WithMessage("Blocker reason must not exceed 1000 characters.");
+
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
+
+/// <summary>
+/// Command to clear an operational impediment/blocker on a Request (Architecture CR-032 §4 TD-001, TD-005, TD-006).
+/// </summary>
+public sealed record ClearRequestBlockerCommand(
+    Guid RequestId,
+    Guid BlockerId,
+    string? ClearanceReason = null,
+    Guid? ActorPersonId = null) : IRequest<RequestDto>;
+
+public sealed class ClearRequestBlockerCommandValidator : AbstractValidator<ClearRequestBlockerCommand>
+{
+    public ClearRequestBlockerCommandValidator()
+    {
+        RuleFor(x => x.RequestId)
+            .NotEmpty().WithMessage("Request ID is required.");
+
+        RuleFor(x => x.BlockerId)
+            .NotEmpty().WithMessage("Blocker ID is required.");
+
+        RuleFor(x => x.ClearanceReason)
+            .MaximumLength(1000)
+            .When(x => !string.IsNullOrEmpty(x.ClearanceReason))
+            .WithMessage("Clearance reason must not exceed 1000 characters.");
+
+        RuleFor(x => x.ActorPersonId)
+            .Must(id => id != Guid.Empty)
+            .When(x => x.ActorPersonId.HasValue)
+            .WithMessage("Actor person ID cannot be empty.");
+    }
+}
+

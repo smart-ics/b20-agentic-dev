@@ -371,5 +371,47 @@ public partial interface IRequestService
         Guid? actorPersonId,
         CancellationToken cancellationToken)
         => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, deadline: null, cancellationToken);
+
+    /// <summary>
+    /// Adds an operational impediment/blocker to a Request, automatically transitioning active requests to <c>PAUSED</c>
+    /// (CR-032 Architecture §4 TD-001, TD-002, TD-005).
+    /// </summary>
+    Task<RequestDto> AddBlockerAsync(
+        Guid requestId,
+        string reason,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="AddBlockerAsync"/>.
+    /// </summary>
+    Task<RequestDto> AddBlocker(
+        Guid requestId,
+        string reason,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => AddBlockerAsync(requestId, reason, actorPersonId, cancellationToken);
+
+    /// <summary>
+    /// Clears an operational impediment/blocker on a Request, validating owner or management authorization
+    /// and leaving the request in <c>PAUSED</c> state (CR-032 Architecture §4 TD-001, TD-002, TD-005, TD-006).
+    /// </summary>
+    Task<RequestDto> ClearBlockerAsync(
+        Guid requestId,
+        Guid blockerId,
+        string? clearanceReason = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="ClearBlockerAsync"/>.
+    /// </summary>
+    Task<RequestDto> ClearBlocker(
+        Guid requestId,
+        Guid blockerId,
+        string? clearanceReason = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => ClearBlockerAsync(requestId, blockerId, clearanceReason, actorPersonId, cancellationToken);
 }
 

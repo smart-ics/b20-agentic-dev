@@ -1,42 +1,5 @@
-<script setup lang="ts">
-import { AxiosError } from 'axios'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-
-import { httpClient } from '@/api/http'
-import type { RequestSubTask } from '@/api/requests'
-import {
-  addSubTask as apiAddSubTask,
-  completeSubTask as apiCompleteSubTask,
-  reopenSubTask as apiReopenSubTask,
-  removeSubTask as apiRemoveSubTask,
-  startWork as apiStartWork,
-  pauseWork as apiPauseWork,
-  cancelRequest as apiCancelRequest,
-  assignRequestOwner as apiAssignRequestOwner,
-  reassignRequestOwner as apiReassignRequestOwner,
-  completeRequest as apiCompleteRequest,
-  updateRequestCoreAttributes,
-} from '@/api/requests'
-import { useAuthStore } from '@/stores/auth'
-
-/**
- * SCR-REQ-003: Request Detail Screen
- * (Architecture §7, §8 — UC-REQ-002..008, UC-COL-003, UC-MGT-001, §9 — FEAT-REQ-001..008, CR-016 TD-001..005).
- *
- * - Renders a Bootstrap 5 card displaying authoritative request details:
- *   Title, Description, Customer, Product, Status, Assignee, CreatedAt, UpdatedAt,
- *   plus Resolution when present.
- * - Renders simplified lifecycle actions card and contextual buttons:
- *   * CAPTURED: Assign Owner, Cancel Request
- *   * ASSIGNED: Start Work (enabled for assigned owner), Reassign Owner, Cancel Request
- *   * IN_PROGRESS: Pause Work, Complete Request, Reassign Owner, Cancel Request
- *   * PAUSED: Start / Resume Work (enabled for assigned owner), Reassign Owner, Cancel Request
- *   * COMPLETED / CANCELLED: Closed terminal badge
- * - Renders dedicated Pause Work and Cancel Request modals/forms.
- * - Embeds a dedicated Comments & Discussion thread directly on the screen linked to the request's post.
- * - Renders chronological state history timeline below the card.
- */
+<script lang="ts">
+import type { RequestBlocker, RequestSubTask } from '@/api/requests'
 
 export interface RequestResolutionDetail {
   id: string
@@ -115,6 +78,9 @@ export interface RequestDetail {
   completedSubTasksCount?: number
   completionPercentage?: number
   subTasks?: RequestSubTask[]
+  activeBlockersCount?: number
+  hasActiveBlockers?: boolean
+  blockers?: RequestBlocker[]
   resolution?: RequestResolutionDetail | null
   assignments?: RequestAssignmentHistoryItem[]
   createdAt: string
@@ -130,6 +96,120 @@ export interface ActivePersonOption {
   email: string
   status: string
 }
+
+export const ACTIVE_BLOCKER_GUARD_MESSAGE = 'Cannot resume work or complete request while active blockers remain.'
+
+export function filterActiveBlockers(blockers?: RequestBlocker[] | null): RequestBlocker[] {
+  return (blockers ?? []).filter((b) => !b.isCleared)
+}
+
+export function filterClearedBlockers(blockers?: RequestBlocker[] | null): RequestBlocker[] {
+  return (blockers ?? []).filter((b) => b.isCleared)
+}
+
+export function resolveActiveBlockersCount(
+  activeBlockersCount?: number | null,
+  blockers?: RequestBlocker[] | null,
+): number {
+  if (activeBlockersCount !== undefined && activeBlockersCount !== null) {
+    return activeBlockersCount
+  }
+  return filterActiveBlockers(blockers).length
+}
+
+export function checkHasActiveBlockers(
+  activeBlockersCount?: number | null,
+  blockers?: RequestBlocker[] | null,
+): boolean {
+  return resolveActiveBlockersCount(activeBlockersCount, blockers) > 0
+}
+
+export function isStartWorkDisabled(
+  isAssignedOwner: boolean,
+  isSubmittingAction: boolean,
+  hasActiveBlockers: boolean,
+): boolean {
+  return !isAssignedOwner || isSubmittingAction || hasActiveBlockers
+}
+
+export function isCompleteRequestDisabled(
+  isSubmittingAction: boolean,
+  hasUnfinishedSubTasks: boolean,
+  hasActiveBlockers: boolean,
+): boolean {
+  return isSubmittingAction || hasUnfinishedSubTasks || hasActiveBlockers
+}
+
+export function resolveStartWorkTooltip(
+  hasActiveBlockers: boolean,
+  isAssignedOwner: boolean,
+  isPaused: boolean,
+): string {
+  if (hasActiveBlockers) {
+    return ACTIVE_BLOCKER_GUARD_MESSAGE
+  }
+  if (!isAssignedOwner) {
+    return isPaused
+      ? 'Only the assigned owner can resume work on this request.'
+      : 'Only the assigned owner can start work on this request.'
+  }
+  return isPaused ? 'Resume work' : 'Start work'
+}
+
+export function resolveCompleteRequestTooltip(
+  hasActiveBlockers: boolean,
+  hasUnfinishedSubTasks: boolean,
+): string {
+  if (hasActiveBlockers) {
+    return ACTIVE_BLOCKER_GUARD_MESSAGE
+  }
+  if (hasUnfinishedSubTasks) {
+    return 'All sub-tasks must be completed or removed before completing the request'
+  }
+  return 'Complete request'
+}
+</script>
+
+<script setup lang="ts">
+import { AxiosError } from 'axios'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import { httpClient } from '@/api/http'
+import {
+  addSubTask as apiAddSubTask,
+  completeSubTask as apiCompleteSubTask,
+  reopenSubTask as apiReopenSubTask,
+  removeSubTask as apiRemoveSubTask,
+  startWork as apiStartWork,
+  pauseWork as apiPauseWork,
+  cancelRequest as apiCancelRequest,
+  assignRequestOwner as apiAssignRequestOwner,
+  reassignRequestOwner as apiReassignRequestOwner,
+  completeRequest as apiCompleteRequest,
+  updateRequestCoreAttributes,
+  addBlocker as apiAddBlocker,
+  clearBlocker as apiClearBlocker,
+} from '@/api/requests'
+import { useAuthStore } from '@/stores/auth'
+
+/**
+ * SCR-REQ-003: Request Detail Screen
+ * (Architecture §7, §8 — UC-REQ-002..008, UC-COL-003, UC-MGT-001, §9 — FEAT-REQ-001..008, CR-016 TD-001..005).
+ *
+ * - Renders a Bootstrap 5 card displaying authoritative request details:
+ *   Title, Description, Customer, Product, Status, Assignee, CreatedAt, UpdatedAt,
+ *   plus Resolution when present.
+ * - Renders simplified lifecycle actions card and contextual buttons:
+ *   * CAPTURED: Assign Owner, Cancel Request
+ *   * ASSIGNED: Start Work (enabled for assigned owner), Reassign Owner, Cancel Request
+ *   * IN_PROGRESS: Pause Work, Complete Request, Reassign Owner, Cancel Request
+ *   * PAUSED: Start / Resume Work (enabled for assigned owner), Reassign Owner, Cancel Request
+ *   * COMPLETED / CANCELLED: Closed terminal badge
+ * - Renders dedicated Pause Work and Cancel Request modals/forms.
+ * - Embeds a dedicated Comments & Discussion thread directly on the screen linked to the request's post.
+ * - Renders chronological state history timeline below the card.
+ */
 
 interface ProblemDetailsPayload {
   title?: string
@@ -355,6 +435,65 @@ const unfinishedSubTasksCount = computed(() => {
   const completed = request.value?.completedSubTasksCount ?? 0
   return Math.max(0, total - completed)
 })
+
+// Operational Blockers State & Actions (CR-032, Architecture §4 TD-008)
+const showAddBlockerModal = ref(false)
+const showClearBlockerModal = ref(false)
+const showClearedHistory = ref(true)
+const isSubmittingBlocker = ref(false)
+const addBlockerError = ref<string | null>(null)
+const clearBlockerError = ref<string | null>(null)
+const selectedBlocker = ref<RequestBlocker | null>(null)
+
+const addBlockerForm = reactive({
+  reason: '',
+})
+
+const clearBlockerForm = reactive({
+  clearanceReason: '',
+})
+
+const activeBlockers = computed<RequestBlocker[]>(() => {
+  return filterActiveBlockers(request.value?.blockers)
+})
+
+const clearedBlockers = computed<RequestBlocker[]>(() => {
+  return filterClearedBlockers(request.value?.blockers)
+})
+
+const activeBlockersCount = computed<number>(() => {
+  return resolveActiveBlockersCount(request.value?.activeBlockersCount, request.value?.blockers)
+})
+
+const hasActiveBlockers = computed<boolean>(() => {
+  return checkHasActiveBlockers(request.value?.activeBlockersCount, request.value?.blockers)
+})
+
+function openAddBlockerModal(): void {
+  addBlockerForm.reason = ''
+  addBlockerError.value = null
+  showAddBlockerModal.value = true
+}
+
+function closeAddBlockerModal(): void {
+  showAddBlockerModal.value = false
+  addBlockerError.value = null
+  addBlockerForm.reason = ''
+}
+
+function openClearBlockerModal(blocker: RequestBlocker): void {
+  selectedBlocker.value = blocker
+  clearBlockerForm.clearanceReason = ''
+  clearBlockerError.value = null
+  showClearBlockerModal.value = true
+}
+
+function closeClearBlockerModal(): void {
+  showClearBlockerModal.value = false
+  selectedBlocker.value = null
+  clearBlockerError.value = null
+  clearBlockerForm.clearanceReason = ''
+}
 
 function resolveSubTaskAssigneeDisplay(subTask: RequestSubTask): string {
   if (subTask.assigneeName && subTask.assigneeName.trim().length > 0) {
@@ -779,6 +918,11 @@ async function handleStartWork(): Promise<void> {
     return
   }
 
+  if (hasActiveBlockers.value) {
+    errorMessage.value = 'Cannot resume work or complete request while active blockers remain.'
+    return
+  }
+
   isSubmittingAction.value = true
   errorMessage.value = null
   actionSuccessMessage.value = null
@@ -830,6 +974,11 @@ async function handlePauseWork(): Promise<void> {
 
 async function handleComplete(): Promise<void> {
   if (!requestId.value) {
+    return
+  }
+
+  if (hasActiveBlockers.value) {
+    errorMessage.value = 'Cannot resume work or complete request while active blockers remain.'
     return
   }
 
@@ -1024,6 +1173,57 @@ async function handleRemoveSubTask(subTaskId: string): Promise<void> {
     errorMessage.value = extractErrorMessage(err, 'Failed to remove sub-task.')
   } finally {
     subTaskOperatingId.value = null
+  }
+}
+
+async function handleAddBlocker(): Promise<void> {
+  const reason = addBlockerForm.reason.trim()
+  if (!reason || !request.value || isClosed.value) {
+    return
+  }
+
+  isSubmittingBlocker.value = true
+  addBlockerError.value = null
+
+  try {
+    const actorPersonId = authStore.currentUser?.personId || null
+    const updated = await apiAddBlocker(request.value.id, {
+      reason,
+      actorPersonId,
+    })
+    request.value = { ...request.value, ...updated } as RequestDetail
+    actionSuccessMessage.value = 'Operational blocker added.'
+    closeAddBlockerModal()
+    await loadStateHistory()
+  } catch (err) {
+    addBlockerError.value = extractErrorMessage(err, 'Failed to add blocker.')
+  } finally {
+    isSubmittingBlocker.value = false
+  }
+}
+
+async function handleClearBlocker(): Promise<void> {
+  if (!request.value || !selectedBlocker.value || isClosed.value) {
+    return
+  }
+
+  isSubmittingBlocker.value = true
+  clearBlockerError.value = null
+
+  try {
+    const actorPersonId = authStore.currentUser?.personId || null
+    const updated = await apiClearBlocker(request.value.id, selectedBlocker.value.id, {
+      clearanceReason: clearBlockerForm.clearanceReason.trim() || null,
+      actorPersonId,
+    })
+    request.value = { ...request.value, ...updated } as RequestDetail
+    actionSuccessMessage.value = 'Operational blocker cleared.'
+    closeClearBlockerModal()
+    await loadStateHistory()
+  } catch (err) {
+    clearBlockerError.value = extractErrorMessage(err, 'Failed to clear blocker.')
+  } finally {
+    isSubmittingBlocker.value = false
   }
 }
 
@@ -1442,6 +1642,152 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- Operational Blockers Card (CR-032, Architecture §4 TD-008) -->
+        <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-blockers-card">
+          <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between flex-wrap gap-1">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fw-semibold small">
+                <i class="bi bi-shield-slash me-1 text-danger" aria-hidden="true"></i>
+                Operational Blockers
+              </span>
+              <span
+                class="badge"
+                :class="activeBlockersCount > 0 ? 'bg-danger' : 'text-bg-secondary'"
+                data-testid="blockers-count-badge"
+              >
+                {{ request.activeBlockersCount ?? activeBlockersCount }}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm py-0 px-2"
+              style="font-size: 11px; height: 24px; line-height: 22px;"
+              :disabled="isClosed"
+              data-testid="add-blocker-btn"
+              @click="openAddBlockerModal"
+            >
+              <i class="bi bi-shield-plus me-1" aria-hidden="true"></i>Add Blocker
+            </button>
+          </div>
+
+          <div class="card-body p-2">
+            <!-- Active Blockers List -->
+            <div
+              v-if="activeBlockers.length === 0"
+              class="text-body-secondary small py-2 px-1 text-center"
+              data-testid="no-active-blockers-message"
+            >
+              No active operational blockers.
+            </div>
+
+            <div v-else class="active-blockers-list d-flex flex-column gap-2 mb-2" data-testid="active-blockers-list">
+              <div
+                v-for="blocker in activeBlockers"
+                :key="blocker.id"
+                class="p-2 rounded border border-danger-subtle bg-danger-subtle/10 text-slate-100 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2"
+                data-testid="active-blocker-item"
+                :data-blocker-id="blocker.id"
+              >
+                <div class="flex-grow-1 min-w-0">
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-danger text-white" style="font-size: 10px;">
+                      <i class="bi bi-exclamation-triangle-fill me-1"></i>Active Blocker
+                    </span>
+                    <span class="text-body-secondary font-monospace" style="font-size: 11px;" data-testid="blocker-timestamp">
+                      {{ formatTimestamp(blocker.createdAtUtc) }}
+                    </span>
+                  </div>
+                  <div class="fw-medium small text-break mb-1 text-slate-200" data-testid="blocker-reason">
+                    {{ blocker.reason }}
+                  </div>
+                  <div class="text-body-secondary small" style="font-size: 11px;" data-testid="blocker-reporter">
+                    Reported by <strong class="text-slate-300">{{ blocker.createdByName || resolvePersonDisplay(blocker.createdByPersonId) }}</strong>
+                  </div>
+                </div>
+
+                <div class="flex-shrink-0 align-self-sm-center">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-success py-1 px-2"
+                    style="font-size: 11.5px;"
+                    :disabled="isClosed || isSubmittingAction"
+                    data-testid="clear-blocker-btn"
+                    @click="openClearBlockerModal(blocker)"
+                  >
+                    <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cleared Blockers History Section -->
+            <div class="mt-3 pt-2 border-top border-slate-800" data-testid="cleared-blockers-history">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <button
+                  type="button"
+                  class="btn btn-link btn-sm p-0 text-decoration-none text-slate-400 d-flex align-items-center gap-1"
+                  data-testid="toggle-cleared-blockers-btn"
+                  @click="showClearedHistory = !showClearedHistory"
+                >
+                  <i :class="showClearedHistory ? 'bi bi-chevron-down' : 'bi bi-chevron-right'"></i>
+                  <span class="fw-semibold small">Resolved Blockers History</span>
+                  <span class="badge text-bg-secondary ms-1" data-testid="cleared-blockers-count">
+                    {{ clearedBlockers.length }}
+                  </span>
+                </button>
+              </div>
+
+              <div v-show="showClearedHistory" data-testid="cleared-blockers-content">
+                <div
+                  v-if="clearedBlockers.length === 0"
+                  class="text-body-secondary small py-2 px-1 text-center"
+                  data-testid="no-cleared-blockers-message"
+                >
+                  No resolved blockers in history.
+                </div>
+
+                <div v-else class="d-flex flex-column gap-2" data-testid="cleared-blockers-list">
+                  <div
+                    v-for="blocker in clearedBlockers"
+                    :key="blocker.id"
+                    class="p-2 rounded border border-slate-800 bg-slate-950/40 text-slate-300"
+                    data-testid="cleared-blocker-item"
+                  >
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mb-1">
+                      <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 10px;">
+                        <i class="bi bi-check2-circle me-1"></i>Cleared
+                      </span>
+                      <span class="text-body-secondary font-monospace" style="font-size: 10.5px;" data-testid="cleared-blocker-resolved-at">
+                        Resolved: {{ formatTimestamp(blocker.clearedAtUtc) }}
+                      </span>
+                    </div>
+                    <div class="small fw-medium text-break mb-1" data-testid="cleared-blocker-reason">
+                      {{ blocker.reason }}
+                    </div>
+                    <div
+                      v-if="blocker.clearanceReason"
+                      class="p-1.5 rounded bg-body-tertiary mb-1 small text-body-secondary font-monospace"
+                      style="font-size: 11px;"
+                      data-testid="cleared-blocker-notes"
+                    >
+                      <span class="fw-semibold text-slate-300">Resolution note:</span> {{ blocker.clearanceReason }}
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-3 text-body-secondary small" style="font-size: 11px;">
+                      <span data-testid="cleared-blocker-reporter">
+                        Reported by <strong>{{ blocker.createdByName || resolvePersonDisplay(blocker.createdByPersonId) }}</strong> on {{ formatTimestamp(blocker.createdAtUtc) }}
+                      </span>
+                      <span data-testid="cleared-blocker-resolver">
+                        Cleared by <strong>{{ blocker.clearedByName || resolvePersonDisplay(blocker.clearedByPersonId) }}</strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Lifecycle Actions Card (CR-016 TD-001..003) -->
         <div class="card shadow-none bg-slate-900/90 border border-slate-800 text-slate-100 mb-2" data-testid="request-actions-card">
           <div class="card-header py-1 px-2 bg-slate-950/60 border-b border-slate-800 d-flex align-items-center justify-content-between">
@@ -1498,8 +1844,8 @@ onMounted(async () => {
                 <button
                   type="button"
                   class="btn btn-primary btn-sm py-1 px-2.5"
-                  :disabled="!isAssignedOwner || isSubmittingAction"
-                  :title="!isAssignedOwner ? 'Only the assigned owner can start work on this request.' : 'Start work'"
+                  :disabled="!isAssignedOwner || isSubmittingAction || hasActiveBlockers"
+                  :title="hasActiveBlockers ? 'Cannot resume work or complete request while active blockers remain.' : (!isAssignedOwner ? 'Only the assigned owner can start work on this request.' : 'Start work')"
                   data-testid="start-work-action-button"
                   @click="handleStartWork"
                 >
@@ -1539,8 +1885,8 @@ onMounted(async () => {
                 <button
                   type="button"
                   class="btn btn-success btn-sm py-1 px-2.5"
-                  :disabled="isSubmittingAction || hasUnfinishedSubTasks"
-                  :title="hasUnfinishedSubTasks ? 'All sub-tasks must be completed or removed before completing the request' : 'Complete request'"
+                  :disabled="isSubmittingAction || hasUnfinishedSubTasks || hasActiveBlockers"
+                  :title="hasActiveBlockers ? 'Cannot resume work or complete request while active blockers remain.' : (hasUnfinishedSubTasks ? 'All sub-tasks must be completed or removed before completing the request' : 'Complete request')"
                   data-testid="complete-request-action-button"
                   @click="showCompleteModal = true"
                 >
@@ -1571,8 +1917,8 @@ onMounted(async () => {
                 <button
                   type="button"
                   class="btn btn-primary btn-sm py-1 px-2.5"
-                  :disabled="!isAssignedOwner || isSubmittingAction"
-                  :title="!isAssignedOwner ? 'Only the assigned owner can resume work on this request.' : 'Resume work'"
+                  :disabled="!isAssignedOwner || isSubmittingAction || hasActiveBlockers"
+                  :title="hasActiveBlockers ? 'Cannot resume work or complete request while active blockers remain.' : (!isAssignedOwner ? 'Only the assigned owner can resume work on this request.' : 'Resume work')"
                   data-testid="start-work-action-button"
                   @click="handleStartWork"
                 >
@@ -1597,6 +1943,16 @@ onMounted(async () => {
                   <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Cancel Request
                 </button>
               </template>
+            </div>
+
+            <!-- Warning if active blockers remain (CR-032 Invariant Guard) -->
+            <div
+              v-if="hasActiveBlockers"
+              class="alert alert-warning py-1 px-2 mb-2 small d-flex align-items-center gap-1"
+              data-testid="active-blockers-warning"
+            >
+              <i class="bi bi-shield-slash text-danger flex-shrink-0" aria-hidden="true"></i>
+              <span>Cannot resume work or complete request while active blockers remain.</span>
             </div>
 
             <!-- Warning if In Progress and unfinished subtasks remain -->
@@ -1691,14 +2047,17 @@ onMounted(async () => {
                       data-testid="start-notes-input"
                     />
                   </div>
-                  <div v-if="!isAssignedOwner" class="alert alert-warning py-1 px-2 mb-1 small" style="font-size: 11px">
+                  <div v-if="hasActiveBlockers" class="alert alert-warning py-1 px-2 mb-1 small" style="font-size: 11px">
+                    <i class="bi bi-shield-slash me-1"></i>Cannot resume work or complete request while active blockers remain.
+                  </div>
+                  <div v-else-if="!isAssignedOwner" class="alert alert-warning py-1 px-2 mb-1 small" style="font-size: 11px">
                     <i class="bi bi-shield-lock me-1"></i>Only the assigned owner can start work on this request.
                   </div>
                   <button
                     type="submit"
                     class="btn btn-primary btn-sm"
-                    :disabled="isSubmittingAction || !isAssignedOwner"
-                    :title="!isAssignedOwner ? 'Only the assigned owner can start work on this request.' : 'Start Work'"
+                    :disabled="isSubmittingAction || !isAssignedOwner || hasActiveBlockers"
+                    :title="hasActiveBlockers ? 'Cannot resume work or complete request while active blockers remain.' : (!isAssignedOwner ? 'Only the assigned owner can start work on this request.' : 'Start Work')"
                     data-testid="start-work-button"
                   >
                     <i class="bi bi-play-circle me-1" aria-hidden="true"></i>
@@ -1744,6 +2103,9 @@ onMounted(async () => {
                   <div class="small fw-bold mb-1">
                     <i class="bi bi-check2-all me-1 text-success"></i>Complete Request
                   </div>
+                  <div v-if="hasActiveBlockers" class="alert alert-warning py-1 px-2 mb-1 small" style="font-size: 11px">
+                    <i class="bi bi-shield-slash me-1"></i>Cannot resume work or complete request while active blockers remain.
+                  </div>
                   <div class="mb-1">
                     <label for="completeResolutionInput" class="form-label mb-0 small fw-medium" style="font-size: 11px">
                       Resolution Description <span class="text-danger">*</span>
@@ -1755,15 +2117,15 @@ onMounted(async () => {
                       rows="2"
                       placeholder="Describe completed solution..."
                       required
-                      :disabled="isSubmittingAction || hasUnfinishedSubTasks"
+                      :disabled="isSubmittingAction || hasUnfinishedSubTasks || hasActiveBlockers"
                       data-testid="complete-resolution-input"
                     ></textarea>
                   </div>
                   <button
                     type="submit"
                     class="btn btn-success btn-sm"
-                    :disabled="isSubmittingAction || !completeForm.resolutionDescription.trim() || hasUnfinishedSubTasks"
-                    :title="hasUnfinishedSubTasks ? 'All sub-tasks must be completed or removed before completing the request' : 'Complete Request'"
+                    :disabled="isSubmittingAction || !completeForm.resolutionDescription.trim() || hasUnfinishedSubTasks || hasActiveBlockers"
+                    :title="hasActiveBlockers ? 'Cannot resume work or complete request while active blockers remain.' : (hasUnfinishedSubTasks ? 'All sub-tasks must be completed or removed before completing the request' : 'Complete Request')"
                     data-testid="complete-request-button"
                   >
                     <i class="bi bi-check2-all me-1" aria-hidden="true"></i>Complete
@@ -2139,6 +2501,245 @@ onMounted(async () => {
                   >
                     <span v-if="isSubmittingEdit" class="spinner-border spinner-border-sm me-1" role="status"></span>
                     <i v-else class="bi bi-check2 me-1"></i>Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Blocker Modal Dialog (CR-032) -->
+        <div
+          v-if="showAddBlockerModal"
+          class="modal fade show d-block"
+          tabindex="-1"
+          style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);"
+          data-testid="add-blocker-modal"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
+              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-rose-400">
+                  <i class="bi bi-shield-plus me-1 text-danger"></i>Add Operational Blocker
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  aria-label="Close"
+                  :disabled="isSubmittingBlocker"
+                  data-testid="close-add-blocker-modal-btn"
+                  @click="closeAddBlockerModal"
+                ></button>
+              </div>
+              <form @submit.prevent="handleAddBlocker">
+                <div class="modal-body py-2">
+                  <div
+                    v-if="addBlockerError"
+                    class="alert alert-danger py-1 px-2 small mb-2"
+                    role="alert"
+                    data-testid="add-blocker-error-alert"
+                  >
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    {{ addBlockerError }}
+                  </div>
+                  <p class="small text-body-secondary mb-2">
+                    Adding a blocker will automatically transition this request to <strong class="text-warning">PAUSED</strong> and prevent work resumption or completion until all blockers are resolved.
+                  </p>
+                  <div class="mb-2">
+                    <label for="blockerReasonInput" class="form-label small fw-medium">
+                      Blocker Reason <span class="text-danger">*</span>
+                    </label>
+                    <textarea
+                      id="blockerReasonInput"
+                      v-model="addBlockerForm.reason"
+                      class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                      rows="3"
+                      placeholder="Describe the impediment or dependency blocking work..."
+                      required
+                      maxlength="1000"
+                      :disabled="isSubmittingBlocker"
+                      data-testid="add-blocker-reason-input"
+                    ></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="isSubmittingBlocker"
+                    data-testid="cancel-add-blocker-btn"
+                    @click="closeAddBlockerModal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="btn btn-danger btn-sm"
+                    :disabled="isSubmittingBlocker || !addBlockerForm.reason.trim()"
+                    data-testid="submit-add-blocker-btn"
+                  >
+                    <span v-if="isSubmittingBlocker" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <i v-else class="bi bi-shield-plus me-1"></i>Add Blocker
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clear Blocker Modal Dialog (CR-032) -->
+        <div
+          v-if="showClearBlockerModal"
+          class="modal fade show d-block"
+          tabindex="-1"
+          style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);"
+          data-testid="clear-blocker-modal"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
+              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-emerald-400">
+                  <i class="bi bi-check-circle me-1 text-success"></i>Clear Blocker
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  aria-label="Close"
+                  :disabled="isSubmittingBlocker"
+                  data-testid="close-clear-blocker-modal-btn"
+                  @click="closeClearBlockerModal"
+                ></button>
+              </div>
+              <form @submit.prevent="handleClearBlocker">
+                <div class="modal-body py-2">
+                  <div
+                    v-if="clearBlockerError"
+                    class="alert alert-danger py-1 px-2 small mb-2"
+                    role="alert"
+                    data-testid="clear-blocker-error-alert"
+                  >
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    {{ clearBlockerError }}
+                  </div>
+                  <div v-if="selectedBlocker" class="p-2 mb-2 rounded bg-slate-950/60 border border-slate-800 small">
+                    <div class="text-body-secondary small mb-1">Blocker to clear:</div>
+                    <div class="fw-medium text-slate-200">{{ selectedBlocker.reason }}</div>
+                  </div>
+                  <p class="small text-body-secondary mb-2">
+                    Clearing this blocker will archive it into history. The request will remain <strong class="text-warning">PAUSED</strong> until manually resumed.
+                  </p>
+                  <div class="mb-2">
+                    <label for="clearanceReasonInput" class="form-label small fw-medium">
+                      Resolution Note <span class="text-body-secondary">(Optional)</span>
+                    </label>
+                    <textarea
+                      id="clearanceReasonInput"
+                      v-model="clearBlockerForm.clearanceReason"
+                      class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                      rows="3"
+                      placeholder="Describe how this blocker was resolved..."
+                      maxlength="1000"
+                      :disabled="isSubmittingBlocker"
+                      data-testid="clear-blocker-reason-input"
+                    ></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="isSubmittingBlocker"
+                    data-testid="cancel-clear-blocker-btn"
+                    @click="closeClearBlockerModal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="btn btn-success btn-sm"
+                    :disabled="isSubmittingBlocker"
+                    data-testid="confirm-clear-blocker-btn"
+                  >
+                    <span v-if="isSubmittingBlocker" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <i v-else class="bi bi-check-circle me-1"></i>Confirm Clear
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Complete Request Modal Dialog -->
+        <div
+          v-if="showCompleteModal"
+          class="modal fade show d-block"
+          tabindex="-1"
+          style="background-color: rgba(2, 6, 23, 0.8); backdrop-filter: blur(4px);"
+          data-testid="complete-request-modal"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-slate-900 border border-slate-800 text-slate-100">
+              <div class="modal-header py-2 bg-slate-950/60 border-b border-slate-800">
+                <h5 class="modal-title h6 mb-0 text-emerald-400">
+                  <i class="bi bi-check2-all me-1 text-success"></i>Complete Request
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  aria-label="Close"
+                  :disabled="isSubmittingAction"
+                  data-testid="close-complete-modal-button"
+                  @click="showCompleteModal = false"
+                ></button>
+              </div>
+              <form @submit.prevent="handleComplete">
+                <div class="modal-body py-2">
+                  <div v-if="hasActiveBlockers" class="alert alert-warning py-1 px-2 mb-2 small">
+                    <i class="bi bi-shield-slash text-danger me-1"></i>Cannot resume work or complete request while active blockers remain.
+                  </div>
+                  <div v-else-if="hasUnfinishedSubTasks" class="alert alert-warning py-1 px-2 mb-2 small">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>Cannot complete request: {{ unfinishedSubTasksCount }} unfinished sub-task(s) remain.
+                  </div>
+                  <p class="small text-body-secondary mb-2">
+                    Completing this request will transition it to terminal <strong class="text-success">COMPLETED</strong> state.
+                  </p>
+                  <label for="modalCompleteResolution" class="form-label small fw-medium">
+                    Resolution Description <span class="text-danger">*</span>
+                  </label>
+                  <textarea
+                    id="modalCompleteResolution"
+                    v-model="completeForm.resolutionDescription"
+                    class="form-control form-control-sm bg-slate-900 border-slate-700 text-slate-100 focus:border-cyan-400"
+                    rows="3"
+                    placeholder="Describe completed solution..."
+                    required
+                    :disabled="isSubmittingAction || hasUnfinishedSubTasks || hasActiveBlockers"
+                    data-testid="modal-complete-resolution-input"
+                  ></textarea>
+                </div>
+                <div class="modal-footer py-1 bg-slate-950/60 border-t border-slate-800">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    :disabled="isSubmittingAction"
+                    @click="showCompleteModal = false"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="btn btn-success btn-sm"
+                    :disabled="isSubmittingAction || !completeForm.resolutionDescription.trim() || hasUnfinishedSubTasks || hasActiveBlockers"
+                    data-testid="modal-submit-complete-button"
+                  >
+                    <span v-if="isSubmittingAction" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <i v-else class="bi bi-check2-all me-1"></i>Confirm Complete
                   </button>
                 </div>
               </form>

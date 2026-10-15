@@ -24,5 +24,6 @@
 | FEAT-REQ-006 | Escalate Request | Workflow | UC-REQ-006 |
 | FEAT-REQ-007 | Request Management Decision | Workflow | UC-REQ-007 |
 | FEAT-REQ-008 | Review Request Completion | Workflow | UC-REQ-008 |
+| FEAT-REQ-009 | Manage Request Blockers | Workflow & Command | UC-REQ-009 |
 | FEAT-USR-001 | Manage User Accounts | Command & Query | UC-USR-001 |
 | FEAT-USR-002 | Register User Account | Command | — |

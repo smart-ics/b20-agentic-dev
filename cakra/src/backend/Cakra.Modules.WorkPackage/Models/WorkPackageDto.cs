@@ -233,7 +233,8 @@ public record WorkPackageRequestDto
     {
         get => _blockerNote ?? (
             string.Equals(Status, "PAUSED", StringComparison.OrdinalIgnoreCase)
-                ? Request?.Assignments?.LastOrDefault(a => string.Equals(a.NewStatus, "PAUSED", StringComparison.OrdinalIgnoreCase))?.Notes
+                ? Request?.Blockers?.LastOrDefault(b => !b.IsCleared)?.Reason
+                  ?? Request?.Assignments?.LastOrDefault(a => string.Equals(a.NewStatus, "PAUSED", StringComparison.OrdinalIgnoreCase))?.Notes
                   ?? Request?.EvaluationNotes
                 : null);
         init => _blockerNote = value;

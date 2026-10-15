@@ -152,6 +152,23 @@ public interface IRequestQueryService
         => GetRequestsWithAssignedSubTasksAsync(personId, cancellationToken);
 
     /// <summary>
+    /// Retrieves all operational impediment blockers recorded on a Request, including clearance history
+    /// (Architecture CR-032 §4 TD-001, TD-005, TD-007).
+    /// </summary>
+    Task<IReadOnlyList<RequestBlockerDto>> GetRequestBlockersAsync(
+        Guid requestId,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<RequestBlockerDto>>(Array.Empty<RequestBlockerDto>());
+
+    /// <summary>
+    /// Convenience alias for <see cref="GetRequestBlockersAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<RequestBlockerDto>> GetRequestBlockers(
+        Guid requestId,
+        CancellationToken cancellationToken = default)
+        => GetRequestBlockersAsync(requestId, cancellationToken);
+
+    /// <summary>
     /// Executes a filtered and paginated query over <c>request.Requests</c> filtering by status,
     /// assignee, customer, product, or work package (Architecture §7, §8 — UC-COL-002..004, SCR-REQ-001, SCR-REQ-005).
     /// </summary>

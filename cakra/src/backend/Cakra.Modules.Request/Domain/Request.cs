@@ -12,6 +12,7 @@ public sealed class Request : EntityBase
 {
     private readonly List<RequestAssignment> _assignments = new();
     private readonly List<RequestSubTask> _subTasks = new();
+    private readonly List<RequestBlocker> _blockers = new();
     private readonly List<IDomainEvent> _domainEvents = new();
 
     /// <summary>Brief summary or subject of the operational demand.</summary>
@@ -41,8 +42,14 @@ public sealed class Request : EntityBase
     /// <summary>Authoritative completion percentage (0 to 100) calculated from sub-tasks or status.</summary>
     public int CompletionPercentage { get; private set; }
 
+    /// <summary>Count of active (uncleared) operational impediments/blockers on this request.</summary>
+    public int ActiveBlockersCount { get; private set; }
+
     /// <summary>Granular operational sub-task checklist items belonging to this request.</summary>
     public IReadOnlyCollection<RequestSubTask> SubTasks => _subTasks.AsReadOnly();
+
+    /// <summary>Granular operational impediments/blockers belonging to this request.</summary>
+    public IReadOnlyCollection<RequestBlocker> Blockers => _blockers.AsReadOnly();
 
     /// <summary>PersonId of the assigned Request Owner in Organization domain, or <c>null</c> if unassigned.</summary>
     public Guid? OwnerPersonId { get; private set; }
@@ -283,6 +290,14 @@ public sealed class Request : EntityBase
                 reason: "Request can only transition to IN_PROGRESS from ASSIGNED or PAUSED state.");
         }
 
+        if (_blockers.Any(b => !b.IsCleared))
+        {
+            var count = _blockers.Count(b => !b.IsCleared);
+            throw new RequestHasActiveBlockersException(
+                Id, count,
+                $"Cannot start or resume work on request '{Id}' because it has {count} active blocker(s). All blockers must be cleared before work can resume.");
+        }
+
         var now = utcNow ?? DateTime.UtcNow;
         var prevStatus = Status;
 
@@ -355,8 +370,8 @@ public sealed class Request : EntityBase
     }
 
     /// <summary>
-    /// Cancels the Request, transitioning any non-terminal state -> CANCELLED (CR-016 TD-002).
-    /// Permitted regardless of unfinished subtasks.
+    /// Cancels the Request, transitioning any non-terminal state -> CANCELLED (CR-016 TD-002, CR-032 TD-002).
+    /// Permitted regardless of unfinished subtasks or active blockers (open blockers are preserved in history).
     /// </summary>
     public void Cancel(
         string reason,
@@ -419,6 +434,14 @@ public sealed class Request : EntityBase
             throw new RequestDomainValidationException("Resolution description cannot be empty.", nameof(resolutionDescription));
         if (actorPersonId == Guid.Empty)
             throw new RequestDomainValidationException("ActorPersonId cannot be empty.", nameof(actorPersonId));
+
+        if (_blockers.Any(b => !b.IsCleared))
+        {
+            var count = _blockers.Count(b => !b.IsCleared);
+            throw new RequestHasActiveBlockersException(
+                Id, count,
+                $"Cannot complete request '{Id}' because it has {count} active blocker(s). All blockers must be cleared before completion.");
+        }
 
         if (Status != RequestStatus.InProgress)
         {
@@ -773,6 +796,134 @@ public sealed class Request : EntityBase
             now));
     }
 
+    // =========================================================================
+    // Blocker Management Operations (CR-032 Architecture §4 TD-001, TD-002, Rules 22-28)
+    // =========================================================================
+
+    /// <summary>
+    /// Adds an operational impediment/blocker to the Request, automatically transitioning
+    /// an active request to PAUSED state (CR-032 Architecture §4 TD-001, TD-002, Rules 22-23).
+    /// </summary>
+    public RequestBlocker AddBlocker(
+        Guid blockerId,
+        string reason,
+        Guid createdByPersonId,
+        DateTime? utcNow = null)
+    {
+        if (blockerId == Guid.Empty)
+            throw new RequestDomainValidationException("BlockerId cannot be empty.", nameof(blockerId));
+        if (createdByPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("CreatedByPersonId cannot be empty.", nameof(createdByPersonId));
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new RequestDomainValidationException("Blocker reason cannot be empty.", nameof(reason));
+
+        if (Status == RequestStatus.Completed || Status == RequestStatus.Cancelled)
+        {
+            throw new InvalidRequestStateTransitionException(
+                Id, Status, nameof(AddBlocker), reason: "Closed requests cannot receive blockers.");
+        }
+
+        if (Status != RequestStatus.Assigned && Status != RequestStatus.InProgress && Status != RequestStatus.Paused)
+        {
+            throw new InvalidRequestStateTransitionException(
+                Id, Status, nameof(AddBlocker), reason: $"Blockers can only be added to open requests in ASSIGNED, IN_PROGRESS, or PAUSED state (current: '{Status}').");
+        }
+
+        if (_blockers.Any(b => b.Id == blockerId))
+        {
+            throw new InvalidOperationException($"Blocker with ID '{blockerId}' already exists on request '{Id}'.");
+        }
+
+        var now = utcNow ?? DateTime.UtcNow;
+        var blocker = RequestBlocker.Create(blockerId, Id, reason, createdByPersonId, now);
+
+        if (Status == RequestStatus.InProgress)
+        {
+            var prevStatus = Status;
+            Status = RequestStatus.Paused;
+
+            var assignment = RequestAssignment.Create(
+                requestId: Id,
+                previousOwnerPersonId: OwnerPersonId,
+                assignedOwnerPersonId: OwnerPersonId,
+                actorPersonId: createdByPersonId,
+                previousStatus: prevStatus,
+                newStatus: RequestStatus.Paused,
+                assignedAtUtc: now,
+                notes: "Work paused due to blocker");
+
+            _assignments.Add(assignment);
+
+            _domainEvents.Add(new RequestWorkPaused(
+                requestId: Id,
+                ownerPersonId: OwnerPersonId,
+                actorPersonId: createdByPersonId,
+                notes: "Work paused due to blocker",
+                occurredAtUtc: now));
+        }
+        else if (Status == RequestStatus.Assigned)
+        {
+            var prevStatus = Status;
+            Status = RequestStatus.Paused;
+
+            var assignment = RequestAssignment.Create(
+                requestId: Id,
+                previousOwnerPersonId: OwnerPersonId,
+                assignedOwnerPersonId: OwnerPersonId,
+                actorPersonId: createdByPersonId,
+                previousStatus: prevStatus,
+                newStatus: RequestStatus.Paused,
+                assignedAtUtc: now,
+                notes: "Assigned request paused due to blocker");
+
+            _assignments.Add(assignment);
+        }
+
+        _blockers.Add(blocker);
+        ActiveBlockersCount = _blockers.Count(b => !b.IsCleared);
+        UpdatedAt = now;
+
+        _domainEvents.Add(new RequestBlockerAdded(
+            requestId: Id,
+            blockerId: blocker.Id,
+            reason: blocker.Reason,
+            createdByPersonId: blocker.CreatedByPersonId,
+            occurredAtUtc: now));
+
+        return blocker;
+    }
+
+    /// <summary>
+    /// Clears an operational impediment/blocker on the Request.
+    /// Leaves the request in PAUSED state until the owner explicitly resumes work (CR-032 Architecture §4 TD-001, TD-002, Rules 26-27).
+    /// </summary>
+    public void ClearBlocker(
+        Guid blockerId,
+        Guid clearedByPersonId,
+        string? clearanceReason = null,
+        DateTime? utcNow = null)
+    {
+        if (blockerId == Guid.Empty)
+            throw new RequestDomainValidationException("BlockerId cannot be empty.", nameof(blockerId));
+        if (clearedByPersonId == Guid.Empty)
+            throw new RequestDomainValidationException("ClearedByPersonId cannot be empty.", nameof(clearedByPersonId));
+
+        var blocker = _blockers.FirstOrDefault(b => b.Id == blockerId)
+            ?? throw new RequestDomainValidationException($"Blocker '{blockerId}' not found on Request '{Id}'.", nameof(blockerId));
+
+        var now = utcNow ?? DateTime.UtcNow;
+        blocker.Clear(clearedByPersonId, clearanceReason, now);
+        ActiveBlockersCount = _blockers.Count(b => !b.IsCleared);
+        UpdatedAt = now;
+
+        _domainEvents.Add(new RequestBlockerCleared(
+            requestId: Id,
+            blockerId: blocker.Id,
+            clearanceReason: blocker.ClearanceReason,
+            clearedByPersonId: clearedByPersonId,
+            occurredAtUtc: now));
+    }
+
     /// <summary>
     /// Rehydrates a <see cref="Request"/> aggregate root from persistence storage without emitting domain events.
     /// </summary>
@@ -797,7 +948,9 @@ public sealed class Request : EntityBase
         int totalSubTasksCount = 0,
         int completedSubTasksCount = 0,
         int completionPercentage = 0,
-        DateTime? deadline = null)
+        DateTime? deadline = null,
+        IEnumerable<RequestBlocker>? blockers = null,
+        int activeBlockersCount = 0)
     {
         var request = new Request
         {
@@ -819,7 +972,8 @@ public sealed class Request : EntityBase
             UpdatedAt = updatedAt,
             TotalSubTasksCount = totalSubTasksCount,
             CompletedSubTasksCount = completedSubTasksCount,
-            CompletionPercentage = completionPercentage
+            CompletionPercentage = completionPercentage,
+            ActiveBlockersCount = activeBlockersCount
         };
 
         if (assignments is not null)
@@ -833,6 +987,15 @@ public sealed class Request : EntityBase
             if (totalSubTasksCount == 0 && request._subTasks.Count > 0)
             {
                 request.RecalculateProgress();
+            }
+        }
+
+        if (blockers is not null)
+        {
+            request._blockers.AddRange(blockers);
+            if (activeBlockersCount == 0 && request._blockers.Count > 0)
+            {
+                request.ActiveBlockersCount = request._blockers.Count(b => !b.IsCleared);
             }
         }
 

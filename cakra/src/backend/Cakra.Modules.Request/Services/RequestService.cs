@@ -32,7 +32,9 @@ public sealed partial class RequestService :
     IRequestHandler<CompleteRequestSubTaskCommand, RequestDto>,
     IRequestHandler<ReopenRequestSubTaskCommand, RequestDto>,
     IRequestHandler<RemoveRequestSubTaskCommand, RequestDto>,
-    IRequestHandler<UpdateRequestCoreAttributesCommand, RequestDto>
+    IRequestHandler<UpdateRequestCoreAttributesCommand, RequestDto>,
+    IRequestHandler<AddRequestBlockerCommand, RequestDto>,
+    IRequestHandler<ClearRequestBlockerCommand, RequestDto>
 {
     private static readonly HashSet<string> AuthorizedComplexityRoles = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -52,6 +54,14 @@ public sealed partial class RequestService :
         "Developer",
         "Team Lead",
         "Manager"
+    };
+
+    private static readonly HashSet<string> AuthorizedClearBlockerRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Administrator",
+        "Manager",
+        "System Administrator",
+        "Team Lead"
     };
 
     private static readonly HashSet<string> AuthorizedCoreAttributesRoles = new(StringComparer.OrdinalIgnoreCase)
@@ -175,6 +185,32 @@ public sealed partial class RequestService :
 
         throw new UnauthorizedAccessException(
             $"Actor '{actorPersonId}' does not possess an authorized role or request ownership to edit core attributes on request '{request.Id}'.");
+    }
+
+    internal async Task ValidateClearBlockerAuthorizationAsync(
+        Domain.Request request,
+        Guid blockerId,
+        Guid actorPersonId,
+        CancellationToken cancellationToken)
+    {
+        if (actorPersonId == SystemActorPersonId)
+        {
+            return;
+        }
+
+        if (request.OwnerPersonId.HasValue && request.OwnerPersonId.Value == actorPersonId)
+        {
+            return;
+        }
+
+        var roles = await _organizationQueryService.GetPersonRolesAsync(actorPersonId, cancellationToken);
+        if (roles.Any(r => AuthorizedClearBlockerRoles.Contains(r)))
+        {
+            return;
+        }
+
+        throw new UnauthorizedAccessException(
+            $"Actor '{actorPersonId}' is not authorized to clear blocker '{blockerId}' on request '{request.Id}'. Only the assigned owner, Administrator, or Manager can clear blockers.");
     }
 
     public RequestService(
@@ -929,6 +965,99 @@ public sealed partial class RequestService :
         CancellationToken cancellationToken)
         => UpdateRequestCoreAttributesAsync(requestId, title, description, priority, requestType, actorPersonId, deadline: null, cancellationToken);
 
+    /// <inheritdoc />
+    public async Task<RequestDto> AddBlockerAsync(
+        Guid requestId,
+        string reason,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new RequestDomainValidationException("Blocker reason cannot be empty.", nameof(reason));
+        }
+
+        var request = await GetRequiredRequestAsync(requestId, cancellationToken);
+        var resolvedActorId = ResolveActorPersonId(actorPersonId, fallbackPersonId: request.OwnerPersonId);
+
+        var existingAssignmentIds = SnapshotAssignmentIds(request);
+        var hadResolution = request.Resolution is not null;
+        var now = GetNextMonotonicTimestamp(request);
+        var blockerId = Guid.NewGuid();
+
+        request.AddBlocker(blockerId, reason, resolvedActorId, now);
+
+        await PersistStateChangesAndDispatchAsync(
+            request,
+            existingAssignmentIds,
+            hadResolution,
+            cancellationToken);
+
+        return RequestDto.FromDomain(request);
+    }
+
+    /// <inheritdoc />
+    public Task<RequestDto> AddBlocker(
+        Guid requestId,
+        string reason,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => AddBlockerAsync(requestId, reason, actorPersonId, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<RequestDto> ClearBlockerAsync(
+        Guid requestId,
+        Guid blockerId,
+        string? clearanceReason = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (requestId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("RequestId cannot be empty.", nameof(requestId));
+        }
+
+        if (blockerId == Guid.Empty)
+        {
+            throw new RequestDomainValidationException("BlockerId cannot be empty.", nameof(blockerId));
+        }
+
+        var request = await GetRequiredRequestAsync(requestId, cancellationToken);
+        var blocker = request.Blockers.FirstOrDefault(b => b.Id == blockerId)
+            ?? throw new KeyNotFoundException($"Blocker '{blockerId}' not found on Request '{requestId}'.");
+
+        var resolvedActorId = ResolveActorPersonId(actorPersonId, fallbackPersonId: request.OwnerPersonId);
+        await ValidateClearBlockerAuthorizationAsync(request, blockerId, resolvedActorId, cancellationToken);
+
+        var existingAssignmentIds = SnapshotAssignmentIds(request);
+        var hadResolution = request.Resolution is not null;
+        var now = UtcNow;
+
+        request.ClearBlocker(blockerId, resolvedActorId, clearanceReason, now);
+
+        await PersistStateChangesAndDispatchAsync(
+            request,
+            existingAssignmentIds,
+            hadResolution,
+            cancellationToken);
+
+        return RequestDto.FromDomain(request);
+    }
+
+    /// <inheritdoc />
+    public Task<RequestDto> ClearBlocker(
+        Guid requestId,
+        Guid blockerId,
+        string? clearanceReason = null,
+        Guid? actorPersonId = null,
+        CancellationToken cancellationToken = default)
+        => ClearBlockerAsync(requestId, blockerId, clearanceReason, actorPersonId, cancellationToken);
+
 
     internal DateTime GetNextMonotonicTimestamp(Domain.Request request)
     {
@@ -1293,6 +1422,27 @@ public sealed partial class RequestService :
             request.RequestType,
             request.ActorPersonId,
             request.Deadline,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(AddRequestBlockerCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return AddBlockerAsync(
+            request.RequestId,
+            request.Reason,
+            request.ActorPersonId,
+            cancellationToken);
+    }
+
+    public Task<RequestDto> Handle(ClearRequestBlockerCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ClearBlockerAsync(
+            request.RequestId,
+            request.BlockerId,
+            request.ClearanceReason,
+            request.ActorPersonId,
             cancellationToken);
     }
 }

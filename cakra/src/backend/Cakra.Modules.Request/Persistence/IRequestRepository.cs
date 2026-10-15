@@ -52,4 +52,11 @@ internal interface IRequestRepository : IRepository<Domain.Request>
         DateTime sinceUtc,
         CancellationToken cancellationToken = default)
         => Task.FromResult(0);
+
+    /// <summary>
+    /// Persists changes to an existing request aggregate root, including blockers, subtasks,
+    /// and counter invariants within a single transaction scope (Architecture CR-032 TD-004).
+    /// </summary>
+    Task SaveAsync(Domain.Request entity, CancellationToken cancellationToken = default)
+        => UpdateAsync(entity, cancellationToken);
 }

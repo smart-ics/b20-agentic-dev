@@ -1,9 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import httpClient from '@/api/http'
 import {
+  addBlocker,
+  clearBlocker,
   normalizeTaskLine,
   parseCandidateTaskLine,
   parseTaskListTasks,
   parseTaskListText,
+  requestService,
+  type AddBlockerPayload,
+  type ClearBlockerPayload,
+  type RequestBlocker,
+  type RequestDetail,
+  type RequestItem,
 } from '@/api/requests'
 
 describe('parseCandidateTaskLine', () => {
@@ -306,3 +315,138 @@ describe('parseTaskListText (Backward Compatibility)', () => {
     expect(parseTaskListText('')).toEqual([])
   })
 })
+
+describe('Blocker API functions & Types (CR-032)', () => {
+  it('addBlocker invokes POST /requests/:requestId/blockers with payload', async () => {
+    const mockBlocker: RequestBlocker = {
+      id: 'b-1',
+      requestId: 'req-1',
+      reason: 'Awaiting customer API keys',
+      createdByPersonId: 'person-1',
+      createdByName: 'John Doe',
+      createdAtUtc: '2026-10-15T01:00:00Z',
+      isCleared: false,
+      clearedAtUtc: null,
+      clearedByPersonId: null,
+      clearedByName: null,
+      clearanceReason: null,
+    }
+
+    const mockDetail: RequestDetail = {
+      id: 'req-1',
+      title: 'Fix issue',
+      description: 'Desc',
+      requestType: 'BUG',
+      status: 'PAUSED',
+      priority: 'HIGH',
+      customerId: null,
+      productId: null,
+      ownerPersonId: 'person-1',
+      totalSubTasksCount: 0,
+      completedSubTasksCount: 0,
+      completionPercentage: 0,
+      createdAt: '2026-10-15T00:00:00Z',
+      activeBlockersCount: 1,
+      hasActiveBlockers: true,
+      blockers: [mockBlocker],
+    }
+
+    const postSpy = vi.spyOn(httpClient, 'post').mockResolvedValueOnce({ data: mockDetail })
+
+    const payload: AddBlockerPayload = {
+      reason: 'Awaiting customer API keys',
+      actorPersonId: 'person-1',
+    }
+
+    const result = await addBlocker('req-1', payload)
+
+    expect(postSpy).toHaveBeenCalledWith('/requests/req-1/blockers', payload)
+    expect(result).toEqual(mockDetail)
+    expect(result.activeBlockersCount).toBe(1)
+    expect(result.hasActiveBlockers).toBe(true)
+    expect(result.blockers).toHaveLength(1)
+    expect(result.blockers?.[0].reason).toBe('Awaiting customer API keys')
+  })
+
+  it('clearBlocker invokes POST /requests/:requestId/blockers/:blockerId/clear with payload', async () => {
+    const mockClearedBlocker: RequestBlocker = {
+      id: 'b-1',
+      requestId: 'req-1',
+      reason: 'Awaiting customer API keys',
+      createdByPersonId: 'person-1',
+      createdByName: 'John Doe',
+      createdAtUtc: '2026-10-15T01:00:00Z',
+      isCleared: true,
+      clearedAtUtc: '2026-10-15T02:00:00Z',
+      clearedByPersonId: 'person-1',
+      clearedByName: 'John Doe',
+      clearanceReason: 'API keys received',
+    }
+
+    const mockDetail: RequestDetail = {
+      id: 'req-1',
+      title: 'Fix issue',
+      description: 'Desc',
+      requestType: 'BUG',
+      status: 'PAUSED',
+      priority: 'HIGH',
+      customerId: null,
+      productId: null,
+      ownerPersonId: 'person-1',
+      totalSubTasksCount: 0,
+      completedSubTasksCount: 0,
+      completionPercentage: 0,
+      createdAt: '2026-10-15T00:00:00Z',
+      activeBlockersCount: 0,
+      hasActiveBlockers: false,
+      blockers: [mockClearedBlocker],
+    }
+
+    const postSpy = vi.spyOn(httpClient, 'post').mockResolvedValueOnce({ data: mockDetail })
+
+    const payload: ClearBlockerPayload = {
+      clearanceReason: 'API keys received',
+      actorPersonId: 'person-1',
+    }
+
+    const result = await clearBlocker('req-1', 'b-1', payload)
+
+    expect(postSpy).toHaveBeenCalledWith('/requests/req-1/blockers/b-1/clear', payload)
+    expect(result).toEqual(mockDetail)
+    expect(result.activeBlockersCount).toBe(0)
+    expect(result.hasActiveBlockers).toBe(false)
+    expect(result.blockers?.[0].isCleared).toBe(true)
+    expect(result.blockers?.[0].clearanceReason).toBe('API keys received')
+  })
+
+  it('requestService exports addBlocker and clearBlocker', () => {
+    expect(requestService.addBlocker).toBe(addBlocker)
+    expect(requestService.clearBlocker).toBe(clearBlocker)
+  })
+
+  it('RequestItem interface supports activeBlockersCount, hasActiveBlockers, and blockers', () => {
+    const item: RequestItem = {
+      id: 'req-2',
+      title: 'Second request',
+      description: 'Test',
+      requestType: 'TASK',
+      status: 'ASSIGNED',
+      priority: 'NORMAL',
+      customerId: null,
+      productId: null,
+      ownerPersonId: null,
+      totalSubTasksCount: 0,
+      completedSubTasksCount: 0,
+      completionPercentage: 0,
+      createdAt: '2026-10-15T00:00:00Z',
+      activeBlockersCount: 0,
+      hasActiveBlockers: false,
+      blockers: [],
+    }
+
+    expect(item.activeBlockersCount).toBe(0)
+    expect(item.hasActiveBlockers).toBe(false)
+    expect(item.blockers).toEqual([])
+  })
+})
+

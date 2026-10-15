@@ -39,6 +39,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [TotalSubTasksCount],
                 [CompletedSubTasksCount],
                 [CompletionPercentage],
+                [ActiveBlockersCount],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -100,6 +101,24 @@ internal sealed class RequestRepository : IRequestRepository
             ORDER BY [SortOrder] ASC, [CreatedAt] ASC;
             """;
 
+        const string blockersSql = """
+            SELECT
+                [Id],
+                [RequestId],
+                [Reason],
+                [CreatedByPersonId],
+                [CreatedAtUtc],
+                [IsCleared],
+                [ClearedAtUtc],
+                [ClearedByPersonId],
+                [ClearanceReason],
+                [CreatedAt],
+                [UpdatedAt]
+            FROM [request].[RequestBlockers]
+            WHERE [RequestId] = @RequestId
+            ORDER BY [CreatedAtUtc] ASC;
+            """;
+
         using var connection = _connectionFactory.CreateConnection();
 
         var row = await connection.QuerySingleOrDefaultAsync<RequestRow>(
@@ -119,11 +138,15 @@ internal sealed class RequestRepository : IRequestRepository
         var subTaskRows = await connection.QueryAsync<RequestSubTaskRow>(
             new CommandDefinition(subTasksSql, new { RequestId = id }, cancellationToken: cancellationToken));
 
+        var blockerRows = await connection.QueryAsync<RequestBlockerRow>(
+            new CommandDefinition(blockersSql, new { RequestId = id }, cancellationToken: cancellationToken));
+
         var resolution = resolutionRow?.ToDomain();
         var assignments = assignmentRows.Select(a => a.ToDomain()).ToList();
         var subTasks = subTaskRows.Select(st => st.ToDomain()).ToList();
+        var blockers = blockerRows.Select(b => b.ToDomain()).ToList();
 
-        return row.ToDomain(resolution, assignments, subTasks);
+        return row.ToDomain(resolution, assignments, subTasks, blockers);
     }
 
     public async Task<IReadOnlyList<Domain.Request>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -140,6 +163,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [TotalSubTasksCount],
                 [CompletedSubTasksCount],
                 [CompletionPercentage],
+                [ActiveBlockersCount],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -175,6 +199,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [TotalSubTasksCount],
                 [CompletedSubTasksCount],
                 [CompletionPercentage],
+                [ActiveBlockersCount],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -240,6 +265,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [TotalSubTasksCount],
                 [CompletedSubTasksCount],
                 [CompletionPercentage],
+                [ActiveBlockersCount],
                 [OwnerPersonId],
                 [CustomerId],
                 [ProductId],
@@ -259,6 +285,7 @@ internal sealed class RequestRepository : IRequestRepository
                 @TotalSubTasksCount,
                 @CompletedSubTasksCount,
                 @CompletionPercentage,
+                @ActiveBlockersCount,
                 @OwnerPersonId,
                 @CustomerId,
                 @ProductId,
@@ -296,6 +323,34 @@ internal sealed class RequestRepository : IRequestRepository
             );
             """;
 
+        const string insertBlockerSql = """
+            INSERT INTO [request].[RequestBlockers] (
+                [Id],
+                [RequestId],
+                [Reason],
+                [CreatedByPersonId],
+                [CreatedAtUtc],
+                [IsCleared],
+                [ClearedAtUtc],
+                [ClearedByPersonId],
+                [ClearanceReason],
+                [CreatedAt],
+                [UpdatedAt]
+            ) VALUES (
+                @Id,
+                @RequestId,
+                @Reason,
+                @CreatedByPersonId,
+                @CreatedAtUtc,
+                @IsCleared,
+                @ClearedAtUtc,
+                @ClearedByPersonId,
+                @ClearanceReason,
+                @CreatedAt,
+                @UpdatedAt
+            );
+            """;
+
         using var connection = _connectionFactory.CreateConnection();
         if (connection.State != ConnectionState.Open)
         {
@@ -316,6 +371,7 @@ internal sealed class RequestRepository : IRequestRepository
                 entity.TotalSubTasksCount,
                 entity.CompletedSubTasksCount,
                 entity.CompletionPercentage,
+                entity.ActiveBlockersCount,
                 entity.OwnerPersonId,
                 entity.CustomerId,
                 entity.ProductId,
@@ -343,6 +399,24 @@ internal sealed class RequestRepository : IRequestRepository
             }, transaction: transaction, cancellationToken: cancellationToken));
         }
 
+        foreach (var blocker in entity.Blockers)
+        {
+            await connection.ExecuteAsync(new CommandDefinition(insertBlockerSql, new
+            {
+                blocker.Id,
+                blocker.RequestId,
+                blocker.Reason,
+                blocker.CreatedByPersonId,
+                blocker.CreatedAtUtc,
+                blocker.IsCleared,
+                blocker.ClearedAtUtc,
+                blocker.ClearedByPersonId,
+                blocker.ClearanceReason,
+                blocker.CreatedAt,
+                UpdatedAt = blocker.UpdatedAt ?? blocker.CreatedAt
+            }, transaction: transaction, cancellationToken: cancellationToken));
+        }
+
         transaction.Commit();
     }
 
@@ -364,6 +438,7 @@ internal sealed class RequestRepository : IRequestRepository
                 [TotalSubTasksCount] = @TotalSubTasksCount,
                 [CompletedSubTasksCount] = @CompletedSubTasksCount,
                 [CompletionPercentage] = @CompletionPercentage,
+                [ActiveBlockersCount] = @ActiveBlockersCount,
                 [OwnerPersonId] = @OwnerPersonId,
                 [CustomerId] = @CustomerId,
                 [ProductId] = @ProductId,
@@ -424,6 +499,51 @@ internal sealed class RequestRepository : IRequestRepository
             WHERE [Id] = @Id;
             """;
 
+        const string getExistingBlockerIdsSql = """
+            SELECT [Id]
+            FROM [request].[RequestBlockers]
+            WHERE [RequestId] = @RequestId;
+            """;
+
+        const string insertBlockerSql = """
+            INSERT INTO [request].[RequestBlockers] (
+                [Id],
+                [RequestId],
+                [Reason],
+                [CreatedByPersonId],
+                [CreatedAtUtc],
+                [IsCleared],
+                [ClearedAtUtc],
+                [ClearedByPersonId],
+                [ClearanceReason],
+                [CreatedAt],
+                [UpdatedAt]
+            ) VALUES (
+                @Id,
+                @RequestId,
+                @Reason,
+                @CreatedByPersonId,
+                @CreatedAtUtc,
+                @IsCleared,
+                @ClearedAtUtc,
+                @ClearedByPersonId,
+                @ClearanceReason,
+                @CreatedAt,
+                @UpdatedAt
+            );
+            """;
+
+        const string updateClearedBlockerSql = """
+            UPDATE [request].[RequestBlockers]
+            SET
+                [IsCleared] = @IsCleared,
+                [ClearedAtUtc] = @ClearedAtUtc,
+                [ClearedByPersonId] = @ClearedByPersonId,
+                [ClearanceReason] = @ClearanceReason,
+                [UpdatedAt] = @UpdatedAt
+            WHERE [Id] = @Id;
+            """;
+
         using var connection = _connectionFactory.CreateConnection();
         if (connection.State != ConnectionState.Open)
         {
@@ -444,6 +564,7 @@ internal sealed class RequestRepository : IRequestRepository
             entity.TotalSubTasksCount,
             entity.CompletedSubTasksCount,
             entity.CompletionPercentage,
+            entity.ActiveBlockersCount,
             entity.OwnerPersonId,
             entity.CustomerId,
             entity.ProductId,
@@ -503,8 +624,53 @@ internal sealed class RequestRepository : IRequestRepository
             }
         }
 
+        // 3. Persist blockers
+        var existingBlockerIds = (await connection.QueryAsync<Guid>(
+            new CommandDefinition(getExistingBlockerIdsSql, new { RequestId = entity.Id }, transaction: transaction, cancellationToken: cancellationToken)))
+            .ToHashSet();
+
+        foreach (var blocker in entity.Blockers)
+        {
+            if (existingBlockerIds.Contains(blocker.Id))
+            {
+                if (blocker.IsCleared)
+                {
+                    await connection.ExecuteAsync(new CommandDefinition(updateClearedBlockerSql, new
+                    {
+                        blocker.Id,
+                        blocker.IsCleared,
+                        blocker.ClearedAtUtc,
+                        blocker.ClearedByPersonId,
+                        blocker.ClearanceReason,
+                        UpdatedAt = blocker.UpdatedAt ?? DateTime.UtcNow
+                    }, transaction: transaction, cancellationToken: cancellationToken));
+                }
+            }
+            else
+            {
+                await connection.ExecuteAsync(new CommandDefinition(insertBlockerSql, new
+                {
+                    blocker.Id,
+                    blocker.RequestId,
+                    blocker.Reason,
+                    blocker.CreatedByPersonId,
+                    blocker.CreatedAtUtc,
+                    blocker.IsCleared,
+                    blocker.ClearedAtUtc,
+                    blocker.ClearedByPersonId,
+                    blocker.ClearanceReason,
+                    blocker.CreatedAt,
+                    UpdatedAt = blocker.UpdatedAt ?? blocker.CreatedAt
+                }, transaction: transaction, cancellationToken: cancellationToken));
+            }
+        }
+
         transaction.Commit();
     }
+
+    /// <inheritdoc />
+    public Task SaveAsync(Domain.Request entity, CancellationToken cancellationToken = default)
+        => UpdateAsync(entity, cancellationToken);
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -692,6 +858,7 @@ internal sealed class RequestRepository : IRequestRepository
         public int TotalSubTasksCount { get; init; } = 0;
         public int CompletedSubTasksCount { get; init; } = 0;
         public int CompletionPercentage { get; init; } = 0;
+        public int ActiveBlockersCount { get; init; } = 0;
         public Guid? OwnerPersonId { get; init; }
         public Guid? CustomerId { get; init; }
         public Guid? ProductId { get; init; }
@@ -704,7 +871,8 @@ internal sealed class RequestRepository : IRequestRepository
         public Domain.Request ToDomain(
             RequestResolution? resolution = null,
             IEnumerable<RequestAssignment>? assignments = null,
-            IEnumerable<RequestSubTask>? subTasks = null)
+            IEnumerable<RequestSubTask>? subTasks = null,
+            IEnumerable<RequestBlocker>? blockers = null)
         {
             return Domain.Request.Rehydrate(
                 Id,
@@ -727,8 +895,39 @@ internal sealed class RequestRepository : IRequestRepository
                 TotalSubTasksCount,
                 CompletedSubTasksCount,
                 CompletionPercentage,
-                Deadline);
+                Deadline,
+                blockers,
+                ActiveBlockersCount);
         }
+    }
+
+    private sealed class RequestBlockerRow
+    {
+        public Guid Id { get; init; }
+        public Guid RequestId { get; init; }
+        public string Reason { get; init; } = string.Empty;
+        public Guid CreatedByPersonId { get; init; }
+        public DateTime CreatedAtUtc { get; init; }
+        public bool IsCleared { get; init; }
+        public DateTime? ClearedAtUtc { get; init; }
+        public Guid? ClearedByPersonId { get; init; }
+        public string? ClearanceReason { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public DateTime? UpdatedAt { get; init; }
+
+        public RequestBlocker ToDomain() =>
+            RequestBlocker.Rehydrate(
+                Id,
+                RequestId,
+                Reason,
+                CreatedByPersonId,
+                CreatedAtUtc,
+                IsCleared,
+                ClearedAtUtc,
+                ClearedByPersonId,
+                ClearanceReason,
+                CreatedAt,
+                UpdatedAt);
     }
 
     private sealed class RequestSubTaskRow

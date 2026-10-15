@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyInlineReassignOptimisticUpdate,
+  getScopeItemActiveBlockersCount,
   isRequestCompleted,
+  isScopeItemBlocked,
   parseTaskListTasks,
   resolveOwnerName,
   resolvePersonName,
+  resolveScopeItemBlockerReason,
   resolveScopeItemOwnerDisplay,
   syncCandidateAssigneesOnOwnerChange,
   type CandidateTaskItem,
@@ -290,5 +293,115 @@ describe('WorkPackage candidate preview assignee & reactive sync', () => {
       expect(isEligibleForInlineReassign(false, { status: 'COMPLETED' })).toBe(false)
     })
   })
+
+  describe('WorkPackage Scope Items Blocker Badges & Summaries (CR-032 / SCR-WP-001)', () => {
+    describe('getScopeItemActiveBlockersCount', () => {
+      it('returns item.activeBlockersCount when present and greater than 0', () => {
+        expect(getScopeItemActiveBlockersCount({ activeBlockersCount: 2 })).toBe(2)
+      })
+
+      it('returns item.request.activeBlockersCount when item.activeBlockersCount is not set', () => {
+        expect(
+          getScopeItemActiveBlockersCount({
+            request: { id: 'req-1', activeBlockersCount: 3 } as any,
+          }),
+        ).toBe(3)
+      })
+
+      it('returns 0 when neither item nor request has active blockers', () => {
+        expect(getScopeItemActiveBlockersCount({ activeBlockersCount: 0 })).toBe(0)
+        expect(getScopeItemActiveBlockersCount({ request: { id: 'req-1', activeBlockersCount: 0 } as any })).toBe(0)
+        expect(getScopeItemActiveBlockersCount(null)).toBe(0)
+        expect(getScopeItemActiveBlockersCount(undefined)).toBe(0)
+      })
+    })
+
+    describe('isScopeItemBlocked', () => {
+      it('returns true when item has active blockers count > 0', () => {
+        expect(isScopeItemBlocked({ activeBlockersCount: 1, status: 'IN_PROGRESS' })).toBe(true)
+      })
+
+      it('returns true when nested item.request has active blockers count > 0', () => {
+        expect(
+          isScopeItemBlocked({
+            status: 'ASSIGNED',
+            request: { activeBlockersCount: 2, status: 'ASSIGNED' } as any,
+          }),
+        ).toBe(true)
+      })
+
+      it('returns true when item.request has hasActiveBlockers flag true', () => {
+        expect(
+          isScopeItemBlocked({
+            status: 'IN_PROGRESS',
+            request: { hasActiveBlockers: true } as any,
+          }),
+        ).toBe(true)
+      })
+
+      it('returns true when status is PAUSED even if active count is 0', () => {
+        expect(isScopeItemBlocked({ status: 'PAUSED' })).toBe(true)
+        expect(isScopeItemBlocked({ requestStatus: 'PAUSED' })).toBe(true)
+        expect(isScopeItemBlocked({ request: { status: 'PAUSED' } as any })).toBe(true)
+      })
+
+      it('returns false when status is not PAUSED and active blockers count is 0', () => {
+        expect(isScopeItemBlocked({ status: 'IN_PROGRESS', activeBlockersCount: 0 })).toBe(false)
+        expect(isScopeItemBlocked({ status: 'ASSIGNED' })).toBe(false)
+        expect(isScopeItemBlocked(null)).toBe(false)
+        expect(isScopeItemBlocked(undefined)).toBe(false)
+      })
+    })
+
+    describe('resolveScopeItemBlockerReason', () => {
+      it('returns blockerNote from item when populated (TD-007 backend alignment)', () => {
+        const item = {
+          blockerNote: 'Blocked by database migration deadlock',
+          request: {
+            blockers: [{ reason: 'Different blocker reason', isCleared: false }],
+          } as any,
+        }
+        expect(resolveScopeItemBlockerReason(item)).toBe('Blocked by database migration deadlock')
+      })
+
+      it('returns latest uncleared blocker reason from request.blockers when blockerNote is missing', () => {
+        const item = {
+          blockerNote: null,
+          request: {
+            blockers: [
+              { reason: 'Old resolved blocker', isCleared: true },
+              { reason: 'Awaiting firewall rule exception', isCleared: false },
+            ],
+          } as any,
+        }
+        expect(resolveScopeItemBlockerReason(item)).toBe('Awaiting firewall rule exception')
+      })
+
+      it('falls back to assignments PAUSED note when blockers list is empty', () => {
+        const item = {
+          request: {
+            assignments: [
+              { newStatus: 'IN_PROGRESS', notes: 'Starting task' },
+              { newStatus: 'PAUSED', notes: 'Paused awaiting product manager signoff' },
+            ],
+          } as any,
+        }
+        expect(resolveScopeItemBlockerReason(item)).toBe('Paused awaiting product manager signoff')
+      })
+
+      it('falls back to activeBlockersCount summary when count > 0 and no notes exist', () => {
+        const item = {
+          activeBlockersCount: 3,
+        }
+        expect(resolveScopeItemBlockerReason(item)).toBe('3 active blocker(s) impeding request')
+      })
+
+      it('falls back to default paused text when no notes exist and count is 0', () => {
+        expect(resolveScopeItemBlockerReason({})).toBe('Work paused on request')
+        expect(resolveScopeItemBlockerReason(null)).toBe('')
+      })
+    })
+  })
 })
+
 

@@ -30,17 +30,20 @@ public sealed class RequestsController : ApiControllerBase
     private readonly IRequestQueryService _requestQueryService;
     private readonly ILogger<RequestsController> _logger;
     private readonly ICurrentContextProvider? _currentContextProvider;
+    private readonly IRequestService? _requestService;
 
     public RequestsController(
         IMediator mediator,
         IRequestQueryService requestQueryService,
         ILogger<RequestsController> logger,
-        ICurrentContextProvider? currentContextProvider = null)
+        ICurrentContextProvider? currentContextProvider = null,
+        IRequestService? requestService = null)
     {
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _requestQueryService = requestQueryService ?? throw new ArgumentNullException(nameof(requestQueryService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _currentContextProvider = currentContextProvider;
+        _requestService = requestService;
     }
 
     /// <summary>
@@ -403,6 +406,10 @@ public sealed class RequestsController : ApiControllerBase
         {
             return CreateBadRequestProblem(ex.Message);
         }
+        catch (RequestHasActiveBlockersException ex)
+        {
+            return CreateConflictProblem(ex.Message);
+        }
         catch (InvalidOperationException ex)
         {
             return CreateBadRequestProblem(ex.Message);
@@ -604,6 +611,10 @@ public sealed class RequestsController : ApiControllerBase
         catch (ArgumentException ex)
         {
             return CreateBadRequestProblem(ex.Message);
+        }
+        catch (RequestHasActiveBlockersException ex)
+        {
+            return CreateConflictProblem(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
@@ -897,6 +908,158 @@ public sealed class RequestsController : ApiControllerBase
         }
     }
 
+    /// <summary>
+    /// Adds an operational impediment/blocker to a request, automatically transitioning active requests to PAUSED
+    /// (CR-032 Architecture §4 TD-001, TD-002, TD-005).
+    /// </summary>
+    [HttpPost("{id:guid}/blockers")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddBlocker(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AddBlockerBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Request ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request?.Reason))
+        {
+            return CreateBadRequestProblem("Blocker reason is required.");
+        }
+
+        var actorPersonId = FirstNonEmptyGuid(request?.ActorPersonId, ResolvePersonIdFromUserClaims(User));
+
+        try
+        {
+            RequestDto updated;
+            if (_requestService != null)
+            {
+                updated = await _requestService.AddBlockerAsync(id, request!.Reason!, actorPersonId, cancellationToken);
+            }
+            else
+            {
+                var command = new AddRequestBlockerCommand(
+                    RequestId: id,
+                    Reason: request!.Reason!,
+                    ActorPersonId: actorPersonId);
+                updated = await _mediator.Send(command, cancellationToken);
+            }
+
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Added blocker to request '{RequestId}'. Active blockers count: {Count}, status: '{Status}'.",
+                id,
+                enriched.ActiveBlockersCount,
+                enriched.Status);
+
+            return CreatedAtAction(nameof(GetRequestById), new { id = enriched.Id }, enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (RequestDomainValidationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Clears an operational impediment/blocker on a request, leaving the request in PAUSED state
+    /// (CR-032 Architecture §4 TD-001, TD-002, TD-005, TD-006).
+    /// </summary>
+    [HttpPost("{id:guid}/blockers/{blockerId:guid}/clear")]
+    [ProducesResponseType(typeof(RequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearBlocker(
+        Guid id,
+        Guid blockerId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ClearBlockerBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Request ID is required.");
+        }
+
+        if (blockerId == Guid.Empty)
+        {
+            return CreateBadRequestProblem("Blocker ID is required.");
+        }
+
+        var actorPersonId = FirstNonEmptyGuid(request?.ActorPersonId, ResolvePersonIdFromUserClaims(User));
+
+        try
+        {
+            RequestDto updated;
+            if (_requestService != null)
+            {
+                updated = await _requestService.ClearBlockerAsync(id, blockerId, request?.ClearanceReason, actorPersonId, cancellationToken);
+            }
+            else
+            {
+                var command = new ClearRequestBlockerCommand(
+                    RequestId: id,
+                    BlockerId: blockerId,
+                    ClearanceReason: request?.ClearanceReason,
+                    ActorPersonId: actorPersonId);
+                updated = await _mediator.Send(command, cancellationToken);
+            }
+
+            var enriched = await _requestQueryService.GetRequestByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Cleared blocker '{BlockerId}' on request '{RequestId}'. Remaining active blockers: {Count}.",
+                blockerId,
+                id,
+                enriched.ActiveBlockersCount);
+
+            return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateForbiddenProblem(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return CreateNotFoundProblem(ex.Message);
+        }
+        catch (RequestDomainValidationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
     private ObjectResult CreateBadRequestProblem(string detail)
     {
         var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
@@ -956,6 +1119,27 @@ public sealed class RequestsController : ApiControllerBase
         return new ObjectResult(problem)
         {
             StatusCode = StatusCodes.Status404NotFound,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private ObjectResult CreateConflictProblem(string detail)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status409Conflict,
+            Title = "Conflict",
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8"
+        };
+        problem.Extensions["errorCode"] = "REQUEST_HAS_ACTIVE_BLOCKERS";
+        problem.Extensions["traceId"] = traceId;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status409Conflict,
             ContentTypes = { "application/problem+json" }
         };
     }
@@ -1223,6 +1407,24 @@ public sealed class RequestsController : ApiControllerBase
 
         public string? ResolvedPriority =>
             FirstNonWhiteSpace(Priority);
+    }
+
+    /// <summary>
+    /// Request payload for <c>POST /api/v1/requests/{id}/blockers</c> (<c>AddBlocker</c>).
+    /// </summary>
+    public sealed class AddBlockerBody
+    {
+        public string? Reason { get; set; }
+        public Guid? ActorPersonId { get; set; }
+    }
+
+    /// <summary>
+    /// Request payload for <c>POST /api/v1/requests/{id}/blockers/{blockerId}/clear</c> (<c>ClearBlocker</c>).
+    /// </summary>
+    public sealed class ClearBlockerBody
+    {
+        public string? ClearanceReason { get; set; }
+        public Guid? ActorPersonId { get; set; }
     }
 }
 

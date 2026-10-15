@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatShortId,
+  isRequestBlocked,
   matchesRequestId,
   normalizeSearchQuery,
+  resolveActiveBlockerCallout,
 } from '@/views/MyRequestsView.vue'
 
 describe('MyRequestsView - Short ID Formatting & Search Normalization (CR-031)', () => {
@@ -170,6 +172,65 @@ describe('MyRequestsView - Short ID Formatting & Search Normalization (CR-031)',
 
     it('returns no items when search query does not match any ID or title', () => {
       expect(filterRequests(mockRequests, '#00000000')).toHaveLength(0)
+    })
+  })
+
+  describe('Assigned Requests Blocker Badges & Callouts (CR-032 / SCR-REQ-004)', () => {
+    describe('isRequestBlocked', () => {
+      it('returns true when activeBlockersCount > 0', () => {
+        expect(isRequestBlocked({ activeBlockersCount: 1 })).toBe(true)
+        expect(isRequestBlocked({ activeBlockersCount: 3 })).toBe(true)
+      })
+
+      it('returns true when hasActiveBlockers is true', () => {
+        expect(isRequestBlocked({ hasActiveBlockers: true })).toBe(true)
+      })
+
+      it('returns false when activeBlockersCount is 0 and hasActiveBlockers is false or undefined', () => {
+        expect(isRequestBlocked({ activeBlockersCount: 0 })).toBe(false)
+        expect(isRequestBlocked({ activeBlockersCount: 0, hasActiveBlockers: false })).toBe(false)
+      })
+
+      it('returns false when request is null, undefined, or has no blocker properties', () => {
+        expect(isRequestBlocked(null)).toBe(false)
+        expect(isRequestBlocked(undefined)).toBe(false)
+        expect(isRequestBlocked({})).toBe(false)
+      })
+    })
+
+    describe('resolveActiveBlockerCallout', () => {
+      it('returns latest uncleared blocker reason when blockers list is present', () => {
+        const req = {
+          activeBlockersCount: 1,
+          blockers: [
+            { reason: 'Waiting for vendor credentials', isCleared: false },
+          ],
+        }
+        expect(resolveActiveBlockerCallout(req)).toBe('Waiting for vendor credentials')
+      })
+
+      it('returns latest uncleared blocker reason ignoring previously cleared blockers', () => {
+        const req = {
+          activeBlockersCount: 1,
+          blockers: [
+            { reason: 'Initial blocker that was cleared', isCleared: true },
+            { reason: 'Second blocker awaiting QA environment', isCleared: false },
+          ],
+        }
+        expect(resolveActiveBlockerCallout(req)).toBe('Second blocker awaiting QA environment')
+      })
+
+      it('falls back to activeBlockersCount summary when no individual blockers are listed', () => {
+        const req = {
+          activeBlockersCount: 2,
+        }
+        expect(resolveActiveBlockerCallout(req)).toBe('2 active blocker(s) impeding request progress')
+      })
+
+      it('returns empty string when request is null or undefined', () => {
+        expect(resolveActiveBlockerCallout(null)).toBe('')
+        expect(resolveActiveBlockerCallout(undefined)).toBe('')
+      })
     })
   })
 })

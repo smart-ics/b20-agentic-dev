@@ -174,6 +174,10 @@ public class RequestsControllerTests : IAsyncLifetime
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         (await client.GetAsync("/api/v1/requests/wip"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/blockers", new { reason = "Blocker" }))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await client.PostAsJsonAsync($"/api/v1/requests/{randomId}/blockers/{randomId}/clear", new { clearanceReason = "Cleared" }))
+            .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         (await client.GetAsync("/api/v1/customers/active")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -988,6 +992,111 @@ public class RequestsControllerTests : IAsyncLifetime
         prog1Wip.InProgressTask!.RequestId.Should().Be(requestId);
         prog1Wip.InProgressTask.Title.Should().Be("WIP Endpoint Integration Test Request");
         prog1Wip.InProgressTask.Status.Should().Be(RequestStatusNames.InProgress);
+    }
+
+    [Fact]
+    public async Task Blocker_endpoints_add_and_clear_blocker_pause_request_and_enforce_clearance_authorization_and_guards()
+    {
+        if (!_sqlServerAvailable || _factory is null) return;
+
+        var ctx = await SeedOperationalActorsAndMasterDataAsync();
+
+        // 1. Create a request
+        var createResp = await ctx.Client.PostAsJsonAsync("/api/v1/requests", new
+        {
+            title = "Blocker Lifecycle Integration Test",
+            description = "Testing POST /api/v1/requests/{id}/blockers and clear endpoint",
+            customerId = ctx.Customer1Id,
+            productId = ctx.Product1Id,
+            requestType = "Bug",
+            priority = "HIGH"
+        });
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+        var requestId = created.GetProperty("id").GetGuid();
+
+        // 2. Assign to Programmer1 and Start work
+        var assignResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/assign", new
+        {
+            ownerPersonId = ctx.Programmer1Id,
+            notes = "Assigned to Prog1"
+        });
+        assignResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var startResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new
+        {
+            notes = "Starting work"
+        });
+        startResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 3. Add Blocker via POST /api/v1/requests/{id}/blockers -> 201 Created
+        var addBlockerResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/blockers", new
+        {
+            reason = "Waiting for external API vendor credentials",
+            actorPersonId = ctx.Programmer1Id
+        });
+        addBlockerResp.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var blockedDto = await addBlockerResp.Content.ReadFromJsonAsync<RequestDto>();
+        blockedDto.Should().NotBeNull();
+        blockedDto!.Status.Should().Be(RequestStatusNames.Paused);
+        blockedDto.HasActiveBlockers.Should().BeTrue();
+        blockedDto.ActiveBlockersCount.Should().Be(1);
+        blockedDto.Blockers.Should().HaveCount(1);
+        var blocker = blockedDto.Blockers[0];
+        blocker.Reason.Should().Be("Waiting for external API vendor credentials");
+        blocker.IsCleared.Should().BeFalse();
+        blocker.ClearedAt.Should().BeNull();
+        blocker.CreatedByPersonId.Should().Be(ctx.Programmer1Id);
+
+        // 4. Guard check: Attempting to resume/start work or complete request while active blocker exists -> 409 Conflict
+        var startBlockedResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new
+        {
+            notes = "Should fail due to active blocker"
+        });
+        startBlockedResp.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        var completeBlockedResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/complete", new
+        {
+            resolutionDescription = "Should fail due to active blocker"
+        });
+        completeBlockedResp.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        // 5. Authorization check: Non-owner without manager/admin role (Programmer2) attempts to clear -> 403 Forbidden
+        var unauthorizedClearResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/blockers/{blocker.Id}/clear", new
+        {
+            clearanceReason = "Unauthorized clearance attempt",
+            actorPersonId = ctx.Programmer2Id
+        });
+        unauthorizedClearResp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // 6. Authorized clearance: Request owner (Programmer1) clears the blocker -> 200 OK
+        var clearResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/blockers/{blocker.Id}/clear", new
+        {
+            clearanceReason = "Vendor credentials provided",
+            actorPersonId = ctx.Programmer1Id
+        });
+        clearResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var clearedDto = await clearResp.Content.ReadFromJsonAsync<RequestDto>();
+        clearedDto.Should().NotBeNull();
+        clearedDto!.HasActiveBlockers.Should().BeFalse();
+        clearedDto.ActiveBlockersCount.Should().Be(0);
+        clearedDto.Blockers.Should().HaveCount(1);
+        var clearedBlocker = clearedDto.Blockers[0];
+        clearedBlocker.IsCleared.Should().BeTrue();
+        clearedBlocker.ClearanceReason.Should().Be("Vendor credentials provided");
+        clearedBlocker.ClearedAt.Should().NotBeNull();
+        clearedBlocker.ClearedByPersonId.Should().Be(ctx.Programmer1Id);
+
+        // 7. Now work can be resumed -> 200 OK
+        var resumeResp = await ctx.Client.PostAsJsonAsync($"/api/v1/requests/{requestId}/start", new
+        {
+            notes = "Resuming work after blocker cleared"
+        });
+        resumeResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resumed = await resumeResp.Content.ReadFromJsonAsync<JsonElement>();
+        resumed.GetProperty("status").GetString().Should().Be(RequestStatusNames.InProgress);
     }
 
     private sealed record SeededContext(

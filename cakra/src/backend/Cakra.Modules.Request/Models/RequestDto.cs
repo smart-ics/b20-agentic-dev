@@ -101,6 +101,15 @@ public record RequestDto
     /// <summary>List of granular checklist sub-tasks defined on this request.</summary>
     public IReadOnlyList<RequestSubTaskDto> SubTasks { get; init; } = Array.Empty<RequestSubTaskDto>();
 
+    /// <summary>Count of active (uncleared) operational impediments/blockers on this request.</summary>
+    public int ActiveBlockersCount { get; init; }
+
+    /// <summary>Indicates whether the request has any active operational blockers.</summary>
+    public bool HasActiveBlockers => ActiveBlockersCount > 0;
+
+    /// <summary>Granular operational impediments/blockers recorded on this request.</summary>
+    public IReadOnlyList<RequestBlockerDto> Blockers { get; init; } = Array.Empty<RequestBlockerDto>();
+
     /// <summary>Audit trail of ownership and lifecycle state transitions.</summary>
     public IReadOnlyList<RequestAssignmentDto> Assignments { get; init; } = Array.Empty<RequestAssignmentDto>();
 
@@ -129,6 +138,7 @@ public record RequestDto
             TotalSubTasksCount = request.TotalSubTasksCount,
             CompletedSubTasksCount = request.CompletedSubTasksCount,
             CompletionPercentage = request.CompletionPercentage,
+            ActiveBlockersCount = request.ActiveBlockersCount,
             OwnerPersonId = request.OwnerPersonId,
             CustomerId = request.CustomerId,
             ProductId = request.ProductId,
@@ -139,6 +149,7 @@ public record RequestDto
             ManagementDecisionNotes = null,
             Resolution = request.Resolution is null ? null : RequestResolutionDto.FromDomain(request.Resolution),
             SubTasks = request.SubTasks.Select(RequestSubTaskDto.FromDomain).ToList(),
+            Blockers = request.Blockers.Select(RequestBlockerDto.FromDomain).ToList(),
             Assignments = request.Assignments.Select(RequestAssignmentDto.FromDomain).ToList(),
             CreatedAt = request.CreatedAt,
             UpdatedAt = request.UpdatedAt

@@ -44,6 +44,30 @@ export interface RequestAssignmentDto {
   updatedAt?: string | null
 }
 
+export interface RequestBlocker {
+  id: string
+  requestId: string
+  reason: string
+  createdByPersonId: string
+  createdByName?: string | null
+  createdAtUtc: string
+  isCleared: boolean
+  clearedAtUtc?: string | null
+  clearedByPersonId?: string | null
+  clearedByName?: string | null
+  clearanceReason?: string | null
+}
+
+export interface AddBlockerPayload {
+  reason: string
+  actorPersonId?: string | null
+}
+
+export interface ClearBlockerPayload {
+  clearanceReason?: string | null
+  actorPersonId?: string | null
+}
+
 export interface RequestDto {
   id: string
   requestId?: string
@@ -78,6 +102,9 @@ export interface RequestDto {
   totalSubTasksCount: number
   completedSubTasksCount: number
   completionPercentage: number
+  activeBlockersCount?: number
+  hasActiveBlockers?: boolean
+  blockers?: RequestBlocker[]
   subTasks?: RequestSubTask[]
   assignments?: RequestAssignmentDto[]
   createdAt: string
@@ -87,6 +114,15 @@ export interface RequestDto {
 export type Request = RequestDto
 export interface RequestDetail extends RequestDto {
   deadline?: string | null
+  activeBlockersCount?: number
+  hasActiveBlockers?: boolean
+  blockers?: RequestBlocker[]
+}
+
+export interface RequestItem extends RequestDto {
+  activeBlockersCount?: number
+  hasActiveBlockers?: boolean
+  blockers?: RequestBlocker[]
 }
 
 export interface CreateRequestPayload {
@@ -412,6 +448,35 @@ export async function getWorkInProgressOverview(): Promise<PersonWorkInProgressD
   return response.data
 }
 
+/**
+ * Adds an operational impediment/blocker to a request (CR-032 TD-001, TD-002, TD-005).
+ */
+export async function addBlocker(
+  requestId: string,
+  payload: AddBlockerPayload,
+): Promise<RequestDetail> {
+  const response = await httpClient.post<RequestDetail>(
+    `/requests/${requestId}/blockers`,
+    payload,
+  )
+  return response.data
+}
+
+/**
+ * Clears an operational impediment/blocker on a request, leaving the request in PAUSED state (CR-032 TD-001, TD-002, TD-005, TD-006).
+ */
+export async function clearBlocker(
+  requestId: string,
+  blockerId: string,
+  payload: ClearBlockerPayload,
+): Promise<RequestDetail> {
+  const response = await httpClient.post<RequestDetail>(
+    `/requests/${requestId}/blockers/${blockerId}/clear`,
+    payload,
+  )
+  return response.data
+}
+
 export const requestService = {
   recordRequest,
   normalizeTaskLine,
@@ -431,6 +496,8 @@ export const requestService = {
   removeSubTask,
   getAssignedSubTasks,
   getWorkInProgressOverview,
+  addBlocker,
+  clearBlocker,
 }
 
 export default requestService
