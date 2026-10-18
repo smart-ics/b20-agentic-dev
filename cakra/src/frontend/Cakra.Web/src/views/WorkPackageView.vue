@@ -174,6 +174,52 @@ export function resolveScopeItemBlockerReason(item: {
   }
   return 'Work paused on request'
 }
+
+export function canUserReopenWorkPackage(
+  wp: { ownerPersonId?: string | null; status?: string } | null,
+  roles: string[] = [],
+  currentPersonId?: string | null,
+): boolean {
+  if (!wp || (wp.status || '').toUpperCase() !== 'CLOSED') return false
+  const isLeadership = roles.includes('Administrator') || roles.includes('Management')
+  const isOwner = Boolean(
+    wp.ownerPersonId &&
+    currentPersonId &&
+    wp.ownerPersonId.toLowerCase() === currentPersonId.toLowerCase(),
+  )
+  return isLeadership || isOwner
+}
+
+export function hasUnfinishedWorkPackageRequests(
+  items: Array<{ status?: string; requestStatus?: string; request?: { status?: string } | null }>,
+): boolean {
+  if (!items || items.length === 0) return false
+  const finishedStatuses = ['COMPLETED', 'CANCELLED', 'REJECTED']
+  return items.some((item) => {
+    const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
+    return !finishedStatuses.includes(s)
+  })
+}
+
+export function countUnfinishedWorkPackageRequests(
+  items: Array<{ status?: string; requestStatus?: string; request?: { status?: string } | null }>,
+): number {
+  if (!items || items.length === 0) return 0
+  const finishedStatuses = ['COMPLETED', 'CANCELLED', 'REJECTED']
+  return items.filter((item) => {
+    const s = (item.status || item.requestStatus || item.request?.status || '').toUpperCase()
+    return !finishedStatuses.includes(s)
+  }).length
+}
+
+export function isWorkPackageDeadlineExpired(
+  deadline?: string | null,
+  referenceDate: Date = new Date(),
+): boolean {
+  if (!deadline) return false
+  const parsed = new Date(deadline)
+  return !isNaN(parsed.getTime()) && parsed < referenceDate
+}
 </script>
 
 <script setup lang="ts">
@@ -190,6 +236,7 @@ import {
 } from '@/api/requests'
 import {
   getOperationsCockpit,
+  reopenWorkPackage,
   reorderWorkPackageRequests,
   updateWorkPackageContext,
   updateWorkPackageDeadline,
@@ -333,6 +380,7 @@ interface PagedRequestGridPayload {
 interface ProblemDetailsPayload {
   title?: string
   detail?: string
+  message?: string
   errorCode?: string
   errors?: Record<string, string[]>
 }
@@ -436,6 +484,15 @@ const closePackageForm = reactive({
   reason: '',
 })
 
+// Re-Open Work Package modal state (CR-035 §4 TD-006)
+const showReopenModal = ref(false)
+const isSubmittingReopen = ref(false)
+const reopenErrorMessage = ref<string | null>(null)
+const reopenForm = reactive({
+  reason: '',
+  deadline: '',
+})
+
 const addRequestForm = reactive({
   selectedRequestId: '',
   manualRequestId: '',
@@ -508,6 +565,30 @@ const canAccessDecisionWorkbench = computed(
   () => authStore.roles.includes('Administrator') || authStore.roles.includes('Management'),
 )
 
+// Re-Open authorization & eligibility computed properties (CR-035 §4 TD-006)
+const canReopen = computed(() => {
+  if (!selectedWorkPackage.value || !isSelectedClosed.value) return false
+  const roles = authStore.roles || []
+  const currentPersonId = (authStore as any).currentPersonId || authStore.currentUser?.personId || ''
+  return canUserReopenWorkPackage(selectedWorkPackage.value, roles, currentPersonId)
+})
+
+const hasUnfinishedRequests = computed(() => hasUnfinishedWorkPackageRequests(activeScopeItems.value))
+
+const isReopenEligible = computed(() => hasUnfinishedRequests.value)
+
+const reopenDisabledTooltip = computed(() => {
+  if (!isSelectedClosed.value) return ''
+  if (!hasUnfinishedRequests.value) {
+    return 'Cannot re-open: all requests in this package are completed or cancelled.'
+  }
+  return ''
+})
+
+const unfinishedRequestsCount = computed(() => countUnfinishedWorkPackageRequests(activeScopeItems.value))
+
+const isDeadlineExpired = computed(() => isWorkPackageDeadlineExpired(selectedWorkPackage.value?.deadline))
+
 const isContextDirty = computed(() => {
   if (!selectedWorkPackage.value) return false
   const currentCust = selectedWorkPackage.value.customerId ?? ''
@@ -543,6 +624,9 @@ function extractErrorMessage(err: unknown, fallback: string): string {
     }
     if (data?.detail) {
       return data.detail
+    }
+    if (data?.message) {
+      return data.message
     }
     if (data?.title) {
       return data.title
@@ -1438,6 +1522,61 @@ async function handleCloseWorkPackage(): Promise<void> {
     errorMessage.value = extractErrorMessage(err, 'Failed to close work package.')
   } finally {
     isSubmittingAction.value = false
+  }
+}
+
+function openReopenModal(): void {
+  reopenErrorMessage.value = null
+  reopenForm.reason = ''
+  reopenForm.deadline = selectedWorkPackage.value?.deadline
+    ? selectedWorkPackage.value.deadline.slice(0, 10)
+    : ''
+  showReopenModal.value = true
+}
+
+function closeReopenModal(): void {
+  showReopenModal.value = false
+  reopenErrorMessage.value = null
+  reopenForm.reason = ''
+  reopenForm.deadline = ''
+}
+
+async function handleConfirmReopen(): Promise<void> {
+  if (!selectedWorkPackage.value || !isSelectedClosed.value || !canReopen.value || !isReopenEligible.value) {
+    return
+  }
+
+  const reason = reopenForm.reason.trim()
+  if (!reason) {
+    reopenErrorMessage.value = 'Re-open reason is required.'
+    return
+  }
+
+  isSubmittingReopen.value = true
+  reopenErrorMessage.value = null
+
+  try {
+    const wpId = selectedWorkPackage.value.id
+    const updated = await reopenWorkPackage(wpId, {
+      reason,
+      deadline: reopenForm.deadline ? reopenForm.deadline : null,
+    })
+
+    selectedWorkPackage.value = updated
+    const index = workPackages.value.findIndex((wp) => wp.id === updated.id)
+    if (index !== -1) {
+      workPackages.value[index] = { ...workPackages.value[index], ...updated }
+    }
+    syncDetailForms(updated)
+
+    closeReopenModal()
+    successMessage.value = `Work package "${updated.objective || updated.name}" re-opened successfully back to DRAFT state.`
+
+    await Promise.all([loadWorkPackages(), loadWorkPackageScope(wpId)])
+  } catch (err) {
+    reopenErrorMessage.value = extractErrorMessage(err, 'Failed to re-open work package.')
+  } finally {
+    isSubmittingReopen.value = false
   }
 }
 
@@ -3248,10 +3387,32 @@ onMounted(async () => {
               </form>
             </div>
 
-            <!-- Lifecycle Action Buttons (Activate in DRAFT, Close in DRAFT/ACTIVE) -->
+            <!-- Lifecycle Action Buttons (Activate in DRAFT, Close in DRAFT/ACTIVE, Re-Open in CLOSED) -->
             <div class="pb-3 border-b border-slate-200 dark:border-slate-800" data-testid="detail-lifecycle-section">
-              <div v-if="isSelectedClosed" class="text-slate-500 dark:text-slate-400 text-xs">
-                Work package is <strong class="text-slate-900 dark:text-white">CLOSED</strong> (terminal state).
+              <div v-if="isSelectedClosed">
+                <div v-if="canReopen" class="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    class="btn btn-warning text-dark flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="!isReopenEligible || isSubmittingAction || isSubmittingReopen"
+                    :title="reopenDisabledTooltip"
+                    data-testid="wp-reopen-button"
+                    @click="openReopenModal"
+                  >
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    <span>Re-Open Work Package</span>
+                  </button>
+                  <span
+                    v-if="!isReopenEligible"
+                    class="text-xs text-slate-500 dark:text-slate-400 italic"
+                    data-testid="wp-reopen-ineligible-note"
+                  >
+                    Permanently sealed (all requests completed)
+                  </span>
+                </div>
+                <div v-else class="text-slate-500 dark:text-slate-400 text-xs">
+                  Work package is <strong class="text-slate-900 dark:text-white">CLOSED</strong> (terminal state).
+                </div>
               </div>
 
               <div v-else class="flex flex-wrap items-center gap-2">
@@ -3746,6 +3907,157 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+    <!-- Re-Open Work Package Modal Dialog (CR-035 §4 TD-006) -->
+    <div
+      v-if="showReopenModal"
+      class="modal fade show d-block"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="wpReopenModalTitle"
+      aria-modal="true"
+      data-testid="wp-reopen-modal"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl overflow-hidden">
+          <div class="modal-header py-2.5 px-4 bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+            <h2 id="wpReopenModalTitle" class="modal-title font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 mb-0">
+              <i class="bi bi-arrow-counterclockwise text-amber-500" aria-hidden="true"></i>
+              Re-Open Work Package to DRAFT
+            </h2>
+            <button
+              type="button"
+              class="btn-close text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition bg-transparent border-0 cursor-pointer"
+              aria-label="Close"
+              :disabled="isSubmittingReopen"
+              data-testid="wp-reopen-close-button"
+              @click="closeReopenModal"
+            >
+              <i class="bi bi-x-lg text-xs"></i>
+            </button>
+          </div>
+
+          <form @submit.prevent="handleConfirmReopen">
+            <div class="modal-body p-4 space-y-3">
+              <!-- Error Alert displaying backend error messages (including BR-9 conflicts) -->
+              <div
+                v-if="reopenErrorMessage"
+                class="alert alert-danger p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2"
+                role="alert"
+                data-testid="wp-reopen-error-alert"
+              >
+                <i class="bi bi-exclamation-octagon-fill text-rose-600 dark:text-rose-400 text-sm mt-0.5 flex-shrink-0" aria-hidden="true"></i>
+                <div class="flex-grow">
+                  <strong class="font-semibold block">Cannot Re-Open Package</strong>
+                  <span>{{ reopenErrorMessage }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="text-rose-600 dark:text-rose-400 hover:text-rose-800 p-0.5 bg-transparent border-0 cursor-pointer"
+                  aria-label="Dismiss error"
+                  @click="reopenErrorMessage = null"
+                >
+                  <i class="bi bi-x-lg text-xs"></i>
+                </button>
+              </div>
+
+              <!-- Context Card: Unfinished Requests Count & Objective -->
+              <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-xs" data-testid="wp-reopen-context-card">
+                <div class="font-semibold text-slate-900 dark:text-white mb-1">
+                  {{ selectedWorkPackage?.objective }}
+                </div>
+                <div class="text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <i class="bi bi-list-task text-cyan-600 dark:text-cyan-400"></i>
+                  <span>Unfinished Requests in Scope:</span>
+                  <strong class="font-mono text-cyan-700 dark:text-cyan-300 font-bold" data-testid="wp-reopen-unfinished-count">
+                    {{ unfinishedRequestsCount }}
+                  </strong>
+                </div>
+              </div>
+
+              <!-- Expired Deadline Warning Alert -->
+              <div
+                v-if="isDeadlineExpired"
+                class="alert alert-warning p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2"
+                role="alert"
+                data-testid="wp-reopen-deadline-warning"
+              >
+                <i class="bi bi-exclamation-triangle-fill text-amber-600 dark:text-amber-400 text-sm mt-0.5 flex-shrink-0" aria-hidden="true"></i>
+                <div>
+                  <strong class="font-semibold block">Target Deadline Expired:</strong>
+                  The previous deadline (<span class="font-mono">{{ formatDeadline(selectedWorkPackage?.deadline) }}</span>) has passed. Setting a revised deadline below is recommended to avoid an immediate deadline breach upon reactivation.
+                </div>
+              </div>
+
+              <!-- Date Input for Updated Deadline (Optional) -->
+              <div>
+                <label for="wpReopenDeadlineInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
+                  Revised Target Deadline (Optional)
+                </label>
+                <input
+                  id="wpReopenDeadlineInput"
+                  v-model="reopenForm.deadline"
+                  type="date"
+                  class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:border-cyan-500 focus:outline-none w-full"
+                  :disabled="isSubmittingReopen"
+                  data-testid="wp-reopen-deadline-input"
+                />
+              </div>
+
+              <!-- Mandatory Reason Textarea -->
+              <div>
+                <label for="wpReopenReasonInput" class="text-[11px] uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-400 mb-1 block">
+                  Re-Open Justification Reason <span class="text-rose-500">*</span>
+                </label>
+                <textarea
+                  id="wpReopenReasonInput"
+                  v-model="reopenForm.reason"
+                  class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg p-2.5 text-xs focus:border-cyan-500 focus:outline-none w-full"
+                  rows="3"
+                  placeholder="Provide justification for re-opening this work package back to DRAFT..."
+                  required
+                  :disabled="isSubmittingReopen"
+                  data-testid="wp-reopen-reason-input"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="modal-footer py-2.5 px-4 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+              <button
+                type="button"
+                class="btn btn-secondary px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
+                :disabled="isSubmittingReopen"
+                data-testid="wp-reopen-cancel-button"
+                @click="closeReopenModal"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="btn btn-warning px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 transition inline-flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="isSubmittingReopen || !reopenForm.reason.trim()"
+                data-testid="wp-reopen-confirm-button"
+              >
+                <span
+                  v-if="isSubmittingReopen"
+                  class="spinner-border spinner-border-sm inline-block w-3 h-3 border-2 border-slate-900 border-t-transparent rounded-full animate-spin me-1"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                <i v-else class="bi bi-arrow-counterclockwise"></i>
+                Confirm Re-Open
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Backdrop -->
+    <div
+      v-if="showReopenModal"
+      class="modal-backdrop fade show fixed inset-0 bg-black/50 z-40"
+      @click="closeReopenModal"
+    ></div>
   </section>
 </template>
 

@@ -39,6 +39,7 @@ public sealed class RequestRecordedWorkPackageHandlerTests
         public Task<WorkPackageDto> UpdateContextAsync(Guid workPackageId, Guid? customerId, Guid? productId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<WorkPackageDto> UpdateDeadlineAsync(Guid workPackageId, DateTime? deadline, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<WorkPackageDto> ReorderRequestsAsync(Guid workPackageId, IReadOnlyList<Guid> orderedRequestIds, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<WorkPackageDto> ReopenWorkPackageAsync(Guid workPackageId, string reason, DateTime? newDeadline = null, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
     [Fact]

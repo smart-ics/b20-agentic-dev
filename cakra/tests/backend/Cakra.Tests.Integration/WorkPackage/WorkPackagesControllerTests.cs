@@ -197,6 +197,11 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
 
         (await client.DeleteAsync($"/api/v1/work-packages/{wpId}/requests/{reqId}"))
             .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/reopen", new
+        {
+            reason = "Reopen test"
+        })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -871,6 +876,299 @@ public sealed class WorkPackagesControllerTests : IAsyncLifetime
 
         var asOfUtcResponse = await client.GetAsync($"/api/v1/work-packages/operations-cockpit?asOfDateUtc={asOf}");
         asOfUtcResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task WorkPackage_reopen_endpoint_successfully_reopens_closed_package_to_draft()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
+        using var client = seeded.Client;
+
+        // 1. Create a work package with owner1
+        var createResponse = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Radiology Reopen Test Package",
+            objective = "Stabilize DICOM archiving before go-live.",
+            ownerPersonId = seeded.Owner1Id,
+            customerId = seeded.Customer1Id,
+            productId = seeded.Product1Id
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var wpId = created.GetProperty("id").GetGuid();
+
+        // 2. Add an unfinished request (Request1) and activate
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/requests", new
+        {
+            requestId = seeded.Request1Id
+        })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await client.PostAsync($"/api/v1/work-packages/{wpId}/activate", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // 3. Close the work package
+        var closeResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/close", new
+        {
+            reason = "Initial completion for cycle 1"
+        });
+        closeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var closed = await closeResponse.Content.ReadFromJsonAsync<JsonElement>();
+        closed.GetProperty("status").GetString().Should().Be(WorkPackageStatusNames.Closed);
+        closed.GetProperty("closedReason").GetString().Should().Be("Initial completion for cycle 1");
+        closed.GetProperty("closedAt").ValueKind.Should().NotBe(JsonValueKind.Null);
+
+        // 4. Call POST /api/v1/work-packages/{id}/reopen
+        var targetDeadline = new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc);
+        var reopenResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/reopen", new
+        {
+            reason = "Operational issues detected in PACs integration; reopening for remediation.",
+            deadline = targetDeadline
+        });
+        reopenResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var reopened = await reopenResponse.Content.ReadFromJsonAsync<JsonElement>();
+        reopened.GetProperty("id").GetGuid().Should().Be(wpId);
+        reopened.GetProperty("status").GetString().Should().Be(WorkPackageStatusNames.Draft);
+        reopened.GetProperty("closedReason").ValueKind.Should().Be(JsonValueKind.Null);
+        reopened.GetProperty("closedAt").ValueKind.Should().Be(JsonValueKind.Null);
+        reopened.GetProperty("deadline").GetDateTime().Should().Be(targetDeadline);
+        reopened.GetProperty("ownerPersonId").GetGuid().Should().Be(seeded.Owner1Id);
+        reopened.GetProperty("ownerName").GetString().Should().Be("Dewi Lestari");
+
+        // 5. Query GET /api/v1/work-packages/{id} to verify persisted state
+        var getResponse = await client.GetAsync($"/api/v1/work-packages/{wpId}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var persisted = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        persisted.GetProperty("status").GetString().Should().Be(WorkPackageStatusNames.Draft);
+        persisted.GetProperty("closedReason").ValueKind.Should().Be(JsonValueKind.Null);
+        persisted.GetProperty("closedAt").ValueKind.Should().Be(JsonValueKind.Null);
+        persisted.GetProperty("deadline").GetDateTime().Should().Be(targetDeadline);
+    }
+
+    [Fact]
+    public async Task WorkPackage_reopen_endpoint_enforces_validation_state_eligibility_br9_and_authorization_rules()
+    {
+        _sqlServerAvailable.Should().BeTrue("SQL Server test instance must be available");
+        _factory.Should().NotBeNull();
+
+        var seeded = await CreateAuthenticatedClientAndSeedContextAsync();
+        using var client = seeded.Client;
+
+        // 1. Create a Work Package with Request1, activate and close
+        var createResponse = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Validation Test Package",
+            objective = "Testing error cases and domain gates",
+            ownerPersonId = seeded.Owner1Id,
+            customerId = seeded.Customer1Id,
+            productId = seeded.Product1Id
+        });
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var wpId = (await createResponse.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/requests", new { requestId = seeded.Request1Id }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsync($"/api/v1/work-packages/{wpId}/activate", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/close", new { reason = "Initial closure" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // a. Empty / whitespace reason -> 400 Bad Request ProblemDetails
+        var emptyReasonResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/reopen", new
+        {
+            reason = "   "
+        });
+        emptyReasonResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        emptyReasonResponse.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        var emptyProblem = await emptyReasonResponse.Content.ReadFromJsonAsync<JsonElement>();
+        emptyProblem.GetProperty("detail").GetString().Should().Contain("Re-open reason is required");
+
+        // b. Non-existent WorkPackage -> 404 NotFound ProblemDetails
+        var nonExistentId = Guid.NewGuid();
+        var notFoundResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{nonExistentId}/reopen", new
+        {
+            reason = "Valid reason"
+        });
+        notFoundResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        notFoundResponse.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        // c. Invalid state transition: Reopening a package that is in DRAFT or ACTIVE -> 400 Bad Request
+        var draftCreate = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Draft State Package",
+            objective = "In draft",
+            ownerPersonId = seeded.Owner1Id
+        });
+        var draftId = (await draftCreate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var draftReopenResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{draftId}/reopen", new
+        {
+            reason = "Should fail because in DRAFT"
+        });
+        draftReopenResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        draftReopenResponse.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        (await client.PostAsync($"/api/v1/work-packages/{draftId}/activate", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        var activeReopenResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{draftId}/reopen", new
+        {
+            reason = "Should fail because in ACTIVE"
+        });
+        activeReopenResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        activeReopenResponse.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        // d. Eligibility Gate: Package with 0 constituent requests cannot be reopened
+        var emptyWpCreate = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Empty WP",
+            objective = "Zero requests",
+            ownerPersonId = seeded.Owner1Id
+        });
+        var emptyWpId = (await emptyWpCreate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await client.PostAsync($"/api/v1/work-packages/{emptyWpId}/activate", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{emptyWpId}/close", new { reason = "Closed without requests" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var emptyReopenResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{emptyWpId}/reopen", new
+        {
+            reason = "Try reopening empty package"
+        });
+        emptyReopenResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var emptyWpProblem = await emptyReopenResponse.Content.ReadFromJsonAsync<JsonElement>();
+        emptyWpProblem.GetProperty("detail").GetString().Should().Contain("has no constituent requests and cannot be re-opened");
+
+        // e. Eligibility Gate: Package where all constituent requests are finished (COMPLETED / CANCELLED)
+        var finishedWpCreate = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Finished WP",
+            objective = "All requests finished",
+            ownerPersonId = seeded.Owner1Id
+        });
+        var finishedWpId = (await finishedWpCreate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{finishedWpId}/requests", new { requestId = seeded.Request2Id }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsync($"/api/v1/work-packages/{finishedWpId}/activate", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{finishedWpId}/close", new { reason = "Done" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Cancel Request2 so all constituent requests are cancelled
+        using (var scope = _factory!.Services.CreateScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            await mediator.Send(new CancelRequestCommand(seeded.Request2Id, "Cancelled request test"));
+        }
+
+        var allFinishedReopenResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{finishedWpId}/reopen", new
+        {
+            reason = "Try reopening package with all cancelled requests"
+        });
+        allFinishedReopenResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var allFinishedProblem = await allFinishedReopenResponse.Content.ReadFromJsonAsync<JsonElement>();
+        allFinishedProblem.GetProperty("detail").GetString().Should().Contain("contains no unfinished requests");
+
+        // f. Business Rule 9 conflict: Unfinished request is currently assigned to another active work package
+        var br9WpCreate = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Conflicting Active Package",
+            objective = "Claiming Request1 while wpId is closed",
+            ownerPersonId = seeded.Owner1Id
+        });
+        var br9WpId = (await br9WpCreate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{br9WpId}/requests", new { requestId = seeded.Request1Id }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsync($"/api/v1/work-packages/{br9WpId}/activate", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Now wpId has Request1, which is claimed by active br9WpId -> reopen must fail with BR-9 conflict
+        var conflictResponse = await client.PostAsJsonAsync($"/api/v1/work-packages/{wpId}/reopen", new
+        {
+            reason = "Reopen conflicting package"
+        });
+        conflictResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var conflictProblem = await conflictResponse.Content.ReadFromJsonAsync<JsonElement>();
+        conflictProblem.GetProperty("detail").GetString().Should().Contain("assigned to another active or draft Work Package");
+
+        // g. Authorization Gate: Caller who is not the owner and has no leadership role cannot reopen
+        Guid unauthorizedPersonId;
+        string unauthorizedSessionToken;
+        using (var scope = _factory!.Services.CreateScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var userAccountRepo = scope.ServiceProvider.GetRequiredService<IUserAccountRepository>();
+            var authService = scope.ServiceProvider.GetRequiredService<IAuthenticationService>();
+
+            var person3 = await mediator.Send(new CreatePersonCommand(
+                "Andi",
+                "Wijaya",
+                $"andi.{Guid.NewGuid():N}@cakra.id"));
+            unauthorizedPersonId = person3.Id;
+
+            var username3 = $"andi.{Guid.NewGuid():N}"[..20];
+            var user3 = new UserAccount
+            {
+                Id = Guid.NewGuid(),
+                PersonId = unauthorizedPersonId,
+                Username = username3,
+                Email = person3.Email,
+                Status = UserAccountStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            };
+            user3.PasswordHash = authService.HashPassword(user3, "Password123!");
+            await userAccountRepo.AddAsync(user3);
+
+            var loginResult = await authService.LoginAsync(username3, "Password123!");
+            loginResult.Succeeded.Should().BeTrue();
+            unauthorizedSessionToken = loginResult.SessionToken!;
+        }
+
+        using var unauthorizedClient = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = false
+        });
+        unauthorizedClient.DefaultRequestHeaders.Add("Cookie", $"{CakraAuthenticationDefaults.CookieName}={unauthorizedSessionToken}");
+
+        // Create a separate closed package owned by Owner1 with an unfinished request
+        Guid newUnfinishedRequestId;
+        using (var scope = _factory!.Services.CreateScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var req = await mediator.Send(new RecordRequestCommand(
+                Title: "Another unfinished bug",
+                Description: "Bug description",
+                CustomerId: seeded.Customer1Id,
+                ProductId: seeded.Product1Id,
+                RequestType: "Bug",
+                Priority: "NORMAL"));
+            newUnfinishedRequestId = req.Id;
+        }
+
+        var authWpCreate = await client.PostAsJsonAsync("/api/v1/work-packages", new
+        {
+            name = "Auth Test Package",
+            objective = "Owned by Owner1",
+            ownerPersonId = seeded.Owner1Id
+        });
+        var authWpId = (await authWpCreate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{authWpId}/requests", new { requestId = newUnfinishedRequestId }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsync($"/api/v1/work-packages/{authWpId}/activate", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await client.PostAsJsonAsync($"/api/v1/work-packages/{authWpId}/close", new { reason = "Done" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Attempting to reopen as User3 (not owner, no leadership) -> 401 Unauthorized ProblemDetails
+        var authForbiddenResponse = await unauthorizedClient.PostAsJsonAsync($"/api/v1/work-packages/{authWpId}/reopen", new
+        {
+            reason = "Unauthorized reopen attempt"
+        });
+        authForbiddenResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        authForbiddenResponse.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        var authProblem = await authForbiddenResponse.Content.ReadFromJsonAsync<JsonElement>();
+        authProblem.GetProperty("detail").GetString().Should().Contain("not authorized to re-open Work Package");
     }
 
     private async Task<SeededWorkPackageTestContext> CreateAuthenticatedClientAndSeedContextAsync()

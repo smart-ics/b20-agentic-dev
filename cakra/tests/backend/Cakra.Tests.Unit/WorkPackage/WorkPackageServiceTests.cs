@@ -22,6 +22,7 @@ public sealed class WorkPackageServiceTests
     private readonly FakeRequestQueryService _requestQuery = new();
     private readonly RecordingEventDispatcher _eventDispatcher = new();
     private readonly FakeSystemClock _clock = new();
+    private readonly FakeCurrentContextProvider _currentContextProvider = new();
     private readonly WorkPackageService _service;
 
     private readonly Guid _activeOwnerId = Guid.NewGuid();
@@ -54,6 +55,7 @@ public sealed class WorkPackageServiceTests
             _productQuery,
             _requestQuery,
             _eventDispatcher,
+            currentContextProvider: _currentContextProvider,
             clock: _clock);
     }
 
@@ -644,6 +646,282 @@ public sealed class WorkPackageServiceTests
         new UpdateWorkPackageContextCommandValidator()
             .Validate(new UpdateWorkPackageContextCommand(Guid.NewGuid(), null, null))
             .IsValid.Should().BeTrue();
+
+        new ReopenWorkPackageCommandValidator()
+            .Validate(new ReopenWorkPackageCommand(Guid.Empty, "Reason"))
+            .IsValid.Should().BeFalse();
+
+        new ReopenWorkPackageCommandValidator()
+            .Validate(new ReopenWorkPackageCommand(Guid.NewGuid(), ""))
+            .IsValid.Should().BeFalse();
+
+        new ReopenWorkPackageCommandValidator()
+            .Validate(new ReopenWorkPackageCommand(Guid.NewGuid(), new string('x', 1001)))
+            .IsValid.Should().BeFalse();
+
+        new ReopenWorkPackageCommandValidator()
+            .Validate(new ReopenWorkPackageCommand(Guid.NewGuid(), "Valid reason"))
+            .IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenClosedWithUnfinishedRequests_ReopensToDraftAndDispatchesEvent()
+    {
+        // Arrange
+        var created = await _service.CreateWorkPackageAsync("WP to Reopen", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.ActivateWorkPackageAsync(created.Id);
+
+        _clock.Advance(TimeSpan.FromMinutes(10));
+        var closedAt = _clock.UtcNow;
+        await _service.CloseWorkPackageAsync(created.Id, "Initial closure reason");
+
+        _eventDispatcher.Clear();
+        _clock.Advance(TimeSpan.FromHours(1));
+
+        var newDeadline = new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // Act
+        var reopened = await _service.ReopenWorkPackageAsync(
+            created.Id,
+            "Operational needs required reopening",
+            newDeadline: newDeadline);
+
+        // Assert DTO
+        reopened.Id.Should().Be(created.Id);
+        reopened.Status.Should().Be(WorkPackageStatusNames.Draft);
+        reopened.ClosedReason.Should().BeNull();
+        reopened.ClosedAt.Should().BeNull();
+        reopened.Deadline.Should().Be(newDeadline);
+        reopened.UpdatedAt.Should().Be(_clock.UtcNow);
+
+        // Assert Repository
+        var persisted = await _repository.GetByIdAsync(created.Id);
+        persisted.Should().NotBeNull();
+        persisted!.Status.Should().Be(WorkPackageStatus.Draft);
+        persisted.ClosedReason.Should().BeNull();
+        persisted.ClosedAt.Should().BeNull();
+        persisted.Deadline.Should().Be(newDeadline);
+        persisted.UpdatedAt.Should().Be(_clock.UtcNow);
+
+        // Assert Event
+        _eventDispatcher.DispatchedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<WorkPackageReopened>()
+            .Which.Should().Match<WorkPackageReopened>(e =>
+                e.WorkPackageId == created.Id &&
+                e.Reason == "Operational needs required reopening" &&
+                e.PreviousClosedReason == "Initial closure reason" &&
+                e.PreviousClosedAt == closedAt &&
+                e.ReopenedAtUtc == _clock.UtcNow);
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_PreservesExistingDeadlineWhenNewDeadlineIsNull()
+    {
+        var initialDeadline = new DateTime(2026, 11, 20, 0, 0, 0, DateTimeKind.Utc);
+        var created = await _service.CreateWorkPackageAsync("WP with Deadline", "Objective", _activeOwnerId, deadline: initialDeadline);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.CloseWorkPackageAsync(created.Id, "Closed for now");
+
+        _clock.Advance(TimeSpan.FromDays(1));
+
+        var reopened = await _service.ReopenWorkPackageAsync(created.Id, "Reopening without deadline change", newDeadline: null);
+
+        reopened.Deadline.Should().Be(initialDeadline);
+
+        var persisted = await _repository.GetByIdAsync(created.Id);
+        persisted!.Deadline.Should().Be(initialDeadline);
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_ViaMediatRCommand_ExecutesSuccessfully()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP MediatR", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.CloseWorkPackageAsync(created.Id, "Finished");
+
+        var command = new ReopenWorkPackageCommand(created.Id, "Reopening via MediatR");
+        var result = await _service.Handle(command, CancellationToken.None);
+
+        result.Status.Should().Be(WorkPackageStatusNames.Draft);
+        result.ClosedReason.Should().BeNull();
+        result.ClosedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenCallerIsNonOwnerWithoutLeadershipRoles_ThrowsUnauthorizedAccessException()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP Auth", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.CloseWorkPackageAsync(created.Id, "Finished");
+
+        // Caller is a different person and has no leadership roles
+        var nonOwnerId = Guid.NewGuid();
+        _currentContextProvider.CurrentPersonId = nonOwnerId;
+        _currentContextProvider.Roles.Clear();
+
+        var act = async () => await _service.ReopenWorkPackageAsync(created.Id, "Unauthorized reopen");
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage($"*Actor '{nonOwnerId}' is not authorized to re-open Work Package '{created.Id}'*");
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenCallerIsAdministrator_Succeeds()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP Admin Auth", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.CloseWorkPackageAsync(created.Id, "Finished");
+
+        _currentContextProvider.CurrentPersonId = Guid.NewGuid();
+        _currentContextProvider.Roles.Add("Administrator");
+
+        var reopened = await _service.ReopenWorkPackageAsync(created.Id, "Admin reopen");
+        reopened.Status.Should().Be(WorkPackageStatusNames.Draft);
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenCallerIsManagement_Succeeds()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP Mgmt Auth", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.CloseWorkPackageAsync(created.Id, "Finished");
+
+        _currentContextProvider.CurrentPersonId = Guid.NewGuid();
+        _currentContextProvider.Roles.Add("Management");
+
+        var reopened = await _service.ReopenWorkPackageAsync(created.Id, "Management reopen");
+        reopened.Status.Should().Be(WorkPackageStatusNames.Draft);
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenCallerIsOwner_Succeeds()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP Owner Auth", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.CloseWorkPackageAsync(created.Id, "Finished");
+
+        _currentContextProvider.CurrentPersonId = _activeOwnerId;
+        _currentContextProvider.Roles.Clear();
+
+        var reopened = await _service.ReopenWorkPackageAsync(created.Id, "Owner reopen");
+        reopened.Status.Should().Be(WorkPackageStatusNames.Draft);
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenNoRequestsInPackage_ThrowsWorkPackageDomainException()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP Empty", "Objective", _activeOwnerId);
+        await _service.CloseWorkPackageAsync(created.Id, "Closed empty package");
+
+        var act = async () => await _service.ReopenWorkPackageAsync(created.Id, "Reopening empty package");
+
+        await act.Should().ThrowAsync<WorkPackageDomainException>()
+            .WithMessage($"*Work Package '{created.Id}' has no constituent requests and cannot be re-opened. Closure is permanent.*");
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenAllRequestsAreCompletedOrCancelledOrRejected_ThrowsWorkPackageDomainException()
+    {
+        var req1 = Guid.NewGuid();
+        var req2 = Guid.NewGuid();
+        var req3 = Guid.NewGuid();
+        _requestQuery.AddRequest(req1, "Completed Request", "COMPLETED", _activeOwnerId);
+        _requestQuery.AddRequest(req2, "Cancelled Request", "CANCELLED", _activeOwnerId);
+        _requestQuery.AddRequest(req3, "Rejected Request", "REJECTED", _activeOwnerId);
+
+        var created = await _service.CreateWorkPackageAsync("WP Finished Requests", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, req1);
+        await _service.AddRequestToWorkPackageAsync(created.Id, req2);
+        await _service.AddRequestToWorkPackageAsync(created.Id, req3);
+        await _service.CloseWorkPackageAsync(created.Id, "All done");
+
+        var act = async () => await _service.ReopenWorkPackageAsync(created.Id, "Attempting to reopen permanently sealed");
+
+        await act.Should().ThrowAsync<WorkPackageDomainException>()
+            .WithMessage($"*Work Package '{created.Id}' contains no unfinished requests. All constituent requests are completed or cancelled. Closure is permanent.*");
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenAtLeastOneRequestIsUnfinished_PassesGate2()
+    {
+        var reqDone = Guid.NewGuid();
+        var reqUnfinished = Guid.NewGuid();
+        _requestQuery.AddRequest(reqDone, "Completed Request", "COMPLETED", _activeOwnerId);
+        _requestQuery.AddRequest(reqUnfinished, "Unfinished Request", "IN_PROGRESS", _activeOwnerId);
+
+        var created = await _service.CreateWorkPackageAsync("WP Mixed Requests", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, reqDone);
+        await _service.AddRequestToWorkPackageAsync(created.Id, reqUnfinished);
+        await _service.CloseWorkPackageAsync(created.Id, "Closed prematurely");
+
+        var reopened = await _service.ReopenWorkPackageAsync(created.Id, "Reopening because one request remains unfinished");
+
+        reopened.Status.Should().Be(WorkPackageStatusNames.Draft);
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenUnfinishedRequestBelongsToAnotherActivePackage_ThrowsInvalidOperationException()
+    {
+        var wp1 = await _service.CreateWorkPackageAsync("WP 1", "Objective 1", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(wp1.Id, _existingRequestId);
+        await _service.CloseWorkPackageAsync(wp1.Id, "Closed WP 1");
+
+        // Request is now claimed by another package WP 2
+        var wp2 = await _service.CreateWorkPackageAsync("WP 2", "Objective 2", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(wp2.Id, _existingRequestId);
+
+        // Attempting to reopen WP 1 violates Business Rule 9
+        var act = async () => await _service.ReopenWorkPackageAsync(wp1.Id, "Reopen WP 1 with conflict");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"*Cannot re-open Work Package '{wp1.Id}': The following unfinished request(s) are currently assigned to another active or draft Work Package: 'REQ-1: Billing calculation issue' ({_existingRequestId}). Resolve the conflicts before re-opening.*");
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenPackageIsDraft_ThrowsInvalidWorkPackageStateTransitionException()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP Draft", "Objective", _activeOwnerId);
+
+        var act = async () => await _service.ReopenWorkPackageAsync(created.Id, "Reopening draft");
+
+        await act.Should().ThrowAsync<InvalidWorkPackageStateTransitionException>()
+            .WithMessage($"*Work Package '{created.Id}' is in status 'DRAFT' and cannot be re-opened. Only CLOSED packages can be re-opened.*");
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WhenPackageIsActive_ThrowsInvalidWorkPackageStateTransitionException()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP Active", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.ActivateWorkPackageAsync(created.Id);
+
+        var act = async () => await _service.ReopenWorkPackageAsync(created.Id, "Reopening active");
+
+        await act.Should().ThrowAsync<InvalidWorkPackageStateTransitionException>()
+            .WithMessage($"*Work Package '{created.Id}' is in status 'ACTIVE' and cannot be re-opened. Only CLOSED packages can be re-opened.*");
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WithEmptyId_ThrowsArgumentException()
+    {
+        var act = async () => await _service.ReopenWorkPackageAsync(Guid.Empty, "Reopen");
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*WorkPackageId cannot be empty*");
+    }
+
+    [Fact]
+    public async Task ReopenWorkPackage_WithEmptyReason_ThrowsArgumentException()
+    {
+        var created = await _service.CreateWorkPackageAsync("WP Reason Test", "Objective", _activeOwnerId);
+        await _service.AddRequestToWorkPackageAsync(created.Id, _existingRequestId);
+        await _service.CloseWorkPackageAsync(created.Id, "Closed");
+
+        var act = async () => await _service.ReopenWorkPackageAsync(created.Id, "   ");
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Re-open reason cannot be null or empty*");
     }
 
     private sealed class InMemoryWorkPackageRepository : IWorkPackageRepository
@@ -869,5 +1147,13 @@ public sealed class WorkPackageServiceTests
         public DateTime UtcNow { get; private set; } = new(2026, 9, 28, 7, 0, 0, DateTimeKind.Utc);
 
         public void Advance(TimeSpan delta) => UtcNow = UtcNow.Add(delta);
+    }
+
+    private sealed class FakeCurrentContextProvider : ICurrentContextProvider
+    {
+        public Guid? CurrentUserId { get; set; }
+        public Guid? CurrentPersonId { get; set; }
+        public List<string> Roles { get; } = new();
+        public IReadOnlyCollection<string> CurrentRoles => Roles;
     }
 }

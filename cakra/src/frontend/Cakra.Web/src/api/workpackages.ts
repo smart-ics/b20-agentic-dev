@@ -94,6 +94,11 @@ export interface CloseWorkPackagePayload {
   reason?: string
 }
 
+export interface ReopenWorkPackagePayload {
+  reason: string
+  deadline?: string | null
+}
+
 export interface AddRequestToWorkPackagePayload {
   requestId: string
 }
@@ -318,6 +323,17 @@ export async function closeWorkPackage(
 }
 
 /**
+ * Re-opens a CLOSED work package back into DRAFT state (Architecture CR-035 §4 TD-005).
+ */
+export async function reopenWorkPackage(
+  id: string,
+  payload: ReopenWorkPackagePayload,
+): Promise<WorkPackageDto> {
+  const response = await httpClient.post<WorkPackageDto>(`/work-packages/${id}/reopen`, payload)
+  return response.data
+}
+
+/**
  * Adds an operational request to a work package scope.
  */
 export async function addRequestToWorkPackage(
@@ -384,6 +400,7 @@ export const workPackageService = {
   assignWorkPackageOwner,
   activateWorkPackage,
   closeWorkPackage,
+  reopenWorkPackage,
   addRequestToWorkPackage,
   removeRequestFromWorkPackage,
   reorderWorkPackageRequests,

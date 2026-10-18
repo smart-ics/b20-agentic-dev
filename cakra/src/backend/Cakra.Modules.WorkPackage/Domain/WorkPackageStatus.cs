@@ -2,7 +2,7 @@ namespace Cakra.Modules.WorkPackage.Domain;
 
 /// <summary>
 /// Lifecycle status of a Work Package aggregate (Architecture §11, Domain §9).
-/// Lifecycle state machine: DRAFT -> ACTIVE -> CLOSED, or DRAFT -> CLOSED.
+/// Lifecycle state machine: DRAFT -> ACTIVE -> CLOSED, DRAFT -> CLOSED, or CLOSED -> DRAFT (re-opened per CR-035).
 /// </summary>
 public enum WorkPackageStatus
 {
@@ -12,7 +12,7 @@ public enum WorkPackageStatus
     /// <summary>Work Package represents active operational work.</summary>
     Active = 2,
 
-    /// <summary>Work Package is closed (completed, cancelled, or retired). Terminal state.</summary>
+    /// <summary>Work Package is closed (completed, cancelled, or retired). Can be re-opened to DRAFT when constituent operational requests remain unfinished (CR-035).</summary>
     Closed = 3
 }
 

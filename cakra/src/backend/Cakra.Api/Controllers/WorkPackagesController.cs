@@ -534,6 +534,53 @@ public sealed class WorkPackagesController : ApiControllerBase
         }
     }
 
+    /// <summary>
+    /// Re-opens a closed Work Package back to DRAFT state when unfinished operational requests remain
+    /// (Architecture CR-035 §4 TD-004).
+    /// </summary>
+    [HttpPost("{id:guid}/reopen")]
+    [ProducesResponseType(typeof(WorkPackageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReopenWorkPackage(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReopenWorkPackageBody? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.ResolvedReason))
+        {
+            return CreateBadRequestProblem("Re-open reason is required.");
+        }
+
+        try
+        {
+            var command = new ReopenWorkPackageCommand(
+                WorkPackageId: id,
+                Reason: request.ResolvedReason,
+                NewDeadline: request.Deadline);
+
+            var updated = await _mediator.Send(command, cancellationToken);
+            var enriched = await _workPackageQueryService.GetWorkPackageByIdAsync(updated.Id, cancellationToken) ?? updated;
+
+            _logger.LogInformation(
+                "Re-opened work package '{WorkPackageId}' with reason '{Reason}', transitioning to '{Status}'.",
+                enriched.Id,
+                request.ResolvedReason,
+                enriched.Status);
+
+            return Ok(enriched);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return CreateUnauthorizedProblem(ex.Message);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or WorkPackageDomainException or ArgumentException)
+        {
+            return CreateBadRequestProblem(ex.Message);
+        }
+    }
+
     private ObjectResult CreateBadRequestProblem(string detail)
     {
         var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
@@ -572,6 +619,28 @@ public sealed class WorkPackagesController : ApiControllerBase
         return new ObjectResult(problem)
         {
             StatusCode = StatusCodes.Status409Conflict,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    private ObjectResult CreateUnauthorizedProblem(string detail)
+    {
+        var traceId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status401Unauthorized,
+            Title = "Unauthorized",
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Type = "https://tools.ietf.org/html/rfc7235#section-3.1"
+        };
+        problem.Extensions["errorCode"] = "UNAUTHORIZED";
+        problem.Extensions["traceId"] = traceId;
+        problem.Extensions["message"] = detail;
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = StatusCodes.Status401Unauthorized,
             ContentTypes = { "application/problem+json" }
         };
     }
@@ -739,5 +808,30 @@ public sealed class WorkPackagesController : ApiControllerBase
     /// </summary>
     public sealed class ReorderWorkPackageRequestsRequest : ReorderWorkPackageRequestsBody
     {
+    }
+
+    /// <summary>
+    /// Request payload for <c>POST /api/v1/work-packages/{id}/reopen</c> (<c>ReopenWorkPackage</c>; Architecture CR-035 §4 TD-004).
+    /// </summary>
+    public class ReopenWorkPackageBody
+    {
+        public string? Reason { get; set; }
+        public DateTime? Deadline { get; set; }
+
+        public string ResolvedReason => Reason?.Trim() ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Request payload alias for <c>POST /api/v1/work-packages/{id}/reopen</c> (Architecture CR-035 §4 TD-004).
+    /// </summary>
+    public sealed class ReopenWorkPackageRequest : ReopenWorkPackageBody
+    {
+        public ReopenWorkPackageRequest() { }
+
+        public ReopenWorkPackageRequest(string reason, DateTime? deadline = null)
+        {
+            Reason = reason;
+            Deadline = deadline;
+        }
     }
 }

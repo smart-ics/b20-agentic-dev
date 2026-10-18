@@ -196,5 +196,25 @@ public interface IWorkPackageService
         Guid? productId,
         CancellationToken cancellationToken = default)
         => UpdateContextAsync(workPackageId, customerId, productId, cancellationToken);
+
+    /// <summary>
+    /// Re-opens a closed Work Package back into <c>DRAFT</c> state when constituent operational requests remain unfinished,
+    /// enforcing authorization, eligibility, and Business Rule 9 conflict prevention (Architecture CR-035 §4 TD-003).
+    /// </summary>
+    Task<WorkPackageDto> ReopenWorkPackageAsync(
+        Guid workPackageId,
+        string reason,
+        DateTime? newDeadline = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Convenience alias for <see cref="ReopenWorkPackageAsync"/> (Architecture CR-035 §4 TD-003).
+    /// </summary>
+    Task<WorkPackageDto> ReopenWorkPackage(
+        Guid workPackageId,
+        string reason,
+        DateTime? newDeadline = null,
+        CancellationToken cancellationToken = default)
+        => ReopenWorkPackageAsync(workPackageId, reason, newDeadline, cancellationToken);
 }
 

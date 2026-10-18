@@ -32,7 +32,8 @@ public sealed class WorkPackageService :
     IRequestHandler<ActivateWorkPackageCommand, WorkPackageDto>,
     IRequestHandler<CloseWorkPackageCommand, WorkPackageDto>,
     IRequestHandler<ReorderWorkPackageRequestsCommand, WorkPackageDto>,
-    IRequestHandler<UpdateWorkPackageContextCommand, WorkPackageDto>
+    IRequestHandler<UpdateWorkPackageContextCommand, WorkPackageDto>,
+    IRequestHandler<ReopenWorkPackageCommand, WorkPackageDto>
 {
     private readonly IWorkPackageRepository _workPackageRepository;
     private readonly IOrganizationQueryService _organizationQueryService;
@@ -494,6 +495,107 @@ public sealed class WorkPackageService :
         return WorkPackageDto.FromDomain(workPackage);
     }
 
+    /// <inheritdoc />
+    public async Task<WorkPackageDto> ReopenWorkPackageAsync(
+        Guid workPackageId,
+        string reason,
+        DateTime? newDeadline = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (workPackageId == Guid.Empty)
+        {
+            throw new ArgumentException("WorkPackageId cannot be empty.", nameof(workPackageId));
+        }
+
+        var workPackage = await GetRequiredWorkPackageAsync(workPackageId, cancellationToken);
+
+        if (workPackage.Status != WorkPackageStatus.Closed)
+        {
+            throw new InvalidWorkPackageStateTransitionException(
+                workPackage.Id,
+                workPackage.Status,
+                WorkPackageStatus.Draft,
+                $"Work Package '{workPackage.Id}' is in status '{workPackage.Status}' and cannot be re-opened. Only CLOSED packages can be re-opened.");
+        }
+
+        // Gate 1: Authorization Gate
+        var actorPersonId = ResolveActorPersonId(workPackage.OwnerPersonId);
+        var isOwner = workPackage.OwnerPersonId == actorPersonId;
+        var isLeadership = _currentContextProvider?.CurrentRoles?.Any(r => r is "Administrator" or "Management") ?? false;
+
+        if (!isOwner && !isLeadership)
+        {
+            throw new UnauthorizedAccessException(
+                $"Actor '{actorPersonId}' is not authorized to re-open Work Package '{workPackage.Id}'. Re-opening is restricted to the Work Package Owner, Management, or Administrator.");
+        }
+
+        // Gate 2: Eligibility Gate (Unfinished Requests Check)
+        var activeMemberships = workPackage.ActiveRequests.ToList();
+        if (activeMemberships.Count == 0)
+        {
+            throw new WorkPackageDomainException(
+                $"Work Package '{workPackage.Id}' has no constituent requests and cannot be re-opened. Closure is permanent.");
+        }
+
+        var unfinishedRequests = new List<RequestDto>();
+        foreach (var membership in activeMemberships)
+        {
+            var requestDto = _requestQueryService is not null
+                ? await _requestQueryService.GetRequestByIdAsync(membership.RequestId, cancellationToken)
+                : null;
+
+            var status = requestDto?.Status?.ToUpperInvariant() ?? string.Empty;
+            var isFinished = status is "COMPLETED" or "CANCELLED" or "REJECTED";
+
+            if (!isFinished && requestDto is not null)
+            {
+                unfinishedRequests.Add(requestDto);
+            }
+        }
+
+        if (unfinishedRequests.Count == 0)
+        {
+            throw new WorkPackageDomainException(
+                $"Work Package '{workPackage.Id}' contains no unfinished requests. All constituent requests are completed or cancelled. Closure is permanent.");
+        }
+
+        // Gate 3: Integrity Gate (Business Rule 9 Check)
+        var conflictingRequests = new List<string>();
+        foreach (var req in unfinishedRequests)
+        {
+            var isClaimed = await _workPackageRepository.IsRequestInActiveWorkPackageAsync(
+                req.Id,
+                workPackage.Id,
+                cancellationToken);
+
+            if (isClaimed)
+            {
+                conflictingRequests.Add($"'{req.Title}' ({req.Id})");
+            }
+        }
+
+        if (conflictingRequests.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Cannot re-open Work Package '{workPackage.Id}': The following unfinished request(s) are currently assigned to another active or draft Work Package: {string.Join(", ", conflictingRequests)}. Resolve the conflicts before re-opening.");
+        }
+
+        // Mutation & Persistence
+        var now = UtcNow;
+        workPackage.Reopen(reason, newDeadline, now);
+
+        await _workPackageRepository.UpdateAsync(workPackage, cancellationToken);
+        await DispatchDomainEventsAsync(workPackage, cancellationToken);
+
+        _logger.LogInformation(
+            "WorkPackage {WorkPackageId} re-opened to DRAFT with reason '{Reason}' by ActorPersonId {ActorPersonId}",
+            workPackage.Id,
+            reason,
+            actorPersonId);
+
+        return WorkPackageDto.FromDomain(workPackage);
+    }
+
     // MediatR command handler entry points
     public Task<WorkPackageDto> Handle(CreateWorkPackageCommand request, CancellationToken cancellationToken)
     {
@@ -594,6 +696,16 @@ public sealed class WorkPackageService :
             request.WorkPackageId,
             request.CustomerId,
             request.ProductId,
+            cancellationToken);
+    }
+
+    public Task<WorkPackageDto> Handle(ReopenWorkPackageCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ReopenWorkPackageAsync(
+            request.WorkPackageId,
+            request.Reason,
+            request.NewDeadline,
             cancellationToken);
     }
 

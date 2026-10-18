@@ -183,6 +183,46 @@ public sealed class WorkPackage : EntityBase
     }
 
     /// <summary>
+    /// Transitions the Work Package state from CLOSED back to DRAFT (Architecture CR-035 §4 TD-001).
+    /// </summary>
+    /// <param name="reason">Mandatory reason describing why the package was re-opened.</param>
+    /// <param name="newDeadline">Optional updated target deadline date.</param>
+    /// <param name="reopenedAtUtc">Optional re-open timestamp in UTC.</param>
+    public void Reopen(string reason, DateTime? newDeadline = null, DateTime? reopenedAtUtc = null)
+    {
+        if (Status != WorkPackageStatus.Closed)
+        {
+            throw new InvalidWorkPackageStateTransitionException(
+                Id,
+                Status,
+                WorkPackageStatus.Draft,
+                $"Only CLOSED Work Packages can be re-opened. Current status is '{Status}'.");
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException("Re-open reason cannot be null or empty.", nameof(reason));
+        }
+
+        var prevClosedReason = ClosedReason;
+        var prevClosedAt = ClosedAt;
+
+        Status = WorkPackageStatus.Draft;
+        ClosedReason = null;
+        ClosedAt = null;
+
+        if (newDeadline.HasValue)
+        {
+            Deadline = NormalizeDeadline(newDeadline);
+        }
+
+        var timestamp = reopenedAtUtc ?? DateTime.UtcNow;
+        UpdatedAt = timestamp;
+
+        AddDomainEvent(new WorkPackageReopened(Id, reason.Trim(), prevClosedReason, prevClosedAt, timestamp));
+    }
+
+    /// <summary>
     /// Updates the title and objective of the Work Package (Architecture §11).
     /// </summary>
     public void UpdateObjective(string name, string objective, DateTime? updatedAtUtc = null)

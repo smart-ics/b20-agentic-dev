@@ -3,8 +3,8 @@
 Title: Work Package Domain
 Code: WORK-PACKAGE
 Artifact: DOMAIN
-Version: 1.1
-LastUpdated: 2026-09-26
+Version: 1.2
+LastUpdated: 2026-10-16
 ---
 
 # 1. Business Overview
@@ -222,6 +222,16 @@ Request lifecycle remains authoritative in the Request domain.
 
 15. Historical Work Package membership must remain traceable.
 
+16. A closed Work Package may be re-opened into `DRAFT` state only if it contains at least one active constituent Request in an unfinished state (not `COMPLETED`, `CANCELLED`, or `REJECTED`).
+
+17. A closed Work Package where all Requests are completed or cancelled, or which contains zero Requests, is permanently closed and cannot be re-opened.
+
+18. Re-opening a closed Work Package is prohibited if any of its unfinished Requests has been linked to another active or draft Work Package while closed, enforcing Rule 9.
+
+19. Re-opening a Work Package requires a mandatory justification reason. Re-opening clears the previous closure status on the package while recording the re-open event and prior closure history for auditability.
+
+20. Re-opening authority is restricted to the Work Package Owner, Management, or Administrator.
+
 ---
 
 # 9. State Machines & Lifecycles
@@ -229,11 +239,19 @@ Request lifecycle remains authoritative in the Request domain.
 ## Work Package Lifecycle
 
 ```text id="kzj9p2"
-DRAFT
-   ↓
-ACTIVE
-   ↓
-CLOSED
+       ┌───────────┐
+       │   DRAFT   │ ◄───────────┐
+       └─────┬─────┘             │
+             │                   │
+             ▼                   │ (Re-Open)
+       ┌───────────┐             │
+       │  ACTIVE   │             │
+       └─────┬─────┘             │
+             │                   │
+             ▼                   │
+       ┌───────────┐             │
+       │  CLOSED   │ ────────────┘
+       └───────────┘
 ```
 
 ### DRAFT
@@ -249,6 +267,8 @@ The Work Package represents current operational work.
 The objective has been completed, cancelled, or the Work Package has been explicitly determined to no longer require active work.
 
 A Work Package may move directly from `DRAFT` to `CLOSED` when no active work is required.
+
+A closed Work Package may transition from `CLOSED` back to `DRAFT` (Re-Open) only when unfinished operational requests remain and no cross-package membership conflict exists. It does not transition directly from `CLOSED` to `ACTIVE`.
 
 ---
 
@@ -268,6 +288,7 @@ Examples:
 WorkPackageCreated
 WorkPackageActivated
 WorkPackageClosed
+WorkPackageReopened
 
 WorkPackageOwnerChanged
 

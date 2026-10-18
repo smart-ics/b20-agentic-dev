@@ -234,3 +234,25 @@ public sealed class UpdateWorkPackageContextCommandValidator : AbstractValidator
     }
 }
 
+/// <summary>
+/// Command to transition a <see cref="Domain.WorkPackage"/> from <c>CLOSED</c> back to <c>DRAFT</c> state
+/// when unfinished operational requests remain (Architecture CR-035 §4 TD-003).
+/// </summary>
+public sealed record ReopenWorkPackageCommand(
+    Guid WorkPackageId,
+    string Reason,
+    DateTime? NewDeadline = null) : IRequest<WorkPackageDto>;
+
+public sealed class ReopenWorkPackageCommandValidator : AbstractValidator<ReopenWorkPackageCommand>
+{
+    public ReopenWorkPackageCommandValidator()
+    {
+        RuleFor(x => x.WorkPackageId)
+            .NotEmpty().WithMessage("Work package ID is required.");
+
+        RuleFor(x => x.Reason)
+            .NotEmpty().WithMessage("Re-open reason is required.")
+            .MaximumLength(1000).WithMessage("Re-open reason must not exceed 1000 characters.");
+    }
+}
+

@@ -272,6 +272,122 @@ public sealed class WorkPackageDomainTests
             .WithParameterName("reason");
     }
 
+    [Fact]
+    public void Reopen_WhenClosed_TransitionsToDraftClearsClosureFieldsAndEmitsEvent()
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+        package.Activate();
+        var closedAt = DateTime.UtcNow.AddHours(-2);
+        package.Close("All done previously", closedAt);
+        package.ClearDomainEvents();
+
+        var reopenTime = DateTime.UtcNow;
+
+        // Act
+        package.Reopen("Operational request was reopened by customer", reopenedAtUtc: reopenTime);
+
+        // Assert
+        package.Status.Should().Be(WorkPackageStatus.Draft);
+        package.ClosedReason.Should().BeNull();
+        package.ClosedAt.Should().BeNull();
+        package.UpdatedAt.Should().Be(reopenTime);
+
+        var ev = package.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<WorkPackageReopened>().Which;
+        ev.WorkPackageId.Should().Be(package.Id);
+        ev.Reason.Should().Be("Operational request was reopened by customer");
+        ev.PreviousClosedReason.Should().Be("All done previously");
+        ev.PreviousClosedAt.Should().Be(closedAt);
+        ev.ReopenedAtUtc.Should().Be(reopenTime);
+        ev.OccurredAtUtc.Should().Be(reopenTime);
+    }
+
+    [Fact]
+    public void Reopen_WithNewDeadline_UpdatesAndNormalizesDeadline()
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+        package.Close("Closed");
+        var newDeadline = new DateTime(2026, 12, 15, 14, 30, 0, DateTimeKind.Utc);
+
+        // Act
+        package.Reopen("Reopened with deadline extension", newDeadline: newDeadline);
+
+        // Assert
+        package.Deadline.Should().Be(new DateTime(2026, 12, 15, 0, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public void Reopen_WithoutNewDeadline_PreservesExistingDeadline()
+    {
+        // Arrange
+        var initialDeadline = new DateTime(2026, 11, 20, 0, 0, 0, DateTimeKind.Utc);
+        var package = Cakra.Modules.WorkPackage.Domain.WorkPackage.Create(
+            name: "Deadline Package",
+            objective: "Test deadline",
+            ownerPersonId: _ownerId,
+            deadline: initialDeadline);
+        package.Close("Closed");
+
+        // Act
+        package.Reopen("Reopened keeping original deadline", newDeadline: null);
+
+        // Assert
+        package.Deadline.Should().Be(initialDeadline);
+    }
+
+    [Fact]
+    public void Reopen_WhenDraft_ThrowsInvalidWorkPackageStateTransitionException()
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+
+        // Act
+        var act = () => package.Reopen("Attempt to reopen draft");
+
+        // Assert
+        var ex = act.Should().Throw<InvalidWorkPackageStateTransitionException>().Which;
+        ex.WorkPackageId.Should().Be(package.Id);
+        ex.FromStatus.Should().Be(WorkPackageStatus.Draft);
+        ex.ToStatus.Should().Be(WorkPackageStatus.Draft);
+    }
+
+    [Fact]
+    public void Reopen_WhenActive_ThrowsInvalidWorkPackageStateTransitionException()
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+        package.Activate();
+
+        // Act
+        var act = () => package.Reopen("Attempt to reopen active");
+
+        // Assert
+        var ex = act.Should().Throw<InvalidWorkPackageStateTransitionException>().Which;
+        ex.WorkPackageId.Should().Be(package.Id);
+        ex.FromStatus.Should().Be(WorkPackageStatus.Active);
+        ex.ToStatus.Should().Be(WorkPackageStatus.Draft);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Reopen_WithEmptyReason_ThrowsArgumentException(string? invalidReason)
+    {
+        // Arrange
+        var package = CreateDraftPackage();
+        package.Close("Closed");
+
+        // Act
+        var act = () => package.Reopen(invalidReason!);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("reason");
+    }
+
     #endregion
 
     #region Objective & Owner Management Tests
